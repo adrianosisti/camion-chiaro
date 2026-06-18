@@ -21,6 +21,20 @@ const driverStatusValues = {
   Archiviato: 'archived',
 }
 
+const vehicleStatusLabels = {
+  active: 'Operativo',
+  maintenance: 'In manutenzione',
+  watch: 'Da controllare',
+  archived: 'Archiviato',
+}
+
+const vehicleStatusValues = {
+  Operativo: 'active',
+  'In manutenzione': 'maintenance',
+  'Da controllare': 'watch',
+  Archiviato: 'archived',
+}
+
 function mapDriver(row) {
   return {
     id: row.id,
@@ -43,7 +57,7 @@ function mapVehicle(row) {
     km: row.km ?? 0,
     model: row.model ?? '',
     plate: row.plate,
-    status: row.status,
+    status: vehicleStatusLabels[row.status] ?? row.status,
     type: row.type ?? '',
   }
 }
@@ -89,6 +103,31 @@ function toDriverUpdatePayload(updates) {
   if ('role' in updates) payload.role = updates.role
   if ('status' in updates) payload.status = driverStatusValues[updates.status] ?? updates.status
   if ('username' in updates) payload.username = updates.username
+
+  return payload
+}
+
+function toVehiclePayload(vehicle, companyId = configuredCompanyId) {
+  return {
+    company_id: companyId,
+    fleet_type: vehicle.fleetType,
+    km: Number(vehicle.km) || 0,
+    model: vehicle.model,
+    plate: vehicle.plate,
+    status: vehicleStatusValues[vehicle.status] ?? 'active',
+    type: vehicle.type,
+  }
+}
+
+function toVehicleUpdatePayload(updates) {
+  const payload = {}
+
+  if ('fleetType' in updates) payload.fleet_type = updates.fleetType
+  if ('km' in updates) payload.km = Number(updates.km) || 0
+  if ('model' in updates) payload.model = updates.model
+  if ('plate' in updates) payload.plate = updates.plate
+  if ('status' in updates) payload.status = vehicleStatusValues[updates.status] ?? updates.status
+  if ('type' in updates) payload.type = updates.type
 
   return payload
 }
@@ -210,6 +249,43 @@ export async function updateDriverRecord(driverId, updates) {
 
 export async function archiveDriverRecord(driverId) {
   return updateDriverRecord(driverId, { status: 'Archiviato' })
+}
+
+export async function createVehicleRecord(vehicle, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .insert(toVehiclePayload(vehicle, companyId))
+    .select('id, plate, model, type, fleet_type, km, status')
+    .single()
+
+  return { data: data ? mapVehicle(data) : null, error }
+}
+
+export async function updateVehicleRecord(vehicleId, updates) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !vehicleId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .update(toVehicleUpdatePayload(updates))
+    .eq('id', vehicleId)
+    .select('id, plate, model, type, fleet_type, km, status')
+    .single()
+
+  return { data: data ? mapVehicle(data) : null, error }
+}
+
+export async function archiveVehicleRecord(vehicleId) {
+  return updateVehicleRecord(vehicleId, { status: 'Archiviato' })
 }
 
 export async function getCurrentAuthSession() {

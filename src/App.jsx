@@ -36,7 +36,9 @@ import { company, complianceItems, driverDocuments, drivers, vehicles } from './
 import { decorateCompliance, formatDate, getSummary } from './lib/expiry'
 import {
   archiveDriverRecord as archiveSupabaseDriver,
+  archiveVehicleRecord as archiveSupabaseVehicle,
   createDriverRecord as createSupabaseDriver,
+  createVehicleRecord as createSupabaseVehicle,
   fetchComplianceItems,
   fetchDrivers,
   fetchVehicles,
@@ -48,6 +50,7 @@ import {
   signOut,
   signUpCompany,
   updateDriverRecord as updateSupabaseDriver,
+  updateVehicleRecord as updateSupabaseVehicle,
 } from './lib/supabase'
 import './App.css'
 
@@ -73,6 +76,22 @@ const documentTypes = [
 ]
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
+const fleetTypeOptions = [
+  { value: 'furgone', label: 'Furgone' },
+  { value: 'motrice', label: 'Motrice' },
+  { value: 'trattore', label: 'Trattore' },
+  { value: 'semirimorchio', label: 'Semirimorchio' },
+]
+
+const vehicleStatusOptions = ['Operativo', 'Da controllare', 'In manutenzione']
+
+function getFleetTypeLabel(value) {
+  return fleetTypeOptions.find((option) => option.value === value)?.label ?? value
+}
+
+function normalizePlate(value) {
+  return value.trim().toUpperCase().replace(/\s+/g, '')
+}
 
 function normalizeDriverUsername(value) {
   return value.trim().toLowerCase().replace(/\s+/g, '.')
@@ -104,6 +123,7 @@ function App() {
   const [activeFilter, setActiveFilter] = useState('all')
   const [query, setQuery] = useState('')
   const [driversSyncStatus, setDriversSyncStatus] = useState('')
+  const [fleetSyncStatus, setFleetSyncStatus] = useState('')
   const [driverUploadSent, setDriverUploadSent] = useState(false)
   const [morningCheckSent, setMorningCheckSent] = useState(false)
   const [faultReported, setFaultReported] = useState(false)
@@ -149,6 +169,7 @@ function App() {
 
       if (driversResult.error || vehiclesResult.error || complianceResult.error) {
         setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
+        setFleetSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
         return
       }
 
@@ -156,6 +177,7 @@ function App() {
       if (vehiclesResult.data) setVehicleRecords(vehiclesResult.data)
       if (complianceResult.data) setItems(complianceResult.data)
       setDriversSyncStatus('Dati Supabase caricati.')
+      setFleetSyncStatus('Dati Supabase caricati.')
     }
 
     loadCompanyData()
@@ -288,6 +310,85 @@ function App() {
     return true
   }
 
+  async function addVehicleRecord(vehicle) {
+    const cleanVehicle = {
+      ...vehicle,
+      km: Number(vehicle.km) || 0,
+      plate: normalizePlate(vehicle.plate),
+    }
+
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setFleetSyncStatus('Salvataggio mezzo su Supabase...')
+      const result = await createSupabaseVehicle(cleanVehicle)
+
+      if (result.error) {
+        setFleetSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      setVehicleRecords((currentVehicles) => [result.data, ...currentVehicles])
+      setFleetSyncStatus('Mezzo salvato su Supabase.')
+      return true
+    }
+
+    setVehicleRecords((currentVehicles) => [cleanVehicle, ...currentVehicles])
+    setFleetSyncStatus('Mezzo aggiunto in modalità locale.')
+    return true
+  }
+
+  async function updateVehicleRecord(vehicleId, updates) {
+    const cleanUpdates = {
+      ...updates,
+      km: Number(updates.km) || 0,
+      plate: normalizePlate(updates.plate),
+    }
+
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setFleetSyncStatus('Aggiornamento mezzo su Supabase...')
+      const result = await updateSupabaseVehicle(vehicleId, cleanUpdates)
+
+      if (result.error) {
+        setFleetSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      setVehicleRecords((currentVehicles) =>
+        currentVehicles.map((vehicle) => (vehicle.id === vehicleId ? result.data : vehicle)),
+      )
+      setFleetSyncStatus('Mezzo aggiornato.')
+      return true
+    }
+
+    setVehicleRecords((currentVehicles) =>
+      currentVehicles.map((vehicle) => (vehicle.id === vehicleId ? { ...vehicle, ...cleanUpdates } : vehicle)),
+    )
+    setFleetSyncStatus('Mezzo aggiornato in modalità locale.')
+    return true
+  }
+
+  async function archiveVehicleRecord(vehicleId) {
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setFleetSyncStatus('Archiviazione mezzo su Supabase...')
+      const result = await archiveSupabaseVehicle(vehicleId)
+
+      if (result.error) {
+        setFleetSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+    }
+
+    setVehicleRecords((currentVehicles) =>
+      currentVehicles.map((vehicle) =>
+        vehicle.id === vehicleId ? { ...vehicle, status: 'Archiviato' } : vehicle,
+      ),
+    )
+    setDriverRecords((currentDrivers) =>
+      currentDrivers.map((driver) => (driver.vehicleId === vehicleId ? { ...driver, vehicleId: '' } : driver)),
+    )
+    setFleetSyncStatus(isCompanyDataConfigured ? 'Mezzo archiviato.' : 'Mezzo archiviato in modalità locale.')
+    return true
+  }
+
   if (!session) {
     return <AuthScreen onAuthenticated={setSession} />
   }
@@ -323,11 +424,24 @@ function App() {
             syncStatus={driversSyncStatus}
             vehicleRecords={vehicleRecords}
           />
+        ) : activeView === 'fleet' ? (
+          <FleetWorkspace
+            driverRecords={driverRecords}
+            onAddVehicle={addVehicleRecord}
+            onArchiveVehicle={archiveVehicleRecord}
+            onUpdateVehicle={updateVehicleRecord}
+            syncStatus={fleetSyncStatus}
+            vehicleRecords={vehicleRecords}
+          />
         ) : (
           <>
             <section className="overview-grid" aria-label="Panoramica scadenze">
               <HeroPanel summary={summary} />
-              <Metrics driverCount={driverRecords.length} summary={summary} />
+              <Metrics
+                driverCount={driverRecords.filter((driver) => driver.status !== 'Archiviato').length}
+                summary={summary}
+                vehicleCount={vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length}
+              />
             </section>
             <section className="content-grid">
               <div className="main-column">
@@ -688,7 +802,7 @@ function HeroPanel({ summary }) {
   )
 }
 
-function Metrics({ driverCount, summary }) {
+function Metrics({ driverCount, summary, vehicleCount }) {
   const metrics = [
     {
       label: 'Critiche',
@@ -713,7 +827,7 @@ function Metrics({ driverCount, summary }) {
     },
     {
       label: 'Mezzi',
-      value: vehicles.length,
+      value: vehicleCount,
       detail: `${summary.vehicleDocs} pratiche`,
       icon: Truck,
       tone: 'success',
@@ -1037,6 +1151,309 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
   )
 }
 
+function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onUpdateVehicle, syncStatus, vehicleRecords }) {
+  const [editingId, setEditingId] = useState(null)
+  const [draftById, setDraftById] = useState({})
+  const [savingId, setSavingId] = useState(null)
+  const activeVehicles = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato')
+  const archivedVehicles = vehicleRecords.filter((vehicle) => vehicle.status === 'Archiviato')
+  const fleetGroups = fleetTypeOptions.map((option) => ({
+    ...option,
+    count: activeVehicles.filter((vehicle) => vehicle.fleetType === option.value).length,
+  }))
+
+  function startEditing(vehicle) {
+    setEditingId(vehicle.id)
+    setDraftById((currentDrafts) => ({
+      ...currentDrafts,
+      [vehicle.id]: {
+        fleetType: vehicle.fleetType,
+        km: vehicle.km,
+        model: vehicle.model,
+        plate: vehicle.plate,
+        status: vehicle.status,
+        type: vehicle.type,
+      },
+    }))
+  }
+
+  function updateDraft(vehicleId, field, value) {
+    setDraftById((currentDrafts) => ({
+      ...currentDrafts,
+      [vehicleId]: {
+        ...currentDrafts[vehicleId],
+        [field]: value,
+      },
+    }))
+  }
+
+  async function saveDraft(vehicleId) {
+    setSavingId(vehicleId)
+    const saved = await onUpdateVehicle(vehicleId, draftById[vehicleId])
+    setSavingId(null)
+
+    if (saved) {
+      setEditingId(null)
+    }
+  }
+
+  async function archiveVehicle(vehicleId) {
+    setSavingId(vehicleId)
+    await onArchiveVehicle(vehicleId)
+    setSavingId(null)
+  }
+
+  return (
+    <section className="fleet-workspace" aria-label="Gestione flotta">
+      <div className="fleet-main">
+        <div className="panel fleet-management-panel">
+          <div className="panel-header">
+            <div>
+              <p className="overline">Parco mezzi</p>
+              <h2>Flotta</h2>
+            </div>
+            <div className="drivers-count">
+              <strong>{activeVehicles.length}</strong>
+              <span>mezzi attivi</span>
+            </div>
+          </div>
+          <div className="fleet-summary-grid">
+            {fleetGroups.map((group) => (
+              <div key={group.value}>
+                <strong>{group.count}</strong>
+                <span>{group.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="fleet-management-list">
+            {activeVehicles.map((vehicle) => (
+              <VehicleManagementRow
+                assignedDriver={driverRecords.find((driver) => driver.vehicleId === vehicle.id)}
+                draft={draftById[vehicle.id]}
+                editing={editingId === vehicle.id}
+                key={vehicle.id}
+                onArchive={() => archiveVehicle(vehicle.id)}
+                onCancel={() => setEditingId(null)}
+                onEdit={() => startEditing(vehicle)}
+                onSave={() => saveDraft(vehicle.id)}
+                onUpdateDraft={(field, value) => updateDraft(vehicle.id, field, value)}
+                saving={savingId === vehicle.id}
+                vehicle={vehicle}
+              />
+            ))}
+          </div>
+          {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
+          {archivedVehicles.length > 0 && (
+            <p className="archive-note">{archivedVehicles.length} mezzi archiviati nascosti dall elenco operativo.</p>
+          )}
+        </div>
+      </div>
+      <VehicleCreatePanel onAddVehicle={onAddVehicle} />
+    </section>
+  )
+}
+
+function VehicleManagementRow({
+  assignedDriver,
+  draft,
+  editing,
+  onArchive,
+  onCancel,
+  onEdit,
+  onSave,
+  onUpdateDraft,
+  saving,
+  vehicle,
+}) {
+  if (editing) {
+    return (
+      <article className="fleet-management-row is-editing">
+        <div className="fleet-field-grid">
+          <label>
+            Targa
+            <input value={draft.plate} onChange={(event) => onUpdateDraft('plate', event.target.value)} />
+          </label>
+          <label>
+            Categoria
+            <select value={draft.fleetType} onChange={(event) => onUpdateDraft('fleetType', event.target.value)}>
+              {fleetTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Marca e modello
+            <input value={draft.model} onChange={(event) => onUpdateDraft('model', event.target.value)} />
+          </label>
+          <label>
+            Allestimento
+            <input value={draft.type} onChange={(event) => onUpdateDraft('type', event.target.value)} />
+          </label>
+          <label>
+            Km
+            <input min="0" type="number" value={draft.km} onChange={(event) => onUpdateDraft('km', event.target.value)} />
+          </label>
+          <label>
+            Stato
+            <select value={draft.status} onChange={(event) => onUpdateDraft('status', event.target.value)}>
+              {vehicleStatusOptions.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="row-actions">
+          <button className="small-button" disabled={saving} onClick={onSave} type="button">
+            <Save size={15} />
+            {saving ? 'Salvo...' : 'Salva'}
+          </button>
+          <button className="small-button" disabled={saving} onClick={onCancel} type="button">
+            Annulla
+          </button>
+        </div>
+      </article>
+    )
+  }
+
+  return (
+    <article className="fleet-management-row">
+      <div className="fleet-plate-block">
+        <strong>{vehicle.plate}</strong>
+        <span>{getFleetTypeLabel(vehicle.fleetType)}</span>
+      </div>
+      <div>
+        <strong>{vehicle.model || 'Modello non inserito'}</strong>
+        <span>{vehicle.type || 'Allestimento da completare'}</span>
+      </div>
+      <div>
+        <strong>{vehicle.km.toLocaleString('it-IT')} km</strong>
+        <span>{assignedDriver?.name ?? 'Non assegnato'}</span>
+      </div>
+      <span className="status-pill tone-info">{vehicle.status}</span>
+      <div className="row-actions">
+        <button className="small-button" disabled={saving} onClick={onEdit} type="button">
+          <Pencil size={15} />
+          Modifica
+        </button>
+        <button className="small-button danger-action" disabled={saving} onClick={onArchive} type="button">
+          {saving ? 'Archivio...' : 'Archivia'}
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function VehicleCreatePanel({ onAddVehicle }) {
+  const [isSaving, setIsSaving] = useState(false)
+  const [form, setForm] = useState({
+    fleetType: 'trattore',
+    km: 0,
+    model: '',
+    plate: '',
+    status: 'Operativo',
+    type: 'Trattore stradale',
+  })
+
+  function updateField(field, value) {
+    setForm((currentForm) => {
+      if (field === 'fleetType') {
+        const defaultType = {
+          furgone: 'Furgone',
+          motrice: 'Motrice',
+          trattore: 'Trattore stradale',
+          semirimorchio: 'Semirimorchio',
+        }[value]
+
+        return { ...currentForm, fleetType: value, type: defaultType }
+      }
+
+      return { ...currentForm, [field]: value }
+    })
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    if (!form.plate.trim()) return
+
+    setIsSaving(true)
+    const added = await onAddVehicle({
+      id: `veh-${Date.now()}`,
+      fleetType: form.fleetType,
+      km: Number(form.km) || 0,
+      model: form.model,
+      plate: form.plate,
+      status: form.status,
+      type: form.type,
+    })
+    setIsSaving(false)
+
+    if (!added) return
+
+    setForm({
+      fleetType: 'trattore',
+      km: 0,
+      model: '',
+      plate: '',
+      status: 'Operativo',
+      type: 'Trattore stradale',
+    })
+  }
+
+  return (
+    <form className="panel vehicle-create-panel" onSubmit={handleSubmit}>
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">Nuovo mezzo</p>
+          <h2>Aggiungi alla flotta</h2>
+        </div>
+        <Truck size={20} />
+      </div>
+      <div className="form-grid single-column">
+        <label>
+          Targa
+          <input required value={form.plate} onChange={(event) => updateField('plate', event.target.value)} />
+        </label>
+        <label>
+          Categoria
+          <select value={form.fleetType} onChange={(event) => updateField('fleetType', event.target.value)}>
+            {fleetTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Marca e modello
+          <input value={form.model} onChange={(event) => updateField('model', event.target.value)} />
+        </label>
+        <label>
+          Allestimento
+          <input value={form.type} onChange={(event) => updateField('type', event.target.value)} />
+        </label>
+        <label>
+          Km
+          <input min="0" type="number" value={form.km} onChange={(event) => updateField('km', event.target.value)} />
+        </label>
+        <label>
+          Stato
+          <select value={form.status} onChange={(event) => updateField('status', event.target.value)}>
+            {vehicleStatusOptions.map((status) => (
+              <option key={status}>{status}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <button className="primary-button full-button" disabled={isSaving} type="submit">
+        <Plus size={17} />
+        {isSaving ? 'Salvataggio...' : 'Aggiungi mezzo'}
+      </button>
+    </form>
+  )
+}
+
 function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onReminder, onRenew }) {
   return (
     <section className="panel compliance-panel">
@@ -1127,11 +1544,12 @@ function FleetAndForms({ driverRecords, onAdd, vehicleRecords }) {
 }
 
 function FleetStatus({ driverRecords, vehicleRecords }) {
+  const activeVehicleRecords = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato')
   const fleetGroups = [
-    { label: 'Furgoni', value: vehicleRecords.filter((vehicle) => vehicle.fleetType === 'furgone').length },
-    { label: 'Motrici', value: vehicleRecords.filter((vehicle) => vehicle.fleetType === 'motrice').length },
-    { label: 'Trattori', value: vehicleRecords.filter((vehicle) => vehicle.fleetType === 'trattore').length },
-    { label: 'Semirimorchi', value: vehicleRecords.filter((vehicle) => vehicle.fleetType === 'semirimorchio').length },
+    { label: 'Furgoni', value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'furgone').length },
+    { label: 'Motrici', value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'motrice').length },
+    { label: 'Trattori', value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'trattore').length },
+    { label: 'Semirimorchi', value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'semirimorchio').length },
   ]
 
   return (
@@ -1152,7 +1570,7 @@ function FleetStatus({ driverRecords, vehicleRecords }) {
         ))}
       </div>
       <div className="vehicle-list">
-        {vehicleRecords.map((vehicle) => {
+        {activeVehicleRecords.map((vehicle) => {
           const assignedDriver = driverRecords.find((driver) => driver.vehicleId === vehicle.id)
           return (
             <div className="vehicle-row" key={vehicle.id}>

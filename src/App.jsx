@@ -199,6 +199,28 @@ function App() {
   const decoratedItems = useMemo(() => decorateCompliance(items, driverRecords, vehicleRecords), [driverRecords, items, vehicleRecords])
   const summary = useMemo(() => getSummary(decoratedItems), [decoratedItems])
 
+  function handleAuthenticated(nextSession) {
+    if (nextSession.role === 'driver') {
+      resetDriverSessionData()
+    }
+
+    setSession(nextSession)
+  }
+
+  function resetDriverSessionData() {
+    setItems([])
+    setDocumentRecords([])
+    setDriverRecords([])
+    setVehicleRecords([])
+    setVehicleCheckRecords([])
+    setFaultReportRecords([])
+    setDriverUploadSent(false)
+    setMorningCheckSent(false)
+    setFaultReported(false)
+    setDriverDocumentUploadStatus('')
+    setUploadingDriverDocumentId('')
+  }
+
   useEffect(() => {
     if (!isSupabaseConfigured) return
 
@@ -753,7 +775,7 @@ function App() {
   }
 
   if (!session) {
-    return <AuthScreen onAuthenticated={setSession} />
+    return <AuthScreen onAuthenticated={handleAuthenticated} />
   }
 
   if (session.role === 'driver') {
@@ -850,6 +872,7 @@ function App() {
                   onOpenDriverDocument={openDriverDocumentFile}
                   onUpload={() => setDriverUploadSent(true)}
                   operationsStatus={operationsSyncStatus}
+                  showDriverSelector
                   uploadSent={driverUploadSent}
                   uploadingDocumentId={uploadingDriverDocumentId}
                   vehicleCheckRecords={vehicleCheckRecords}
@@ -2507,12 +2530,18 @@ function DriverMobile({
   onOpenDriverDocument,
   onUpload,
   operationsStatus,
+  showDriverSelector = false,
   uploadSent,
   uploadingDocumentId,
   vehicleCheckRecords = [],
   vehicleRecords = vehicles,
 }) {
-  const driver = driverRecords[0] ?? drivers[0]
+  const [selectedPreviewDriverId, setSelectedPreviewDriverId] = useState('')
+  const previewDriver =
+    driverRecords.find((entry) => entry.id === selectedPreviewDriverId) ??
+    driverRecords[0] ??
+    drivers[0]
+  const driver = showDriverSelector ? previewDriver : driverRecords[0] ?? drivers[0]
   const activeVehicles = vehicleRecords.filter((entry) => entry.status !== 'Archiviato')
   const driveableVehicles = activeVehicles.filter((entry) => entry.fleetType !== 'semirimorchio')
   const assignedVehicle = driveableVehicles.find((entry) => entry.id === driver.vehicleId)
@@ -2610,6 +2639,22 @@ function DriverMobile({
         <span>{selectedVehicle?.plate ?? 'App'}</span>
       </div>
       <div className="phone-body">
+        {showDriverSelector && (
+          <label className="driver-preview-selector">
+            Autista in anteprima
+            <select
+              value={driver.id}
+              onChange={(event) => setSelectedPreviewDriverId(event.target.value)}
+            >
+              {driverRecords.length === 0 && <option value={driver.id}>{driver.name}</option>}
+              {driverRecords.map((driverRecord) => (
+                <option key={driverRecord.id} value={driverRecord.id}>
+                  {driverRecord.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="driver-card">
           <div>
             <p>Buongiorno</p>

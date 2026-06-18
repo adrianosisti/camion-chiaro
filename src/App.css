@@ -1375,6 +1375,30 @@
   background: #ffffff;
 }
 
+.driver-preview-selector {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  color: #075985;
+  background: #e0f2fe;
+  font-size: 0.75rem;
+  font-weight: 780;
+}
+
+.driver-preview-selector select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #7dd3fc;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0 8px;
+}
+
 .driver-card {
   display: flex;
   align-items: center;

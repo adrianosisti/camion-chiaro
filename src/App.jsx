@@ -1051,8 +1051,10 @@ function App() {
               </div>
               <aside className="side-column dashboard-side" aria-label="Notifiche azienda">
                 <NotificationPanel
+                  acknowledgedCheckIds={acknowledgedCheckIds}
                   driverRecords={driverRecords}
                   faultReportRecords={visibleFaultReportRecords}
+                  onOpenNotifications={() => setActiveView('notifications')}
                   vehicleCheckRecords={vehicleCheckRecords}
                   vehicleRecords={vehicleRecords}
                 />
@@ -2499,13 +2501,14 @@ function OperationsWorkspace({
 }) {
   const [filter, setFilter] = useState('inbox')
   const [selectedOperationKey, setSelectedOperationKey] = useState('')
-  const today = new Date().toDateString()
+  const isCriticalFault = (report) => ['high', 'stop_vehicle'].includes(report.severity) && report.status !== 'closed'
   const newFaults = faultReportRecords.filter((report) => report.status === 'open')
+  const workFaults = faultReportRecords.filter((report) => ['seen', 'in_progress'].includes(report.status))
   const archivedFaults = faultReportRecords.filter((report) => report.status === 'closed')
-  const todayChecks = vehicleCheckRecords.filter((check) => new Date(check.createdAt).toDateString() === today)
   const unreadChecks = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id))
   const archivedChecks = vehicleCheckRecords.filter((check) => acknowledgedCheckIds.includes(check.id))
   const criticalChecks = unreadChecks.filter(hasCheckIssues)
+  const criticalFaults = faultReportRecords.filter(isCriticalFault)
   const allOperations = [
     ...faultReportRecords.map((report) => ({
       createdAt: report.createdAt,
@@ -2530,21 +2533,15 @@ function OperationsWorkspace({
       }
       if (filter === 'critical') {
         return (
-          (operation.kind === 'fault' && ['high', 'stop_vehicle'].includes(operation.data.severity) && operation.data.status !== 'closed') ||
+          (operation.kind === 'fault' && isCriticalFault(operation.data)) ||
           (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id) && hasCheckIssues(operation.data))
         )
       }
-      if (filter === 'open') return operation.kind === 'fault' && operation.data.status !== 'closed'
+      if (filter === 'work') return operation.kind === 'fault' && ['seen', 'in_progress'].includes(operation.data.status)
       if (filter === 'archive') {
         return (
           (operation.kind === 'fault' && operation.data.status === 'closed') ||
           (operation.kind === 'check' && acknowledgedCheckIds.includes(operation.id))
-        )
-      }
-      if (filter === 'all') {
-        return (
-          (operation.kind === 'fault' && operation.data.status !== 'closed') ||
-          (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id))
         )
       }
       if (filter === 'faults') return operation.kind === 'fault' && operation.data.status !== 'closed'
@@ -2552,7 +2549,7 @@ function OperationsWorkspace({
       return false
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  const selectedOperation = operations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
+  const selectedOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
   const fallbackSelection = operations[0]
   const detailOperation = selectedOperation ?? fallbackSelection
 
@@ -2566,6 +2563,11 @@ function OperationsWorkspace({
     if (operation.kind === 'check') {
       onAcknowledgeCheck(operation.id)
     }
+  }
+
+  function changeFilter(nextFilter) {
+    setFilter(nextFilter)
+    setSelectedOperationKey('')
   }
 
   return (
@@ -2584,39 +2586,36 @@ function OperationsWorkspace({
             <span>da aprire</span>
           </div>
           <div>
-            <strong>{criticalChecks.length}</strong>
-            <span>check critici</span>
+            <strong>{criticalFaults.length + criticalChecks.length}</strong>
+            <span>critiche</span>
+          </div>
+          <div>
+            <strong>{workFaults.length}</strong>
+            <span>in lavorazione</span>
           </div>
           <div>
             <strong>{archivedFaults.length + archivedChecks.length}</strong>
             <span>archiviati</span>
           </div>
-          <div>
-            <strong>{todayChecks.length}</strong>
-            <span>check oggi</span>
-          </div>
         </div>
         <div className="filter-tabs operations-filters" role="tablist" aria-label="Filtra notifiche">
-          <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('inbox')} type="button">
-            Da aprire
+          <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('inbox')} type="button">
+            Da aprire ({newFaults.length + unreadChecks.length})
           </button>
-          <button className={filter === 'critical' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('critical')} type="button">
-            Critiche
+          <button className={filter === 'critical' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical')} type="button">
+            Critiche ({criticalFaults.length + criticalChecks.length})
           </button>
-          <button className={filter === 'open' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('open')} type="button">
-            Aperti
+          <button className={filter === 'work' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('work')} type="button">
+            In lavorazione ({workFaults.length})
           </button>
-          <button className={filter === 'all' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('all')} type="button">
-            Tutte
+          <button className={filter === 'checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('checks')} type="button">
+            Check ({unreadChecks.length})
           </button>
-          <button className={filter === 'checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('checks')} type="button">
-            Check
+          <button className={filter === 'faults' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('faults')} type="button">
+            Guasti ({faultReportRecords.length - archivedFaults.length})
           </button>
-          <button className={filter === 'faults' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('faults')} type="button">
-            Guasti
-          </button>
-          <button className={filter === 'archive' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('archive')} type="button">
-            Archivio
+          <button className={filter === 'archive' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('archive')} type="button">
+            Archivio ({archivedFaults.length + archivedChecks.length})
           </button>
         </div>
         <div className="operations-list">
@@ -2651,8 +2650,10 @@ function OperationsWorkspace({
         {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
       </div>
       <OperationDetailPanel
+        acknowledgedCheckIds={acknowledgedCheckIds}
         driverRecords={driverRecords}
         operation={detailOperation}
+        onAcknowledgeCheck={onAcknowledgeCheck}
         onUpdateFaultStatus={onUpdateFaultStatus}
         vehicleRecords={vehicleRecords}
       />
@@ -2662,9 +2663,14 @@ function OperationsWorkspace({
 
 function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, trailer, vehicle }) {
   const isClosed = report.status === 'closed'
+  const isSeen = report.status !== 'open'
+  const isWorking = report.status === 'in_progress'
+  const rowClassName = ['operation-row', selected ? 'is-selected' : '', isClosed ? 'is-muted' : '']
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <article className={selected ? 'operation-row is-selected' : 'operation-row'}>
+    <article className={rowClassName}>
       <div className="operation-icon tone-danger">
         <Wrench size={20} />
       </div>
@@ -2684,14 +2690,14 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
         <button className="small-button" onClick={onOpen} type="button">
           Apri
         </button>
-        <button disabled={isClosed} className="small-button" onClick={() => onUpdateStatus(report.id, 'seen')} type="button">
-          Visto
+        <button disabled={isSeen} className="small-button" onClick={() => onUpdateStatus(report.id, 'seen')} type="button">
+          {isSeen ? 'Gia visto' : 'Visto'}
         </button>
-        <button disabled={isClosed} className="small-button" onClick={() => onUpdateStatus(report.id, 'in_progress')} type="button">
-          Lavora
+        <button disabled={isClosed || isWorking} className="small-button" onClick={() => onUpdateStatus(report.id, 'in_progress')} type="button">
+          {isWorking ? 'In corso' : 'Lavora'}
         </button>
-        <button className="small-button danger-action" onClick={() => onUpdateStatus(report.id, 'closed')} type="button">
-          Chiudi
+        <button disabled={isClosed} className="small-button danger-action" onClick={() => onUpdateStatus(report.id, 'closed')} type="button">
+          {isClosed ? 'Archiviato' : 'Archivia'}
         </button>
       </div>
     </article>
@@ -2701,9 +2707,12 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
 function CheckOperationRow({ check, driver, onMarkRead, onOpen, read, selected, trailer, vehicle }) {
   const issueText = getCheckIssues(check)
   const isCritical = issueText.length > 0
+  const rowClassName = ['operation-row', selected ? 'is-selected' : '', read ? 'is-muted' : '']
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <article className={selected ? 'operation-row is-selected' : 'operation-row'}>
+    <article className={rowClassName}>
       <div className={isCritical ? 'operation-icon tone-danger' : 'operation-icon tone-success'}>
         <ClipboardCheck size={20} />
       </div>
@@ -2733,14 +2742,21 @@ function CheckOperationRow({ check, driver, onMarkRead, onOpen, read, selected, 
           onClick={onMarkRead}
           type="button"
         >
-          Visto
+          {read ? 'Gia visto' : 'Visto'}
         </button>
       </div>
     </article>
   )
 }
 
-function OperationDetailPanel({ driverRecords, operation, onUpdateFaultStatus, vehicleRecords }) {
+function OperationDetailPanel({
+  acknowledgedCheckIds,
+  driverRecords,
+  operation,
+  onAcknowledgeCheck,
+  onUpdateFaultStatus,
+  vehicleRecords,
+}) {
   if (!operation) {
     return (
       <aside className="panel operation-detail-panel">
@@ -2762,6 +2778,8 @@ function OperationDetailPanel({ driverRecords, operation, onUpdateFaultStatus, v
     const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
     const trailer = vehicleRecords.find((entry) => entry.id === report.semitrailerId)
     const isClosed = report.status === 'closed'
+    const isSeen = report.status !== 'open'
+    const isWorking = report.status === 'in_progress'
 
     return (
       <aside className="panel operation-detail-panel">
@@ -2788,14 +2806,14 @@ function OperationDetailPanel({ driverRecords, operation, onUpdateFaultStatus, v
           )}
         </div>
         <div className="operation-detail-actions">
-          <button disabled={isClosed} className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'seen')} type="button">
-            Visto
+          <button disabled={isSeen} className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'seen')} type="button">
+            {isSeen ? 'Gia visto' : 'Visto'}
           </button>
-          <button disabled={isClosed} className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'in_progress')} type="button">
-            In lavorazione
+          <button disabled={isClosed || isWorking} className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'in_progress')} type="button">
+            {isWorking ? 'In corso' : 'In lavorazione'}
           </button>
-          <button className="small-button danger-action" onClick={() => onUpdateFaultStatus(report.id, 'closed')} type="button">
-            Archivia
+          <button disabled={isClosed} className="small-button danger-action" onClick={() => onUpdateFaultStatus(report.id, 'closed')} type="button">
+            {isClosed ? 'Archiviato' : 'Archivia'}
           </button>
         </div>
       </aside>
@@ -2806,6 +2824,8 @@ function OperationDetailPanel({ driverRecords, operation, onUpdateFaultStatus, v
   const driver = driverRecords.find((entry) => entry.id === check.driverId)
   const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
   const trailer = vehicleRecords.find((entry) => entry.id === check.semitrailerId)
+  const issueText = getCheckIssues(check)
+  const isRead = acknowledgedCheckIds.includes(check.id)
 
   return (
     <aside className="panel operation-detail-panel">
@@ -2817,6 +2837,7 @@ function OperationDetailPanel({ driverRecords, operation, onUpdateFaultStatus, v
         <ClipboardCheck size={20} />
       </div>
       <div className="operation-detail-body">
+        <DetailLine label="Stato" value={isRead ? 'Visto e archiviato' : issueText.length > 0 ? 'Critico da aprire' : 'Da aprire'} />
         <DetailLine label="Autista" value={driver?.name ?? 'Autista non trovato'} />
         <DetailLine label="Mezzo" value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : 'Mezzo non trovato'} />
         {trailer && <DetailLine label="Semirimorchio" value={`${trailer.plate} · ${trailer.model}`} />}
@@ -2825,12 +2846,23 @@ function OperationDetailPanel({ driverRecords, operation, onUpdateFaultStatus, v
         <DetailLine label="Luci" value={check.lightsOk ? 'Ok' : 'Da controllare'} />
         <DetailLine label="Gomme" value={check.tiresOk ? 'Ok' : 'Da controllare'} />
         <DetailLine label="Documenti bordo" value={check.documentsOnBoard ? 'Presenti' : 'Mancanti'} />
+        {issueText.length > 0 && (
+          <div className="detail-note is-critical">
+            <strong>Anomalie check</strong>
+            <p>{issueText.join(' · ')}</p>
+          </div>
+        )}
         {check.notes && (
           <div className="detail-note">
             <strong>Note</strong>
             <p>{check.notes}</p>
           </div>
         )}
+      </div>
+      <div className="operation-detail-actions">
+        <button disabled={isRead} className="small-button" onClick={() => onAcknowledgeCheck(check.id)} type="button">
+          {isRead ? 'Gia visto' : 'Visto'}
+        </button>
       </div>
     </aside>
   )
@@ -3494,23 +3526,35 @@ function DriverMobile({
 }
 
 function NotificationPanel({
+  acknowledgedCheckIds = [],
   driverRecords,
   faultReportRecords,
+  onOpenNotifications,
   vehicleCheckRecords,
   vehicleRecords,
 }) {
   const latestOperations = [
-    ...vehicleCheckRecords.slice(0, 3).map((check) => ({
-      detail: `${vehicleRecords.find((vehicle) => vehicle.id === check.tractorId)?.plate ?? 'Mezzo'} · ${formatShortDateTime(check.createdAt)}`,
-      label: driverRecords.find((driver) => driver.id === check.driverId)?.name ?? 'Autista',
-      type: 'Check',
-    })),
-    ...faultReportRecords.slice(0, 3).map((report) => ({
-      detail: `${vehicleRecords.find((vehicle) => vehicle.id === report.vehicleId)?.plate ?? 'Mezzo'} · ${getFaultSeverityLabel(report.severity)}`,
-      label: report.title,
-      type: 'Guasto',
-    })),
-  ].slice(0, 4)
+    ...vehicleCheckRecords
+      .filter((check) => !acknowledgedCheckIds.includes(check.id))
+      .map((check) => ({
+        createdAt: check.createdAt,
+        detail: `${vehicleRecords.find((vehicle) => vehicle.id === check.tractorId)?.plate ?? 'Mezzo'} · ${formatShortDateTime(check.createdAt)}`,
+        isCritical: hasCheckIssues(check),
+        label: driverRecords.find((driver) => driver.id === check.driverId)?.name ?? 'Autista',
+        type: 'Check',
+      })),
+    ...faultReportRecords
+      .filter((report) => report.status === 'open')
+      .map((report) => ({
+        createdAt: report.createdAt,
+        detail: `${vehicleRecords.find((vehicle) => vehicle.id === report.vehicleId)?.plate ?? 'Mezzo'} · ${getFaultSeverityLabel(report.severity)}`,
+        isCritical: ['high', 'stop_vehicle'].includes(report.severity),
+        label: report.title,
+        type: 'Guasto',
+      })),
+  ]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 4)
 
   return (
     <section className="panel notification-panel">
@@ -3523,15 +3567,20 @@ function NotificationPanel({
       </div>
       <div className="operation-feed">
         {latestOperations.map((operation) => (
-          <div className="operation-feed-row" key={`${operation.type}-${operation.label}-${operation.detail}`}>
+          <button
+            className={operation.isCritical ? 'operation-feed-row is-critical' : 'operation-feed-row'}
+            key={`${operation.type}-${operation.label}-${operation.detail}`}
+            onClick={onOpenNotifications}
+            type="button"
+          >
             <span>{operation.type}</span>
             <div>
               <strong>{operation.label}</strong>
               <small>{operation.detail}</small>
             </div>
-          </div>
+          </button>
         ))}
-        {latestOperations.length === 0 && <small>Nessun check o guasto ricevuto.</small>}
+        {latestOperations.length === 0 && <small>Nessuna notifica da aprire. Check visti e guasti chiusi restano in archivio.</small>}
       </div>
     </section>
   )

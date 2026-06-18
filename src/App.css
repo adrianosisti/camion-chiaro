@@ -1002,7 +1002,13 @@
 }
 
 .operations-filters {
+  flex-wrap: wrap;
+  overflow-x: visible;
   padding-top: 0;
+}
+
+.operations-filters .filter-tab {
+  flex: 1 1 132px;
 }
 
 .operations-list {
@@ -1020,6 +1026,15 @@
 
 .operation-row.is-selected {
   background: #f0f9ff;
+}
+
+.operation-row.is-muted {
+  background: #f8fbff;
+}
+
+.operation-row.is-muted .operation-main,
+.operation-row.is-muted .operation-icon {
+  opacity: 0.66;
 }
 
 .operation-icon {
@@ -1133,6 +1148,11 @@
   border: 1px solid #d6e6f5;
   border-radius: 8px;
   background: #f8fbff;
+}
+
+.detail-note.is-critical {
+  border-color: #fecaca;
+  background: #fff7f7;
 }
 
 .detail-note p {
@@ -1891,13 +1911,33 @@
 
 .operation-feed-row {
   display: grid;
+  width: 100%;
   grid-template-columns: 54px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
   padding: 8px;
   border: 1px solid #d6e6f5;
   border-radius: 8px;
+  color: inherit;
   background: #f8fbff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.operation-feed-row:hover {
+  border-color: var(--brand);
+  background: #f0fbff;
+  transform: translateY(-1px);
+}
+
+.operation-feed-row.is-critical {
+  border-color: #fecaca;
+  background: #fff7f7;
 }
 
 .operation-feed-row > span {

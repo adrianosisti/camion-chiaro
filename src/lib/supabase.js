@@ -35,6 +35,20 @@ const vehicleStatusValues = {
   Archiviato: 'archived',
 }
 
+const driverDocumentStatusLabels = {
+  missing: 'Mancante',
+  uploaded: 'Caricato',
+  verified: 'Verificato',
+  expired: 'Scaduto',
+}
+
+const driverDocumentStatusValues = {
+  Mancante: 'missing',
+  Caricato: 'uploaded',
+  Verificato: 'verified',
+  Scaduto: 'expired',
+}
+
 function mapDriver(row) {
   return {
     id: row.id,
@@ -75,6 +89,19 @@ function mapComplianceItem(row) {
     status: row.status,
     type: row.type,
     vehicleId: row.vehicle_id,
+  }
+}
+
+function mapDriverDocument(row) {
+  return {
+    id: row.id,
+    documentNumber: row.document_number ?? '',
+    driverId: row.driver_id,
+    expiresAt: row.expires_at,
+    filePath: row.file_path ?? '',
+    status: driverDocumentStatusLabels[row.status] ?? row.status,
+    type: row.type,
+    visibleToDriver: row.visible_to_driver,
   }
 }
 
@@ -128,6 +155,33 @@ function toVehicleUpdatePayload(updates) {
   if ('plate' in updates) payload.plate = updates.plate
   if ('status' in updates) payload.status = vehicleStatusValues[updates.status] ?? updates.status
   if ('type' in updates) payload.type = updates.type
+
+  return payload
+}
+
+function toDriverDocumentPayload(document, companyId = configuredCompanyId) {
+  return {
+    company_id: companyId,
+    document_number: document.documentNumber,
+    driver_id: document.driverId,
+    expires_at: document.expiresAt || null,
+    file_path: document.filePath || null,
+    status: driverDocumentStatusValues[document.status] ?? 'uploaded',
+    type: document.type,
+    visible_to_driver: document.visibleToDriver,
+  }
+}
+
+function toDriverDocumentUpdatePayload(updates) {
+  const payload = {}
+
+  if ('documentNumber' in updates) payload.document_number = updates.documentNumber
+  if ('driverId' in updates) payload.driver_id = updates.driverId
+  if ('expiresAt' in updates) payload.expires_at = updates.expiresAt || null
+  if ('filePath' in updates) payload.file_path = updates.filePath || null
+  if ('status' in updates) payload.status = driverDocumentStatusValues[updates.status] ?? updates.status
+  if ('type' in updates) payload.type = updates.type
+  if ('visibleToDriver' in updates) payload.visible_to_driver = updates.visibleToDriver
 
   return payload
 }
@@ -214,6 +268,22 @@ export async function fetchComplianceItems(companyId = configuredCompanyId) {
   return { data: data?.map(mapComplianceItem) ?? null, error }
 }
 
+export async function fetchDriverDocuments(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('driver_documents')
+    .select('id, driver_id, type, document_number, expires_at, file_path, status, visible_to_driver')
+    .eq('company_id', companyId)
+    .order('expires_at', { ascending: true, nullsFirst: false })
+
+  return { data: data?.map(mapDriverDocument) ?? null, error }
+}
+
 export async function createDriverRecord(driver, companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -286,6 +356,49 @@ export async function updateVehicleRecord(vehicleId, updates) {
 
 export async function archiveVehicleRecord(vehicleId) {
   return updateVehicleRecord(vehicleId, { status: 'Archiviato' })
+}
+
+export async function createDriverDocumentRecord(document, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('driver_documents')
+    .insert(toDriverDocumentPayload(document, companyId))
+    .select('id, driver_id, type, document_number, expires_at, file_path, status, visible_to_driver')
+    .single()
+
+  return { data: data ? mapDriverDocument(data) : null, error }
+}
+
+export async function updateDriverDocumentRecord(documentId, updates) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !documentId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('driver_documents')
+    .update(toDriverDocumentUpdatePayload(updates))
+    .eq('id', documentId)
+    .select('id, driver_id, type, document_number, expires_at, file_path, status, visible_to_driver')
+    .single()
+
+  return { data: data ? mapDriverDocument(data) : null, error }
+}
+
+export async function deleteDriverDocumentRecord(documentId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !documentId) {
+    return { error: null }
+  }
+
+  return supabase.from('driver_documents').delete().eq('id', documentId)
 }
 
 export async function getCurrentAuthSession() {

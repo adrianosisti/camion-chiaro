@@ -33,13 +33,16 @@ import UserRound from 'lucide-react/dist/esm/icons/user-round.mjs'
 import Users from 'lucide-react/dist/esm/icons/users.mjs'
 import Wrench from 'lucide-react/dist/esm/icons/wrench.mjs'
 import { company, complianceItems, driverDocuments, drivers, vehicles } from './data/sampleData'
-import { decorateCompliance, formatDate, getSummary } from './lib/expiry'
+import { daysUntil, decorateCompliance, formatDate, getSummary } from './lib/expiry'
 import {
   archiveDriverRecord as archiveSupabaseDriver,
   archiveVehicleRecord as archiveSupabaseVehicle,
   createDriverRecord as createSupabaseDriver,
+  createDriverDocumentRecord as createSupabaseDriverDocument,
   createVehicleRecord as createSupabaseVehicle,
+  deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
   fetchComplianceItems,
+  fetchDriverDocuments,
   fetchDrivers,
   fetchVehicles,
   getCurrentAuthSession,
@@ -49,6 +52,7 @@ import {
   signInCompany,
   signOut,
   signUpCompany,
+  updateDriverDocumentRecord as updateSupabaseDriverDocument,
   updateDriverRecord as updateSupabaseDriver,
   updateVehicleRecord as updateSupabaseVehicle,
 } from './lib/supabase'
@@ -74,6 +78,8 @@ const documentTypes = [
   'Bollo',
   'Formazione ADR',
 ]
+
+const driverDocumentStatusOptions = ['Caricato', 'Verificato', 'Scaduto', 'Mancante']
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
 const fleetTypeOptions = [
@@ -102,6 +108,10 @@ function buildDriverAuthEmail(username) {
   return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${driverAuthDomain}`
 }
 
+function formatOptionalDate(date) {
+  return date ? formatDate(date) : 'Senza scadenza'
+}
+
 function buildAppSessionFromAuthUser(user) {
   const email = user.email ?? ''
   const isDriver = user.user_metadata?.account_type === 'driver' || email.endsWith(`@${driverAuthDomain}`)
@@ -117,12 +127,14 @@ function buildAppSessionFromAuthUser(user) {
 function App() {
   const [session, setSession] = useState(null)
   const [items, setItems] = useState(complianceItems)
+  const [documentRecords, setDocumentRecords] = useState(driverDocuments)
   const [driverRecords, setDriverRecords] = useState(drivers)
   const [vehicleRecords, setVehicleRecords] = useState(vehicles)
   const [activeView, setActiveView] = useState('dashboard')
   const [activeFilter, setActiveFilter] = useState('all')
   const [query, setQuery] = useState('')
   const [driversSyncStatus, setDriversSyncStatus] = useState('')
+  const [documentsSyncStatus, setDocumentsSyncStatus] = useState('')
   const [fleetSyncStatus, setFleetSyncStatus] = useState('')
   const [driverUploadSent, setDriverUploadSent] = useState(false)
   const [morningCheckSent, setMorningCheckSent] = useState(false)
@@ -159,16 +171,19 @@ function App() {
 
     async function loadCompanyData() {
       setDriversSyncStatus('Caricamento dati Supabase...')
-      const [driversResult, vehiclesResult, complianceResult] = await Promise.all([
+      setDocumentsSyncStatus('Caricamento documenti Supabase...')
+      const [driversResult, vehiclesResult, complianceResult, documentsResult] = await Promise.all([
         fetchDrivers(),
         fetchVehicles(),
         fetchComplianceItems(),
+        fetchDriverDocuments(),
       ])
 
       if (!isMounted) return
 
-      if (driversResult.error || vehiclesResult.error || complianceResult.error) {
+      if (driversResult.error || vehiclesResult.error || complianceResult.error || documentsResult.error) {
         setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
+        setDocumentsSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i documenti locali.')
         setFleetSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
         return
       }
@@ -176,11 +191,41 @@ function App() {
       if (driversResult.data) setDriverRecords(driversResult.data)
       if (vehiclesResult.data) setVehicleRecords(vehiclesResult.data)
       if (complianceResult.data) setItems(complianceResult.data)
+      if (documentsResult.data) setDocumentRecords(documentsResult.data)
       setDriversSyncStatus('Dati Supabase caricati.')
+      setDocumentsSyncStatus('Documenti Supabase caricati.')
       setFleetSyncStatus('Dati Supabase caricati.')
     }
 
     loadCompanyData()
+
+    return () => {
+      isMounted = false
+    }
+  }, [session])
+
+  useEffect(() => {
+    if (!session || session.role !== 'driver' || !isCompanyDataConfigured) return
+
+    let isMounted = true
+
+    async function loadDriverData() {
+      const [driversResult, vehiclesResult, complianceResult, documentsResult] = await Promise.all([
+        fetchDrivers(),
+        fetchVehicles(),
+        fetchComplianceItems(),
+        fetchDriverDocuments(),
+      ])
+
+      if (!isMounted) return
+
+      if (driversResult.data) setDriverRecords(driversResult.data)
+      if (vehiclesResult.data) setVehicleRecords(vehiclesResult.data)
+      if (complianceResult.data) setItems(complianceResult.data)
+      if (documentsResult.data) setDocumentRecords(documentsResult.data)
+    }
+
+    loadDriverData()
 
     return () => {
       isMounted = false
@@ -389,6 +434,78 @@ function App() {
     return true
   }
 
+  async function addDriverDocumentRecord(document) {
+    const cleanDocument = {
+      ...document,
+      documentNumber: document.documentNumber.trim(),
+      filePath: document.filePath.trim(),
+    }
+
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setDocumentsSyncStatus('Salvataggio documento su Supabase...')
+      const result = await createSupabaseDriverDocument(cleanDocument)
+
+      if (result.error) {
+        setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      setDocumentRecords((currentDocuments) => [result.data, ...currentDocuments])
+      setDocumentsSyncStatus('Documento salvato su Supabase.')
+      return true
+    }
+
+    setDocumentRecords((currentDocuments) => [cleanDocument, ...currentDocuments])
+    setDocumentsSyncStatus('Documento aggiunto in modalità locale.')
+    return true
+  }
+
+  async function updateDriverDocumentRecord(documentId, updates) {
+    const cleanUpdates = {
+      ...updates,
+      documentNumber: updates.documentNumber?.trim() ?? '',
+      filePath: updates.filePath?.trim() ?? '',
+    }
+
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setDocumentsSyncStatus('Aggiornamento documento su Supabase...')
+      const result = await updateSupabaseDriverDocument(documentId, cleanUpdates)
+
+      if (result.error) {
+        setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      setDocumentRecords((currentDocuments) =>
+        currentDocuments.map((document) => (document.id === documentId ? result.data : document)),
+      )
+      setDocumentsSyncStatus('Documento aggiornato.')
+      return true
+    }
+
+    setDocumentRecords((currentDocuments) =>
+      currentDocuments.map((document) => (document.id === documentId ? { ...document, ...cleanUpdates } : document)),
+    )
+    setDocumentsSyncStatus('Documento aggiornato in modalità locale.')
+    return true
+  }
+
+  async function removeDriverDocumentRecord(documentId) {
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setDocumentsSyncStatus('Rimozione documento da Supabase...')
+      const result = await deleteSupabaseDriverDocument(documentId)
+
+      if (result.error) {
+        setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+    }
+
+    setDocumentRecords((currentDocuments) => currentDocuments.filter((document) => document.id !== documentId))
+    setDocumentsSyncStatus(isCompanyDataConfigured ? 'Documento rimosso.' : 'Documento rimosso in modalità locale.')
+    return true
+  }
+
   if (!session) {
     return <AuthScreen onAuthenticated={setSession} />
   }
@@ -397,6 +514,7 @@ function App() {
     return (
       <DriverAppView
         items={decoratedItems}
+        documentRecords={documentRecords}
         driverRecords={driverRecords}
         vehicleRecords={vehicleRecords}
         onSignOut={handleSignOut}
@@ -423,6 +541,15 @@ function App() {
             onUpdateDriver={updateDriverRecord}
             syncStatus={driversSyncStatus}
             vehicleRecords={vehicleRecords}
+          />
+        ) : activeView === 'documents' ? (
+          <DocumentsWorkspace
+            documentRecords={documentRecords}
+            driverRecords={driverRecords}
+            onAddDocument={addDriverDocumentRecord}
+            onRemoveDocument={removeDriverDocumentRecord}
+            onUpdateDocument={updateDriverDocumentRecord}
+            syncStatus={documentsSyncStatus}
           />
         ) : activeView === 'fleet' ? (
           <FleetWorkspace
@@ -457,6 +584,7 @@ function App() {
               </div>
               <aside className="side-column" aria-label="Strumenti operativi">
                 <DriverMobile
+                  documentRecords={documentRecords}
                   driverRecords={driverRecords}
                   faultReported={faultReported}
                   items={decoratedItems}
@@ -1454,6 +1582,355 @@ function VehicleCreatePanel({ onAddVehicle }) {
   )
 }
 
+function DocumentsWorkspace({
+  documentRecords,
+  driverRecords,
+  onAddDocument,
+  onRemoveDocument,
+  onUpdateDocument,
+  syncStatus,
+}) {
+  const [editingId, setEditingId] = useState(null)
+  const [draftById, setDraftById] = useState({})
+  const [savingId, setSavingId] = useState(null)
+  const visibleDocuments = documentRecords.filter((document) => document.visibleToDriver)
+  const expiringDocuments = documentRecords.filter((document) => {
+    if (!document.expiresAt) return false
+    const days = daysUntil(document.expiresAt)
+    return days >= 0 && days <= 30
+  })
+
+  function startEditing(document) {
+    setEditingId(document.id)
+    setDraftById((currentDrafts) => ({
+      ...currentDrafts,
+      [document.id]: {
+        documentNumber: document.documentNumber,
+        driverId: document.driverId,
+        expiresAt: document.expiresAt ?? '',
+        filePath: document.filePath ?? '',
+        status: document.status,
+        type: document.type,
+        visibleToDriver: document.visibleToDriver,
+      },
+    }))
+  }
+
+  function updateDraft(documentId, field, value) {
+    setDraftById((currentDrafts) => ({
+      ...currentDrafts,
+      [documentId]: {
+        ...currentDrafts[documentId],
+        [field]: value,
+      },
+    }))
+  }
+
+  async function saveDraft(documentId) {
+    setSavingId(documentId)
+    const saved = await onUpdateDocument(documentId, draftById[documentId])
+    setSavingId(null)
+
+    if (saved) {
+      setEditingId(null)
+    }
+  }
+
+  async function removeDocument(documentId) {
+    setSavingId(documentId)
+    await onRemoveDocument(documentId)
+    setSavingId(null)
+  }
+
+  return (
+    <section className="documents-workspace" aria-label="Gestione documenti autista">
+      <div className="documents-main">
+        <div className="panel documents-management-panel">
+          <div className="panel-header">
+            <div>
+              <p className="overline">Archivio autisti</p>
+              <h2>Documenti</h2>
+            </div>
+            <div className="drivers-count">
+              <strong>{documentRecords.length}</strong>
+              <span>documenti</span>
+            </div>
+          </div>
+          <div className="documents-summary-grid">
+            <div>
+              <strong>{visibleDocuments.length}</strong>
+              <span>visibili in app</span>
+            </div>
+            <div>
+              <strong>{expiringDocuments.length}</strong>
+              <span>entro 30 giorni</span>
+            </div>
+            <div>
+              <strong>{documentRecords.filter((document) => document.filePath).length}</strong>
+              <span>con file/link</span>
+            </div>
+          </div>
+          <div className="document-management-list">
+            {documentRecords.map((document) => (
+              <DocumentManagementRow
+                document={document}
+                draft={draftById[document.id]}
+                driver={driverRecords.find((driver) => driver.id === document.driverId)}
+                driverRecords={driverRecords}
+                editing={editingId === document.id}
+                key={document.id}
+                onCancel={() => setEditingId(null)}
+                onEdit={() => startEditing(document)}
+                onRemove={() => removeDocument(document.id)}
+                onSave={() => saveDraft(document.id)}
+                onUpdateDraft={(field, value) => updateDraft(document.id, field, value)}
+                saving={savingId === document.id}
+              />
+            ))}
+          </div>
+          {documentRecords.length === 0 && <p className="archive-note">Nessun documento inserito.</p>}
+          {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
+        </div>
+      </div>
+      <DocumentCreatePanel driverRecords={driverRecords} onAddDocument={onAddDocument} />
+    </section>
+  )
+}
+
+function DocumentManagementRow({
+  document,
+  draft,
+  driver,
+  driverRecords,
+  editing,
+  onCancel,
+  onEdit,
+  onRemove,
+  onSave,
+  onUpdateDraft,
+  saving,
+}) {
+  if (editing) {
+    return (
+      <article className="document-management-row is-editing">
+        <div className="document-field-grid">
+          <label>
+            Autista
+            <select value={draft.driverId} onChange={(event) => onUpdateDraft('driverId', event.target.value)}>
+              {driverRecords.map((driverRecord) => (
+                <option key={driverRecord.id} value={driverRecord.id}>
+                  {driverRecord.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Documento
+            <select value={draft.type} onChange={(event) => onUpdateDraft('type', event.target.value)}>
+              {documentTypes.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Numero
+            <input value={draft.documentNumber} onChange={(event) => onUpdateDraft('documentNumber', event.target.value)} />
+          </label>
+          <label>
+            Scadenza
+            <input
+              value={draft.expiresAt}
+              onChange={(event) => onUpdateDraft('expiresAt', event.target.value)}
+              onInput={(event) => onUpdateDraft('expiresAt', event.target.value)}
+              type="date"
+            />
+          </label>
+          <label>
+            Stato
+            <select value={draft.status} onChange={(event) => onUpdateDraft('status', event.target.value)}>
+              {driverDocumentStatusOptions.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            File o link
+            <input value={draft.filePath} onChange={(event) => onUpdateDraft('filePath', event.target.value)} />
+          </label>
+          <label className="checkbox-field">
+            <input
+              checked={draft.visibleToDriver}
+              onChange={(event) => onUpdateDraft('visibleToDriver', event.target.checked)}
+              type="checkbox"
+            />
+            Visibile all autista
+          </label>
+        </div>
+        <div className="row-actions">
+          <button className="small-button" disabled={saving} onClick={onSave} type="button">
+            <Save size={15} />
+            {saving ? 'Salvo...' : 'Salva'}
+          </button>
+          <button className="small-button" disabled={saving} onClick={onCancel} type="button">
+            Annulla
+          </button>
+        </div>
+      </article>
+    )
+  }
+
+  return (
+    <article className="document-management-row">
+      <div>
+        <strong>{document.type}</strong>
+        <span>{driver?.name ?? 'Autista non assegnato'}</span>
+      </div>
+      <div>
+        <strong>{document.documentNumber || 'Numero non inserito'}</strong>
+        <span>{document.filePath ? 'File/link presente' : 'File da caricare'}</span>
+      </div>
+      <div>
+        <strong>{formatOptionalDate(document.expiresAt)}</strong>
+        <span>{document.visibleToDriver ? 'Visibile in app' : 'Solo azienda'}</span>
+      </div>
+      <span className="status-pill tone-info">{document.status}</span>
+      <div className="row-actions">
+        <button className="small-button" disabled={saving} onClick={onEdit} type="button">
+          <Pencil size={15} />
+          Modifica
+        </button>
+        <button className="small-button danger-action" disabled={saving} onClick={onRemove} type="button">
+          {saving ? 'Rimuovo...' : 'Rimuovi'}
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function DocumentCreatePanel({ driverRecords, onAddDocument }) {
+  const [isSaving, setIsSaving] = useState(false)
+  const [form, setForm] = useState({
+    documentNumber: '',
+    driverId: driverRecords[0]?.id ?? '',
+    expiresAt: '',
+    filePath: '',
+    status: 'Caricato',
+    type: 'Patente C+E',
+    visibleToDriver: true,
+  })
+  const selectedDriverId = driverRecords.some((driver) => driver.id === form.driverId)
+    ? form.driverId
+    : driverRecords[0]?.id ?? ''
+
+  function updateField(field, value) {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    if (!selectedDriverId || !form.type) return
+
+    setIsSaving(true)
+    const added = await onAddDocument({
+      id: `doc-${Date.now()}`,
+      documentNumber: form.documentNumber,
+      driverId: selectedDriverId,
+      expiresAt: form.expiresAt,
+      filePath: form.filePath,
+      status: form.status,
+      type: form.type,
+      visibleToDriver: form.visibleToDriver,
+    })
+    setIsSaving(false)
+
+    if (!added) return
+
+    setForm({
+      documentNumber: '',
+      driverId: driverRecords[0]?.id ?? '',
+      expiresAt: '',
+      filePath: '',
+      status: 'Caricato',
+      type: 'Patente C+E',
+      visibleToDriver: true,
+    })
+  }
+
+  return (
+    <form className="panel document-create-panel" onSubmit={handleSubmit}>
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">Nuovo documento</p>
+          <h2>Aggiungi documento</h2>
+        </div>
+        <FileText size={20} />
+      </div>
+      <div className="form-grid single-column">
+        <label>
+          Autista
+          <select value={selectedDriverId} onChange={(event) => updateField('driverId', event.target.value)}>
+            {driverRecords.length === 0 && <option value="">Nessun autista disponibile</option>}
+            {driverRecords.map((driver) => (
+              <option key={driver.id} value={driver.id}>
+                {driver.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Documento
+          <select value={form.type} onChange={(event) => updateField('type', event.target.value)}>
+            {documentTypes.map((type) => (
+              <option key={type}>{type}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Numero documento
+          <input value={form.documentNumber} onChange={(event) => updateField('documentNumber', event.target.value)} />
+        </label>
+        <label>
+          Scadenza
+          <input
+            value={form.expiresAt}
+            onChange={(event) => updateField('expiresAt', event.target.value)}
+            onInput={(event) => updateField('expiresAt', event.target.value)}
+            type="date"
+          />
+        </label>
+        <label>
+          Stato
+          <select value={form.status} onChange={(event) => updateField('status', event.target.value)}>
+            {driverDocumentStatusOptions.map((status) => (
+              <option key={status}>{status}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          File o link documento
+          <input
+            value={form.filePath}
+            onChange={(event) => updateField('filePath', event.target.value)}
+            placeholder="Nome file o link"
+          />
+        </label>
+        <label className="checkbox-field">
+          <input
+            checked={form.visibleToDriver}
+            onChange={(event) => updateField('visibleToDriver', event.target.checked)}
+            type="checkbox"
+          />
+          Visibile all autista
+        </label>
+      </div>
+      <button className="primary-button full-button" disabled={isSaving || !selectedDriverId} type="submit">
+        <Plus size={17} />
+        {isSaving ? 'Salvataggio...' : 'Aggiungi documento'}
+      </button>
+    </form>
+  )
+}
+
 function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onReminder, onRenew }) {
   return (
     <section className="panel compliance-panel">
@@ -1686,6 +2163,7 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
 }
 
 function DriverAppView({
+  documentRecords,
   driverRecords,
   faultReported,
   items,
@@ -1716,6 +2194,7 @@ function DriverAppView({
       </header>
       <div className="driver-page-content">
         <DriverMobile
+          documentRecords={documentRecords}
           driverRecords={driverRecords}
           faultReported={faultReported}
           items={items}
@@ -1740,6 +2219,7 @@ function DriverAppView({
 }
 
 function DriverMobile({
+  documentRecords = driverDocuments,
   driverRecords = drivers,
   faultReported,
   items,
@@ -1758,7 +2238,7 @@ function DriverMobile({
     (item) => item.driverId === driver.id || (vehicle && item.vehicleId === vehicle.id),
   )
   const nextItem = driverItems[0]
-  const docs = driverDocuments.filter((document) => document.driverId === driver.id)
+  const docs = documentRecords.filter((document) => document.driverId === driver.id && document.visibleToDriver)
 
   return (
     <section className="phone-frame" aria-label="App autista">
@@ -1817,10 +2297,11 @@ function DriverMobile({
           {docs.map((document) => (
             <div className="document-row" key={document.id}>
               <FileText size={15} />
-              <span>{document.title}</span>
-              <small>{formatDate(document.expiresAt)}</small>
+              <span>{document.type}</span>
+              <small>{formatOptionalDate(document.expiresAt)}</small>
             </div>
           ))}
+          {docs.length === 0 && <small>Nessun documento visibile</small>}
         </div>
         <div className="phone-list">
           {driverItems.slice(0, 3).map((item) => (

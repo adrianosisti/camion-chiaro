@@ -15,7 +15,6 @@ import KeyRound from 'lucide-react/dist/esm/icons/key-round.mjs'
 import LockKeyhole from 'lucide-react/dist/esm/icons/lock-keyhole.mjs'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.mjs'
 import Mail from 'lucide-react/dist/esm/icons/mail.mjs'
-import MapPin from 'lucide-react/dist/esm/icons/map-pin.mjs'
 import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
 import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
 import RadioTower from 'lucide-react/dist/esm/icons/radio-tower.mjs'
@@ -868,6 +867,7 @@ function App() {
 
   const unreadCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id)).length
   const openFaultCount = visibleFaultReportRecords.filter((report) => report.status === 'open').length
+  const criticalCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id) && hasCheckIssues(check)).length
   const notificationCount = unreadCheckCount + openFaultCount
 
   if (!session) {
@@ -899,6 +899,10 @@ function App() {
     )
   }
 
+  const companyName = session.name || company.name || 'Azienda'
+  const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
+  const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -909,7 +913,7 @@ function App() {
         session={session}
       />
       <main className="workspace">
-        <Topbar query={query} setQuery={setQuery} />
+        <Topbar companyName={companyName} query={query} setQuery={setQuery} />
         {activeView === 'drivers' ? (
           <DriversWorkspace
             driverRecords={driverRecords}
@@ -951,11 +955,15 @@ function App() {
         ) : (
           <>
             <section className="overview-grid" aria-label="Panoramica scadenze">
-              <HeroPanel summary={summary} />
-              <Metrics
-                driverCount={driverRecords.filter((driver) => driver.status !== 'Archiviato').length}
+              <HeroPanel
+                activeDriverCount={activeDriverCount}
+                activeVehicleCount={activeVehicleCount}
+                companyName={companyName}
+                criticalCheckCount={criticalCheckCount}
+                notificationCount={notificationCount}
+                onOpenNotifications={() => setActiveView('notifications')}
+                openFaultCount={openFaultCount}
                 summary={summary}
-                vehicleCount={vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length}
               />
             </section>
             <section className="content-grid">
@@ -970,27 +978,7 @@ function App() {
                 />
                 <FleetAndForms driverRecords={driverRecords} onAdd={addComplianceItem} vehicleRecords={vehicleRecords} />
               </div>
-              <aside className="side-column" aria-label="Strumenti operativi">
-                <DriverMobile
-                  documentRecords={documentRecords}
-                  documentUploadStatus={driverDocumentUploadStatus}
-                  driverRecords={driverRecords}
-                  faultReportRecords={visibleFaultReportRecords}
-                  faultReported={faultReported}
-                  items={decoratedItems}
-                  morningCheckSent={morningCheckSent}
-                  onDriverDocumentUpload={uploadDriverDocumentFile}
-                  onFaultReport={submitFaultReport}
-                  onMorningCheck={submitMorningCheck}
-                  onOpenDriverDocument={openDriverDocumentFile}
-                  onUpload={() => setDriverUploadSent(true)}
-                  operationsStatus={operationsSyncStatus}
-                  showDriverSelector
-                  uploadSent={driverUploadSent}
-                  uploadingDocumentId={uploadingDriverDocumentId}
-                  vehicleCheckRecords={vehicleCheckRecords}
-                  vehicleRecords={vehicleRecords}
-                />
+              <aside className="side-column dashboard-side" aria-label="Notifiche azienda">
                 <NotificationPanel
                   driverRecords={driverRecords}
                   faultReportRecords={visibleFaultReportRecords}
@@ -1273,12 +1261,12 @@ function Sidebar({ activeView, notificationCount, onNavigate, onSignOut, session
   )
 }
 
-function Topbar({ query, setQuery }) {
+function Topbar({ companyName, query, setQuery }) {
   return (
     <header className="topbar">
       <div>
-        <p className="overline">{company.location}</p>
-        <h1>Camion Chiaro</h1>
+        <p className="overline">Cliente: {companyName}</p>
+        <h1>Dashboard azienda</h1>
       </div>
       <label className="search-box">
         <Search size={18} aria-hidden="true" />
@@ -1293,92 +1281,92 @@ function Topbar({ query, setQuery }) {
   )
 }
 
-function HeroPanel({ summary }) {
-  return (
-    <section className="hero-panel" aria-label="Controllo scadenze">
-      <div className="hero-copy">
-        <div className="hero-title-row">
-          <ShieldCheck size={30} />
-          <h2>Scadenze chiare, notifiche puntuali</h2>
-        </div>
-        <p>
-          Login azienda, accesso autista con nome utente, notifiche in app, check mattutino, guasti,
-          documenti digitali, patenti, revisioni, assicurazioni, visite mediche, CQC e carte tachigrafiche.
-        </p>
-        <div className="hero-actions">
-          <button className="primary-button" type="button">
-            <Plus size={17} />
-            Nuova scadenza
-          </button>
-          <button className="ghost-button" type="button">
-            <Bell size={17} />
-            Regole notifiche
-          </button>
-        </div>
-      </div>
-      <div className="route-visual" aria-hidden="true">
-        <div className="route-line"></div>
-        <div className="route-node node-a">
-          <Truck size={21} />
-        </div>
-        <div className="route-node node-b">
-          <Smartphone size={20} />
-        </div>
-        <div className="route-node node-c">
-          <BadgeCheck size={21} />
-        </div>
-        <div className="route-status">
-          <span>{summary.next30}</span>
-          <small>entro 30 giorni</small>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function Metrics({ driverCount, summary, vehicleCount }) {
-  const metrics = [
+function HeroPanel({
+  activeDriverCount,
+  activeVehicleCount,
+  companyName,
+  criticalCheckCount,
+  notificationCount,
+  onOpenNotifications,
+  openFaultCount,
+  summary,
+}) {
+  const priorityCards = [
     {
-      label: 'Critiche',
-      value: summary.critical,
-      detail: 'da gestire ora',
+      detail: 'check con anomalie da aprire',
       icon: AlertTriangle,
+      label: 'Check critici',
       tone: 'danger',
+      value: criticalCheckCount,
     },
     {
-      label: 'Entro 30 giorni',
-      value: summary.next30,
-      detail: 'notifiche automatiche',
-      icon: Clock3,
+      detail: 'segnalazioni ancora aperte',
+      icon: Wrench,
+      label: 'Guasti aperti',
       tone: 'warning',
+      value: openFaultCount,
     },
     {
-      label: 'Autisti',
-      value: driverCount,
-      detail: `${summary.driverDocs} documenti`,
-      icon: UserRound,
+      detail: `${summary.critical} critiche o scadute`,
+      icon: CalendarClock,
+      label: 'Scadenze 30 giorni',
       tone: 'info',
-    },
-    {
-      label: 'Mezzi',
-      value: vehicleCount,
-      detail: `${summary.vehicleDocs} pratiche`,
-      icon: Truck,
-      tone: 'success',
+      value: summary.next30,
     },
   ]
 
+  function scrollToNewDeadline() {
+    document.getElementById('new-deadline-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
-    <div className="metric-grid">
-      {metrics.map((metric) => (
-        <article className={`metric-card tone-${metric.tone}`} key={metric.label}>
-          <metric.icon size={20} />
-          <span>{metric.label}</span>
-          <strong>{metric.value}</strong>
-          <small>{metric.detail}</small>
-        </article>
-      ))}
-    </div>
+    <section className="hero-panel" aria-label="Controllo scadenze">
+      <div className="hero-copy">
+        <div>
+          <p className="overline">Camion Chiaro</p>
+          <h2>Buongiorno, {companyName}</h2>
+        </div>
+        <p>
+          Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.
+        </p>
+        <div className="hero-facts" aria-label="Dimensione azienda">
+          <div>
+            <strong>{activeDriverCount}</strong>
+            <span>autisti attivi</span>
+          </div>
+          <div>
+            <strong>{activeVehicleCount}</strong>
+            <span>mezzi in flotta</span>
+          </div>
+          <div>
+            <strong>{notificationCount}</strong>
+            <span>notifiche aperte</span>
+          </div>
+        </div>
+        <div className="hero-actions">
+          <button className="primary-button" onClick={scrollToNewDeadline} type="button">
+            <Plus size={17} />
+            Nuova scadenza
+          </button>
+          <button className="ghost-button" onClick={onOpenNotifications} type="button">
+            <Bell size={17} />
+            Apri campanella
+          </button>
+        </div>
+      </div>
+      <div className="priority-grid" aria-label="Priorita di oggi">
+        {priorityCards.map((card) => (
+          <article className={`priority-card tone-${card.tone}`} key={card.label}>
+            <div>
+              <card.icon size={20} />
+              <span>{card.label}</span>
+            </div>
+            <strong>{card.value}</strong>
+            <small>{card.detail}</small>
+          </article>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -2869,7 +2857,7 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
   }
 
   return (
-    <form className="panel add-panel" onSubmit={handleSubmit}>
+    <form className="panel add-panel" id="new-deadline-panel" onSubmit={handleSubmit}>
       <div className="panel-header compact">
         <div>
           <p className="overline">Inserimento rapido</p>
@@ -3399,12 +3387,6 @@ function NotificationPanel({
           </div>
         ))}
         {latestOperations.length === 0 && <small>Nessun check o guasto ricevuto.</small>}
-      </div>
-      <div className="map-strip" aria-hidden="true">
-        <MapPin size={18} />
-        <span>Verona</span>
-        <div></div>
-        <span>Padova</span>
       </div>
     </section>
   )

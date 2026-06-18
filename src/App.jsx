@@ -133,10 +133,6 @@ function normalizeDriverUsername(value) {
   return value.trim().toLowerCase().replace(/\s+/g, '.')
 }
 
-function isUuid(value) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-}
-
 function generateTemporaryPassword(length = 12) {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
   const randomValues = new Uint32Array(length)
@@ -794,12 +790,15 @@ function App() {
   async function updateFaultReportStatus(reportId, status) {
     setOperationsSyncStatus('Aggiornamento guasto...')
 
-    if (isCompanyDataConfigured && session?.role === 'company' && isUuid(reportId)) {
+    if (isCompanyDataConfigured && session?.role === 'company') {
       const result = await updateSupabaseFaultReportStatus(reportId, status)
 
       if (result.error) {
-        setOperationsSyncStatus(`Errore guasto: ${result.error.message}`)
-        return false
+        setFaultReportRecords((currentReports) =>
+          currentReports.map((report) => (report.id === reportId ? { ...report, status } : report)),
+        )
+        setOperationsSyncStatus(`Guasto aggiornato in vista locale. Supabase: ${result.error.message}`)
+        return true
       }
 
       setFaultReportRecords((currentReports) =>

@@ -652,6 +652,33 @@ export async function updateFaultReportStatus(reportId, status) {
     return { data: null, error: null }
   }
 
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (accessToken) {
+    try {
+      const response = await fetch('/.netlify/functions/update-fault', {
+        body: JSON.stringify({ reportId, status }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      })
+      const payload = await response.json().catch(() => ({}))
+
+      if (response.ok) {
+        return { data: payload.report ?? null, error: null }
+      }
+
+      if (response.status !== 404) {
+        return { data: null, error: { message: payload.error ?? 'Aggiornamento guasto non riuscito.' } }
+      }
+    } catch {
+      // Fallback RLS below keeps local/dev previews usable before Netlify publishes the function.
+    }
+  }
+
   const { data, error } = await supabase
     .from('fault_reports')
     .update({ status })

@@ -2384,9 +2384,15 @@ function OperationsWorkspace({
           (operation.kind === 'check' && acknowledgedCheckIds.includes(operation.id))
         )
       }
+      if (filter === 'all') {
+        return (
+          (operation.kind === 'fault' && operation.data.status !== 'closed') ||
+          (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id))
+        )
+      }
       if (filter === 'faults') return operation.kind === 'fault' && operation.data.status !== 'closed'
-      if (filter === 'checks') return operation.kind === 'check'
-      return true
+      if (filter === 'checks') return operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id)
+      return false
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   const selectedOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)

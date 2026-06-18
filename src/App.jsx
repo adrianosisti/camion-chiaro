@@ -174,6 +174,36 @@ function formatShortDateTime(value) {
   }).format(new Date(value))
 }
 
+function getCheckIssues(check) {
+  return [
+    check.lightsOk ? null : 'luci da controllare',
+    check.tiresOk ? null : 'gomme da controllare',
+    check.documentsOnBoard ? null : 'documenti bordo mancanti',
+  ].filter(Boolean)
+}
+
+function hasCheckIssues(check) {
+  return getCheckIssues(check).length > 0
+}
+
+function loadAcknowledgedCheckIds() {
+  try {
+    const storedIds = JSON.parse(localStorage.getItem('camionChiaroAcknowledgedChecks') ?? '[]')
+    return Array.isArray(storedIds) ? storedIds.filter((id) => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function loadArchivedFaultOverrideIds() {
+  try {
+    const storedIds = JSON.parse(localStorage.getItem('camionChiaroArchivedFaults') ?? '[]')
+    return Array.isArray(storedIds) ? storedIds.filter((id) => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 function buildAppSessionFromAuthUser(user) {
   const email = user.email ?? ''
   const isDriver = user.user_metadata?.account_type === 'driver' || email.endsWith(`@${driverAuthDomain}`)
@@ -206,10 +236,18 @@ function App() {
   const [driverUploadSent, setDriverUploadSent] = useState(false)
   const [morningCheckSent, setMorningCheckSent] = useState(false)
   const [faultReported, setFaultReported] = useState(false)
-  const [acknowledgedCheckIds, setAcknowledgedCheckIds] = useState([])
+  const [acknowledgedCheckIds, setAcknowledgedCheckIds] = useState(loadAcknowledgedCheckIds)
+  const [archivedFaultOverrideIds, setArchivedFaultOverrideIds] = useState(loadArchivedFaultOverrideIds)
 
   const decoratedItems = useMemo(() => decorateCompliance(items, driverRecords, vehicleRecords), [driverRecords, items, vehicleRecords])
   const summary = useMemo(() => getSummary(decoratedItems), [decoratedItems])
+  const visibleFaultReportRecords = useMemo(
+    () =>
+      faultReportRecords.map((report) =>
+        archivedFaultOverrideIds.includes(report.id) ? { ...report, status: 'closed' } : report,
+      ),
+    [archivedFaultOverrideIds, faultReportRecords],
+  )
 
   function handleAuthenticated(nextSession) {
     if (nextSession.role === 'driver') {
@@ -226,7 +264,6 @@ function App() {
     setVehicleRecords([])
     setVehicleCheckRecords([])
     setFaultReportRecords([])
-    setAcknowledgedCheckIds([])
     setDriverUploadSent(false)
     setMorningCheckSent(false)
     setFaultReported(false)
@@ -360,6 +397,14 @@ function App() {
       isMounted = false
     }
   }, [session])
+
+  useEffect(() => {
+    localStorage.setItem('camionChiaroAcknowledgedChecks', JSON.stringify(acknowledgedCheckIds))
+  }, [acknowledgedCheckIds])
+
+  useEffect(() => {
+    localStorage.setItem('camionChiaroArchivedFaults', JSON.stringify(archivedFaultOverrideIds))
+  }, [archivedFaultOverrideIds])
 
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -789,15 +834,21 @@ function App() {
 
   async function updateFaultReportStatus(reportId, status) {
     setOperationsSyncStatus('Aggiornamento guasto...')
+    setFaultReportRecords((currentReports) =>
+      currentReports.map((report) => (report.id === reportId ? { ...report, status } : report)),
+    )
+
+    if (status === 'closed') {
+      setArchivedFaultOverrideIds((currentIds) => (currentIds.includes(reportId) ? currentIds : [...currentIds, reportId]))
+    } else {
+      setArchivedFaultOverrideIds((currentIds) => currentIds.filter((id) => id !== reportId))
+    }
 
     if (isCompanyDataConfigured && session?.role === 'company') {
       const result = await updateSupabaseFaultReportStatus(reportId, status)
 
       if (result.error) {
-        setFaultReportRecords((currentReports) =>
-          currentReports.map((report) => (report.id === reportId ? { ...report, status } : report)),
-        )
-        setOperationsSyncStatus(`Guasto aggiornato in vista locale. Supabase: ${result.error.message}`)
+        setOperationsSyncStatus(`Guasto spostato localmente. Supabase: ${result.error.message}`)
         return true
       }
 
@@ -807,10 +858,6 @@ function App() {
       setOperationsSyncStatus('Guasto aggiornato.')
       return true
     }
-
-    setFaultReportRecords((currentReports) =>
-      currentReports.map((report) => (report.id === reportId ? { ...report, status } : report)),
-    )
     setOperationsSyncStatus('Guasto aggiornato in modalità locale.')
     return true
   }
@@ -819,12 +866,9 @@ function App() {
     setAcknowledgedCheckIds((currentIds) => (currentIds.includes(checkId) ? currentIds : [...currentIds, checkId]))
   }
 
-  const todayKey = new Date().toDateString()
-  const unreadTodayCheckCount = vehicleCheckRecords.filter(
-    (check) => new Date(check.createdAt).toDateString() === todayKey && !acknowledgedCheckIds.includes(check.id),
-  ).length
-  const openFaultCount = faultReportRecords.filter((report) => report.status === 'open').length
-  const notificationCount = unreadTodayCheckCount + openFaultCount
+  const unreadCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id)).length
+  const openFaultCount = visibleFaultReportRecords.filter((report) => report.status === 'open').length
+  const notificationCount = unreadCheckCount + openFaultCount
 
   if (!session) {
     return <AuthScreen onAuthenticated={handleAuthenticated} />
@@ -837,7 +881,7 @@ function App() {
         items={decoratedItems}
         documentRecords={documentRecords}
         driverRecords={driverRecords}
-        faultReportRecords={faultReportRecords}
+        faultReportRecords={visibleFaultReportRecords}
         vehicleRecords={vehicleRecords}
         onDriverDocumentUpload={uploadDriverDocumentFile}
         onFaultReport={submitFaultReport}
@@ -897,7 +941,7 @@ function App() {
           <OperationsWorkspace
             acknowledgedCheckIds={acknowledgedCheckIds}
             driverRecords={driverRecords}
-            faultReportRecords={faultReportRecords}
+            faultReportRecords={visibleFaultReportRecords}
             onAcknowledgeCheck={acknowledgeCheck}
             onUpdateFaultStatus={updateFaultReportStatus}
             syncStatus={operationsSyncStatus}
@@ -931,7 +975,7 @@ function App() {
                   documentRecords={documentRecords}
                   documentUploadStatus={driverDocumentUploadStatus}
                   driverRecords={driverRecords}
-                  faultReportRecords={faultReportRecords}
+                  faultReportRecords={visibleFaultReportRecords}
                   faultReported={faultReported}
                   items={decoratedItems}
                   morningCheckSent={morningCheckSent}
@@ -949,7 +993,7 @@ function App() {
                 />
                 <NotificationPanel
                   driverRecords={driverRecords}
-                  faultReportRecords={faultReportRecords}
+                  faultReportRecords={visibleFaultReportRecords}
                   faultReported={faultReported}
                   morningCheckSent={morningCheckSent}
                   vehicleCheckRecords={vehicleCheckRecords}
@@ -2297,13 +2341,15 @@ function OperationsWorkspace({
   vehicleCheckRecords,
   vehicleRecords,
 }) {
-  const [filter, setFilter] = useState('open')
+  const [filter, setFilter] = useState('inbox')
   const [selectedOperationKey, setSelectedOperationKey] = useState('')
   const today = new Date().toDateString()
   const newFaults = faultReportRecords.filter((report) => report.status === 'open')
   const archivedFaults = faultReportRecords.filter((report) => report.status === 'closed')
   const todayChecks = vehicleCheckRecords.filter((check) => new Date(check.createdAt).toDateString() === today)
-  const operations = [
+  const unreadChecks = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id))
+  const criticalChecks = unreadChecks.filter(hasCheckIssues)
+  const allOperations = [
     ...faultReportRecords.map((report) => ({
       createdAt: report.createdAt,
       data: report,
@@ -2317,16 +2363,33 @@ function OperationsWorkspace({
       kind: 'check',
     })),
   ]
+  const operations = allOperations
     .filter((operation) => {
+      if (filter === 'inbox') {
+        return (
+          (operation.kind === 'fault' && operation.data.status === 'open') ||
+          (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id))
+        )
+      }
+      if (filter === 'critical') {
+        return (
+          (operation.kind === 'fault' && ['high', 'stop_vehicle'].includes(operation.data.severity) && operation.data.status !== 'closed') ||
+          (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id) && hasCheckIssues(operation.data))
+        )
+      }
       if (filter === 'open') return operation.kind === 'fault' && operation.data.status !== 'closed'
-      if (filter === 'new') return operation.kind === 'fault' && operation.data.status === 'open'
-      if (filter === 'archive') return operation.kind === 'fault' && operation.data.status === 'closed'
+      if (filter === 'archive') {
+        return (
+          (operation.kind === 'fault' && operation.data.status === 'closed') ||
+          (operation.kind === 'check' && acknowledgedCheckIds.includes(operation.id))
+        )
+      }
       if (filter === 'faults') return operation.kind === 'fault'
       if (filter === 'checks') return operation.kind === 'check'
       return true
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  const selectedOperation = operations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
+  const selectedOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
   const fallbackSelection = operations[0]
   const detailOperation = selectedOperation ?? fallbackSelection
 
@@ -2354,21 +2417,28 @@ function OperationsWorkspace({
         </div>
         <div className="operations-summary-grid">
           <div>
-            <strong>{newFaults.length}</strong>
-            <span>nuovi guasti</span>
+            <strong>{newFaults.length + unreadChecks.length}</strong>
+            <span>da aprire</span>
           </div>
           <div>
-            <strong>{todayChecks.length}</strong>
-            <span>check oggi</span>
+            <strong>{criticalChecks.length}</strong>
+            <span>check critici</span>
           </div>
           <div>
             <strong>{archivedFaults.length}</strong>
             <span>guasti archiviati</span>
           </div>
+          <div>
+            <strong>{todayChecks.length}</strong>
+            <span>check oggi</span>
+          </div>
         </div>
         <div className="filter-tabs operations-filters" role="tablist" aria-label="Filtra notifiche">
-          <button className={filter === 'new' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('new')} type="button">
-            Nuovi
+          <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('inbox')} type="button">
+            Da aprire
+          </button>
+          <button className={filter === 'critical' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('critical')} type="button">
+            Critiche
           </button>
           <button className={filter === 'open' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('open')} type="button">
             Aperti
@@ -2404,6 +2474,7 @@ function OperationsWorkspace({
                 check={operation.data}
                 driver={driverRecords.find((driver) => driver.id === operation.data.driverId)}
                 key={`check-${operation.id}`}
+                onMarkRead={() => onAcknowledgeCheck(operation.id)}
                 onOpen={() => openOperation(operation)}
                 read={acknowledgedCheckIds.includes(operation.id)}
                 selected={detailOperation?.kind === 'check' && detailOperation.id === operation.id}
@@ -2464,23 +2535,20 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
   )
 }
 
-function CheckOperationRow({ check, driver, onOpen, read, selected, trailer, vehicle }) {
-  const issueText = [
-    check.lightsOk ? null : 'luci da controllare',
-    check.tiresOk ? null : 'gomme da controllare',
-    check.documentsOnBoard ? null : 'documenti bordo mancanti',
-  ].filter(Boolean)
+function CheckOperationRow({ check, driver, onMarkRead, onOpen, read, selected, trailer, vehicle }) {
+  const issueText = getCheckIssues(check)
+  const isCritical = issueText.length > 0
 
   return (
     <article className={selected ? 'operation-row is-selected' : 'operation-row'}>
-      <div className="operation-icon tone-success">
+      <div className={isCritical ? 'operation-icon tone-danger' : 'operation-icon tone-success'}>
         <ClipboardCheck size={20} />
       </div>
       <div className="operation-main">
         <div className="operation-title">
           <strong>Check mattutino</strong>
-          <span className={issueText.length > 0 ? 'status-pill tone-warning' : 'status-pill tone-success'}>
-            {read ? 'Letto' : issueText.length > 0 ? 'Con note' : 'Ok'}
+          <span className={isCritical ? 'status-pill tone-danger' : 'status-pill tone-success'}>
+            {read ? 'Letto' : isCritical ? 'Critico' : 'Da aprire'}
           </span>
         </div>
         <p>{driver?.name ?? 'Autista'} · {vehicle?.plate ?? 'Mezzo non trovato'}</p>
@@ -2494,6 +2562,9 @@ function CheckOperationRow({ check, driver, onOpen, read, selected, trailer, veh
       <div className="operation-actions">
         <button className="small-button" onClick={onOpen} type="button">
           Apri
+        </button>
+        <button className="small-button" onClick={onMarkRead} type="button">
+          Visto
         </button>
       </div>
     </article>

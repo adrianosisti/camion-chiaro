@@ -2384,7 +2384,7 @@ function OperationsWorkspace({
           (operation.kind === 'check' && acknowledgedCheckIds.includes(operation.id))
         )
       }
-      if (filter === 'faults') return operation.kind === 'fault'
+      if (filter === 'faults') return operation.kind === 'fault' && operation.data.status !== 'closed'
       if (filter === 'checks') return operation.kind === 'check'
       return true
     })

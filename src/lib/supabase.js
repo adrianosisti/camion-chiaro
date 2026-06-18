@@ -309,6 +309,37 @@ export async function fetchDrivers(companyId = configuredCompanyId) {
   return { data: data?.map(mapDriver) ?? null, error }
 }
 
+export async function ensureCompanyForCurrentUser(companyName) {
+  const supabase = await getSupabaseClient()
+  const cleanCompanyName = companyName?.trim() || 'Nuova azienda'
+
+  if (!supabase) {
+    return { data: null, error: null, demo: true }
+  }
+
+  const { data, error } = await supabase.rpc('ensure_company_for_current_user', {
+    input_company_name: cleanCompanyName,
+    input_headquarters: null,
+    input_vat_number: null,
+  })
+
+  if (error && configuredCompanyId) {
+    const fallbackResult = await supabase
+      .from('companies')
+      .select('id, name, vat_number, headquarters')
+      .eq('id', configuredCompanyId)
+      .maybeSingle()
+
+    if (fallbackResult.data && !fallbackResult.error) {
+      return { data: mapCompanyProfile(fallbackResult.data), error: null }
+    }
+  }
+
+  const profile = Array.isArray(data) ? data[0] : data
+
+  return { data: profile ? mapCompanyProfile(profile) : null, error }
+}
+
 export async function fetchCompanyProfile(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -838,6 +869,7 @@ export async function getCurrentAuthSession() {
 export async function signUpCompany({ email, password, companyName }) {
   const supabase = await getSupabaseClient()
   const cleanCompanyName = companyName?.trim() ?? ''
+  const emailRedirectTo = typeof window !== 'undefined' ? window.location.origin : undefined
 
   if (!supabase) {
     return { data: null, error: null, demo: true }
@@ -847,6 +879,7 @@ export async function signUpCompany({ email, password, companyName }) {
     email,
     password,
     options: {
+      emailRedirectTo,
       data: {
         account_type: 'company',
         company_name: cleanCompanyName,

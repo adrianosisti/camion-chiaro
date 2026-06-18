@@ -24,3 +24,8 @@ Non cancella autisti, flotta, documenti, scadenze o impostazioni azienda.
 
 Il file `09_policy_impostazioni_azienda.sql` abilita il salvataggio della schermata Impostazioni azienda.
 Eseguilo una sola volta in Supabase SQL Editor se vuoi modificare ragione sociale, partita IVA e sede dall'app.
+
+## Registrazione aziende
+
+Il file `10_registrazione_azienda_multi_cliente.sql` abilita la registrazione completa di nuove aziende.
+Eseguilo una sola volta in Supabase SQL Editor: ogni nuovo account azienda verra collegato alla sua azienda e vedra solo i propri dati.

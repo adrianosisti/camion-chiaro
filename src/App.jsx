@@ -45,7 +45,7 @@ import {
   createVehicleRecord as createSupabaseVehicle,
   createVehicleCheckRecord as createSupabaseVehicleCheck,
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
-  fetchCompanyProfile,
+  ensureCompanyForCurrentUser,
   fetchComplianceItems,
   fetchDriverDocuments,
   fetchDriverSessionData,
@@ -54,7 +54,6 @@ import {
   fetchVehicleChecks,
   fetchVehicles,
   getCurrentAuthSession,
-  isCompanyDataConfigured,
   isSupabaseConfigured,
   signInDriver,
   signInCompany,
@@ -238,6 +237,7 @@ function App() {
   const [vehicleRecords, setVehicleRecords] = useState(vehicles)
   const [vehicleCheckRecords, setVehicleCheckRecords] = useState([])
   const [faultReportRecords, setFaultReportRecords] = useState([])
+  const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState({
     headquarters: company.location,
     id: '',
@@ -262,6 +262,7 @@ function App() {
 
   const decoratedItems = useMemo(() => decorateCompliance(items, driverRecords, vehicleRecords), [driverRecords, items, vehicleRecords])
   const summary = useMemo(() => getSummary(decoratedItems), [decoratedItems])
+  const hasCompanyDataConnection = Boolean(isSupabaseConfigured && activeCompanyId)
   const visibleFaultReportRecords = useMemo(
     () =>
       faultReportRecords.map((report) =>
@@ -271,6 +272,8 @@ function App() {
   )
 
   function handleAuthenticated(nextSession) {
+    setActiveCompanyId('')
+
     if (nextSession.role === 'driver') {
       resetDriverSessionData()
     }
@@ -314,27 +317,42 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!session || session.role !== 'company' || !isCompanyDataConfigured) return
+    if (!session || session.role !== 'company' || !isSupabaseConfigured) return
 
     let isMounted = true
 
     async function loadCompanyData() {
+      const companyName = session.name?.trim() && !session.name.includes('@') ? session.name.trim() : 'Nuova azienda'
       setDriversSyncStatus('Caricamento dati Supabase...')
       setDocumentsSyncStatus('Caricamento documenti Supabase...')
       setOperationsSyncStatus('Caricamento check e guasti...')
-      const [companyResult, driversResult, vehiclesResult, complianceResult, documentsResult, checksResult, faultsResult] = await Promise.all([
-        fetchCompanyProfile(),
-        fetchDrivers(),
-        fetchVehicles(),
-        fetchComplianceItems(),
-        fetchDriverDocuments(),
-        fetchVehicleChecks(),
-        fetchFaultReports(),
+      setFleetSyncStatus('Caricamento flotta Supabase...')
+      const companyResult = await ensureCompanyForCurrentUser(companyName)
+
+      if (!isMounted) return
+
+      if (companyResult.error || !companyResult.data?.id) {
+        setDriversSyncStatus(`Azienda non collegata. Supabase: ${companyResult.error?.message ?? 'profilo mancante'}`)
+        setDocumentsSyncStatus('Documenti non caricati.')
+        setFleetSyncStatus('Flotta non caricata.')
+        setOperationsSyncStatus('Check e guasti non caricati.')
+        return
+      }
+
+      const companyId = companyResult.data.id
+      setActiveCompanyId(companyId)
+      setCompanyProfile(companyResult.data)
+      const [driversResult, vehiclesResult, complianceResult, documentsResult, checksResult, faultsResult] = await Promise.all([
+        fetchDrivers(companyId),
+        fetchVehicles(companyId),
+        fetchComplianceItems(companyId),
+        fetchDriverDocuments(companyId),
+        fetchVehicleChecks(companyId),
+        fetchFaultReports(companyId),
       ])
 
       if (!isMounted) return
 
-      if (companyResult.data?.name) setCompanyProfile(companyResult.data)
       if (driversResult.error || vehiclesResult.error || complianceResult.error || documentsResult.error) {
         setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
         setDocumentsSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i documenti locali.')
@@ -365,7 +383,7 @@ function App() {
   }, [session])
 
   useEffect(() => {
-    if (!session || session.role !== 'driver' || !isCompanyDataConfigured) return
+    if (!session || session.role !== 'driver' || !isSupabaseConfigured) return
 
     let isMounted = true
 
@@ -376,6 +394,7 @@ function App() {
       if (!isMounted) return
 
       if (driverSessionResult.data) {
+        if (driverSessionResult.data.companyId) setActiveCompanyId(driverSessionResult.data.companyId)
         setDriverRecords(driverSessionResult.data.drivers ?? [])
         setVehicleRecords(driverSessionResult.data.vehicles ?? [])
         setItems(driverSessionResult.data.complianceItems ?? [])
@@ -458,6 +477,13 @@ function App() {
     setActiveFilter('all')
     setOperationsSyncStatus('')
     setCompanySettingsStatus('')
+    setActiveCompanyId('')
+    setItems(complianceItems)
+    setDocumentRecords(driverDocuments)
+    setDriverRecords(drivers)
+    setVehicleRecords(vehicles)
+    setVehicleCheckRecords([])
+    setFaultReportRecords([])
     setCompanyProfile({
       headquarters: company.location,
       id: '',
@@ -481,8 +507,8 @@ function App() {
     setCompanyProfile((currentProfile) => ({ ...currentProfile, ...cleanUpdates }))
     setCompanySettingsStatus('Salvataggio impostazioni...')
 
-    if (isCompanyDataConfigured && session?.role === 'company') {
-      const result = await updateSupabaseCompanyProfile(cleanUpdates)
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      const result = await updateSupabaseCompanyProfile(cleanUpdates, activeCompanyId)
 
       if (result.error) {
         setCompanySettingsStatus(`Dati aggiornati localmente. Supabase: ${result.error.message}`)
@@ -532,11 +558,11 @@ function App() {
       username: normalizeDriverUsername(driver.username),
     }
 
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setDriversSyncStatus('Creo account autista e salvo anagrafica...')
       const result = temporaryPassword
-        ? await createSupabaseDriverAccount(cleanDriver, temporaryPassword)
-        : await createSupabaseDriver(cleanDriver)
+        ? await createSupabaseDriverAccount(cleanDriver, temporaryPassword, activeCompanyId)
+        : await createSupabaseDriver(cleanDriver, activeCompanyId)
 
       if (result.error) {
         setDriversSyncStatus(`Errore Supabase: ${result.error.message}`)
@@ -558,7 +584,7 @@ function App() {
   }
 
   async function updateDriverRecord(driverId, updates) {
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setDriversSyncStatus('Aggiornamento autista su Supabase...')
       const result = await updateSupabaseDriver(driverId, updates)
 
@@ -582,7 +608,7 @@ function App() {
   }
 
   async function archiveDriverRecord(driverId) {
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setDriversSyncStatus('Archiviazione autista su Supabase...')
       const result = await archiveSupabaseDriver(driverId)
 
@@ -597,7 +623,7 @@ function App() {
         driver.id === driverId ? { ...driver, status: 'Archiviato', vehicleId: '' } : driver,
       ),
     )
-    setDriversSyncStatus(isCompanyDataConfigured ? 'Autista archiviato.' : 'Autista archiviato in modalità locale.')
+    setDriversSyncStatus(hasCompanyDataConnection ? 'Autista archiviato.' : 'Autista archiviato in modalità locale.')
     return true
   }
 
@@ -608,9 +634,9 @@ function App() {
       plate: normalizePlate(vehicle.plate),
     }
 
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setFleetSyncStatus('Salvataggio mezzo su Supabase...')
-      const result = await createSupabaseVehicle(cleanVehicle)
+      const result = await createSupabaseVehicle(cleanVehicle, activeCompanyId)
 
       if (result.error) {
         setFleetSyncStatus(`Errore Supabase: ${result.error.message}`)
@@ -634,7 +660,7 @@ function App() {
       plate: normalizePlate(updates.plate),
     }
 
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setFleetSyncStatus('Aggiornamento mezzo su Supabase...')
       const result = await updateSupabaseVehicle(vehicleId, cleanUpdates)
 
@@ -658,7 +684,7 @@ function App() {
   }
 
   async function archiveVehicleRecord(vehicleId) {
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setFleetSyncStatus('Archiviazione mezzo su Supabase...')
       const result = await archiveSupabaseVehicle(vehicleId)
 
@@ -676,7 +702,7 @@ function App() {
     setDriverRecords((currentDrivers) =>
       currentDrivers.map((driver) => (driver.vehicleId === vehicleId ? { ...driver, vehicleId: '' } : driver)),
     )
-    setFleetSyncStatus(isCompanyDataConfigured ? 'Mezzo archiviato.' : 'Mezzo archiviato in modalità locale.')
+    setFleetSyncStatus(hasCompanyDataConnection ? 'Mezzo archiviato.' : 'Mezzo archiviato in modalità locale.')
     return true
   }
 
@@ -687,9 +713,9 @@ function App() {
       filePath: document.filePath.trim(),
     }
 
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setDocumentsSyncStatus('Salvataggio documento su Supabase...')
-      const result = await createSupabaseDriverDocument(cleanDocument)
+      const result = await createSupabaseDriverDocument(cleanDocument, activeCompanyId)
 
       if (result.error) {
         setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
@@ -713,7 +739,7 @@ function App() {
       filePath: updates.filePath?.trim() ?? '',
     }
 
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setDocumentsSyncStatus('Aggiornamento documento su Supabase...')
       const result = await updateSupabaseDriverDocument(documentId, cleanUpdates)
 
@@ -737,7 +763,7 @@ function App() {
   }
 
   async function removeDriverDocumentRecord(documentId) {
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       setDocumentsSyncStatus('Rimozione documento da Supabase...')
       const result = await deleteSupabaseDriverDocument(documentId)
 
@@ -748,7 +774,7 @@ function App() {
     }
 
     setDocumentRecords((currentDocuments) => currentDocuments.filter((document) => document.id !== documentId))
-    setDocumentsSyncStatus(isCompanyDataConfigured ? 'Documento rimosso.' : 'Documento rimosso in modalità locale.')
+    setDocumentsSyncStatus(hasCompanyDataConnection ? 'Documento rimosso.' : 'Documento rimosso in modalità locale.')
     return true
   }
 
@@ -763,8 +789,8 @@ function App() {
     setUploadingDriverDocumentId(document.id)
     setDriverDocumentUploadStatus('Caricamento documento...')
 
-    if (isCompanyDataConfigured && ['company', 'driver'].includes(session?.role)) {
-      const result = await uploadSupabaseDriverDocumentFile(document, file)
+    if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
+      const result = await uploadSupabaseDriverDocumentFile(document, file, activeCompanyId)
       setUploadingDriverDocumentId('')
 
       if (result.error) {
@@ -835,8 +861,8 @@ function App() {
 
     setOperationsSyncStatus('Invio check mattutino...')
 
-    if (isCompanyDataConfigured && session?.role === 'driver') {
-      const result = await createSupabaseVehicleCheck(check)
+    if (hasCompanyDataConnection && session?.role === 'driver') {
+      const result = await createSupabaseVehicleCheck(check, activeCompanyId)
 
       if (result.error) {
         setOperationsSyncStatus(`Errore check: ${result.error.message}`)
@@ -870,8 +896,8 @@ function App() {
 
     setOperationsSyncStatus('Invio segnalazione guasto...')
 
-    if (isCompanyDataConfigured && session?.role === 'driver') {
-      const result = await createSupabaseFaultReport(report)
+    if (hasCompanyDataConnection && session?.role === 'driver') {
+      const result = await createSupabaseFaultReport(report, activeCompanyId)
 
       if (result.error) {
         setOperationsSyncStatus(`Errore guasto: ${result.error.message}`)
@@ -906,7 +932,7 @@ function App() {
       setArchivedFaultOverrideIds((currentIds) => currentIds.filter((id) => id !== reportId))
     }
 
-    if (isCompanyDataConfigured && session?.role === 'company') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
       const result = await updateSupabaseFaultReportStatus(reportId, status)
 
       if (result.error) {
@@ -1111,7 +1137,7 @@ function AuthScreen({ onAuthenticated }) {
       return
     }
 
-    if (companyMode === 'signup' && isSupabaseConfigured) {
+    if (companyMode === 'signup' && isSupabaseConfigured && !result.data?.session) {
       setStatus('Registrazione inviata. Controlla la mail per confermare l account.')
       return
     }
@@ -1127,6 +1153,29 @@ function AuthScreen({ onAuthenticated }) {
       email: result.data?.user?.email ?? cleanCompanyForm.email,
       demo: result.demo,
     })
+  }
+
+  function switchCompanyMode() {
+    const nextMode = companyMode === 'signup' ? 'signin' : 'signup'
+    setCompanyMode(nextMode)
+    setStatus('')
+
+    if (nextMode === 'signup') {
+      setCompanyForm((currentForm) => ({
+        ...currentForm,
+        companyName: '',
+        email: currentForm.email === 'azienda@camionchiaro.it' ? '' : currentForm.email,
+        password: currentForm.password === 'password-demo' ? '' : currentForm.password,
+      }))
+      return
+    }
+
+    setCompanyForm((currentForm) => ({
+      ...currentForm,
+      companyName: currentForm.companyName || demoCompanyName,
+      email: currentForm.email || 'azienda@camionchiaro.it',
+      password: currentForm.password || 'password-demo',
+    }))
   }
 
   async function handleDriverSubmit(event) {
@@ -1247,7 +1296,7 @@ function AuthScreen({ onAuthenticated }) {
             </button>
             <button
               className="link-button"
-              onClick={() => setCompanyMode(companyMode === 'signup' ? 'signin' : 'signup')}
+              onClick={switchCompanyMode}
               type="button"
             >
               {companyMode === 'signup' ? 'Ho già un account azienda' : 'Devo creare l account azienda'}

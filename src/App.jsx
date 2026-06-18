@@ -39,13 +39,17 @@ import {
   archiveVehicleRecord as archiveSupabaseVehicle,
   createDriverDocumentSignedUrl,
   createDriverAccount as createSupabaseDriverAccount,
+  createFaultReportRecord as createSupabaseFaultReport,
   createDriverRecord as createSupabaseDriver,
   createDriverDocumentRecord as createSupabaseDriverDocument,
   createVehicleRecord as createSupabaseVehicle,
+  createVehicleCheckRecord as createSupabaseVehicleCheck,
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
   fetchComplianceItems,
   fetchDriverDocuments,
   fetchDrivers,
+  fetchFaultReports,
+  fetchVehicleChecks,
   fetchVehicles,
   getCurrentAuthSession,
   isCompanyDataConfigured,
@@ -94,9 +98,19 @@ const fleetTypeOptions = [
 ]
 
 const vehicleStatusOptions = ['Operativo', 'Da controllare', 'In manutenzione']
+const faultSeverityOptions = [
+  { value: 'low', label: 'Bassa' },
+  { value: 'medium', label: 'Media' },
+  { value: 'high', label: 'Alta' },
+  { value: 'stop_vehicle', label: 'Fermo mezzo' },
+]
 
 function getFleetTypeLabel(value) {
   return fleetTypeOptions.find((option) => option.value === value)?.label ?? value
+}
+
+function getFaultSeverityLabel(value) {
+  return faultSeverityOptions.find((option) => option.value === value)?.label ?? value
 }
 
 function normalizePlate(value) {
@@ -137,6 +151,17 @@ function formatOptionalDate(date) {
   return date ? formatDate(date) : 'Senza scadenza'
 }
 
+function formatShortDateTime(value) {
+  if (!value) return ''
+
+  return new Intl.DateTimeFormat('it-IT', {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: '2-digit',
+  }).format(new Date(value))
+}
+
 function buildAppSessionFromAuthUser(user) {
   const email = user.email ?? ''
   const isDriver = user.user_metadata?.account_type === 'driver' || email.endsWith(`@${driverAuthDomain}`)
@@ -155,12 +180,15 @@ function App() {
   const [documentRecords, setDocumentRecords] = useState(driverDocuments)
   const [driverRecords, setDriverRecords] = useState(drivers)
   const [vehicleRecords, setVehicleRecords] = useState(vehicles)
+  const [vehicleCheckRecords, setVehicleCheckRecords] = useState([])
+  const [faultReportRecords, setFaultReportRecords] = useState([])
   const [activeView, setActiveView] = useState('dashboard')
   const [activeFilter, setActiveFilter] = useState('all')
   const [query, setQuery] = useState('')
   const [driversSyncStatus, setDriversSyncStatus] = useState('')
   const [documentsSyncStatus, setDocumentsSyncStatus] = useState('')
   const [fleetSyncStatus, setFleetSyncStatus] = useState('')
+  const [operationsSyncStatus, setOperationsSyncStatus] = useState('')
   const [driverDocumentUploadStatus, setDriverDocumentUploadStatus] = useState('')
   const [uploadingDriverDocumentId, setUploadingDriverDocumentId] = useState('')
   const [driverUploadSent, setDriverUploadSent] = useState(false)
@@ -199,11 +227,14 @@ function App() {
     async function loadCompanyData() {
       setDriversSyncStatus('Caricamento dati Supabase...')
       setDocumentsSyncStatus('Caricamento documenti Supabase...')
-      const [driversResult, vehiclesResult, complianceResult, documentsResult] = await Promise.all([
+      setOperationsSyncStatus('Caricamento check e guasti...')
+      const [driversResult, vehiclesResult, complianceResult, documentsResult, checksResult, faultsResult] = await Promise.all([
         fetchDrivers(),
         fetchVehicles(),
         fetchComplianceItems(),
         fetchDriverDocuments(),
+        fetchVehicleChecks(),
+        fetchFaultReports(),
       ])
 
       if (!isMounted) return
@@ -212,6 +243,7 @@ function App() {
         setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
         setDocumentsSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i documenti locali.')
         setFleetSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
+        setOperationsSyncStatus('Check e guasti non caricati.')
         return
       }
 
@@ -219,9 +251,14 @@ function App() {
       if (vehiclesResult.data) setVehicleRecords(vehiclesResult.data)
       if (complianceResult.data) setItems(complianceResult.data)
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
+      if (checksResult.data) setVehicleCheckRecords(checksResult.data)
+      if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       setDriversSyncStatus('Dati Supabase caricati.')
       setDocumentsSyncStatus('Documenti Supabase caricati.')
       setFleetSyncStatus('Dati Supabase caricati.')
+      setOperationsSyncStatus(
+        checksResult.error || faultsResult.error ? 'Check e guasti non caricati.' : 'Check e guasti caricati.',
+      )
     }
 
     loadCompanyData()
@@ -237,11 +274,13 @@ function App() {
     let isMounted = true
 
     async function loadDriverData() {
-      const [driversResult, vehiclesResult, complianceResult, documentsResult] = await Promise.all([
+      const [driversResult, vehiclesResult, complianceResult, documentsResult, checksResult, faultsResult] = await Promise.all([
         fetchDrivers(),
         fetchVehicles(),
         fetchComplianceItems(),
         fetchDriverDocuments(),
+        fetchVehicleChecks(),
+        fetchFaultReports(),
       ])
 
       if (!isMounted) return
@@ -250,6 +289,8 @@ function App() {
       if (vehiclesResult.data) setVehicleRecords(vehiclesResult.data)
       if (complianceResult.data) setItems(complianceResult.data)
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
+      if (checksResult.data) setVehicleCheckRecords(checksResult.data)
+      if (faultsResult.data) setFaultReportRecords(faultsResult.data)
     }
 
     loadDriverData()
@@ -286,6 +327,7 @@ function App() {
     setQuery('')
     setActiveView('dashboard')
     setActiveFilter('all')
+    setOperationsSyncStatus('')
   }
 
   function addComplianceItem(formItem) {
@@ -616,6 +658,74 @@ function App() {
     return true
   }
 
+  async function submitMorningCheck(check) {
+    const localCheck = {
+      ...check,
+      createdAt: new Date().toISOString(),
+      id: `chk-${Date.now()}`,
+    }
+
+    setOperationsSyncStatus('Invio check mattutino...')
+
+    if (isCompanyDataConfigured && session?.role === 'driver') {
+      const result = await createSupabaseVehicleCheck(check)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Errore check: ${result.error.message}`)
+        return false
+      }
+
+      setVehicleCheckRecords((currentChecks) => [result.data, ...currentChecks])
+      setMorningCheckSent(true)
+      setOperationsSyncStatus('Check mattutino inviato all azienda.')
+      return true
+    }
+
+    setVehicleCheckRecords((currentChecks) => [localCheck, ...currentChecks])
+    setMorningCheckSent(true)
+    setOperationsSyncStatus(
+      session?.role === 'company'
+        ? 'Anteprima azienda: check simulato. Dall accesso autista viene salvato.'
+        : 'Check registrato in modalità locale.',
+    )
+    return true
+  }
+
+  async function submitFaultReport(report) {
+    const localReport = {
+      ...report,
+      createdAt: new Date().toISOString(),
+      id: `fault-${Date.now()}`,
+      status: 'open',
+      updatedAt: new Date().toISOString(),
+    }
+
+    setOperationsSyncStatus('Invio segnalazione guasto...')
+
+    if (isCompanyDataConfigured && session?.role === 'driver') {
+      const result = await createSupabaseFaultReport(report)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Errore guasto: ${result.error.message}`)
+        return false
+      }
+
+      setFaultReportRecords((currentReports) => [result.data, ...currentReports])
+      setFaultReported(true)
+      setOperationsSyncStatus('Guasto segnalato all azienda.')
+      return true
+    }
+
+    setFaultReportRecords((currentReports) => [localReport, ...currentReports])
+    setFaultReported(true)
+    setOperationsSyncStatus(
+      session?.role === 'company'
+        ? 'Anteprima azienda: guasto simulato. Dall accesso autista viene salvato.'
+        : 'Guasto registrato in modalità locale.',
+    )
+    return true
+  }
+
   if (!session) {
     return <AuthScreen onAuthenticated={setSession} />
   }
@@ -627,17 +737,20 @@ function App() {
         items={decoratedItems}
         documentRecords={documentRecords}
         driverRecords={driverRecords}
+        faultReportRecords={faultReportRecords}
         vehicleRecords={vehicleRecords}
+        onDriverDocumentUpload={uploadDriverDocumentFile}
+        onFaultReport={submitFaultReport}
+        onMorningCheck={submitMorningCheck}
+        onOpenDriverDocument={openDriverDocumentFile}
         onSignOut={handleSignOut}
         onUpload={() => setDriverUploadSent(true)}
-        onMorningCheck={() => setMorningCheckSent(true)}
-        onFaultReport={() => setFaultReported(true)}
-        onOpenDriverDocument={openDriverDocumentFile}
-        onDriverDocumentUpload={uploadDriverDocumentFile}
+        operationsStatus={operationsSyncStatus}
         faultReported={faultReported}
         morningCheckSent={morningCheckSent}
         uploadSent={driverUploadSent}
         uploadingDocumentId={uploadingDriverDocumentId}
+        vehicleCheckRecords={vehicleCheckRecords}
       />
     )
   }
@@ -701,19 +814,29 @@ function App() {
                   documentRecords={documentRecords}
                   documentUploadStatus={driverDocumentUploadStatus}
                   driverRecords={driverRecords}
+                  faultReportRecords={faultReportRecords}
                   faultReported={faultReported}
                   items={decoratedItems}
                   morningCheckSent={morningCheckSent}
-                  onFaultReport={() => setFaultReported(true)}
-                  onOpenDriverDocument={openDriverDocumentFile}
                   onDriverDocumentUpload={uploadDriverDocumentFile}
-                  onMorningCheck={() => setMorningCheckSent(true)}
+                  onFaultReport={submitFaultReport}
+                  onMorningCheck={submitMorningCheck}
+                  onOpenDriverDocument={openDriverDocumentFile}
                   onUpload={() => setDriverUploadSent(true)}
+                  operationsStatus={operationsSyncStatus}
                   uploadSent={driverUploadSent}
                   uploadingDocumentId={uploadingDriverDocumentId}
+                  vehicleCheckRecords={vehicleCheckRecords}
                   vehicleRecords={vehicleRecords}
                 />
-                <NotificationPanel faultReported={faultReported} morningCheckSent={morningCheckSent} />
+                <NotificationPanel
+                  driverRecords={driverRecords}
+                  faultReportRecords={faultReportRecords}
+                  faultReported={faultReported}
+                  morningCheckSent={morningCheckSent}
+                  vehicleCheckRecords={vehicleCheckRecords}
+                  vehicleRecords={vehicleRecords}
+                />
               </aside>
             </section>
           </>
@@ -2278,6 +2401,7 @@ function DriverAppView({
   documentUploadStatus,
   documentRecords,
   driverRecords,
+  faultReportRecords,
   faultReported,
   items,
   morningCheckSent,
@@ -2287,8 +2411,10 @@ function DriverAppView({
   onOpenDriverDocument,
   onSignOut,
   onUpload,
+  operationsStatus,
   uploadSent,
   uploadingDocumentId,
+  vehicleCheckRecords,
   vehicleRecords,
 }) {
   return (
@@ -2313,6 +2439,7 @@ function DriverAppView({
           documentUploadStatus={documentUploadStatus}
           documentRecords={documentRecords}
           driverRecords={driverRecords}
+          faultReportRecords={faultReportRecords}
           faultReported={faultReported}
           items={items}
           morningCheckSent={morningCheckSent}
@@ -2320,9 +2447,11 @@ function DriverAppView({
           onFaultReport={onFaultReport}
           onMorningCheck={onMorningCheck}
           onOpenDriverDocument={onOpenDriverDocument}
+          operationsStatus={operationsStatus}
           uploadSent={uploadSent}
           onUpload={onUpload}
           uploadingDocumentId={uploadingDocumentId}
+          vehicleCheckRecords={vehicleCheckRecords}
           vehicleRecords={vehicleRecords}
         />
         <section className="panel driver-note-panel">
@@ -2342,27 +2471,55 @@ function DriverMobile({
   documentUploadStatus,
   documentRecords = driverDocuments,
   driverRecords = drivers,
+  faultReportRecords = [],
   faultReported,
-  items,
+  items = [],
   morningCheckSent,
   onDriverDocumentUpload,
   onFaultReport,
   onMorningCheck,
   onOpenDriverDocument,
   onUpload,
+  operationsStatus,
   uploadSent,
   uploadingDocumentId,
+  vehicleCheckRecords = [],
   vehicleRecords = vehicles,
 }) {
   const driver = driverRecords[0] ?? drivers[0]
-  const vehicle = vehicleRecords.find((entry) => entry.id === driver.vehicleId)
-  const semitrailers = vehicleRecords.filter((entry) => entry.fleetType === 'semirimorchio')
+  const activeVehicles = vehicleRecords.filter((entry) => entry.status !== 'Archiviato')
+  const driveableVehicles = activeVehicles.filter((entry) => entry.fleetType !== 'semirimorchio')
+  const assignedVehicle = driveableVehicles.find((entry) => entry.id === driver.vehicleId)
+  const semitrailers = activeVehicles.filter((entry) => entry.fleetType === 'semirimorchio')
+  const [selectedVehicleId, setSelectedVehicleId] = useState((driver.vehicleId || driveableVehicles[0]?.id) ?? '')
   const [attachedTrailerId, setAttachedTrailerId] = useState(semitrailers[0]?.id ?? '')
+  const [checkForm, setCheckForm] = useState({
+    documentsOnBoard: true,
+    lightsOk: true,
+    notes: '',
+    odometerKm: '',
+    tiresOk: true,
+  })
+  const [faultForm, setFaultForm] = useState({
+    description: '',
+    severity: 'medium',
+    title: '',
+  })
+  const [sendingOperation, setSendingOperation] = useState('')
+  const selectedVehicle = driveableVehicles.find((entry) => entry.id === selectedVehicleId) ?? assignedVehicle ?? driveableVehicles[0] ?? null
+  const attachedTrailer = semitrailers.find((entry) => entry.id === attachedTrailerId) ?? null
   const driverItems = items.filter(
-    (item) => item.driverId === driver.id || (vehicle && item.vehicleId === vehicle.id),
+    (item) => item.driverId === driver.id || (selectedVehicle && item.vehicleId === selectedVehicle.id),
   )
   const nextItem = driverItems[0]
   const docs = documentRecords.filter((document) => document.driverId === driver.id && document.visibleToDriver)
+  const lastCheck = vehicleCheckRecords.find((check) => check.driverId === driver.id)
+  const openFaults = faultReportRecords.filter(
+    (report) => report.driverId === driver.id && report.status !== 'closed',
+  )
+  const vehicleLabel = selectedVehicle
+    ? `${selectedVehicle.plate} · ${getFleetTypeLabel(selectedVehicle.fleetType)}`
+    : 'Nessun mezzo disponibile'
 
   function handleDocumentFile(document, event) {
     const file = event.target.files?.[0]
@@ -2370,11 +2527,61 @@ function DriverMobile({
     event.target.value = ''
   }
 
+  function updateCheckField(field, value) {
+    setCheckForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  function updateFaultField(field, value) {
+    setFaultForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  async function handleCheckSubmit(event) {
+    event.preventDefault()
+    if (!selectedVehicle) return
+
+    setSendingOperation('check')
+    const sent = await onMorningCheck?.({
+      documentsOnBoard: checkForm.documentsOnBoard,
+      driverId: driver.id,
+      lightsOk: checkForm.lightsOk,
+      notes: checkForm.notes,
+      odometerKm: checkForm.odometerKm,
+      semitrailerId: attachedTrailer?.id ?? null,
+      tiresOk: checkForm.tiresOk,
+      tractorId: selectedVehicle.id,
+    })
+    setSendingOperation('')
+
+    if (sent) {
+      setCheckForm((currentForm) => ({ ...currentForm, notes: '' }))
+    }
+  }
+
+  async function handleFaultSubmit(event) {
+    event.preventDefault()
+    if (!selectedVehicle || !faultForm.title.trim()) return
+
+    setSendingOperation('fault')
+    const sent = await onFaultReport?.({
+      description: faultForm.description,
+      driverId: driver.id,
+      semitrailerId: attachedTrailer?.id ?? null,
+      severity: faultForm.severity,
+      title: faultForm.title,
+      vehicleId: selectedVehicle.id,
+    })
+    setSendingOperation('')
+
+    if (sent) {
+      setFaultForm({ description: '', severity: 'medium', title: '' })
+    }
+  }
+
   return (
     <section className="phone-frame" aria-label="App autista">
       <div className="phone-top">
         <span>09:41</span>
-        <span>{vehicle?.plate}</span>
+        <span>{selectedVehicle?.plate ?? 'App'}</span>
       </div>
       <div className="phone-body">
         <div className="driver-card">
@@ -2398,29 +2605,128 @@ function DriverMobile({
         <article className="check-card">
           <div>
             <strong>Check mattutino</strong>
-            <span>{vehicle?.plate} · trattore</span>
+            <span>{vehicleLabel}</span>
           </div>
-          <label>
-            Semirimorchio agganciato
-            <select value={attachedTrailerId} onChange={(event) => setAttachedTrailerId(event.target.value)}>
-              <option value="">Nessuno</option>
-              {semitrailers.map((trailer) => (
-                <option key={trailer.id} value={trailer.id}>
-                  {trailer.plate} · {trailer.model}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="check-actions">
-            <button className="upload-button" onClick={onMorningCheck} type="button">
+          <form className="check-form" onSubmit={handleCheckSubmit}>
+            <label>
+              Mezzo usato
+              <select value={selectedVehicle?.id ?? ''} onChange={(event) => setSelectedVehicleId(event.target.value)}>
+                {driveableVehicles.length === 0 && <option value="">Nessun mezzo</option>}
+                {driveableVehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Semirimorchio agganciato
+              <select value={attachedTrailer?.id ?? ''} onChange={(event) => setAttachedTrailerId(event.target.value)}>
+                <option value="">Nessuno</option>
+                {semitrailers.map((trailer) => (
+                  <option key={trailer.id} value={trailer.id}>
+                    {trailer.plate} · {trailer.model}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Km attuali
+              <input
+                min="0"
+                onChange={(event) => updateCheckField('odometerKm', event.target.value)}
+                placeholder={selectedVehicle?.km ? String(selectedVehicle.km) : '0'}
+                type="number"
+                value={checkForm.odometerKm}
+              />
+            </label>
+            <div className="inline-checks" aria-label="Controlli rapidi">
+              <label className="check-toggle">
+                <input
+                  checked={checkForm.lightsOk}
+                  onChange={(event) => updateCheckField('lightsOk', event.target.checked)}
+                  type="checkbox"
+                />
+                Luci ok
+              </label>
+              <label className="check-toggle">
+                <input
+                  checked={checkForm.tiresOk}
+                  onChange={(event) => updateCheckField('tiresOk', event.target.checked)}
+                  type="checkbox"
+                />
+                Gomme ok
+              </label>
+              <label className="check-toggle">
+                <input
+                  checked={checkForm.documentsOnBoard}
+                  onChange={(event) => updateCheckField('documentsOnBoard', event.target.checked)}
+                  type="checkbox"
+                />
+                Documenti bordo
+              </label>
+            </div>
+            <label>
+              Note check
+              <textarea
+                onChange={(event) => updateCheckField('notes', event.target.value)}
+                placeholder="Es. pressione gomme controllata"
+                value={checkForm.notes}
+              />
+            </label>
+            <button className="upload-button" disabled={!selectedVehicle || sendingOperation === 'check'} type="submit">
               <BadgeCheck size={16} />
-              {morningCheckSent ? 'Check inviato' : 'Invia check'}
+              {sendingOperation === 'check' ? 'Invio...' : morningCheckSent ? 'Check inviato' : 'Invia check'}
             </button>
-            <button className="fault-button" onClick={onFaultReport} type="button">
-              <Wrench size={16} />
-              {faultReported ? 'Guasto segnalato' : 'Segnala guasto'}
-            </button>
+          </form>
+          {lastCheck && <small>Ultimo check: {formatShortDateTime(lastCheck.createdAt)}</small>}
+        </article>
+        <article className="check-card">
+          <div>
+            <strong>Segnala guasto</strong>
+            <span>
+              {vehicleLabel}
+              {attachedTrailer ? ` · agganciato ${attachedTrailer.plate}` : ''}
+            </span>
           </div>
+          <form className="check-form" onSubmit={handleFaultSubmit}>
+            <label>
+              Gravità
+              <select value={faultForm.severity} onChange={(event) => updateFaultField('severity', event.target.value)}>
+                {faultSeverityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Titolo guasto
+              <input
+                onChange={(event) => updateFaultField('title', event.target.value)}
+                placeholder="Es. spia motore accesa"
+                value={faultForm.title}
+              />
+            </label>
+            <label>
+              Dettagli
+              <textarea
+                onChange={(event) => updateFaultField('description', event.target.value)}
+                placeholder="Descrivi cosa succede"
+                value={faultForm.description}
+              />
+            </label>
+            <button
+              className="fault-button"
+              disabled={!selectedVehicle || !faultForm.title.trim() || sendingOperation === 'fault'}
+              type="submit"
+            >
+              <Wrench size={16} />
+              {sendingOperation === 'fault' ? 'Invio...' : faultReported ? 'Guasto segnalato' : 'Segnala guasto'}
+            </button>
+          </form>
+          {openFaults.length > 0 && <small>{openFaults.length} guasti aperti</small>}
+          {operationsStatus && <small className="operation-status">{operationsStatus}</small>}
         </article>
         <div className="documents-card">
           <strong>Documenti da mostrare</strong>
@@ -2481,13 +2787,35 @@ function DriverMobile({
   )
 }
 
-function NotificationPanel({ faultReported, morningCheckSent }) {
+function NotificationPanel({
+  driverRecords,
+  faultReportRecords,
+  faultReported,
+  morningCheckSent,
+  vehicleCheckRecords,
+  vehicleRecords,
+}) {
+  const today = new Date().toDateString()
+  const todayChecks = vehicleCheckRecords.filter((check) => new Date(check.createdAt).toDateString() === today).length
+  const openFaults = faultReportRecords.filter((report) => report.status !== 'closed')
   const rules = [
     { label: '60 giorni', detail: 'email responsabile' },
     { label: '30 giorni', detail: 'notifica in app autista' },
-    { label: 'Check mattino', detail: morningCheckSent ? 'ricevuto dall autista' : 'in attesa' },
-    { label: 'Guasti', detail: faultReported ? 'segnalazione aperta' : 'nessuna segnalazione' },
+    { label: 'Check mattino', detail: todayChecks > 0 || morningCheckSent ? `${todayChecks || 1} ricevuti oggi` : 'in attesa' },
+    { label: 'Guasti', detail: openFaults.length > 0 || faultReported ? `${openFaults.length || 1} segnalazioni aperte` : 'nessuna segnalazione' },
   ]
+  const latestOperations = [
+    ...vehicleCheckRecords.slice(0, 3).map((check) => ({
+      detail: `${vehicleRecords.find((vehicle) => vehicle.id === check.tractorId)?.plate ?? 'Mezzo'} · ${formatShortDateTime(check.createdAt)}`,
+      label: driverRecords.find((driver) => driver.id === check.driverId)?.name ?? 'Autista',
+      type: 'Check',
+    })),
+    ...faultReportRecords.slice(0, 3).map((report) => ({
+      detail: `${vehicleRecords.find((vehicle) => vehicle.id === report.vehicleId)?.plate ?? 'Mezzo'} · ${getFaultSeverityLabel(report.severity)}`,
+      label: report.title,
+      type: 'Guasto',
+    })),
+  ].slice(0, 4)
 
   return (
     <section className="panel notification-panel">
@@ -2508,6 +2836,19 @@ function NotificationPanel({ faultReported, morningCheckSent }) {
             </div>
           </div>
         ))}
+      </div>
+      <div className="operation-feed">
+        <strong>Ultime attivita</strong>
+        {latestOperations.map((operation) => (
+          <div className="operation-feed-row" key={`${operation.type}-${operation.label}-${operation.detail}`}>
+            <span>{operation.type}</span>
+            <div>
+              <strong>{operation.label}</strong>
+              <small>{operation.detail}</small>
+            </div>
+          </div>
+        ))}
+        {latestOperations.length === 0 && <small>Nessun check o guasto ricevuto.</small>}
       </div>
       <div className="map-strip" aria-hidden="true">
         <MapPin size={18} />

@@ -9,8 +9,8 @@ App per aziende di logistica: scadenze autisti e flotta, login azienda, accesso 
 - Creazione autista aziendale con username e password temporanea tramite funzione Netlify.
 - Flotta divisa in furgoni, motrici, trattori e semirimorchi.
 - Targhe visibili per ogni mezzo.
-- Check mattutino autista con scelta opzionale del semirimorchio agganciato.
-- Segnalazione guasto verso l'azienda.
+- Check mattutino autista salvato su Supabase, con scelta opzionale del semirimorchio agganciato.
+- Segnalazione guasto salvata su Supabase e visibile all'azienda.
 - Sezione documenti autista da mostrare in caso di controllo.
 - Schema Supabase con RLS per aziende e autisti.
 - Configurazione Netlify.
@@ -118,5 +118,4 @@ SUPABASE_SERVICE_ROLE_KEY
 
 - Anteprima e download documenti caricati dall'autista.
 - Notifiche in-app persistenti lette dalla tabella `in_app_notifications`.
-- Creazione check mattutino su tabella `vehicle_checks`.
-- Creazione guasti su tabella `fault_reports`.
+- Stato avanzamento guasti: visto, in lavorazione, chiuso.

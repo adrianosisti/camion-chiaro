@@ -106,6 +106,38 @@ function mapDriverDocument(row) {
   }
 }
 
+function mapVehicleCheck(row) {
+  return {
+    companyId: row.company_id,
+    createdAt: row.created_at,
+    documentsOnBoard: row.documents_on_board,
+    driverId: row.driver_id,
+    id: row.id,
+    lightsOk: row.lights_ok,
+    notes: row.notes ?? '',
+    odometerKm: row.odometer_km,
+    semitrailerId: row.semitrailer_id,
+    tiresOk: row.tires_ok,
+    tractorId: row.tractor_id,
+  }
+}
+
+function mapFaultReport(row) {
+  return {
+    companyId: row.company_id,
+    createdAt: row.created_at,
+    description: row.description ?? '',
+    driverId: row.driver_id,
+    id: row.id,
+    semitrailerId: row.semitrailer_id,
+    severity: row.severity,
+    status: row.status,
+    title: row.title,
+    updatedAt: row.updated_at,
+    vehicleId: row.vehicle_id,
+  }
+}
+
 function toDriverPayload(driver, companyId = configuredCompanyId) {
   return {
     auth_email: driver.authEmail,
@@ -185,6 +217,34 @@ function toDriverDocumentUpdatePayload(updates) {
   if ('visibleToDriver' in updates) payload.visible_to_driver = updates.visibleToDriver
 
   return payload
+}
+
+function toVehicleCheckPayload(check, companyId = configuredCompanyId) {
+  const odometerKm = check.odometerKm === '' || check.odometerKm == null ? null : Number(check.odometerKm)
+
+  return {
+    company_id: companyId,
+    documents_on_board: check.documentsOnBoard ?? true,
+    driver_id: check.driverId,
+    lights_ok: check.lightsOk ?? true,
+    notes: check.notes?.trim() || null,
+    odometer_km: Number.isFinite(odometerKm) ? odometerKm : null,
+    semitrailer_id: check.semitrailerId || null,
+    tires_ok: check.tiresOk ?? true,
+    tractor_id: check.tractorId,
+  }
+}
+
+function toFaultReportPayload(report, companyId = configuredCompanyId) {
+  return {
+    company_id: companyId,
+    description: report.description?.trim() || null,
+    driver_id: report.driverId,
+    semitrailer_id: report.semitrailerId || null,
+    severity: report.severity || 'medium',
+    title: report.title.trim(),
+    vehicle_id: report.vehicleId,
+  }
 }
 
 const supabaseClientCacheKey = '__camionChiaroSupabaseClientPromise'
@@ -292,6 +352,68 @@ export async function fetchDriverDocuments(companyId = configuredCompanyId) {
     .order('expires_at', { ascending: true, nullsFirst: false })
 
   return { data: data?.map(mapDriverDocument) ?? null, error }
+}
+
+export async function fetchVehicleChecks(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('vehicle_checks')
+    .select(
+      `
+        id,
+        company_id,
+        driver_id,
+        tractor_id,
+        semitrailer_id,
+        odometer_km,
+        lights_ok,
+        tires_ok,
+        documents_on_board,
+        notes,
+        created_at
+      `,
+    )
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  return { data: data?.map(mapVehicleCheck) ?? null, error }
+}
+
+export async function fetchFaultReports(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('fault_reports')
+    .select(
+      `
+        id,
+        company_id,
+        driver_id,
+        vehicle_id,
+        semitrailer_id,
+        severity,
+        title,
+        description,
+        status,
+        created_at,
+        updated_at
+      `,
+    )
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  return { data: data?.map(mapFaultReport) ?? null, error }
 }
 
 export async function createDriverRecord(driver, companyId = configuredCompanyId) {
@@ -422,6 +544,66 @@ export async function createDriverDocumentRecord(document, companyId = configure
     .single()
 
   return { data: data ? mapDriverDocument(data) : null, error }
+}
+
+export async function createVehicleCheckRecord(check, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('vehicle_checks')
+    .insert(toVehicleCheckPayload(check, companyId))
+    .select(
+      `
+        id,
+        company_id,
+        driver_id,
+        tractor_id,
+        semitrailer_id,
+        odometer_km,
+        lights_ok,
+        tires_ok,
+        documents_on_board,
+        notes,
+        created_at
+      `,
+    )
+    .single()
+
+  return { data: data ? mapVehicleCheck(data) : null, error }
+}
+
+export async function createFaultReportRecord(report, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('fault_reports')
+    .insert(toFaultReportPayload(report, companyId))
+    .select(
+      `
+        id,
+        company_id,
+        driver_id,
+        vehicle_id,
+        semitrailer_id,
+        severity,
+        title,
+        description,
+        status,
+        created_at,
+        updated_at
+      `,
+    )
+    .single()
+
+  return { data: data ? mapFaultReport(data) : null, error }
 }
 
 export async function updateDriverDocumentRecord(documentId, updates) {

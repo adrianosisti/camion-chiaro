@@ -2570,7 +2570,13 @@ function CheckOperationRow({ check, driver, onMarkRead, onOpen, read, selected, 
         <button className="small-button" onClick={onOpen} type="button">
           Apri
         </button>
-        <button className="small-button" onClick={onMarkRead} type="button">
+        <button
+          aria-label={read ? 'Check gia visto' : 'Segna check come visto'}
+          className="small-button"
+          disabled={read}
+          onClick={onMarkRead}
+          type="button"
+        >
           Visto
         </button>
       </div>

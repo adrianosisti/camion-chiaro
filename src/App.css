@@ -1092,6 +1092,13 @@
   opacity: 0.52;
 }
 
+.operation-actions .small-button:disabled:hover,
+.operation-detail-actions .small-button:disabled:hover {
+  border-color: var(--line);
+  background: #ffffff;
+  transform: none;
+}
+
 .operation-detail-panel {
   position: sticky;
   top: 22px;

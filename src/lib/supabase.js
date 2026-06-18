@@ -310,6 +310,46 @@ export async function createDriverRecord(driver, companyId = configuredCompanyId
   return { data: data ? mapDriver(data) : null, error }
 }
 
+export async function createDriverAccount(driver, password, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione azienda mancante. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/create-driver', {
+      body: JSON.stringify({ companyId, driver, password }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload.error ?? 'Creazione account autista non riuscita.' } }
+    }
+
+    return { data: payload.driver ?? null, error: null }
+  } catch {
+    return {
+      data: null,
+      error: {
+        message: 'Funzione Netlify non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+      },
+    }
+  }
+}
+
 export async function updateDriverRecord(driverId, updates) {
   const supabase = await getSupabaseClient()
 

@@ -38,6 +38,7 @@ import {
   archiveDriverRecord as archiveSupabaseDriver,
   archiveVehicleRecord as archiveSupabaseVehicle,
   createDriverDocumentSignedUrl,
+  createDriverAccount as createSupabaseDriverAccount,
   createDriverRecord as createSupabaseDriver,
   createDriverDocumentRecord as createSupabaseDriverDocument,
   createVehicleRecord as createSupabaseVehicle,
@@ -104,6 +105,27 @@ function normalizePlate(value) {
 
 function normalizeDriverUsername(value) {
   return value.trim().toLowerCase().replace(/\s+/g, '.')
+}
+
+function generateTemporaryPassword(length = 12) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
+  const randomValues = new Uint32Array(length)
+  crypto.getRandomValues(randomValues)
+
+  return Array.from(randomValues, (value) => alphabet[value % alphabet.length]).join('')
+}
+
+function getDriverCreateDefaults() {
+  return {
+    depot: 'Verona',
+    email: '',
+    name: '',
+    password: generateTemporaryPassword(),
+    phone: '',
+    role: 'Autista bilico',
+    username: '',
+    vehicleId: '',
+  }
 }
 
 function buildDriverAuthEmail(username) {
@@ -291,15 +313,20 @@ function App() {
   }
 
   async function addDriverRecord(driver) {
+    const temporaryPassword = driver.password?.trim() ?? ''
+    const driverWithoutPassword = { ...driver }
+    delete driverWithoutPassword.password
     const cleanDriver = {
-      ...driver,
+      ...driverWithoutPassword,
       authEmail: buildDriverAuthEmail(driver.username),
       username: normalizeDriverUsername(driver.username),
     }
 
     if (isCompanyDataConfigured && session?.role === 'company') {
-      setDriversSyncStatus('Salvataggio autista su Supabase...')
-      const result = await createSupabaseDriver(cleanDriver)
+      setDriversSyncStatus('Creo account autista e salvo anagrafica...')
+      const result = temporaryPassword
+        ? await createSupabaseDriverAccount(cleanDriver, temporaryPassword)
+        : await createSupabaseDriver(cleanDriver)
 
       if (result.error) {
         setDriversSyncStatus(`Errore Supabase: ${result.error.message}`)
@@ -307,7 +334,11 @@ function App() {
       }
 
       setDriverRecords((currentDrivers) => [result.data, ...currentDrivers])
-      setDriversSyncStatus('Autista salvato su Supabase.')
+      setDriversSyncStatus(
+        temporaryPassword
+          ? `Autista creato. Username: ${cleanDriver.username}. Password temporanea: ${temporaryPassword}`
+          : 'Autista salvato su Supabase.',
+      )
       return true
     }
 
@@ -1246,18 +1277,10 @@ function DriverManagementRow({
 
 function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
   const [isSaving, setIsSaving] = useState(false)
-  const [form, setForm] = useState({
-    depot: 'Verona',
-    email: '',
-    name: '',
-    password: 'password-temporanea',
-    phone: '',
-    role: 'Autista bilico',
-    username: '',
-    vehicleId: '',
-  })
+  const [form, setForm] = useState(getDriverCreateDefaults)
 
   const authEmail = form.username ? buildDriverAuthEmail(form.username) : ''
+  const canSubmit = Boolean(form.name.trim() && form.username.trim() && form.phone.trim() && form.password.trim().length >= 8)
 
   function updateField(field, value) {
     setForm((currentForm) => {
@@ -1275,7 +1298,7 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (!form.name.trim() || !form.username.trim() || !form.phone.trim()) return
+    if (!canSubmit) return
 
     setIsSaving(true)
     const added = await onAddDriver({
@@ -1284,6 +1307,7 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
       depot: form.depot,
       email: form.email || authEmail,
       name: form.name,
+      password: form.password,
       phone: form.phone,
       role: form.role,
       status: 'Disponibile',
@@ -1294,16 +1318,7 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
 
     if (!added) return
 
-    setForm({
-      depot: 'Verona',
-      email: '',
-      name: '',
-      password: 'password-temporanea',
-      phone: '',
-      role: 'Autista bilico',
-      username: '',
-      vehicleId: '',
-    })
+    setForm(getDriverCreateDefaults())
   }
 
   return (
@@ -1326,7 +1341,17 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
         </label>
         <label>
           Password temporanea
-          <input value={form.password} onChange={(event) => updateField('password', event.target.value)} />
+          <span className="password-field-row">
+            <input
+              minLength={8}
+              required
+              value={form.password}
+              onChange={(event) => updateField('password', event.target.value)}
+            />
+            <button className="small-button" onClick={() => updateField('password', generateTemporaryPassword())} type="button">
+              Genera
+            </button>
+          </span>
         </label>
         <label>
           Telefono
@@ -1358,9 +1383,9 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
         <strong>Email tecnica Supabase</strong>
         <span>{authEmail || 'Compila username per generarla'}</span>
       </div>
-      <button className="primary-button full-button" disabled={isSaving} type="submit">
+      <button className="primary-button full-button" disabled={isSaving || !canSubmit} type="submit">
         <UserPlus size={17} />
-        {isSaving ? 'Salvataggio...' : 'Aggiungi autista'}
+        {isSaving ? 'Creazione account...' : 'Crea account autista'}
       </button>
     </form>
   )

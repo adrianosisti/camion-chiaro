@@ -844,6 +844,12 @@
   font-weight: 720;
 }
 
+.password-field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .fleet-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1860,6 +1866,10 @@
   }
 
   .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .password-field-row {
     grid-template-columns: 1fr;
   }
 

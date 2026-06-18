@@ -6,6 +6,7 @@ App per aziende di logistica: scadenze autisti e flotta, login azienda, accesso 
 
 - Login demo azienda.
 - Login demo autista con nome utente.
+- Creazione autista aziendale con username e password temporanea tramite funzione Netlify.
 - Flotta divisa in furgoni, motrici, trattori e semirimorchi.
 - Targhe visibili per ogni mezzo.
 - Check mattutino autista con scelta opzionale del semirimorchio agganciato.
@@ -65,6 +66,7 @@ VITE_DRIVER_AUTH_DOMAIN=drivers.camionchiaro.app
 ```
 
 Non mettere mai la chiave `service_role` dentro `.env` del frontend.
+La chiave `SUPABASE_SERVICE_ROLE_KEY` serve solo alla funzione Netlify: non deve iniziare con `VITE_`.
 
 ## Login autisti con nome utente
 
@@ -106,13 +108,14 @@ VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
 VITE_SUPABASE_COMPANY_ID
 VITE_DRIVER_AUTH_DOMAIN
+SUPABASE_SERVICE_ROLE_KEY
 ```
 
-11. Clicca `Deploy`.
+11. Per `SUPABASE_SERVICE_ROLE_KEY`, in Supabase apri `Project Settings > API`, copia la chiave `service_role` e incollala solo in Netlify come variabile ambiente.
+12. Clicca `Deploy`.
 
 ## Prossimi pezzi da costruire
 
-- Pannello azienda per creare davvero autisti con username e password temporanea.
 - Anteprima e download documenti caricati dall'autista.
 - Notifiche in-app persistenti lette dalla tabella `in_app_notifications`.
 - Creazione check mattutino su tabella `vehicle_checks`.

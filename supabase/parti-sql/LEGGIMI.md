@@ -8,6 +8,7 @@ Se Supabase non ti fa incollare `supabase/schema.sql` tutto insieme, usa questi 
 4. Apri `04_funzioni_indici_rls.sql`, copia tutto, incolla, premi Run.
 5. Apri `05_policy_base.sql`, copia tutto, incolla, premi Run.
 6. Apri `06_policy_notifiche_check_guasti.sql`, copia tutto, incolla, premi Run.
+7. Apri `07_storage_documenti.sql`, copia tutto, incolla, premi Run.
 
 Non saltare blocchi e non cambiare ordine.
 

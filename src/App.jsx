@@ -37,6 +37,7 @@ import { daysUntil, decorateCompliance, formatDate, getSummary } from './lib/exp
 import {
   archiveDriverRecord as archiveSupabaseDriver,
   archiveVehicleRecord as archiveSupabaseVehicle,
+  createDriverDocumentSignedUrl,
   createDriverRecord as createSupabaseDriver,
   createDriverDocumentRecord as createSupabaseDriverDocument,
   createVehicleRecord as createSupabaseVehicle,
@@ -52,6 +53,7 @@ import {
   signInCompany,
   signOut,
   signUpCompany,
+  uploadDriverDocumentFile as uploadSupabaseDriverDocumentFile,
   updateDriverDocumentRecord as updateSupabaseDriverDocument,
   updateDriverRecord as updateSupabaseDriver,
   updateVehicleRecord as updateSupabaseVehicle,
@@ -80,6 +82,7 @@ const documentTypes = [
 ]
 
 const driverDocumentStatusOptions = ['Caricato', 'Verificato', 'Scaduto', 'Mancante']
+const maxDriverDocumentFileSize = 10 * 1024 * 1024
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
 const fleetTypeOptions = [
@@ -136,6 +139,8 @@ function App() {
   const [driversSyncStatus, setDriversSyncStatus] = useState('')
   const [documentsSyncStatus, setDocumentsSyncStatus] = useState('')
   const [fleetSyncStatus, setFleetSyncStatus] = useState('')
+  const [driverDocumentUploadStatus, setDriverDocumentUploadStatus] = useState('')
+  const [uploadingDriverDocumentId, setUploadingDriverDocumentId] = useState('')
   const [driverUploadSent, setDriverUploadSent] = useState(false)
   const [morningCheckSent, setMorningCheckSent] = useState(false)
   const [faultReported, setFaultReported] = useState(false)
@@ -506,6 +511,80 @@ function App() {
     return true
   }
 
+  async function uploadDriverDocumentFile(document, file) {
+    if (!file) return false
+
+    if (file.size > maxDriverDocumentFileSize) {
+      setDriverDocumentUploadStatus('File troppo grande. Usa una foto o un PDF sotto 10 MB.')
+      return false
+    }
+
+    setUploadingDriverDocumentId(document.id)
+    setDriverDocumentUploadStatus('Caricamento documento...')
+
+    if (isCompanyDataConfigured && ['company', 'driver'].includes(session?.role)) {
+      const result = await uploadSupabaseDriverDocumentFile(document, file)
+      setUploadingDriverDocumentId('')
+
+      if (result.error) {
+        setDriverDocumentUploadStatus(`Errore upload: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setDocumentRecords((currentDocuments) =>
+          currentDocuments.map((currentDocument) =>
+            currentDocument.id === document.id ? result.data : currentDocument,
+          ),
+        )
+      }
+      setDriverUploadSent(true)
+      setDriverDocumentUploadStatus('Documento caricato. Ora puoi aprirlo dall app.')
+      return true
+    }
+
+    setDocumentRecords((currentDocuments) =>
+      currentDocuments.map((currentDocument) =>
+        currentDocument.id === document.id
+          ? { ...currentDocument, filePath: file.name, status: 'Caricato' }
+          : currentDocument,
+      ),
+    )
+    setUploadingDriverDocumentId('')
+    setDriverUploadSent(true)
+    setDriverDocumentUploadStatus('Documento selezionato in modalità locale.')
+    return true
+  }
+
+  async function openDriverDocumentFile(document) {
+    if (!document.filePath) {
+      setDriverDocumentUploadStatus('Prima carica una foto o un PDF per questo documento.')
+      return false
+    }
+
+    if (document.filePath.startsWith('http')) {
+      window.open(document.filePath, '_blank', 'noopener,noreferrer')
+      return true
+    }
+
+    if (!isSupabaseConfigured) {
+      setDriverDocumentUploadStatus('File presente solo in demo locale. Con Supabase Storage si aprira qui.')
+      return false
+    }
+
+    setDriverDocumentUploadStatus('Apro documento...')
+    const result = await createDriverDocumentSignedUrl(document.filePath)
+
+    if (result.error || !result.data?.signedUrl) {
+      setDriverDocumentUploadStatus(`Errore apertura: ${result.error?.message ?? 'link non disponibile'}`)
+      return false
+    }
+
+    window.open(result.data.signedUrl, '_blank', 'noopener,noreferrer')
+    setDriverDocumentUploadStatus('Documento aperto in una nuova scheda.')
+    return true
+  }
+
   if (!session) {
     return <AuthScreen onAuthenticated={setSession} />
   }
@@ -513,6 +592,7 @@ function App() {
   if (session.role === 'driver') {
     return (
       <DriverAppView
+        documentUploadStatus={driverDocumentUploadStatus}
         items={decoratedItems}
         documentRecords={documentRecords}
         driverRecords={driverRecords}
@@ -521,9 +601,12 @@ function App() {
         onUpload={() => setDriverUploadSent(true)}
         onMorningCheck={() => setMorningCheckSent(true)}
         onFaultReport={() => setFaultReported(true)}
+        onOpenDriverDocument={openDriverDocumentFile}
+        onDriverDocumentUpload={uploadDriverDocumentFile}
         faultReported={faultReported}
         morningCheckSent={morningCheckSent}
         uploadSent={driverUploadSent}
+        uploadingDocumentId={uploadingDriverDocumentId}
       />
     )
   }
@@ -585,14 +668,18 @@ function App() {
               <aside className="side-column" aria-label="Strumenti operativi">
                 <DriverMobile
                   documentRecords={documentRecords}
+                  documentUploadStatus={driverDocumentUploadStatus}
                   driverRecords={driverRecords}
                   faultReported={faultReported}
                   items={decoratedItems}
                   morningCheckSent={morningCheckSent}
                   onFaultReport={() => setFaultReported(true)}
+                  onOpenDriverDocument={openDriverDocumentFile}
+                  onDriverDocumentUpload={uploadDriverDocumentFile}
                   onMorningCheck={() => setMorningCheckSent(true)}
                   onUpload={() => setDriverUploadSent(true)}
                   uploadSent={driverUploadSent}
+                  uploadingDocumentId={uploadingDriverDocumentId}
                   vehicleRecords={vehicleRecords}
                 />
                 <NotificationPanel faultReported={faultReported} morningCheckSent={morningCheckSent} />
@@ -2163,16 +2250,20 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
 }
 
 function DriverAppView({
+  documentUploadStatus,
   documentRecords,
   driverRecords,
   faultReported,
   items,
   morningCheckSent,
+  onDriverDocumentUpload,
   onFaultReport,
   onMorningCheck,
+  onOpenDriverDocument,
   onSignOut,
   onUpload,
   uploadSent,
+  uploadingDocumentId,
   vehicleRecords,
 }) {
   return (
@@ -2194,15 +2285,19 @@ function DriverAppView({
       </header>
       <div className="driver-page-content">
         <DriverMobile
+          documentUploadStatus={documentUploadStatus}
           documentRecords={documentRecords}
           driverRecords={driverRecords}
           faultReported={faultReported}
           items={items}
           morningCheckSent={morningCheckSent}
+          onDriverDocumentUpload={onDriverDocumentUpload}
           onFaultReport={onFaultReport}
           onMorningCheck={onMorningCheck}
+          onOpenDriverDocument={onOpenDriverDocument}
           uploadSent={uploadSent}
           onUpload={onUpload}
+          uploadingDocumentId={uploadingDocumentId}
           vehicleRecords={vehicleRecords}
         />
         <section className="panel driver-note-panel">
@@ -2219,15 +2314,19 @@ function DriverAppView({
 }
 
 function DriverMobile({
+  documentUploadStatus,
   documentRecords = driverDocuments,
   driverRecords = drivers,
   faultReported,
   items,
   morningCheckSent,
+  onDriverDocumentUpload,
   onFaultReport,
   onMorningCheck,
+  onOpenDriverDocument,
   onUpload,
   uploadSent,
+  uploadingDocumentId,
   vehicleRecords = vehicles,
 }) {
   const driver = driverRecords[0] ?? drivers[0]
@@ -2239,6 +2338,12 @@ function DriverMobile({
   )
   const nextItem = driverItems[0]
   const docs = documentRecords.filter((document) => document.driverId === driver.id && document.visibleToDriver)
+
+  function handleDocumentFile(document, event) {
+    const file = event.target.files?.[0]
+    onDriverDocumentUpload?.(document, file)
+    event.target.value = ''
+  }
 
   return (
     <section className="phone-frame" aria-label="App autista">
@@ -2299,9 +2404,38 @@ function DriverMobile({
               <FileText size={15} />
               <span>{document.type}</span>
               <small>{formatOptionalDate(document.expiresAt)}</small>
+              <div className="document-row-actions">
+                <button
+                  className="document-action-button"
+                  disabled={!document.filePath}
+                  onClick={() => onOpenDriverDocument?.(document)}
+                  type="button"
+                >
+                  Apri
+                </button>
+                <label className="document-action-button">
+                  Foto
+                  <input
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(event) => handleDocumentFile(document, event)}
+                    type="file"
+                  />
+                </label>
+                <label className="document-action-button">
+                  Galleria/PDF
+                  <input
+                    accept="image/*,.pdf,application/pdf"
+                    onChange={(event) => handleDocumentFile(document, event)}
+                    type="file"
+                  />
+                </label>
+              </div>
+              {uploadingDocumentId === document.id && <small>Caricamento in corso...</small>}
             </div>
           ))}
           {docs.length === 0 && <small>Nessun documento visibile</small>}
+          {documentUploadStatus && <small className="document-upload-status">{documentUploadStatus}</small>}
         </div>
         <div className="phone-list">
           {driverItems.slice(0, 3).map((item) => (

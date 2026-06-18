@@ -46,6 +46,8 @@ In demo puoi usare i valori gia' compilati nei form.
 11. Incollalo nel SQL Editor di Supabase.
 12. Clicca `Run`.
 
+Se hai gia' creato il database prima dell'upload documenti, non rifare tutto lo schema: apri solo `supabase/parti-sql/07_storage_documenti.sql`, copia tutto, incolla in Supabase SQL Editor e premi `Run`.
+
 ## Prendere le chiavi Supabase
 
 1. In Supabase apri `Project Settings`.
@@ -111,7 +113,7 @@ VITE_DRIVER_AUTH_DOMAIN
 ## Prossimi pezzi da costruire
 
 - Pannello azienda per creare davvero autisti con username e password temporanea.
-- Upload reale documenti su Supabase Storage.
+- Anteprima e download documenti caricati dall'autista.
 - Notifiche in-app persistenti lette dalla tabella `in_app_notifications`.
 - Creazione check mattutino su tabella `vehicle_checks`.
 - Creazione guasti su tabella `fault_reports`.

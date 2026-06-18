@@ -4,6 +4,7 @@ export const configuredCompanyId = import.meta.env.VITE_SUPABASE_COMPANY_ID
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 export const isCompanyDataConfigured = Boolean(isSupabaseConfigured && configuredCompanyId)
+export const driverDocumentsBucket = 'driver-documents'
 
 const driverStatusLabels = {
   active: 'In servizio',
@@ -188,6 +189,15 @@ function toDriverDocumentUpdatePayload(updates) {
 
 const supabaseClientCacheKey = '__camionChiaroSupabaseClientPromise'
 let supabaseClientPromise = globalThis[supabaseClientCacheKey] ?? null
+
+function sanitizeStorageFileName(fileName) {
+  return (fileName || 'documento')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90) || 'documento'
+}
 
 export async function getSupabaseClient() {
   if (!isSupabaseConfigured) {
@@ -399,6 +409,48 @@ export async function deleteDriverDocumentRecord(documentId) {
   }
 
   return supabase.from('driver_documents').delete().eq('id', documentId)
+}
+
+export async function uploadDriverDocumentFile(document, file, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !document?.id || !document?.driverId || !file) {
+    return { data: null, error: null }
+  }
+
+  const cleanFileName = sanitizeStorageFileName(file.name)
+  const filePath = `${companyId}/${document.driverId}/${document.id}/${Date.now()}-${cleanFileName}`
+  const { error: uploadError } = await supabase.storage.from(driverDocumentsBucket).upload(filePath, file, {
+    cacheControl: '3600',
+    contentType: file.type || undefined,
+    upsert: false,
+  })
+
+  if (uploadError) {
+    return { data: null, error: uploadError }
+  }
+
+  const { data, error } = await supabase.rpc('set_driver_document_file', {
+    target_document_id: document.id,
+    uploaded_file_path: filePath,
+  })
+
+  if (error) {
+    await supabase.storage.from(driverDocumentsBucket).remove([filePath])
+    return { data: null, error }
+  }
+
+  return { data: data ? mapDriverDocument(data) : null, error: null }
+}
+
+export async function createDriverDocumentSignedUrl(filePath) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !filePath) {
+    return { data: null, error: null }
+  }
+
+  return supabase.storage.from(driverDocumentsBucket).createSignedUrl(filePath, 600)
 }
 
 export async function getCurrentAuthSession() {

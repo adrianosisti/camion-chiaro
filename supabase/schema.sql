@@ -1,0 +1,546 @@
+create extension if not exists pgcrypto;
+
+create table public.user_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  account_type text not null check (account_type in ('company', 'driver')),
+  full_name text,
+  phone text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.companies (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  vat_number text,
+  headquarters text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.company_members (
+  company_id uuid not null references public.companies(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null default 'operator' check (role in ('owner', 'admin', 'operator')),
+  created_at timestamptz not null default now(),
+  primary key (company_id, user_id)
+);
+
+create table public.drivers (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  username text not null,
+  auth_email text,
+  full_name text not null,
+  email text,
+  phone text not null,
+  role text,
+  depot text,
+  status text not null default 'active' check (status in ('active', 'available', 'travelling', 'paused', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (company_id, phone),
+  unique (company_id, username),
+  unique (auth_email)
+);
+
+create table public.vehicles (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  plate text not null,
+  model text,
+  type text,
+  fleet_type text not null default 'trattore' check (fleet_type in ('furgone', 'motrice', 'trattore', 'semirimorchio')),
+  km integer not null default 0 check (km >= 0),
+  status text not null default 'active' check (status in ('active', 'maintenance', 'watch', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (company_id, plate)
+);
+
+create table public.driver_documents (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid not null references public.drivers(id) on delete cascade,
+  type text not null,
+  document_number text,
+  expires_at date,
+  file_path text,
+  status text not null default 'uploaded' check (status in ('missing', 'uploaded', 'verified', 'expired')),
+  visible_to_driver boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.compliance_items (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid references public.drivers(id) on delete cascade,
+  vehicle_id uuid references public.vehicles(id) on delete cascade,
+  scope text not null check (scope in ('driver', 'vehicle', 'company')),
+  type text not null,
+  document_number text,
+  due_date date not null,
+  reminder_days integer[] not null default array[60, 30, 15, 7],
+  owner text,
+  status text not null default 'open' check (status in ('open', 'renewing', 'done', 'archived')),
+  last_reminder_at timestamptz,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint compliance_scope_target check (
+    (scope = 'driver' and driver_id is not null and vehicle_id is null)
+    or (scope = 'vehicle' and vehicle_id is not null and driver_id is null)
+    or (scope = 'company' and driver_id is null and vehicle_id is null)
+  )
+);
+
+create table public.notification_preferences (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid references public.drivers(id) on delete cascade,
+  in_app_enabled boolean not null default true,
+  reminder_days integer[] not null default array[60, 30, 15, 7],
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (company_id, driver_id)
+);
+
+create table public.in_app_notifications (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid references public.drivers(id) on delete cascade,
+  compliance_item_id uuid references public.compliance_items(id) on delete cascade,
+  title text not null,
+  body text not null,
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table public.vehicle_checks (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid not null references public.drivers(id) on delete cascade,
+  tractor_id uuid not null references public.vehicles(id) on delete restrict,
+  semitrailer_id uuid references public.vehicles(id) on delete restrict,
+  odometer_km integer check (odometer_km is null or odometer_km >= 0),
+  lights_ok boolean not null default true,
+  tires_ok boolean not null default true,
+  documents_on_board boolean not null default true,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table public.fault_reports (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid not null references public.drivers(id) on delete cascade,
+  vehicle_id uuid not null references public.vehicles(id) on delete restrict,
+  semitrailer_id uuid references public.vehicles(id) on delete restrict,
+  severity text not null default 'medium' check (severity in ('low', 'medium', 'high', 'stop_vehicle')),
+  title text not null,
+  description text,
+  status text not null default 'open' check (status in ('open', 'seen', 'in_progress', 'closed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.reminder_logs (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  compliance_item_id uuid references public.compliance_items(id) on delete cascade,
+  driver_id uuid references public.drivers(id) on delete cascade,
+  channel text not null check (channel in ('email', 'push', 'in_app')),
+  recipient text not null,
+  sent_at timestamptz not null default now(),
+  status text not null default 'sent' check (status in ('queued', 'sent', 'failed')),
+  payload jsonb not null default '{}'::jsonb
+);
+
+create or replace function public.touch_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create or replace function public.handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.user_profiles (user_id, account_type, full_name, phone)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'account_type', 'company'),
+    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'company_name'),
+    new.phone
+  )
+  on conflict (user_id) do nothing;
+
+  update public.drivers
+  set user_id = new.id
+  where user_id is null
+    and (
+      (new.phone is not null and phone = new.phone)
+      or (new.email is not null and auth_email = new.email)
+    );
+
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_auth_user();
+
+create trigger touch_user_profiles_updated_at
+before update on public.user_profiles
+for each row execute function public.touch_updated_at();
+
+create trigger touch_companies_updated_at
+before update on public.companies
+for each row execute function public.touch_updated_at();
+
+create trigger touch_drivers_updated_at
+before update on public.drivers
+for each row execute function public.touch_updated_at();
+
+create trigger touch_vehicles_updated_at
+before update on public.vehicles
+for each row execute function public.touch_updated_at();
+
+create trigger touch_driver_documents_updated_at
+before update on public.driver_documents
+for each row execute function public.touch_updated_at();
+
+create trigger touch_compliance_items_updated_at
+before update on public.compliance_items
+for each row execute function public.touch_updated_at();
+
+create trigger touch_notification_preferences_updated_at
+before update on public.notification_preferences
+for each row execute function public.touch_updated_at();
+
+create trigger touch_fault_reports_updated_at
+before update on public.fault_reports
+for each row execute function public.touch_updated_at();
+
+create or replace function public.is_company_member(target_company_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.company_members cm
+    where cm.company_id = target_company_id
+      and cm.user_id = (select auth.uid())
+  );
+$$;
+
+create or replace function public.is_company_operator(target_company_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.company_members cm
+    where cm.company_id = target_company_id
+      and cm.user_id = (select auth.uid())
+      and cm.role in ('owner', 'admin', 'operator')
+  );
+$$;
+
+create or replace function public.is_driver_user(target_driver_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.drivers d
+    where d.id = target_driver_id
+      and d.user_id = (select auth.uid())
+  );
+$$;
+
+create or replace function public.create_company_for_current_user(
+  company_name text,
+  vat_number text default null,
+  headquarters text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_company_id uuid;
+begin
+  if (select auth.uid()) is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  insert into public.companies (name, vat_number, headquarters)
+  values (company_name, vat_number, headquarters)
+  returning id into new_company_id;
+
+  insert into public.company_members (company_id, user_id, role)
+  values (new_company_id, (select auth.uid()), 'owner');
+
+  return new_company_id;
+end;
+$$;
+
+create index user_profiles_account_type_idx on public.user_profiles (account_type);
+create index company_members_user_id_idx on public.company_members (user_id);
+create index drivers_company_status_idx on public.drivers (company_id, status);
+create index drivers_user_id_idx on public.drivers (user_id) where user_id is not null;
+create index drivers_username_idx on public.drivers (username);
+create index drivers_phone_idx on public.drivers (phone);
+create index vehicles_company_status_idx on public.vehicles (company_id, status);
+create index vehicles_company_type_idx on public.vehicles (company_id, fleet_type, status);
+create index driver_documents_driver_idx on public.driver_documents (driver_id, expires_at);
+create index compliance_items_company_due_idx
+  on public.compliance_items (company_id, due_date)
+  where status in ('open', 'renewing');
+create index compliance_items_driver_due_idx
+  on public.compliance_items (driver_id, due_date)
+  where driver_id is not null and status in ('open', 'renewing');
+create index compliance_items_vehicle_due_idx
+  on public.compliance_items (vehicle_id, due_date)
+  where vehicle_id is not null and status in ('open', 'renewing');
+create index notification_preferences_company_idx on public.notification_preferences (company_id);
+create index notification_preferences_driver_idx on public.notification_preferences (driver_id) where driver_id is not null;
+create index in_app_notifications_driver_created_idx on public.in_app_notifications (driver_id, created_at desc);
+create index vehicle_checks_driver_created_idx on public.vehicle_checks (driver_id, created_at desc);
+create index fault_reports_company_status_idx on public.fault_reports (company_id, status, created_at desc);
+create index reminder_logs_company_item_idx on public.reminder_logs (company_id, compliance_item_id, sent_at desc);
+
+alter table public.user_profiles enable row level security;
+alter table public.companies enable row level security;
+alter table public.company_members enable row level security;
+alter table public.drivers enable row level security;
+alter table public.vehicles enable row level security;
+alter table public.driver_documents enable row level security;
+alter table public.compliance_items enable row level security;
+alter table public.notification_preferences enable row level security;
+alter table public.in_app_notifications enable row level security;
+alter table public.vehicle_checks enable row level security;
+alter table public.fault_reports enable row level security;
+alter table public.reminder_logs enable row level security;
+
+create policy "Users can read own profile"
+on public.user_profiles
+for select
+to authenticated
+using (user_id = (select auth.uid()));
+
+create policy "Users can update own profile"
+on public.user_profiles
+for update
+to authenticated
+using (user_id = (select auth.uid()))
+with check (user_id = (select auth.uid()));
+
+create policy "Members can read their companies"
+on public.companies
+for select
+to authenticated
+using ((select public.is_company_member(id)));
+
+create policy "Members can read company membership"
+on public.company_members
+for select
+to authenticated
+using (user_id = (select auth.uid()) or (select public.is_company_member(company_id)));
+
+create policy "Operators can manage company membership"
+on public.company_members
+for all
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Members and matched drivers can read drivers"
+on public.drivers
+for select
+to authenticated
+using ((select public.is_company_member(company_id)) or user_id = (select auth.uid()));
+
+create policy "Operators can manage drivers"
+on public.drivers
+for all
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Members and assigned drivers can read vehicles"
+on public.vehicles
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or exists (
+    select 1
+    from public.drivers d
+    where d.company_id = vehicles.company_id
+      and d.user_id = (select auth.uid())
+  )
+);
+
+create policy "Operators can manage vehicles"
+on public.vehicles
+for all
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Members and assigned drivers can read driver documents"
+on public.driver_documents
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (
+    visible_to_driver
+    and (select public.is_driver_user(driver_id))
+  )
+);
+
+create policy "Operators can manage driver documents"
+on public.driver_documents
+for all
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Members and assigned drivers can read compliance items"
+on public.compliance_items
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (
+    driver_id is not null
+    and (select public.is_driver_user(driver_id))
+  )
+);
+
+create policy "Operators can manage compliance items"
+on public.compliance_items
+for all
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Members and drivers can read notification preferences"
+on public.notification_preferences
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (
+    driver_id is not null
+    and (select public.is_driver_user(driver_id))
+  )
+);
+
+create policy "Operators can manage notification preferences"
+on public.notification_preferences
+for all
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Drivers and members can read in app notifications"
+on public.in_app_notifications
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (
+    driver_id is not null
+    and (select public.is_driver_user(driver_id))
+  )
+);
+
+create policy "Operators can create in app notifications"
+on public.in_app_notifications
+for insert
+to authenticated
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Drivers can mark own notifications read"
+on public.in_app_notifications
+for update
+to authenticated
+using (driver_id is not null and (select public.is_driver_user(driver_id)))
+with check (driver_id is not null and (select public.is_driver_user(driver_id)));
+
+create policy "Drivers and members can read vehicle checks"
+on public.vehicle_checks
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (select public.is_driver_user(driver_id))
+);
+
+create policy "Drivers can create own vehicle checks"
+on public.vehicle_checks
+for insert
+to authenticated
+with check ((select public.is_driver_user(driver_id)));
+
+create policy "Operators can read and manage vehicle checks"
+on public.vehicle_checks
+for update
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Drivers and members can read fault reports"
+on public.fault_reports
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (select public.is_driver_user(driver_id))
+);
+
+create policy "Drivers can create own fault reports"
+on public.fault_reports
+for insert
+to authenticated
+with check ((select public.is_driver_user(driver_id)));
+
+create policy "Operators can update fault reports"
+on public.fault_reports
+for update
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+create policy "Members can read reminder logs"
+on public.reminder_logs
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (
+    driver_id is not null
+    and (select public.is_driver_user(driver_id))
+  )
+);

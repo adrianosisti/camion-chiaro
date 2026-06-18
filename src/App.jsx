@@ -62,6 +62,7 @@ import {
   uploadDriverDocumentFile as uploadSupabaseDriverDocumentFile,
   updateDriverDocumentRecord as updateSupabaseDriverDocument,
   updateDriverRecord as updateSupabaseDriver,
+  updateFaultReportStatus as updateSupabaseFaultReportStatus,
   updateVehicleRecord as updateSupabaseVehicle,
 } from './lib/supabase'
 import './App.css'
@@ -105,6 +106,12 @@ const faultSeverityOptions = [
   { value: 'high', label: 'Alta' },
   { value: 'stop_vehicle', label: 'Fermo mezzo' },
 ]
+const faultStatusOptions = [
+  { value: 'open', label: 'Aperto' },
+  { value: 'seen', label: 'Visto' },
+  { value: 'in_progress', label: 'In lavorazione' },
+  { value: 'closed', label: 'Chiuso' },
+]
 
 function getFleetTypeLabel(value) {
   return fleetTypeOptions.find((option) => option.value === value)?.label ?? value
@@ -112,6 +119,10 @@ function getFleetTypeLabel(value) {
 
 function getFaultSeverityLabel(value) {
   return faultSeverityOptions.find((option) => option.value === value)?.label ?? value
+}
+
+function getFaultStatusLabel(value) {
+  return faultStatusOptions.find((option) => option.value === value)?.label ?? value
 }
 
 function normalizePlate(value) {
@@ -774,6 +785,36 @@ function App() {
     return true
   }
 
+  async function updateFaultReportStatus(reportId, status) {
+    setOperationsSyncStatus('Aggiornamento guasto...')
+
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      const result = await updateSupabaseFaultReportStatus(reportId, status)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Errore guasto: ${result.error.message}`)
+        return false
+      }
+
+      setFaultReportRecords((currentReports) =>
+        currentReports.map((report) => (report.id === reportId ? result.data : report)),
+      )
+      setOperationsSyncStatus('Guasto aggiornato.')
+      return true
+    }
+
+    setFaultReportRecords((currentReports) =>
+      currentReports.map((report) => (report.id === reportId ? { ...report, status } : report)),
+    )
+    setOperationsSyncStatus('Guasto aggiornato in modalità locale.')
+    return true
+  }
+
+  const todayKey = new Date().toDateString()
+  const todayCheckCount = vehicleCheckRecords.filter((check) => new Date(check.createdAt).toDateString() === todayKey).length
+  const openFaultCount = faultReportRecords.filter((report) => report.status !== 'closed').length
+  const notificationCount = todayCheckCount + openFaultCount
+
   if (!session) {
     return <AuthScreen onAuthenticated={handleAuthenticated} />
   }
@@ -805,7 +846,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar activeView={activeView} onNavigate={setActiveView} onSignOut={handleSignOut} session={session} />
+      <Sidebar
+        activeView={activeView}
+        notificationCount={notificationCount}
+        onNavigate={setActiveView}
+        onSignOut={handleSignOut}
+        session={session}
+      />
       <main className="workspace">
         <Topbar query={query} setQuery={setQuery} />
         {activeView === 'drivers' ? (
@@ -833,6 +880,15 @@ function App() {
             onArchiveVehicle={archiveVehicleRecord}
             onUpdateVehicle={updateVehicleRecord}
             syncStatus={fleetSyncStatus}
+            vehicleRecords={vehicleRecords}
+          />
+        ) : activeView === 'notifications' ? (
+          <OperationsWorkspace
+            driverRecords={driverRecords}
+            faultReportRecords={faultReportRecords}
+            onUpdateFaultStatus={updateFaultReportStatus}
+            syncStatus={operationsSyncStatus}
+            vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
           />
         ) : (
@@ -1106,7 +1162,7 @@ function AuthScreen({ onAuthenticated }) {
   )
 }
 
-function Sidebar({ activeView, onNavigate, onSignOut, session }) {
+function Sidebar({ activeView, notificationCount, onNavigate, onSignOut, session }) {
   const navItems = [
     { id: 'dashboard', label: 'Scadenze', icon: CalendarClock },
     { id: 'drivers', label: 'Autisti', icon: Users },
@@ -1137,6 +1193,9 @@ function Sidebar({ activeView, onNavigate, onSignOut, session }) {
           >
             <item.icon size={18} strokeWidth={2.1} />
             <span>{item.label}</span>
+            {item.id === 'notifications' && notificationCount > 0 && (
+              <strong className="nav-badge">{notificationCount}</strong>
+            )}
           </button>
         ))}
       </nav>
@@ -2212,6 +2271,173 @@ function DocumentCreatePanel({ driverRecords, onAddDocument }) {
         {isSaving ? 'Salvataggio...' : 'Aggiungi documento'}
       </button>
     </form>
+  )
+}
+
+function OperationsWorkspace({
+  driverRecords,
+  faultReportRecords,
+  onUpdateFaultStatus,
+  syncStatus,
+  vehicleCheckRecords,
+  vehicleRecords,
+}) {
+  const [filter, setFilter] = useState('open')
+  const today = new Date().toDateString()
+  const openFaults = faultReportRecords.filter((report) => report.status !== 'closed')
+  const todayChecks = vehicleCheckRecords.filter((check) => new Date(check.createdAt).toDateString() === today)
+  const operations = [
+    ...faultReportRecords.map((report) => ({
+      createdAt: report.createdAt,
+      data: report,
+      id: report.id,
+      kind: 'fault',
+    })),
+    ...vehicleCheckRecords.map((check) => ({
+      createdAt: check.createdAt,
+      data: check,
+      id: check.id,
+      kind: 'check',
+    })),
+  ]
+    .filter((operation) => {
+      if (filter === 'open') return operation.kind === 'fault' && operation.data.status !== 'closed'
+      if (filter === 'faults') return operation.kind === 'fault'
+      if (filter === 'checks') return operation.kind === 'check'
+      return true
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+
+  return (
+    <section className="operations-workspace" aria-label="Notifiche operative">
+      <div className="panel operations-panel">
+        <div className="panel-header">
+          <div>
+            <p className="overline">Campanella</p>
+            <h2>Notifiche operative</h2>
+          </div>
+          <Bell size={22} />
+        </div>
+        <div className="operations-summary-grid">
+          <div>
+            <strong>{openFaults.length}</strong>
+            <span>guasti aperti</span>
+          </div>
+          <div>
+            <strong>{todayChecks.length}</strong>
+            <span>check oggi</span>
+          </div>
+          <div>
+            <strong>{faultReportRecords.length + vehicleCheckRecords.length}</strong>
+            <span>totale eventi</span>
+          </div>
+        </div>
+        <div className="filter-tabs operations-filters" role="tablist" aria-label="Filtra notifiche">
+          <button className={filter === 'open' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('open')} type="button">
+            Guasti aperti
+          </button>
+          <button className={filter === 'all' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('all')} type="button">
+            Tutte
+          </button>
+          <button className={filter === 'checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('checks')} type="button">
+            Check
+          </button>
+          <button className={filter === 'faults' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => setFilter('faults')} type="button">
+            Guasti
+          </button>
+        </div>
+        <div className="operations-list">
+          {operations.map((operation) =>
+            operation.kind === 'fault' ? (
+              <FaultOperationRow
+                driver={driverRecords.find((driver) => driver.id === operation.data.driverId)}
+                key={`fault-${operation.id}`}
+                onUpdateStatus={onUpdateFaultStatus}
+                report={operation.data}
+                trailer={vehicleRecords.find((vehicle) => vehicle.id === operation.data.semitrailerId)}
+                vehicle={vehicleRecords.find((vehicle) => vehicle.id === operation.data.vehicleId)}
+              />
+            ) : (
+              <CheckOperationRow
+                check={operation.data}
+                driver={driverRecords.find((driver) => driver.id === operation.data.driverId)}
+                key={`check-${operation.id}`}
+                trailer={vehicleRecords.find((vehicle) => vehicle.id === operation.data.semitrailerId)}
+                vehicle={vehicleRecords.find((vehicle) => vehicle.id === operation.data.tractorId)}
+              />
+            ),
+          )}
+          {operations.length === 0 && <p className="archive-note">Nessuna notifica in questa vista.</p>}
+        </div>
+        {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
+      </div>
+    </section>
+  )
+}
+
+function FaultOperationRow({ driver, onUpdateStatus, report, trailer, vehicle }) {
+  const isClosed = report.status === 'closed'
+
+  return (
+    <article className="operation-row">
+      <div className="operation-icon tone-danger">
+        <Wrench size={20} />
+      </div>
+      <div className="operation-main">
+        <div className="operation-title">
+          <strong>{report.title}</strong>
+          <span className="status-pill tone-warning">{getFaultStatusLabel(report.status)}</span>
+        </div>
+        <p>{driver?.name ?? 'Autista'} · {vehicle?.plate ?? 'Mezzo non trovato'}</p>
+        <small>
+          {getFaultSeverityLabel(report.severity)} · {formatShortDateTime(report.createdAt)}
+          {trailer ? ` · semirimorchio ${trailer.plate}` : ''}
+        </small>
+        {report.description && <em>{report.description}</em>}
+      </div>
+      <div className="operation-actions">
+        <button disabled={isClosed} className="small-button" onClick={() => onUpdateStatus(report.id, 'seen')} type="button">
+          Visto
+        </button>
+        <button disabled={isClosed} className="small-button" onClick={() => onUpdateStatus(report.id, 'in_progress')} type="button">
+          Lavora
+        </button>
+        <button className="small-button danger-action" onClick={() => onUpdateStatus(report.id, 'closed')} type="button">
+          Chiudi
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function CheckOperationRow({ check, driver, trailer, vehicle }) {
+  const issueText = [
+    check.lightsOk ? null : 'luci da controllare',
+    check.tiresOk ? null : 'gomme da controllare',
+    check.documentsOnBoard ? null : 'documenti bordo mancanti',
+  ].filter(Boolean)
+
+  return (
+    <article className="operation-row">
+      <div className="operation-icon tone-success">
+        <ClipboardCheck size={20} />
+      </div>
+      <div className="operation-main">
+        <div className="operation-title">
+          <strong>Check mattutino</strong>
+          <span className={issueText.length > 0 ? 'status-pill tone-warning' : 'status-pill tone-success'}>
+            {issueText.length > 0 ? 'Con note' : 'Ok'}
+          </span>
+        </div>
+        <p>{driver?.name ?? 'Autista'} · {vehicle?.plate ?? 'Mezzo non trovato'}</p>
+        <small>
+          {formatShortDateTime(check.createdAt)}
+          {check.odometerKm ? ` · ${check.odometerKm.toLocaleString('it-IT')} km` : ''}
+          {trailer ? ` · semirimorchio ${trailer.plate}` : ''}
+        </small>
+        {(issueText.length > 0 || check.notes) && <em>{[...issueText, check.notes].filter(Boolean).join(' · ')}</em>}
+      </div>
+    </article>
   )
 }
 

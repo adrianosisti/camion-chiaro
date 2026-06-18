@@ -645,6 +645,37 @@ export async function createFaultReportRecord(report, companyId = configuredComp
   return { data: data ? mapFaultReport(data) : null, error }
 }
 
+export async function updateFaultReportStatus(reportId, status) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !reportId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('fault_reports')
+    .update({ status })
+    .eq('id', reportId)
+    .select(
+      `
+        id,
+        company_id,
+        driver_id,
+        vehicle_id,
+        semitrailer_id,
+        severity,
+        title,
+        description,
+        status,
+        created_at,
+        updated_at
+      `,
+    )
+    .single()
+
+  return { data: data ? mapFaultReport(data) : null, error }
+}
+
 export async function updateDriverDocumentRecord(documentId, updates) {
   const supabase = await getSupabaseClient()
 

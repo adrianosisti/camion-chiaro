@@ -17,6 +17,13 @@ for select
 to authenticated
 using ((select public.is_company_member(id)));
 
+create policy "Operators can update their companies"
+on public.companies
+for update
+to authenticated
+using ((select public.is_company_operator(id)))
+with check ((select public.is_company_operator(id)));
+
 create policy "Members can read company membership"
 on public.company_members
 for select

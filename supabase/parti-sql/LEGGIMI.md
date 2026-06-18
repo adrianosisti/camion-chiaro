@@ -19,3 +19,8 @@ Se un blocco va a buon fine, Supabase mostra `Success. No rows returned` o un me
 Il file `08_reset_test_check_guasti.sql` non fa parte dell'installazione iniziale.
 Usalo solo se vuoi cancellare i guasti e i check mattutini di prova e ripartire pulito.
 Non cancella autisti, flotta, documenti, scadenze o impostazioni azienda.
+
+## Impostazioni azienda
+
+Il file `09_policy_impostazioni_azienda.sql` abilita il salvataggio della schermata Impostazioni azienda.
+Eseguilo una sola volta in Supabase SQL Editor se vuoi modificare ragione sociale, partita IVA e sede dall'app.

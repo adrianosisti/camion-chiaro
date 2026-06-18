@@ -201,6 +201,16 @@ function toVehicleUpdatePayload(updates) {
   return payload
 }
 
+function toCompanyProfileUpdatePayload(updates) {
+  const payload = {}
+
+  if ('name' in updates) payload.name = updates.name.trim()
+  if ('vatNumber' in updates) payload.vat_number = updates.vatNumber.trim() || null
+  if ('headquarters' in updates) payload.headquarters = updates.headquarters.trim() || null
+
+  return payload
+}
+
 function toDriverDocumentPayload(document, companyId = configuredCompanyId) {
   return {
     company_id: companyId,
@@ -310,6 +320,24 @@ export async function fetchCompanyProfile(companyId = configuredCompanyId) {
     .from('companies')
     .select('id, name, vat_number, headquarters')
     .eq('id', companyId)
+    .maybeSingle()
+
+  return { data: data ? mapCompanyProfile(data) : null, error }
+}
+
+export async function updateCompanyProfile(updates, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+  const payload = toCompanyProfileUpdatePayload(updates)
+
+  if (!supabase || !companyId || Object.keys(payload).length === 0) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('companies')
+    .update(payload)
+    .eq('id', companyId)
+    .select('id, name, vat_number, headquarters')
     .maybeSingle()
 
   return { data: data ? mapCompanyProfile(data) : null, error }

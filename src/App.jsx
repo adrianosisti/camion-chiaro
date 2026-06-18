@@ -22,6 +22,7 @@ import Route from 'lucide-react/dist/esm/icons/route.mjs'
 import Save from 'lucide-react/dist/esm/icons/save.mjs'
 import Search from 'lucide-react/dist/esm/icons/search.mjs'
 import Send from 'lucide-react/dist/esm/icons/send.mjs'
+import SettingsIcon from 'lucide-react/dist/esm/icons/settings.mjs'
 import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check.mjs'
 import Smartphone from 'lucide-react/dist/esm/icons/smartphone.mjs'
 import Stethoscope from 'lucide-react/dist/esm/icons/stethoscope.mjs'
@@ -62,6 +63,7 @@ import {
   uploadDriverDocumentFile as uploadSupabaseDriverDocumentFile,
   updateDriverDocumentRecord as updateSupabaseDriverDocument,
   updateDriverRecord as updateSupabaseDriver,
+  updateCompanyProfile as updateSupabaseCompanyProfile,
   updateFaultReportStatus as updateSupabaseFaultReportStatus,
   updateVehicleRecord as updateSupabaseVehicle,
 } from './lib/supabase'
@@ -236,7 +238,12 @@ function App() {
   const [vehicleRecords, setVehicleRecords] = useState(vehicles)
   const [vehicleCheckRecords, setVehicleCheckRecords] = useState([])
   const [faultReportRecords, setFaultReportRecords] = useState([])
-  const [registeredCompanyName, setRegisteredCompanyName] = useState('')
+  const [companyProfile, setCompanyProfile] = useState({
+    headquarters: company.location,
+    id: '',
+    name: company.name,
+    vatNumber: company.vat,
+  })
   const [activeView, setActiveView] = useState('dashboard')
   const [activeFilter, setActiveFilter] = useState('all')
   const [query, setQuery] = useState('')
@@ -244,6 +251,7 @@ function App() {
   const [documentsSyncStatus, setDocumentsSyncStatus] = useState('')
   const [fleetSyncStatus, setFleetSyncStatus] = useState('')
   const [operationsSyncStatus, setOperationsSyncStatus] = useState('')
+  const [companySettingsStatus, setCompanySettingsStatus] = useState('')
   const [driverDocumentUploadStatus, setDriverDocumentUploadStatus] = useState('')
   const [uploadingDriverDocumentId, setUploadingDriverDocumentId] = useState('')
   const [driverUploadSent, setDriverUploadSent] = useState(false)
@@ -326,7 +334,7 @@ function App() {
 
       if (!isMounted) return
 
-      if (companyResult.data?.name) setRegisteredCompanyName(companyResult.data.name)
+      if (companyResult.data?.name) setCompanyProfile(companyResult.data)
       if (driversResult.error || vehiclesResult.error || complianceResult.error || documentsResult.error) {
         setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
         setDocumentsSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i documenti locali.')
@@ -449,7 +457,45 @@ function App() {
     setActiveView('dashboard')
     setActiveFilter('all')
     setOperationsSyncStatus('')
-    setRegisteredCompanyName('')
+    setCompanySettingsStatus('')
+    setCompanyProfile({
+      headquarters: company.location,
+      id: '',
+      name: company.name,
+      vatNumber: company.vat,
+    })
+  }
+
+  async function updateCompanyProfile(updates) {
+    const cleanUpdates = {
+      headquarters: updates.headquarters.trim(),
+      name: updates.name.trim(),
+      vatNumber: updates.vatNumber.trim(),
+    }
+
+    if (!cleanUpdates.name) {
+      setCompanySettingsStatus('Inserisci la ragione sociale.')
+      return false
+    }
+
+    setCompanyProfile((currentProfile) => ({ ...currentProfile, ...cleanUpdates }))
+    setCompanySettingsStatus('Salvataggio impostazioni...')
+
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      const result = await updateSupabaseCompanyProfile(cleanUpdates)
+
+      if (result.error) {
+        setCompanySettingsStatus(`Dati aggiornati localmente. Supabase: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) setCompanyProfile(result.data)
+      setCompanySettingsStatus('Impostazioni azienda salvate.')
+      return true
+    }
+
+    setCompanySettingsStatus('Impostazioni azienda salvate in modalità locale.')
+    return true
   }
 
   function addComplianceItem(formItem) {
@@ -916,7 +962,7 @@ function App() {
     )
   }
 
-  const companyName = getDisplayCompanyName(registeredCompanyName || session.name || company.name || 'Azienda')
+  const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
 
@@ -969,6 +1015,14 @@ function App() {
             vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
           />
+        ) : activeView === 'settings' ? (
+          <SettingsWorkspace
+            key={`${companyProfile.name}-${companyProfile.vatNumber}-${companyProfile.headquarters}`}
+            companyEmail={session.email}
+            companyProfile={{ ...companyProfile, name: companyName }}
+            onUpdateCompanyProfile={updateCompanyProfile}
+            syncStatus={companySettingsStatus}
+          />
         ) : (
           <>
             <section className="overview-grid" aria-label="Panoramica scadenze">
@@ -999,8 +1053,6 @@ function App() {
                 <NotificationPanel
                   driverRecords={driverRecords}
                   faultReportRecords={visibleFaultReportRecords}
-                  faultReported={faultReported}
-                  morningCheckSent={morningCheckSent}
                   vehicleCheckRecords={vehicleCheckRecords}
                   vehicleRecords={vehicleRecords}
                 />
@@ -1253,6 +1305,7 @@ function Sidebar({ activeView, notificationCount, onNavigate, onSignOut, session
     { id: 'fleet', label: 'Flotta', icon: Truck },
     { id: 'documents', label: 'Documenti', icon: FileText },
     { id: 'notifications', label: 'Notifiche', icon: Bell },
+    { id: 'settings', label: 'Impostazioni', icon: SettingsIcon },
   ]
 
   return (
@@ -1317,6 +1370,83 @@ function Topbar({ query, setQuery }) {
         />
       </label>
     </header>
+  )
+}
+
+function SettingsWorkspace({ companyEmail, companyProfile, onUpdateCompanyProfile, syncStatus }) {
+  const [form, setForm] = useState({
+    headquarters: companyProfile.headquarters ?? '',
+    name: companyProfile.name ?? '',
+    vatNumber: companyProfile.vatNumber ?? '',
+  })
+  const [isSaving, setIsSaving] = useState(false)
+
+  function updateField(field, value) {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    setIsSaving(true)
+    await onUpdateCompanyProfile(form)
+    setIsSaving(false)
+  }
+
+  return (
+    <section className="settings-workspace" aria-label="Impostazioni azienda">
+      <form className="panel settings-panel" onSubmit={handleSubmit}>
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">Profilo trasportatore</p>
+            <h2>Impostazioni azienda</h2>
+          </div>
+          <SettingsIcon size={20} />
+        </div>
+        <div className="form-grid">
+          <label className="wide-field">
+            Ragione sociale
+            <input
+              autoComplete="organization"
+              required
+              value={form.name}
+              onChange={(event) => updateField('name', event.target.value)}
+            />
+          </label>
+          <label>
+            Partita IVA
+            <input value={form.vatNumber} onChange={(event) => updateField('vatNumber', event.target.value)} />
+          </label>
+          <label>
+            Sede
+            <input value={form.headquarters} onChange={(event) => updateField('headquarters', event.target.value)} />
+          </label>
+          <label className="wide-field">
+            Email accesso
+            <input disabled value={companyEmail ?? ''} />
+          </label>
+        </div>
+        <button className="primary-button full-button" disabled={isSaving} type="submit">
+          <Save size={17} />
+          {isSaving ? 'Salvataggio...' : 'Salva modifiche'}
+        </button>
+        {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
+      </form>
+      <aside className="panel settings-summary-panel">
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">Anteprima</p>
+            <h2>Dati azienda</h2>
+          </div>
+          <Building2 size={20} />
+        </div>
+        <div className="settings-summary-list">
+          <DetailLine label="Dashboard" value={form.name} />
+          <DetailLine label="Partita IVA" value={form.vatNumber || 'Non inserita'} />
+          <DetailLine label="Sede" value={form.headquarters || 'Non inserita'} />
+          <DetailLine label="Email accesso" value={companyEmail || 'Non disponibile'} />
+        </div>
+      </aside>
+    </section>
   )
 }
 
@@ -3366,20 +3496,9 @@ function DriverMobile({
 function NotificationPanel({
   driverRecords,
   faultReportRecords,
-  faultReported,
-  morningCheckSent,
   vehicleCheckRecords,
   vehicleRecords,
 }) {
-  const today = new Date().toDateString()
-  const todayChecks = vehicleCheckRecords.filter((check) => new Date(check.createdAt).toDateString() === today).length
-  const openFaults = faultReportRecords.filter((report) => report.status !== 'closed')
-  const rules = [
-    { label: '60 giorni', detail: 'email responsabile' },
-    { label: '30 giorni', detail: 'notifica in app autista' },
-    { label: 'Check mattino', detail: todayChecks > 0 || morningCheckSent ? `${todayChecks || 1} ricevuti oggi` : 'in attesa' },
-    { label: 'Guasti', detail: openFaults.length > 0 || faultReported ? `${openFaults.length || 1} segnalazioni aperte` : 'nessuna segnalazione' },
-  ]
   const latestOperations = [
     ...vehicleCheckRecords.slice(0, 3).map((check) => ({
       detail: `${vehicleRecords.find((vehicle) => vehicle.id === check.tractorId)?.plate ?? 'Mezzo'} · ${formatShortDateTime(check.createdAt)}`,
@@ -3397,24 +3516,12 @@ function NotificationPanel({
     <section className="panel notification-panel">
       <div className="panel-header compact">
         <div>
-          <p className="overline">Automazioni</p>
-          <h2>Regole notifiche</h2>
+          <p className="overline">Campanella</p>
+          <h2>Ultime notifiche</h2>
         </div>
         <Bell size={20} />
       </div>
-      <div className="rule-list">
-        {rules.map((rule) => (
-          <div className="rule-row" key={rule.label}>
-            <div className="rule-dot"></div>
-            <div>
-              <strong>{rule.label}</strong>
-              <span>{rule.detail}</span>
-            </div>
-          </div>
-        ))}
-      </div>
       <div className="operation-feed">
-        <strong>Ultime attivita</strong>
         {latestOperations.map((operation) => (
           <div className="operation-feed-row" key={`${operation.type}-${operation.label}-${operation.detail}`}>
             <span>{operation.type}</span>

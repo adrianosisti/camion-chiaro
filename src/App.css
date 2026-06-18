@@ -673,6 +673,13 @@
   align-items: start;
 }
 
+.settings-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  gap: 20px;
+  align-items: start;
+}
+
 .drivers-main {
   min-width: 0;
 }
@@ -698,6 +705,10 @@
 }
 
 .operations-panel {
+  overflow: hidden;
+}
+
+.settings-panel {
   overflow: hidden;
 }
 
@@ -1510,6 +1521,24 @@
   padding: 0 10px;
 }
 
+.form-grid input:disabled {
+  color: #64748b;
+  background: #f8fbff;
+  cursor: not-allowed;
+}
+
+.settings-summary-panel {
+  position: sticky;
+  top: 22px;
+  overflow: hidden;
+}
+
+.settings-summary-list {
+  display: grid;
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+
 .wide-field {
   grid-column: 1 / -1;
 }
@@ -1966,7 +1995,8 @@
 @media (max-width: 1240px) {
   .overview-grid,
   .content-grid,
-  .operations-workspace {
+  .operations-workspace,
+  .settings-workspace {
     grid-template-columns: 1fr;
   }
 
@@ -2044,6 +2074,10 @@
   }
 
   .operation-detail-panel {
+    position: static;
+  }
+
+  .settings-summary-panel {
     position: static;
   }
 }

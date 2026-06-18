@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
 import BadgeCheck from 'lucide-react/dist/esm/icons/badge-check.mjs'
@@ -16,9 +16,11 @@ import LockKeyhole from 'lucide-react/dist/esm/icons/lock-keyhole.mjs'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.mjs'
 import Mail from 'lucide-react/dist/esm/icons/mail.mjs'
 import MapPin from 'lucide-react/dist/esm/icons/map-pin.mjs'
+import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
 import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
 import RadioTower from 'lucide-react/dist/esm/icons/radio-tower.mjs'
 import Route from 'lucide-react/dist/esm/icons/route.mjs'
+import Save from 'lucide-react/dist/esm/icons/save.mjs'
 import Search from 'lucide-react/dist/esm/icons/search.mjs'
 import Send from 'lucide-react/dist/esm/icons/send.mjs'
 import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check.mjs'
@@ -26,17 +28,26 @@ import Smartphone from 'lucide-react/dist/esm/icons/smartphone.mjs'
 import Stethoscope from 'lucide-react/dist/esm/icons/stethoscope.mjs'
 import Truck from 'lucide-react/dist/esm/icons/truck.mjs'
 import Upload from 'lucide-react/dist/esm/icons/upload.mjs'
+import UserPlus from 'lucide-react/dist/esm/icons/user-plus.mjs'
 import UserRound from 'lucide-react/dist/esm/icons/user-round.mjs'
 import Users from 'lucide-react/dist/esm/icons/users.mjs'
 import Wrench from 'lucide-react/dist/esm/icons/wrench.mjs'
 import { company, complianceItems, driverDocuments, drivers, vehicles } from './data/sampleData'
 import { decorateCompliance, formatDate, getSummary } from './lib/expiry'
 import {
+  archiveDriverRecord as archiveSupabaseDriver,
+  createDriverRecord as createSupabaseDriver,
+  fetchComplianceItems,
+  fetchDrivers,
+  fetchVehicles,
+  getCurrentAuthSession,
+  isCompanyDataConfigured,
   isSupabaseConfigured,
   signInDriver,
   signInCompany,
   signOut,
   signUpCompany,
+  updateDriverRecord as updateSupabaseDriver,
 } from './lib/supabase'
 import './App.css'
 
@@ -61,17 +72,98 @@ const documentTypes = [
   'Formazione ADR',
 ]
 
+const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
+
+function normalizeDriverUsername(value) {
+  return value.trim().toLowerCase().replace(/\s+/g, '.')
+}
+
+function buildDriverAuthEmail(username) {
+  const cleanUsername = normalizeDriverUsername(username)
+  return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${driverAuthDomain}`
+}
+
+function buildAppSessionFromAuthUser(user) {
+  const email = user.email ?? ''
+  const isDriver = user.user_metadata?.account_type === 'driver' || email.endsWith(`@${driverAuthDomain}`)
+
+  return {
+    role: isDriver ? 'driver' : 'company',
+    name: user.user_metadata?.company_name ?? user.user_metadata?.full_name ?? email,
+    email,
+    username: isDriver ? email.replace(`@${driverAuthDomain}`, '') : undefined,
+  }
+}
+
 function App() {
   const [session, setSession] = useState(null)
   const [items, setItems] = useState(complianceItems)
+  const [driverRecords, setDriverRecords] = useState(drivers)
+  const [vehicleRecords, setVehicleRecords] = useState(vehicles)
+  const [activeView, setActiveView] = useState('dashboard')
   const [activeFilter, setActiveFilter] = useState('all')
   const [query, setQuery] = useState('')
+  const [driversSyncStatus, setDriversSyncStatus] = useState('')
   const [driverUploadSent, setDriverUploadSent] = useState(false)
   const [morningCheckSent, setMorningCheckSent] = useState(false)
   const [faultReported, setFaultReported] = useState(false)
 
-  const decoratedItems = useMemo(() => decorateCompliance(items, drivers, vehicles), [items])
+  const decoratedItems = useMemo(() => decorateCompliance(items, driverRecords, vehicleRecords), [driverRecords, items, vehicleRecords])
   const summary = useMemo(() => getSummary(decoratedItems), [decoratedItems])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+
+    let isMounted = true
+
+    async function restoreSession() {
+      const result = await getCurrentAuthSession()
+      const authUser = result.data?.session?.user
+
+      if (isMounted && authUser) {
+        setSession((currentSession) => currentSession ?? buildAppSessionFromAuthUser(authUser))
+      }
+    }
+
+    restoreSession()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!session || session.role !== 'company' || !isCompanyDataConfigured) return
+
+    let isMounted = true
+
+    async function loadCompanyData() {
+      setDriversSyncStatus('Caricamento dati Supabase...')
+      const [driversResult, vehiclesResult, complianceResult] = await Promise.all([
+        fetchDrivers(),
+        fetchVehicles(),
+        fetchComplianceItems(),
+      ])
+
+      if (!isMounted) return
+
+      if (driversResult.error || vehiclesResult.error || complianceResult.error) {
+        setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
+        return
+      }
+
+      if (driversResult.data) setDriverRecords(driversResult.data)
+      if (vehiclesResult.data) setVehicleRecords(vehiclesResult.data)
+      if (complianceResult.data) setItems(complianceResult.data)
+      setDriversSyncStatus('Dati Supabase caricati.')
+    }
+
+    loadCompanyData()
+
+    return () => {
+      isMounted = false
+    }
+  }, [session])
 
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -98,6 +190,7 @@ function App() {
     await signOut()
     setSession(null)
     setQuery('')
+    setActiveView('dashboard')
     setActiveFilter('all')
   }
 
@@ -125,6 +218,76 @@ function App() {
     )
   }
 
+  async function addDriverRecord(driver) {
+    const cleanDriver = {
+      ...driver,
+      authEmail: buildDriverAuthEmail(driver.username),
+      username: normalizeDriverUsername(driver.username),
+    }
+
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setDriversSyncStatus('Salvataggio autista su Supabase...')
+      const result = await createSupabaseDriver(cleanDriver)
+
+      if (result.error) {
+        setDriversSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      setDriverRecords((currentDrivers) => [result.data, ...currentDrivers])
+      setDriversSyncStatus('Autista salvato su Supabase.')
+      return true
+    }
+
+    setDriverRecords((currentDrivers) => [cleanDriver, ...currentDrivers])
+    setDriversSyncStatus('Autista aggiunto in modalità locale.')
+    return true
+  }
+
+  async function updateDriverRecord(driverId, updates) {
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setDriversSyncStatus('Aggiornamento autista su Supabase...')
+      const result = await updateSupabaseDriver(driverId, updates)
+
+      if (result.error) {
+        setDriversSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      setDriverRecords((currentDrivers) =>
+        currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, ...result.data, vehicleId: updates.vehicleId ?? driver.vehicleId } : driver)),
+      )
+      setDriversSyncStatus('Autista aggiornato.')
+      return true
+    }
+
+    setDriverRecords((currentDrivers) =>
+      currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, ...updates } : driver)),
+    )
+    setDriversSyncStatus('Autista aggiornato in modalità locale.')
+    return true
+  }
+
+  async function archiveDriverRecord(driverId) {
+    if (isCompanyDataConfigured && session?.role === 'company') {
+      setDriversSyncStatus('Archiviazione autista su Supabase...')
+      const result = await archiveSupabaseDriver(driverId)
+
+      if (result.error) {
+        setDriversSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+    }
+
+    setDriverRecords((currentDrivers) =>
+      currentDrivers.map((driver) =>
+        driver.id === driverId ? { ...driver, status: 'Archiviato', vehicleId: '' } : driver,
+      ),
+    )
+    setDriversSyncStatus(isCompanyDataConfigured ? 'Autista archiviato.' : 'Autista archiviato in modalità locale.')
+    return true
+  }
+
   if (!session) {
     return <AuthScreen onAuthenticated={setSession} />
   }
@@ -133,6 +296,8 @@ function App() {
     return (
       <DriverAppView
         items={decoratedItems}
+        driverRecords={driverRecords}
+        vehicleRecords={vehicleRecords}
         onSignOut={handleSignOut}
         onUpload={() => setDriverUploadSent(true)}
         onMorningCheck={() => setMorningCheckSent(true)}
@@ -146,38 +311,53 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar onSignOut={handleSignOut} session={session} />
+      <Sidebar activeView={activeView} onNavigate={setActiveView} onSignOut={handleSignOut} session={session} />
       <main className="workspace">
         <Topbar query={query} setQuery={setQuery} />
-        <section className="overview-grid" aria-label="Panoramica scadenze">
-          <HeroPanel summary={summary} />
-          <Metrics summary={summary} />
-        </section>
-        <section className="content-grid">
-          <div className="main-column">
-            <ComplianceBoard
-              activeFilter={activeFilter}
-              filteredItems={filteredItems}
-              onClose={closeItem}
-              onFilter={setActiveFilter}
-              onReminder={sendReminder}
-              onRenew={markRenewing}
-            />
-            <FleetAndForms onAdd={addComplianceItem} />
-          </div>
-          <aside className="side-column" aria-label="Strumenti operativi">
-            <DriverMobile
-              items={decoratedItems}
-              onFaultReport={() => setFaultReported(true)}
-              onMorningCheck={() => setMorningCheckSent(true)}
-              onUpload={() => setDriverUploadSent(true)}
-              faultReported={faultReported}
-              morningCheckSent={morningCheckSent}
-              uploadSent={driverUploadSent}
-            />
-            <NotificationPanel faultReported={faultReported} morningCheckSent={morningCheckSent} />
-          </aside>
-        </section>
+        {activeView === 'drivers' ? (
+          <DriversWorkspace
+            driverRecords={driverRecords}
+            onAddDriver={addDriverRecord}
+            onArchiveDriver={archiveDriverRecord}
+            onUpdateDriver={updateDriverRecord}
+            syncStatus={driversSyncStatus}
+            vehicleRecords={vehicleRecords}
+          />
+        ) : (
+          <>
+            <section className="overview-grid" aria-label="Panoramica scadenze">
+              <HeroPanel summary={summary} />
+              <Metrics driverCount={driverRecords.length} summary={summary} />
+            </section>
+            <section className="content-grid">
+              <div className="main-column">
+                <ComplianceBoard
+                  activeFilter={activeFilter}
+                  filteredItems={filteredItems}
+                  onClose={closeItem}
+                  onFilter={setActiveFilter}
+                  onReminder={sendReminder}
+                  onRenew={markRenewing}
+                />
+                <FleetAndForms driverRecords={driverRecords} onAdd={addComplianceItem} vehicleRecords={vehicleRecords} />
+              </div>
+              <aside className="side-column" aria-label="Strumenti operativi">
+                <DriverMobile
+                  driverRecords={driverRecords}
+                  faultReported={faultReported}
+                  items={decoratedItems}
+                  morningCheckSent={morningCheckSent}
+                  onFaultReport={() => setFaultReported(true)}
+                  onMorningCheck={() => setMorningCheckSent(true)}
+                  onUpload={() => setDriverUploadSent(true)}
+                  uploadSent={driverUploadSent}
+                  vehicleRecords={vehicleRecords}
+                />
+                <NotificationPanel faultReported={faultReported} morningCheckSent={morningCheckSent} />
+              </aside>
+            </section>
+          </>
+        )}
       </main>
     </div>
   )
@@ -394,13 +574,13 @@ function AuthScreen({ onAuthenticated }) {
   )
 }
 
-function Sidebar({ onSignOut, session }) {
+function Sidebar({ activeView, onNavigate, onSignOut, session }) {
   const navItems = [
-    { label: 'Scadenze', icon: CalendarClock, active: true },
-    { label: 'Autisti', icon: Users },
-    { label: 'Flotta', icon: Truck },
-    { label: 'Documenti', icon: FileText },
-    { label: 'Notifiche', icon: Bell },
+    { id: 'dashboard', label: 'Scadenze', icon: CalendarClock },
+    { id: 'drivers', label: 'Autisti', icon: Users },
+    { id: 'fleet', label: 'Flotta', icon: Truck },
+    { id: 'documents', label: 'Documenti', icon: FileText },
+    { id: 'notifications', label: 'Notifiche', icon: Bell },
   ]
 
   return (
@@ -417,7 +597,12 @@ function Sidebar({ onSignOut, session }) {
 
       <nav className="nav-list">
         {navItems.map((item) => (
-          <button className={item.active ? 'nav-item is-active' : 'nav-item'} key={item.label} type="button">
+          <button
+            className={activeView === item.id ? 'nav-item is-active' : 'nav-item'}
+            key={item.label}
+            onClick={() => onNavigate(item.id)}
+            type="button"
+          >
             <item.icon size={18} strokeWidth={2.1} />
             <span>{item.label}</span>
           </button>
@@ -503,7 +688,7 @@ function HeroPanel({ summary }) {
   )
 }
 
-function Metrics({ summary }) {
+function Metrics({ driverCount, summary }) {
   const metrics = [
     {
       label: 'Critiche',
@@ -521,7 +706,7 @@ function Metrics({ summary }) {
     },
     {
       label: 'Autisti',
-      value: drivers.length,
+      value: driverCount,
       detail: `${summary.driverDocs} documenti`,
       icon: UserRound,
       tone: 'info',
@@ -546,6 +731,309 @@ function Metrics({ summary }) {
         </article>
       ))}
     </div>
+  )
+}
+
+function DriversWorkspace({ driverRecords, onAddDriver, onArchiveDriver, onUpdateDriver, syncStatus, vehicleRecords }) {
+  const [editingId, setEditingId] = useState(null)
+  const [draftById, setDraftById] = useState({})
+  const [savingId, setSavingId] = useState(null)
+  const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
+  const archivedDrivers = driverRecords.filter((driver) => driver.status === 'Archiviato')
+
+  function startEditing(driver) {
+    setEditingId(driver.id)
+    setDraftById((currentDrafts) => ({
+      ...currentDrafts,
+      [driver.id]: {
+        depot: driver.depot,
+        email: driver.email,
+        name: driver.name,
+        phone: driver.phone,
+        role: driver.role,
+        status: driver.status,
+        vehicleId: driver.vehicleId,
+      },
+    }))
+  }
+
+  function updateDraft(driverId, field, value) {
+    setDraftById((currentDrafts) => ({
+      ...currentDrafts,
+      [driverId]: {
+        ...currentDrafts[driverId],
+        [field]: value,
+      },
+    }))
+  }
+
+  async function saveDraft(driverId) {
+    setSavingId(driverId)
+    const saved = await onUpdateDriver(driverId, draftById[driverId])
+    setSavingId(null)
+
+    if (saved) {
+      setEditingId(null)
+    }
+  }
+
+  async function archiveDriver(driverId) {
+    setSavingId(driverId)
+    await onArchiveDriver(driverId)
+    setSavingId(null)
+  }
+
+  return (
+    <section className="drivers-workspace" aria-label="Gestione autisti">
+      <div className="drivers-main">
+        <div className="panel drivers-panel">
+          <div className="panel-header">
+            <div>
+              <p className="overline">Anagrafica</p>
+              <h2>Autisti</h2>
+            </div>
+            <div className="drivers-count">
+              <strong>{activeDrivers.length}</strong>
+              <span>attivi</span>
+            </div>
+          </div>
+          <div className="drivers-table">
+            <div className="drivers-table-head">
+              <span>Autista</span>
+              <span>Username</span>
+              <span>Mezzo</span>
+              <span>Stato</span>
+              <span>Azioni</span>
+            </div>
+            {activeDrivers.map((driver) => (
+              <DriverManagementRow
+                draft={draftById[driver.id]}
+                driver={driver}
+                editing={editingId === driver.id}
+                key={driver.id}
+                onArchive={() => archiveDriver(driver.id)}
+                onCancel={() => setEditingId(null)}
+                onEdit={() => startEditing(driver)}
+                onSave={() => saveDraft(driver.id)}
+                onUpdateDraft={(field, value) => updateDraft(driver.id, field, value)}
+                saving={savingId === driver.id}
+                vehicleRecords={vehicleRecords}
+              />
+            ))}
+          </div>
+          {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
+          {archivedDrivers.length > 0 && (
+            <p className="archive-note">{archivedDrivers.length} autisti archiviati nascosti dall elenco operativo.</p>
+          )}
+        </div>
+      </div>
+      <DriverCreatePanel onAddDriver={onAddDriver} vehicleRecords={vehicleRecords} />
+    </section>
+  )
+}
+
+function DriverManagementRow({
+  draft,
+  driver,
+  editing,
+  onArchive,
+  onCancel,
+  onEdit,
+  onSave,
+  onUpdateDraft,
+  saving,
+  vehicleRecords,
+}) {
+  const assignedVehicle = vehicleRecords.find((vehicle) => vehicle.id === driver.vehicleId)
+  const username = driver.username ?? normalizeDriverUsername(driver.name)
+
+  if (editing) {
+    return (
+      <article className="driver-row is-editing">
+        <div className="driver-person">
+          <input value={draft.name} onChange={(event) => onUpdateDraft('name', event.target.value)} />
+          <input value={draft.phone} onChange={(event) => onUpdateDraft('phone', event.target.value)} />
+        </div>
+        <div>
+          <strong>{username}</strong>
+          <span>{buildDriverAuthEmail(username)}</span>
+        </div>
+        <select value={draft.vehicleId} onChange={(event) => onUpdateDraft('vehicleId', event.target.value)}>
+          <option value="">Nessun mezzo</option>
+          {vehicleRecords
+            .filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
+            .map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.plate} · {vehicle.type}
+              </option>
+            ))}
+        </select>
+        <select value={draft.status} onChange={(event) => onUpdateDraft('status', event.target.value)}>
+          <option>Disponibile</option>
+          <option>In servizio</option>
+          <option>In viaggio</option>
+          <option>Sospeso</option>
+        </select>
+        <div className="row-actions">
+          <button className="small-button" disabled={saving} onClick={onSave} type="button">
+            <Save size={15} />
+            {saving ? 'Salvo...' : 'Salva'}
+          </button>
+          <button className="small-button" disabled={saving} onClick={onCancel} type="button">
+            Annulla
+          </button>
+        </div>
+      </article>
+    )
+  }
+
+  return (
+    <article className="driver-row">
+      <div className="driver-person">
+        <strong>{driver.name}</strong>
+        <span>{driver.phone}</span>
+      </div>
+      <div>
+        <strong>{username}</strong>
+        <span>{driver.authEmail ?? buildDriverAuthEmail(username)}</span>
+      </div>
+      <div>
+        <strong>{assignedVehicle?.plate ?? 'Non assegnato'}</strong>
+        <span>{assignedVehicle ? `${assignedVehicle.model} · ${assignedVehicle.type}` : 'Da assegnare'}</span>
+      </div>
+      <span className="status-pill tone-info">{driver.status}</span>
+      <div className="row-actions">
+        <button className="small-button" disabled={saving} onClick={onEdit} type="button">
+          <Pencil size={15} />
+          Modifica
+        </button>
+        <button className="small-button danger-action" disabled={saving} onClick={onArchive} type="button">
+          {saving ? 'Archivio...' : 'Archivia'}
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
+  const [isSaving, setIsSaving] = useState(false)
+  const [form, setForm] = useState({
+    depot: 'Verona',
+    email: '',
+    name: '',
+    password: 'password-temporanea',
+    phone: '',
+    role: 'Autista bilico',
+    username: '',
+    vehicleId: '',
+  })
+
+  const authEmail = form.username ? buildDriverAuthEmail(form.username) : ''
+
+  function updateField(field, value) {
+    setForm((currentForm) => {
+      if (field === 'name' && !currentForm.username) {
+        return {
+          ...currentForm,
+          name: value,
+          username: normalizeDriverUsername(value),
+        }
+      }
+
+      return { ...currentForm, [field]: value }
+    })
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    if (!form.name.trim() || !form.username.trim() || !form.phone.trim()) return
+
+    setIsSaving(true)
+    const added = await onAddDriver({
+      id: `drv-${Date.now()}`,
+      authEmail,
+      depot: form.depot,
+      email: form.email || authEmail,
+      name: form.name,
+      phone: form.phone,
+      role: form.role,
+      status: 'Disponibile',
+      username: normalizeDriverUsername(form.username),
+      vehicleId: form.vehicleId,
+    })
+    setIsSaving(false)
+
+    if (!added) return
+
+    setForm({
+      depot: 'Verona',
+      email: '',
+      name: '',
+      password: 'password-temporanea',
+      phone: '',
+      role: 'Autista bilico',
+      username: '',
+      vehicleId: '',
+    })
+  }
+
+  return (
+    <form className="panel driver-create-panel" onSubmit={handleSubmit}>
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">Nuovo accesso</p>
+          <h2>Crea autista</h2>
+        </div>
+        <UserPlus size={20} />
+      </div>
+      <div className="form-grid single-column">
+        <label>
+          Nome e cognome
+          <input required value={form.name} onChange={(event) => updateField('name', event.target.value)} />
+        </label>
+        <label>
+          Username app
+          <input required value={form.username} onChange={(event) => updateField('username', event.target.value)} />
+        </label>
+        <label>
+          Password temporanea
+          <input value={form.password} onChange={(event) => updateField('password', event.target.value)} />
+        </label>
+        <label>
+          Telefono
+          <input required value={form.phone} onChange={(event) => updateField('phone', event.target.value)} />
+        </label>
+        <label>
+          Ruolo
+          <input value={form.role} onChange={(event) => updateField('role', event.target.value)} />
+        </label>
+        <label>
+          Deposito
+          <input value={form.depot} onChange={(event) => updateField('depot', event.target.value)} />
+        </label>
+        <label>
+          Mezzo assegnato
+          <select value={form.vehicleId} onChange={(event) => updateField('vehicleId', event.target.value)}>
+            <option value="">Nessun mezzo</option>
+            {vehicleRecords
+              .filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
+              .map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.plate} · {vehicle.type}
+                </option>
+              ))}
+          </select>
+        </label>
+      </div>
+      <div className="auth-email-box">
+        <strong>Email tecnica Supabase</strong>
+        <span>{authEmail || 'Compila username per generarla'}</span>
+      </div>
+      <button className="primary-button full-button" disabled={isSaving} type="submit">
+        <UserPlus size={17} />
+        {isSaving ? 'Salvataggio...' : 'Aggiungi autista'}
+      </button>
+    </form>
   )
 }
 
@@ -629,21 +1117,21 @@ function DeadlineRow({ item, onClose, onReminder, onRenew }) {
   )
 }
 
-function FleetAndForms({ onAdd }) {
+function FleetAndForms({ driverRecords, onAdd, vehicleRecords }) {
   return (
     <section className="lower-grid" aria-label="Gestione flotta e inserimento">
-      <FleetStatus />
-      <AddDeadlineForm onAdd={onAdd} />
+      <FleetStatus driverRecords={driverRecords} vehicleRecords={vehicleRecords} />
+      <AddDeadlineForm driverRecords={driverRecords} onAdd={onAdd} vehicleRecords={vehicleRecords} />
     </section>
   )
 }
 
-function FleetStatus() {
+function FleetStatus({ driverRecords, vehicleRecords }) {
   const fleetGroups = [
-    { label: 'Furgoni', value: vehicles.filter((vehicle) => vehicle.fleetType === 'furgone').length },
-    { label: 'Motrici', value: vehicles.filter((vehicle) => vehicle.fleetType === 'motrice').length },
-    { label: 'Trattori', value: vehicles.filter((vehicle) => vehicle.fleetType === 'trattore').length },
-    { label: 'Semirimorchi', value: vehicles.filter((vehicle) => vehicle.fleetType === 'semirimorchio').length },
+    { label: 'Furgoni', value: vehicleRecords.filter((vehicle) => vehicle.fleetType === 'furgone').length },
+    { label: 'Motrici', value: vehicleRecords.filter((vehicle) => vehicle.fleetType === 'motrice').length },
+    { label: 'Trattori', value: vehicleRecords.filter((vehicle) => vehicle.fleetType === 'trattore').length },
+    { label: 'Semirimorchi', value: vehicleRecords.filter((vehicle) => vehicle.fleetType === 'semirimorchio').length },
   ]
 
   return (
@@ -664,8 +1152,8 @@ function FleetStatus() {
         ))}
       </div>
       <div className="vehicle-list">
-        {vehicles.map((vehicle) => {
-          const assignedDriver = drivers.find((driver) => driver.vehicleId === vehicle.id)
+        {vehicleRecords.map((vehicle) => {
+          const assignedDriver = driverRecords.find((driver) => driver.vehicleId === vehicle.id)
           return (
             <div className="vehicle-row" key={vehicle.id}>
               <div>
@@ -686,21 +1174,21 @@ function FleetStatus() {
   )
 }
 
-function AddDeadlineForm({ onAdd }) {
+function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
   const [form, setForm] = useState({
     type: 'Visita medica',
     scope: 'driver',
-    assigneeId: drivers[0].id,
+    assigneeId: driverRecords[0]?.id ?? '',
     dueDate: '2026-07-18',
     owner: 'Ufficio personale',
   })
 
-  const assignees = form.scope === 'driver' ? drivers : vehicles
+  const assignees = form.scope === 'driver' ? driverRecords : vehicleRecords
 
   function updateField(field, value) {
     setForm((currentForm) => {
       if (field === 'scope') {
-        const nextAssignee = value === 'driver' ? drivers[0].id : vehicles[0].id
+        const nextAssignee = value === 'driver' ? driverRecords[0]?.id ?? '' : vehicleRecords[0]?.id ?? ''
         return { ...currentForm, scope: value, assigneeId: nextAssignee }
       }
 
@@ -710,6 +1198,8 @@ function AddDeadlineForm({ onAdd }) {
 
   function handleSubmit(event) {
     event.preventDefault()
+    if (!form.assigneeId) return
+
     onAdd({
       id: `cmp-${Date.now()}`,
       type: form.type,
@@ -778,6 +1268,7 @@ function AddDeadlineForm({ onAdd }) {
 }
 
 function DriverAppView({
+  driverRecords,
   faultReported,
   items,
   morningCheckSent,
@@ -786,6 +1277,7 @@ function DriverAppView({
   onSignOut,
   onUpload,
   uploadSent,
+  vehicleRecords,
 }) {
   return (
     <main className="driver-page">
@@ -806,6 +1298,7 @@ function DriverAppView({
       </header>
       <div className="driver-page-content">
         <DriverMobile
+          driverRecords={driverRecords}
           faultReported={faultReported}
           items={items}
           morningCheckSent={morningCheckSent}
@@ -813,6 +1306,7 @@ function DriverAppView({
           onMorningCheck={onMorningCheck}
           uploadSent={uploadSent}
           onUpload={onUpload}
+          vehicleRecords={vehicleRecords}
         />
         <section className="panel driver-note-panel">
           <p className="overline">Notifiche</p>
@@ -827,10 +1321,20 @@ function DriverAppView({
   )
 }
 
-function DriverMobile({ faultReported, items, morningCheckSent, onFaultReport, onMorningCheck, onUpload, uploadSent }) {
-  const driver = drivers[0]
-  const vehicle = vehicles.find((entry) => entry.id === driver.vehicleId)
-  const semitrailers = vehicles.filter((entry) => entry.fleetType === 'semirimorchio')
+function DriverMobile({
+  driverRecords = drivers,
+  faultReported,
+  items,
+  morningCheckSent,
+  onFaultReport,
+  onMorningCheck,
+  onUpload,
+  uploadSent,
+  vehicleRecords = vehicles,
+}) {
+  const driver = driverRecords[0] ?? drivers[0]
+  const vehicle = vehicleRecords.find((entry) => entry.id === driver.vehicleId)
+  const semitrailers = vehicleRecords.filter((entry) => entry.fleetType === 'semirimorchio')
   const [attachedTrailerId, setAttachedTrailerId] = useState(semitrailers[0]?.id ?? '')
   const driverItems = items.filter(
     (item) => item.driverId === driver.id || (vehicle && item.vehicleId === vehicle.id),

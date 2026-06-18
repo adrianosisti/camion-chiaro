@@ -13,3 +13,9 @@ Se Supabase non ti fa incollare `supabase/schema.sql` tutto insieme, usa questi 
 Non saltare blocchi e non cambiare ordine.
 
 Se un blocco va a buon fine, Supabase mostra `Success. No rows returned` o un messaggio simile.
+
+## Reset dei test
+
+Il file `08_reset_test_check_guasti.sql` non fa parte dell'installazione iniziale.
+Usalo solo se vuoi cancellare i guasti e i check mattutini di prova e ripartire pulito.
+Non cancella autisti, flotta, documenti, scadenze o impostazioni azienda.

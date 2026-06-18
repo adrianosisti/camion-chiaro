@@ -2348,6 +2348,7 @@ function OperationsWorkspace({
   const archivedFaults = faultReportRecords.filter((report) => report.status === 'closed')
   const todayChecks = vehicleCheckRecords.filter((check) => new Date(check.createdAt).toDateString() === today)
   const unreadChecks = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id))
+  const archivedChecks = vehicleCheckRecords.filter((check) => acknowledgedCheckIds.includes(check.id))
   const criticalChecks = unreadChecks.filter(hasCheckIssues)
   const allOperations = [
     ...faultReportRecords.map((report) => ({
@@ -2395,7 +2396,7 @@ function OperationsWorkspace({
       return false
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  const selectedOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
+  const selectedOperation = operations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
   const fallbackSelection = operations[0]
   const detailOperation = selectedOperation ?? fallbackSelection
 
@@ -2431,8 +2432,8 @@ function OperationsWorkspace({
             <span>check critici</span>
           </div>
           <div>
-            <strong>{archivedFaults.length}</strong>
-            <span>guasti archiviati</span>
+            <strong>{archivedFaults.length + archivedChecks.length}</strong>
+            <span>archiviati</span>
           </div>
           <div>
             <strong>{todayChecks.length}</strong>

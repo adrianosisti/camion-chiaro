@@ -1,5 +1,5 @@
 export const company = {
-  name: 'Camion Chiaro Demo',
+  name: 'Spedifast SRL',
   vat: 'IT04291880965',
   location: 'Verona Hub',
   plan: 'Scadenze chiare',

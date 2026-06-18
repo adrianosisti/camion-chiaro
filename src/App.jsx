@@ -44,6 +44,7 @@ import {
   createVehicleRecord as createSupabaseVehicle,
   createVehicleCheckRecord as createSupabaseVehicleCheck,
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
+  fetchCompanyProfile,
   fetchComplianceItems,
   fetchDriverDocuments,
   fetchDriverSessionData,
@@ -91,6 +92,8 @@ const driverDocumentStatusOptions = ['Caricato', 'Verificato', 'Scaduto', 'Manca
 const maxDriverDocumentFileSize = 10 * 1024 * 1024
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
+const demoCompanyName = 'Spedifast SRL'
+const placeholderCompanyNames = new Set(['Camion Chiaro', 'Camion Chiaro Demo'])
 const fleetTypeOptions = [
   { value: 'furgone', label: 'Furgone' },
   { value: 'motrice', label: 'Motrice' },
@@ -122,6 +125,16 @@ function getFaultSeverityLabel(value) {
 
 function getFaultStatusLabel(value) {
   return faultStatusOptions.find((option) => option.value === value)?.label ?? value
+}
+
+function getDisplayCompanyName(name) {
+  const trimmedName = name?.trim()
+
+  if (!trimmedName || placeholderCompanyNames.has(trimmedName) || trimmedName.includes('@')) {
+    return demoCompanyName
+  }
+
+  return trimmedName
 }
 
 function normalizePlate(value) {
@@ -223,6 +236,7 @@ function App() {
   const [vehicleRecords, setVehicleRecords] = useState(vehicles)
   const [vehicleCheckRecords, setVehicleCheckRecords] = useState([])
   const [faultReportRecords, setFaultReportRecords] = useState([])
+  const [registeredCompanyName, setRegisteredCompanyName] = useState('')
   const [activeView, setActiveView] = useState('dashboard')
   const [activeFilter, setActiveFilter] = useState('all')
   const [query, setQuery] = useState('')
@@ -300,7 +314,8 @@ function App() {
       setDriversSyncStatus('Caricamento dati Supabase...')
       setDocumentsSyncStatus('Caricamento documenti Supabase...')
       setOperationsSyncStatus('Caricamento check e guasti...')
-      const [driversResult, vehiclesResult, complianceResult, documentsResult, checksResult, faultsResult] = await Promise.all([
+      const [companyResult, driversResult, vehiclesResult, complianceResult, documentsResult, checksResult, faultsResult] = await Promise.all([
+        fetchCompanyProfile(),
         fetchDrivers(),
         fetchVehicles(),
         fetchComplianceItems(),
@@ -311,6 +326,7 @@ function App() {
 
       if (!isMounted) return
 
+      if (companyResult.data?.name) setRegisteredCompanyName(companyResult.data.name)
       if (driversResult.error || vehiclesResult.error || complianceResult.error || documentsResult.error) {
         setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
         setDocumentsSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i documenti locali.')
@@ -433,6 +449,7 @@ function App() {
     setActiveView('dashboard')
     setActiveFilter('all')
     setOperationsSyncStatus('')
+    setRegisteredCompanyName('')
   }
 
   function addComplianceItem(formItem) {
@@ -899,7 +916,7 @@ function App() {
     )
   }
 
-  const companyName = session.name || company.name || 'Azienda'
+  const companyName = getDisplayCompanyName(registeredCompanyName || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
 
@@ -913,7 +930,7 @@ function App() {
         session={session}
       />
       <main className="workspace">
-        <Topbar companyName={companyName} query={query} setQuery={setQuery} />
+        <Topbar query={query} setQuery={setQuery} />
         {activeView === 'drivers' ? (
           <DriversWorkspace
             driverRecords={driverRecords}
@@ -1000,7 +1017,7 @@ function AuthScreen({ onAuthenticated }) {
   const [mode, setMode] = useState('company')
   const [companyMode, setCompanyMode] = useState('signin')
   const [companyForm, setCompanyForm] = useState({
-    companyName: 'Camion Chiaro Demo',
+    companyName: demoCompanyName,
     email: 'azienda@camionchiaro.it',
     password: 'password-demo',
   })
@@ -1016,10 +1033,22 @@ function AuthScreen({ onAuthenticated }) {
     setIsSubmitting(true)
     setStatus('')
 
+    const cleanCompanyForm = {
+      ...companyForm,
+      companyName: companyForm.companyName.trim(),
+      email: companyForm.email.trim(),
+    }
+
+    if (companyMode === 'signup' && !cleanCompanyForm.companyName) {
+      setIsSubmitting(false)
+      setStatus('Inserisci il nome del trasportatore o la ragione sociale.')
+      return
+    }
+
     const result =
       companyMode === 'signup'
-        ? await signUpCompany(companyForm)
-        : await signInCompany(companyForm)
+        ? await signUpCompany(cleanCompanyForm)
+        : await signInCompany(cleanCompanyForm)
 
     setIsSubmitting(false)
 
@@ -1033,10 +1062,15 @@ function AuthScreen({ onAuthenticated }) {
       return
     }
 
+    const registeredName =
+      result.data?.user?.user_metadata?.company_name ??
+      result.data?.user?.user_metadata?.full_name ??
+      (companyMode === 'signup' ? cleanCompanyForm.companyName : result.demo ? demoCompanyName : 'Azienda')
+
     onAuthenticated({
       role: 'company',
-      name: companyForm.companyName || 'Azienda',
-      email: companyForm.email,
+      name: getDisplayCompanyName(registeredName),
+      email: result.data?.user?.email ?? cleanCompanyForm.email,
       demo: result.demo,
     })
   }
@@ -1111,19 +1145,24 @@ function AuthScreen({ onAuthenticated }) {
         {mode === 'company' ? (
           <form className="auth-form" onSubmit={handleCompanySubmit}>
             <div>
-              <p className="overline">Accesso azienda</p>
+              <p className="overline">{companyMode === 'signup' ? 'Registrazione azienda' : 'Accesso azienda'}</p>
               <h2>{companyMode === 'signup' ? 'Crea account azienda' : 'Entra nel pannello'}</h2>
             </div>
-            <label>
-              Nome azienda
-              <span>
-                <Building2 size={17} />
-                <input
-                  value={companyForm.companyName}
-                  onChange={(event) => setCompanyForm({ ...companyForm, companyName: event.target.value })}
-                />
-              </span>
-            </label>
+            {companyMode === 'signup' && (
+              <label>
+                Nome trasportatore / Ragione sociale
+                <span>
+                  <Building2 size={17} />
+                  <input
+                    autoComplete="organization"
+                    placeholder="Es. Spedifast SRL"
+                    required
+                    value={companyForm.companyName}
+                    onChange={(event) => setCompanyForm({ ...companyForm, companyName: event.target.value })}
+                  />
+                </span>
+              </label>
+            )}
             <label>
               Email aziendale
               <span>
@@ -1261,11 +1300,11 @@ function Sidebar({ activeView, notificationCount, onNavigate, onSignOut, session
   )
 }
 
-function Topbar({ companyName, query, setQuery }) {
+function Topbar({ query, setQuery }) {
   return (
     <header className="topbar">
       <div>
-        <p className="overline">Cliente: {companyName}</p>
+        <p className="overline">Area azienda</p>
         <h1>Dashboard azienda</h1>
       </div>
       <label className="search-box">
@@ -1323,8 +1362,7 @@ function HeroPanel({
     <section className="hero-panel" aria-label="Controllo scadenze">
       <div className="hero-copy">
         <div>
-          <p className="overline">Camion Chiaro</p>
-          <h2>Buongiorno, {companyName}</h2>
+          <h2>{companyName}</h2>
         </div>
         <p>
           Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.

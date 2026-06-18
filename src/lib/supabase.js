@@ -138,6 +138,15 @@ function mapFaultReport(row) {
   }
 }
 
+function mapCompanyProfile(row) {
+  return {
+    headquarters: row.headquarters ?? '',
+    id: row.id,
+    name: row.name,
+    vatNumber: row.vat_number ?? '',
+  }
+}
+
 function toDriverPayload(driver, companyId = configuredCompanyId) {
   return {
     auth_email: driver.authEmail,
@@ -288,6 +297,22 @@ export async function fetchDrivers(companyId = configuredCompanyId) {
     .order('full_name', { ascending: true })
 
   return { data: data?.map(mapDriver) ?? null, error }
+}
+
+export async function fetchCompanyProfile(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('companies')
+    .select('id, name, vat_number, headquarters')
+    .eq('id', companyId)
+    .maybeSingle()
+
+  return { data: data ? mapCompanyProfile(data) : null, error }
 }
 
 export async function fetchVehicles(companyId = configuredCompanyId) {
@@ -784,6 +809,7 @@ export async function getCurrentAuthSession() {
 
 export async function signUpCompany({ email, password, companyName }) {
   const supabase = await getSupabaseClient()
+  const cleanCompanyName = companyName?.trim() ?? ''
 
   if (!supabase) {
     return { data: null, error: null, demo: true }
@@ -795,7 +821,7 @@ export async function signUpCompany({ email, password, companyName }) {
     options: {
       data: {
         account_type: 'company',
-        company_name: companyName,
+        company_name: cleanCompanyName,
       },
     },
   })

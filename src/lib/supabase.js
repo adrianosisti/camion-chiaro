@@ -416,6 +416,45 @@ export async function fetchFaultReports(companyId = configuredCompanyId) {
   return { data: data?.map(mapFaultReport) ?? null, error }
 }
 
+export async function fetchDriverSessionData() {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione autista mancante. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/driver-session', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload.error ?? 'Caricamento area autista non riuscito.' } }
+    }
+
+    return { data: payload, error: null }
+  } catch {
+    return {
+      data: null,
+      error: {
+        message: 'Funzione Netlify autista non raggiungibile. Controlla che l ultimo deploy sia pubblicato.',
+      },
+    }
+  }
+}
+
 export async function createDriverRecord(driver, companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 

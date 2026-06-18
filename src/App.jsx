@@ -47,6 +47,7 @@ import {
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
   fetchComplianceItems,
   fetchDriverDocuments,
+  fetchDriverSessionData,
   fetchDrivers,
   fetchFaultReports,
   fetchVehicleChecks,
@@ -274,6 +275,26 @@ function App() {
     let isMounted = true
 
     async function loadDriverData() {
+      setOperationsSyncStatus('Caricamento area autista...')
+      const driverSessionResult = await fetchDriverSessionData()
+
+      if (!isMounted) return
+
+      if (driverSessionResult.data) {
+        setDriverRecords(driverSessionResult.data.drivers ?? [])
+        setVehicleRecords(driverSessionResult.data.vehicles ?? [])
+        setItems(driverSessionResult.data.complianceItems ?? [])
+        setDocumentRecords(driverSessionResult.data.documents ?? [])
+        setVehicleCheckRecords(driverSessionResult.data.vehicleChecks ?? [])
+        setFaultReportRecords(driverSessionResult.data.faultReports ?? [])
+        setOperationsSyncStatus(
+          (driverSessionResult.data.vehicles ?? []).some((vehicle) => vehicle.fleetType !== 'semirimorchio')
+            ? 'Area autista caricata.'
+            : 'Nessun mezzo disponibile. L azienda deve aggiungere almeno un furgone, motrice o trattore in Flotta.',
+        )
+        return
+      }
+
       const [driversResult, vehiclesResult, complianceResult, documentsResult, checksResult, faultsResult] = await Promise.all([
         fetchDrivers(),
         fetchVehicles(),
@@ -291,6 +312,11 @@ function App() {
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
+      setOperationsSyncStatus(
+        vehiclesResult.data?.some((vehicle) => vehicle.fleetType !== 'semirimorchio')
+          ? 'Area autista caricata.'
+          : driverSessionResult.error?.message ?? 'Nessun mezzo disponibile in area autista.',
+      )
     }
 
     loadDriverData()
@@ -2679,6 +2705,11 @@ function DriverMobile({
               {sendingOperation === 'check' ? 'Invio...' : morningCheckSent ? 'Check inviato' : 'Invia check'}
             </button>
           </form>
+          {!selectedVehicle && (
+            <small className="operation-status">
+              Nessun mezzo selezionabile. L azienda deve aggiungere almeno un furgone, motrice o trattore in Flotta.
+            </small>
+          )}
           {lastCheck && <small>Ultimo check: {formatShortDateTime(lastCheck.createdAt)}</small>}
         </article>
         <article className="check-card">

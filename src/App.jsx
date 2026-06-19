@@ -51,6 +51,7 @@ import {
   createFaultReportRecord as createSupabaseFaultReport,
   createDriverRecord as createSupabaseDriver,
   createDriverDocumentRecord as createSupabaseDriverDocument,
+  createOwnDriverDocumentRecord as createSupabaseOwnDriverDocument,
   createVehicleRecord as createSupabaseVehicle,
   createVehicleCheckRecord as createSupabaseVehicleCheck,
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
@@ -1155,6 +1156,20 @@ function App() {
       return result.data
     }
 
+    if (hasCompanyDataConnection && session?.role === 'driver') {
+      setDocumentsSyncStatus('Creazione documento autista su Supabase...')
+      const result = await createSupabaseOwnDriverDocument(cleanDocument)
+
+      if (result.error) {
+        setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      setDocumentRecords((currentDocuments) => [result.data, ...currentDocuments])
+      setDocumentsSyncStatus('Documento autista creato.')
+      return result.data
+    }
+
     setDocumentRecords((currentDocuments) => [cleanDocument, ...currentDocuments])
     setDocumentsSyncStatus('Documento aggiunto in modalità locale.')
     return cleanDocument
@@ -1576,6 +1591,7 @@ function App() {
         driverRecords={driverRecords}
         faultReportRecords={visibleFaultReportRecords}
         vehicleRecords={vehicleRecords}
+        onDriverDocumentCreate={addDriverDocumentRecord}
         onDriverDocumentUpload={uploadDriverDocumentFile}
         onDriverDocumentFileRemove={removeDriverDocumentFile}
         onDriverProfileImageUpload={uploadDriverProfileImage}
@@ -4828,6 +4844,7 @@ function DriverAppView({
   isLoading,
   items,
   morningCheckSent,
+  onDriverDocumentCreate,
   onDriverDocumentFileRemove,
   onDriverDocumentUpload,
   onDriverProfileImageRemove,
@@ -4878,6 +4895,7 @@ function DriverAppView({
             faultReported={faultReported}
             items={items}
             morningCheckSent={morningCheckSent}
+            onDriverDocumentCreate={onDriverDocumentCreate}
             onDriverDocumentFileRemove={onDriverDocumentFileRemove}
             onDriverDocumentUpload={onDriverDocumentUpload}
             onDriverProfileImageRemove={onDriverProfileImageRemove}
@@ -4974,6 +4992,7 @@ function DriverMobile({
   faultReported,
   items = [],
   morningCheckSent,
+  onDriverDocumentCreate,
   onDriverDocumentFileRemove,
   onDriverDocumentUpload,
   onDriverProfileImageRemove,
@@ -5016,7 +5035,15 @@ function DriverMobile({
     title: '',
   })
   const [isDriverChatOpen, setIsDriverChatOpen] = useState(false)
+  const [isDocumentFormOpen, setIsDocumentFormOpen] = useState(false)
   const [isFaultFormOpen, setIsFaultFormOpen] = useState(false)
+  const [documentForm, setDocumentForm] = useState({
+    documentNumber: '',
+    expiresAt: '',
+    file: null,
+    type: 'Patente C+E',
+  })
+  const [showDocumentValidation, setShowDocumentValidation] = useState(false)
   const [sendingOperation, setSendingOperation] = useState('')
   const selectedVehicle = driveableVehicles.find((entry) => entry.id === selectedVehicleId) ?? assignedVehicle ?? driveableVehicles[0] ?? null
   const attachedTrailer = semitrailers.find((entry) => entry.id === attachedTrailerId) ?? null
@@ -5071,6 +5098,17 @@ function DriverMobile({
     const file = event.target.files?.[0]
     onDriverDocumentUpload?.(document, file)
     event.target.value = ''
+  }
+
+  function handleNewDocumentFile(event) {
+    const file = event.target.files?.[0] ?? null
+    setDocumentForm((currentForm) => ({ ...currentForm, file }))
+    setShowDocumentValidation(false)
+    event.target.value = ''
+  }
+
+  function updateDocumentField(field, value) {
+    setDocumentForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
   function updateCheckField(field, value) {
@@ -5128,6 +5166,43 @@ function DriverMobile({
     if (sent) {
       setFaultForm({ description: '', photoFile: null, severity: 'medium', title: '' })
       setIsFaultFormOpen(false)
+    }
+  }
+
+  async function handleDocumentCreate(event) {
+    event.preventDefault()
+
+    if (!documentForm.type || !documentForm.file) {
+      setShowDocumentValidation(true)
+      return
+    }
+
+    setSendingOperation('document')
+    const createdDocument = await onDriverDocumentCreate?.({
+      id: `doc-${Date.now()}`,
+      documentNumber: documentForm.documentNumber,
+      driverId: driver.id,
+      expiresAt: documentForm.expiresAt,
+      filePath: '',
+      status: 'Mancante',
+      type: documentForm.type,
+      visibleToDriver: true,
+    })
+
+    const uploaded = createdDocument
+      ? await onDriverDocumentUpload?.(createdDocument, documentForm.file)
+      : false
+    setSendingOperation('')
+
+    if (createdDocument && uploaded) {
+      setDocumentForm({
+        documentNumber: '',
+        expiresAt: '',
+        file: null,
+        type: 'Patente C+E',
+      })
+      setShowDocumentValidation(false)
+      setIsDocumentFormOpen(false)
     }
   }
 
@@ -5427,7 +5502,72 @@ function DriverMobile({
           />
         )}
         <div className="documents-card">
-          <strong>Documenti da mostrare alla polizia</strong>
+          <div className="documents-card-header">
+            <strong>Documenti da mostrare alla polizia</strong>
+            <button
+              className="document-action-button"
+              onClick={() => {
+                setIsDocumentFormOpen((isOpen) => !isOpen)
+                setShowDocumentValidation(false)
+              }}
+              type="button"
+            >
+              <Plus size={14} />
+              {isDocumentFormOpen ? 'Chiudi' : 'Aggiungi'}
+            </button>
+          </div>
+          {isDocumentFormOpen && (
+            <form className="check-form driver-document-create-form" onSubmit={handleDocumentCreate}>
+              <label>
+                Documento
+                <select value={documentForm.type} onChange={(event) => updateDocumentField('type', event.target.value)}>
+                  {documentTypes.map((type) => (
+                    <option key={type}>{type}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Numero documento
+                <input
+                  onChange={(event) => updateDocumentField('documentNumber', event.target.value)}
+                  placeholder="Numero o riferimento"
+                  value={documentForm.documentNumber}
+                />
+              </label>
+              <label>
+                Scadenza
+                <input
+                  onChange={(event) => updateDocumentField('expiresAt', event.target.value)}
+                  onInput={(event) => updateDocumentField('expiresAt', event.target.value)}
+                  type="date"
+                  value={documentForm.expiresAt}
+                />
+              </label>
+              <div className="fault-photo-actions">
+                <label className="document-action-button">
+                  Scatta foto
+                  <input accept="image/*" capture="environment" onChange={handleNewDocumentFile} type="file" />
+                </label>
+                <label className="document-action-button">
+                  Galleria/PDF
+                  <input accept="image/*,.pdf,application/pdf" onChange={handleNewDocumentFile} type="file" />
+                </label>
+                {documentForm.file && (
+                  <button className="small-button" onClick={() => updateDocumentField('file', null)} type="button">
+                    Rimuovi
+                  </button>
+                )}
+              </div>
+              {documentForm.file && <small>File pronto: {documentForm.file.name}</small>}
+              {showDocumentValidation && (
+                <small className="operation-status">Scegli una foto o un PDF prima di salvare.</small>
+              )}
+              <button className="upload-button" disabled={sendingOperation === 'document'} type="submit">
+                <Upload size={16} />
+                {sendingOperation === 'document' ? 'Caricamento...' : 'Salva documento'}
+              </button>
+            </form>
+          )}
           {docs.map((document) => (
             <div className="document-row" key={document.id}>
               <FileText size={15} />

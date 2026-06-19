@@ -806,6 +806,22 @@ export async function createDriverDocumentRecord(document, companyId = configure
   return { data: data ? mapDriverDocument(data) : null, error }
 }
 
+export async function createOwnDriverDocumentRecord(document) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('create_driver_document_for_current_driver', {
+    document_expires_at: document.expiresAt || null,
+    document_number: document.documentNumber || null,
+    document_type: document.type,
+  })
+
+  return { data: data ? mapDriverDocument(data) : null, error }
+}
+
 export async function createVehicleCheckRecord(check, companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 

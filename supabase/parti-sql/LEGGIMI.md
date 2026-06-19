@@ -55,3 +55,8 @@ Eseguili uno alla volta, sempre dopo `14A_chat_tabelle.sql`.
 
 Il file `15_realtime_check_guasti.sql` abilita l aggiornamento automatico di check mattutini e guasti nella dashboard azienda, senza ricaricare la pagina.
 Eseguilo una sola volta dopo i file della chat.
+
+## Documenti creati dall autista
+
+Il file `16_documenti_autista.sql` permette all autista di aggiungere un nuovo documento dalla sua app e caricare subito foto o PDF.
+Eseguilo una sola volta dopo `15_realtime_check_guasti.sql`.

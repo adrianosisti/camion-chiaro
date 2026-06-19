@@ -130,6 +130,16 @@ function mapFaultReport(row) {
   }
 }
 
+function mapCompanyProfile(row) {
+  return {
+    headquarters: row.headquarters ?? '',
+    id: row.id,
+    logoPath: row.logo_path ?? '',
+    name: row.name,
+    vatNumber: row.vat_number ?? '',
+  }
+}
+
 async function findDriver(serviceClient, authUser) {
   const username = normalizeDriverUsername(
     authUser.user_metadata?.username ?? authUser.email?.replace(/@.+$/, '') ?? '',
@@ -161,12 +171,18 @@ async function findDriver(serviceClient, authUser) {
 
 async function fetchDriverContext(serviceClient, driver) {
   const [
+    companyResult,
     vehiclesResult,
     complianceResult,
     documentsResult,
     checksResult,
     faultsResult,
   ] = await Promise.all([
+    serviceClient
+      .from('companies')
+      .select('id, name, vat_number, headquarters, logo_path')
+      .eq('id', driver.company_id)
+      .maybeSingle(),
     serviceClient
       .from('vehicles')
       .select('id, plate, model, type, fleet_type, km, status')
@@ -204,6 +220,7 @@ async function fetchDriverContext(serviceClient, driver) {
   ])
 
   const error =
+    companyResult.error ||
     vehiclesResult.error ||
     complianceResult.error ||
     documentsResult.error ||
@@ -217,6 +234,7 @@ async function fetchDriverContext(serviceClient, driver) {
   return {
     data: {
       companyId: driver.company_id,
+      companyProfile: companyResult.data ? mapCompanyProfile(companyResult.data) : null,
       complianceItems: complianceResult.data.map(mapComplianceItem),
       documents: documentsResult.data.map(mapDriverDocument),
       drivers: [mapDriver(driver)],

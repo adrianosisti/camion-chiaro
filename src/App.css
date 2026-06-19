@@ -228,6 +228,12 @@
   margin-bottom: 18px;
 }
 
+.driver-company-brand .avatar-company {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+}
+
 .driver-page-content {
   display: grid;
   grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
@@ -531,6 +537,13 @@
   min-width: 0;
 }
 
+.company-title-row .avatar-company {
+  flex-basis: 74px;
+  width: 74px;
+  height: 74px;
+  font-size: 1.08rem;
+}
+
 .company-title-row h2 {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -678,6 +691,18 @@
 .image-upload-control {
   position: relative;
   overflow: hidden;
+}
+
+.avatar-preview-button {
+  display: grid;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.avatar-preview-button:disabled {
+  cursor: default;
 }
 
 .primary-button,
@@ -1028,6 +1053,33 @@
 .form-alert svg {
   flex: 0 0 auto;
   margin-top: 1px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.62);
+}
+
+.photo-preview-modal {
+  width: min(92vw, 520px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.28);
+}
+
+.photo-preview-modal img {
+  display: block;
+  width: 100%;
+  max-height: min(68vh, 560px);
+  object-fit: contain;
+  background: #020617;
 }
 
 .sync-status-line {
@@ -1887,6 +1939,44 @@
   padding: 0 8px;
 }
 
+.driver-company-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #ecfeff;
+}
+
+.driver-company-strip .avatar-company {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+}
+
+.driver-company-strip div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.driver-company-strip span {
+  color: #075985;
+  font-size: 0.72rem;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.driver-company-strip strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .driver-card {
   display: flex;
   align-items: center;
@@ -1896,6 +1986,7 @@
 }
 
 .driver-card > div {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -1912,8 +2003,23 @@
 
 .driver-card .image-upload-control {
   min-height: 30px;
-  margin-top: 8px;
   padding-inline: 9px;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+.driver-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.driver-photo-actions .small-button,
+.driver-photo-actions .image-upload-control {
+  min-height: 30px;
+  padding-inline: 9px;
+  font-size: 0.76rem;
 }
 
 .next-card {

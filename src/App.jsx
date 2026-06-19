@@ -38,6 +38,7 @@ import { daysUntil, decorateCompliance, formatDate, getSummary } from './lib/exp
 import {
   archiveDriverRecord as archiveSupabaseDriver,
   archiveVehicleRecord as archiveSupabaseVehicle,
+  clearDriverProfileImageFile as clearSupabaseDriverProfileImageFile,
   createCompanyAssetSignedUrl,
   createDriverDocumentSignedUrl,
   createDriverAccount as createSupabaseDriverAccount,
@@ -462,6 +463,35 @@ function App() {
     return true
   }
 
+  async function removeDriverProfileImage(driverId) {
+    const setStatus = session?.role === 'driver' ? setDriverDocumentUploadStatus : setDriversSyncStatus
+
+    if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
+      setStatus('Rimozione foto profilo...')
+      const result = await clearSupabaseDriverProfileImageFile(driverId)
+
+      if (result.error) {
+        setStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setDriverRecords((currentDrivers) =>
+          currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, ...result.data } : driver)),
+        )
+      }
+
+      setStatus('Foto profilo rimossa.')
+      return true
+    }
+
+    setDriverRecords((currentDrivers) =>
+      currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, profileImagePath: '' } : driver)),
+    )
+    setStatus('Foto profilo rimossa in modalità locale.')
+    return true
+  }
+
   useEffect(() => {
     if (!isSupabaseConfigured) return
 
@@ -562,6 +592,7 @@ function App() {
 
       if (driverSessionResult.data) {
         if (driverSessionResult.data.companyId) setActiveCompanyId(driverSessionResult.data.companyId)
+        if (driverSessionResult.data.companyProfile) setCompanyProfile(driverSessionResult.data.companyProfile)
         setDriverRecords(driverSessionResult.data.drivers ?? [])
         setVehicleRecords(driverSessionResult.data.vehicles ?? [])
         setItems(driverSessionResult.data.complianceItems ?? [])
@@ -1135,6 +1166,8 @@ function App() {
     return (
       <DriverAppView
         assetPreviewUrl={getAssetPreviewUrl}
+        companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
+        companyName={getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')}
         documentUploadStatus={driverDocumentUploadStatus}
         items={decoratedItems}
         documentRecords={documentRecords}
@@ -1143,6 +1176,7 @@ function App() {
         vehicleRecords={vehicleRecords}
         onDriverDocumentUpload={uploadDriverDocumentFile}
         onDriverProfileImageUpload={uploadDriverProfileImage}
+        onDriverProfileImageRemove={removeDriverProfileImage}
         onFaultReport={submitFaultReport}
         onMorningCheck={submitMorningCheck}
         onOpenDriverDocument={openDriverDocumentFile}
@@ -1667,6 +1701,25 @@ function CompanyLogoUploader({ companyName, logoUrl, onUpload }) {
   )
 }
 
+function PhotoPreviewModal({ imageUrl, name, onClose }) {
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+      <div className="photo-preview-modal" role="dialog" aria-modal="true" aria-label={`Foto profilo ${name}`} onClick={(event) => event.stopPropagation()}>
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">Foto autista</p>
+            <h2>{name}</h2>
+          </div>
+          <button className="small-button" onClick={onClose} type="button">
+            Chiudi
+          </button>
+        </div>
+        <img alt={`Foto profilo ${name}`} src={imageUrl} />
+      </div>
+    </div>
+  )
+}
+
 function SettingsWorkspace({ companyEmail, companyLogoUrl, companyProfile, onCompanyLogoUpload, onUpdateCompanyProfile, syncStatus }) {
   const [form, setForm] = useState({
     headquarters: companyProfile.headquarters ?? '',
@@ -1896,6 +1949,7 @@ function DriversWorkspace({
 }) {
   const [editingId, setEditingId] = useState(null)
   const [draftById, setDraftById] = useState({})
+  const [photoPreviewDriver, setPhotoPreviewDriver] = useState(null)
   const [savingId, setSavingId] = useState(null)
   const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
   const archivedDrivers = driverRecords.filter((driver) => driver.status === 'Archiviato')
@@ -1975,6 +2029,7 @@ function DriversWorkspace({
                 onCancel={() => setEditingId(null)}
                 onEdit={() => startEditing(driver)}
                 onPhotoUpload={(file) => onDriverProfileImageUpload(driver.id, file)}
+                onPreviewPhoto={() => setPhotoPreviewDriver(driver)}
                 onSave={() => saveDraft(driver.id)}
                 onUpdateDraft={(field, value) => updateDraft(driver.id, field, value)}
                 saving={savingId === driver.id}
@@ -1989,6 +2044,13 @@ function DriversWorkspace({
         </div>
       </div>
       <DriverCreatePanel onAddDriver={onAddDriver} onBackHome={onBackHome} vehicleRecords={vehicleRecords} />
+      {photoPreviewDriver && (
+        <PhotoPreviewModal
+          imageUrl={assetPreviewUrl(photoPreviewDriver.profileImagePath)}
+          name={photoPreviewDriver.name}
+          onClose={() => setPhotoPreviewDriver(null)}
+        />
+      )}
     </section>
   )
 }
@@ -2002,6 +2064,7 @@ function DriverManagementRow({
   onCancel,
   onEdit,
   onPhotoUpload,
+  onPreviewPhoto,
   onSave,
   onUpdateDraft,
   saving,
@@ -2009,6 +2072,7 @@ function DriverManagementRow({
 }) {
   const assignedVehicle = vehicleRecords.find((vehicle) => vehicle.id === driver.vehicleId)
   const username = driver.username ?? normalizeDriverUsername(driver.name)
+  const driverPhotoUrl = assetPreviewUrl(driver.profileImagePath)
 
   if (editing) {
     return (
@@ -2053,7 +2117,15 @@ function DriverManagementRow({
   return (
     <article className="driver-row">
       <div className="driver-person">
-        <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
+        <button
+          aria-label={driverPhotoUrl ? `Ingrandisci foto di ${driver.name}` : `Foto non caricata per ${driver.name}`}
+          className="avatar-preview-button"
+          disabled={!driverPhotoUrl}
+          onClick={onPreviewPhoto}
+          type="button"
+        >
+          <EntityAvatar imageUrl={driverPhotoUrl} name={driver.name} />
+        </button>
         <div>
           <strong>{driver.name}</strong>
           <span>{driver.phone}</span>
@@ -3549,6 +3621,8 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
 
 function DriverAppView({
   assetPreviewUrl,
+  companyLogoUrl,
+  companyName,
   documentUploadStatus,
   documentRecords,
   driverRecords,
@@ -3557,6 +3631,7 @@ function DriverAppView({
   items,
   morningCheckSent,
   onDriverDocumentUpload,
+  onDriverProfileImageRemove,
   onDriverProfileImageUpload,
   onFaultReport,
   onMorningCheck,
@@ -3572,12 +3647,10 @@ function DriverAppView({
   return (
     <main className="driver-page">
       <header className="driver-page-header">
-        <div className="brand">
-          <div className="brand-mark">
-            <Route size={22} />
-          </div>
+        <div className="brand driver-company-brand">
+          <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
           <div>
-            <strong>Camion Chiaro</strong>
+            <strong>{companyName}</strong>
             <span>Area autista</span>
           </div>
         </div>
@@ -3589,6 +3662,8 @@ function DriverAppView({
       <div className="driver-page-content">
         <DriverMobile
           assetPreviewUrl={assetPreviewUrl}
+          companyLogoUrl={companyLogoUrl}
+          companyName={companyName}
           documentUploadStatus={documentUploadStatus}
           documentRecords={documentRecords}
           driverRecords={driverRecords}
@@ -3597,6 +3672,7 @@ function DriverAppView({
           items={items}
           morningCheckSent={morningCheckSent}
           onDriverDocumentUpload={onDriverDocumentUpload}
+          onDriverProfileImageRemove={onDriverProfileImageRemove}
           onDriverProfileImageUpload={onDriverProfileImageUpload}
           onFaultReport={onFaultReport}
           onMorningCheck={onMorningCheck}
@@ -3623,6 +3699,8 @@ function DriverAppView({
 
 function DriverMobile({
   assetPreviewUrl = () => '',
+  companyLogoUrl = '',
+  companyName = 'Azienda',
   documentUploadStatus,
   documentRecords = driverDocuments,
   driverRecords = drivers,
@@ -3631,6 +3709,7 @@ function DriverMobile({
   items = [],
   morningCheckSent,
   onDriverDocumentUpload,
+  onDriverProfileImageRemove,
   onDriverProfileImageUpload,
   onFaultReport,
   onMorningCheck,
@@ -3747,6 +3826,13 @@ function DriverMobile({
         <span>{selectedVehicle?.plate ?? 'App'}</span>
       </div>
       <div className="phone-body">
+        <div className="driver-company-strip">
+          <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
+          <div>
+            <span>Azienda</span>
+            <strong>{companyName}</strong>
+          </div>
+        </div>
         {showDriverSelector && (
           <label className="driver-preview-selector">
             Autista in anteprima
@@ -3768,7 +3854,14 @@ function DriverMobile({
           <div>
             <p>Buongiorno</p>
             <strong>{driver.name}</strong>
-            <ImageUploadControl label={driverImageUrl ? 'Cambia foto' : 'Carica foto'} onUpload={(file) => onDriverProfileImageUpload?.(driver.id, file)} />
+            <div className="driver-photo-actions">
+              <ImageUploadControl label={driverImageUrl ? 'Cambia' : 'Carica foto'} onUpload={(file) => onDriverProfileImageUpload?.(driver.id, file)} />
+              {driverImageUrl && (
+                <button className="small-button" onClick={() => onDriverProfileImageRemove?.(driver.id)} type="button">
+                  Elimina
+                </button>
+              )}
+            </div>
           </div>
           <Smartphone size={24} />
         </div>

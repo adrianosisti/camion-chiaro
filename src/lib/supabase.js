@@ -916,6 +916,20 @@ export async function uploadDriverProfileImageFile(driverId, file, companyId = c
   return { data: data ? mapDriver(data) : null, error: null }
 }
 
+export async function clearDriverProfileImageFile(driverId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !driverId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('clear_driver_profile_image_file', {
+    target_driver_id: driverId,
+  })
+
+  return { data: data ? mapDriver(data) : null, error }
+}
+
 export async function createDriverDocumentSignedUrl(filePath) {
   const supabase = await getSupabaseClient()
 

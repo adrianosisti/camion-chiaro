@@ -15,6 +15,7 @@ import Download from 'lucide-react/dist/esm/icons/download.mjs'
 import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
 import Filter from 'lucide-react/dist/esm/icons/filter.mjs'
 import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
+import Globe2 from 'lucide-react/dist/esm/icons/globe-2.mjs'
 import KeyRound from 'lucide-react/dist/esm/icons/key-round.mjs'
 import LockKeyhole from 'lucide-react/dist/esm/icons/lock-keyhole.mjs'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.mjs'
@@ -22,7 +23,6 @@ import Mail from 'lucide-react/dist/esm/icons/mail.mjs'
 import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
 import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
 import RadioTower from 'lucide-react/dist/esm/icons/radio-tower.mjs'
-import Route from 'lucide-react/dist/esm/icons/route.mjs'
 import Save from 'lucide-react/dist/esm/icons/save.mjs'
 import Search from 'lucide-react/dist/esm/icons/search.mjs'
 import Send from 'lucide-react/dist/esm/icons/send.mjs'
@@ -154,6 +154,446 @@ const chatReactionOptions = [
   { emoji: '👀', label: 'Visto', value: 'seen' },
 ]
 const deepLinkViews = new Set(['chat', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings'])
+const languageStorageKey = 'camionChiaroLanguage'
+const defaultLanguage = 'it'
+const languageOptions = [
+  { code: 'it', label: 'Italiano', shortLabel: 'IT' },
+  { code: 'en', label: 'English', shortLabel: 'EN' },
+  { code: 'es', label: 'Español', shortLabel: 'ES' },
+  { code: 'fr', label: 'Français', shortLabel: 'FR' },
+  { code: 'de', label: 'Deutsch', shortLabel: 'DE' },
+]
+const supportedLanguageCodes = new Set(languageOptions.map((option) => option.code))
+const translations = {
+  it: {
+    'auth.companyEmailLabel': 'Email aziendale',
+    'auth.companyEmailPlaceholder': 'azienda@esempio.it',
+    'auth.companyNameLabel': 'Nome trasportatore / Ragione sociale',
+    'auth.companyNameMissing': 'Inserisci il nome del trasportatore o la ragione sociale.',
+    'auth.companyNamePlaceholder': 'Es. Spedifast SRL',
+    'auth.companySigninOverline': 'Accesso azienda',
+    'auth.companySigninTitle': 'Entra nel pannello',
+    'auth.companySignupOverline': 'Registrazione azienda',
+    'auth.companySignupTitle': 'Crea account azienda',
+    'auth.companyTab': 'Azienda',
+    'auth.companyToggleSignin': 'Ho gia un account azienda',
+    'auth.companyToggleSignup': 'Devo creare l account azienda',
+    'auth.demoNote': 'Modalita demo: quando aggiungi le chiavi Supabase in `.env`, questi form useranno login reali.',
+    'auth.driverButton': 'Entra come autista',
+    'auth.driverMissing': 'Inserisci nome utente autista e password.',
+    'auth.driverOverline': 'Accesso autista',
+    'auth.driverTab': 'Autista',
+    'auth.driverTitle': 'Entra con nome utente',
+    'auth.driverUsernameLabel': 'Nome utente autista',
+    'auth.driverUsernamePlaceholder': 'Es. mario.rossi',
+    'auth.emailPasswordMissing': 'Inserisci email aziendale e password.',
+    'auth.heroText': 'L azienda controlla patenti, revisioni, assicurazioni e visite mediche. L autista entra con il nome utente creato dall azienda, riceve notifiche in app, carica documenti e segnala guasti.',
+    'auth.heroTitle': 'Login azienda e autista, tutto nello stesso posto.',
+    'auth.passwordLabel': 'Password',
+    'auth.passwordPlaceholder': 'Password',
+    'auth.proofDriver': 'Area autista',
+    'auth.proofOperations': 'Check e guasti',
+    'auth.proofSecurity': 'RLS Supabase',
+    'auth.registrationSent': 'Registrazione inviata. Controlla la mail per confermare l account.',
+    'auth.signinButton': 'Accedi',
+    'auth.signupButton': 'Registrati',
+    'brand.tagline': 'Scadenze e notifiche flotta',
+    'driver.area': 'Area autista',
+    'driver.emptyMessage': 'Riprova tra qualche secondo o accedi di nuovo.',
+    'driver.emptyTitle': 'Area autista non disponibile',
+    'driver.loadingDetail': 'Sto recuperando i dati del profilo.',
+    'driver.loadingTitle': 'Caricamento area autista',
+    'driver.noteBody': 'Quando Supabase sara collegato, questa vista leggera solo le scadenze dell autista loggato e mostrera avvisi personali, documenti caricati, check mattutini e segnalazioni guasto.',
+    'driver.noteOverline': 'Notifiche',
+    'driver.noteTitle': 'Qui arrivano gli avvisi in app',
+    'hero.aria': 'Controllo scadenze',
+    'hero.description': 'Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.',
+    'hero.factDrivers': 'autisti attivi',
+    'hero.factNotifications': 'notifiche aperte',
+    'hero.factVehicles': 'mezzi in flotta',
+    'hero.newDeadline': 'Nuova scadenza',
+    'hero.openBell': 'Apri campanella',
+    'hero.priorityAria': 'Priorita di oggi',
+    'hero.priorityCriticalDetail': 'check con anomalie da aprire',
+    'hero.priorityCriticalLabel': 'Check critici',
+    'hero.priorityDeadlineDetail': '{count} critiche o scadute',
+    'hero.priorityDeadlineLabel': 'Scadenze 30 giorni',
+    'hero.priorityFaultDetail': 'segnalazioni ancora aperte',
+    'hero.priorityFaultLabel': 'Guasti aperti',
+    'language.label': 'Lingua',
+    'language.short': 'Lingua',
+    'nav.chat': 'Chat',
+    'nav.deadlines': 'Scadenze',
+    'nav.notifications': 'Notifiche',
+    'nav.records': 'Anagrafiche',
+    'nav.settings': 'Impostazioni',
+    'records.aria': 'Anagrafiche azienda',
+    'records.documentsLabel': 'Documenti',
+    'records.documentsText': 'Scadenze documentali e file autisti',
+    'records.driversLabel': 'Autisti',
+    'records.driversText': 'Credenziali, telefono e profilo autista',
+    'records.fleetLabel': 'Flotta',
+    'records.fleetText': 'Furgoni, motrici, trattori e semirimorchi',
+    'records.overline': 'Archivio azienda',
+    'records.tablist': 'Scegli anagrafica',
+    'records.title': 'Anagrafiche',
+    'session.companyArea': 'Area azienda',
+    'session.dashboardTitle': 'Dashboard azienda',
+    'session.signOut': 'Esci',
+    'sync.addKeys': 'Aggiungi le chiavi .env',
+    'sync.connected': 'Supabase collegato',
+    'sync.demo': 'Demo locale',
+    'topbar.searchPlaceholder': 'Cerca patente, targa, autista...',
+    'topbar.searchSr': 'Cerca scadenze',
+  },
+  en: {
+    'auth.companyEmailLabel': 'Company email',
+    'auth.companyEmailPlaceholder': 'company@example.com',
+    'auth.companyNameLabel': 'Carrier name / Legal name',
+    'auth.companyNameMissing': 'Enter the carrier name or legal company name.',
+    'auth.companyNamePlaceholder': 'Example: Spedifast Ltd',
+    'auth.companySigninOverline': 'Company access',
+    'auth.companySigninTitle': 'Enter the dashboard',
+    'auth.companySignupOverline': 'Company registration',
+    'auth.companySignupTitle': 'Create company account',
+    'auth.companyTab': 'Company',
+    'auth.companyToggleSignin': 'I already have a company account',
+    'auth.companyToggleSignup': 'I need to create a company account',
+    'auth.demoNote': 'Demo mode: after you add Supabase keys in `.env`, these forms will use real logins.',
+    'auth.driverButton': 'Enter as driver',
+    'auth.driverMissing': 'Enter driver username and password.',
+    'auth.driverOverline': 'Driver access',
+    'auth.driverTab': 'Driver',
+    'auth.driverTitle': 'Enter with username',
+    'auth.driverUsernameLabel': 'Driver username',
+    'auth.driverUsernamePlaceholder': 'Example: mario.rossi',
+    'auth.emailPasswordMissing': 'Enter company email and password.',
+    'auth.heroText': 'The company tracks licences, inspections, insurance and medical checks. Drivers enter with the username created by the company, receive in-app alerts, upload documents and report faults.',
+    'auth.heroTitle': 'Company and driver login, all in one place.',
+    'auth.passwordLabel': 'Password',
+    'auth.passwordPlaceholder': 'Password',
+    'auth.proofDriver': 'Driver area',
+    'auth.proofOperations': 'Checks and faults',
+    'auth.proofSecurity': 'Supabase RLS',
+    'auth.registrationSent': 'Registration sent. Check your email to confirm the account.',
+    'auth.signinButton': 'Sign in',
+    'auth.signupButton': 'Register',
+    'brand.tagline': 'Fleet deadlines and alerts',
+    'driver.area': 'Driver area',
+    'driver.emptyMessage': 'Try again in a few seconds or sign in again.',
+    'driver.emptyTitle': 'Driver area unavailable',
+    'driver.loadingDetail': 'Retrieving profile data.',
+    'driver.loadingTitle': 'Loading driver area',
+    'driver.noteBody': 'When Supabase is connected, this view will read only the signed-in driver data and show personal alerts, uploaded documents, morning checks and fault reports.',
+    'driver.noteOverline': 'Notifications',
+    'driver.noteTitle': 'In-app alerts arrive here',
+    'hero.aria': 'Deadline control',
+    'hero.description': 'A clean screen to see deadlines, morning checks and faults to manage right away.',
+    'hero.factDrivers': 'active drivers',
+    'hero.factNotifications': 'open notifications',
+    'hero.factVehicles': 'fleet vehicles',
+    'hero.newDeadline': 'New deadline',
+    'hero.openBell': 'Open notifications',
+    'hero.priorityAria': 'Today priorities',
+    'hero.priorityCriticalDetail': 'checks with issues to open',
+    'hero.priorityCriticalLabel': 'Critical checks',
+    'hero.priorityDeadlineDetail': '{count} critical or expired',
+    'hero.priorityDeadlineLabel': '30-day deadlines',
+    'hero.priorityFaultDetail': 'reports still open',
+    'hero.priorityFaultLabel': 'Open faults',
+    'language.label': 'Language',
+    'language.short': 'Language',
+    'nav.chat': 'Chat',
+    'nav.deadlines': 'Deadlines',
+    'nav.notifications': 'Notifications',
+    'nav.records': 'Records',
+    'nav.settings': 'Settings',
+    'records.aria': 'Company records',
+    'records.documentsLabel': 'Documents',
+    'records.documentsText': 'Driver document files and deadlines',
+    'records.driversLabel': 'Drivers',
+    'records.driversText': 'Credentials, phone and driver profile',
+    'records.fleetLabel': 'Fleet',
+    'records.fleetText': 'Vans, rigids, tractors and semi-trailers',
+    'records.overline': 'Company archive',
+    'records.tablist': 'Choose record area',
+    'records.title': 'Records',
+    'session.companyArea': 'Company area',
+    'session.dashboardTitle': 'Company dashboard',
+    'session.signOut': 'Sign out',
+    'sync.addKeys': 'Add .env keys',
+    'sync.connected': 'Supabase connected',
+    'sync.demo': 'Local demo',
+    'topbar.searchPlaceholder': 'Search licence, plate, driver...',
+    'topbar.searchSr': 'Search deadlines',
+  },
+  es: {
+    'auth.companyEmailLabel': 'Email de empresa',
+    'auth.companyEmailPlaceholder': 'empresa@ejemplo.com',
+    'auth.companyNameLabel': 'Nombre del transportista / Razon social',
+    'auth.companyNameMissing': 'Introduce el nombre del transportista o la razon social.',
+    'auth.companyNamePlaceholder': 'Ej. Spedifast SL',
+    'auth.companySigninOverline': 'Acceso empresa',
+    'auth.companySigninTitle': 'Entrar al panel',
+    'auth.companySignupOverline': 'Registro empresa',
+    'auth.companySignupTitle': 'Crear cuenta de empresa',
+    'auth.companyTab': 'Empresa',
+    'auth.companyToggleSignin': 'Ya tengo una cuenta de empresa',
+    'auth.companyToggleSignup': 'Necesito crear una cuenta de empresa',
+    'auth.demoNote': 'Modo demo: cuando añadas las claves Supabase en `.env`, estos formularios usaran accesos reales.',
+    'auth.driverButton': 'Entrar como conductor',
+    'auth.driverMissing': 'Introduce usuario de conductor y contraseña.',
+    'auth.driverOverline': 'Acceso conductor',
+    'auth.driverTab': 'Conductor',
+    'auth.driverTitle': 'Entrar con usuario',
+    'auth.driverUsernameLabel': 'Usuario conductor',
+    'auth.driverUsernamePlaceholder': 'Ej. mario.rossi',
+    'auth.emailPasswordMissing': 'Introduce email de empresa y contraseña.',
+    'auth.heroText': 'La empresa controla permisos, inspecciones, seguros y revisiones medicas. El conductor entra con el usuario creado por la empresa, recibe avisos en la app, sube documentos y comunica averias.',
+    'auth.heroTitle': 'Login de empresa y conductor, todo en el mismo sitio.',
+    'auth.passwordLabel': 'Contraseña',
+    'auth.passwordPlaceholder': 'Contraseña',
+    'auth.proofDriver': 'Area conductor',
+    'auth.proofOperations': 'Checks y averias',
+    'auth.proofSecurity': 'RLS Supabase',
+    'auth.registrationSent': 'Registro enviado. Revisa el email para confirmar la cuenta.',
+    'auth.signinButton': 'Acceder',
+    'auth.signupButton': 'Registrarse',
+    'brand.tagline': 'Vencimientos y avisos de flota',
+    'driver.area': 'Area conductor',
+    'driver.emptyMessage': 'Prueba de nuevo en unos segundos o inicia sesion otra vez.',
+    'driver.emptyTitle': 'Area conductor no disponible',
+    'driver.loadingDetail': 'Recuperando datos del perfil.',
+    'driver.loadingTitle': 'Cargando area conductor',
+    'driver.noteBody': 'Cuando Supabase este conectado, esta vista leera solo los datos del conductor conectado y mostrara avisos personales, documentos, checks matinales y averias.',
+    'driver.noteOverline': 'Notificaciones',
+    'driver.noteTitle': 'Aqui llegan los avisos en app',
+    'hero.aria': 'Control de vencimientos',
+    'hero.description': 'Una pantalla limpia para ver vencimientos, checks matinales y averias pendientes.',
+    'hero.factDrivers': 'conductores activos',
+    'hero.factNotifications': 'notificaciones abiertas',
+    'hero.factVehicles': 'vehiculos en flota',
+    'hero.newDeadline': 'Nuevo vencimiento',
+    'hero.openBell': 'Abrir avisos',
+    'hero.priorityAria': 'Prioridades de hoy',
+    'hero.priorityCriticalDetail': 'checks con incidencias por abrir',
+    'hero.priorityCriticalLabel': 'Checks criticos',
+    'hero.priorityDeadlineDetail': '{count} criticos o vencidos',
+    'hero.priorityDeadlineLabel': 'Vencimientos 30 dias',
+    'hero.priorityFaultDetail': 'avisos aun abiertos',
+    'hero.priorityFaultLabel': 'Averias abiertas',
+    'language.label': 'Idioma',
+    'language.short': 'Idioma',
+    'nav.chat': 'Chat',
+    'nav.deadlines': 'Vencimientos',
+    'nav.notifications': 'Avisos',
+    'nav.records': 'Ficheros',
+    'nav.settings': 'Ajustes',
+    'records.aria': 'Ficheros empresa',
+    'records.documentsLabel': 'Documentos',
+    'records.documentsText': 'Vencimientos y archivos de conductores',
+    'records.driversLabel': 'Conductores',
+    'records.driversText': 'Credenciales, telefono y perfil',
+    'records.fleetLabel': 'Flota',
+    'records.fleetText': 'Furgones, rigidos, tractoras y semirremolques',
+    'records.overline': 'Archivo empresa',
+    'records.tablist': 'Elige fichero',
+    'records.title': 'Ficheros',
+    'session.companyArea': 'Area empresa',
+    'session.dashboardTitle': 'Panel empresa',
+    'session.signOut': 'Salir',
+    'sync.addKeys': 'Añade claves .env',
+    'sync.connected': 'Supabase conectado',
+    'sync.demo': 'Demo local',
+    'topbar.searchPlaceholder': 'Buscar permiso, matricula, conductor...',
+    'topbar.searchSr': 'Buscar vencimientos',
+  },
+  fr: {
+    'auth.companyEmailLabel': 'Email entreprise',
+    'auth.companyEmailPlaceholder': 'entreprise@exemple.fr',
+    'auth.companyNameLabel': 'Nom transporteur / Raison sociale',
+    'auth.companyNameMissing': 'Saisis le nom du transporteur ou la raison sociale.',
+    'auth.companyNamePlaceholder': 'Ex. Spedifast SARL',
+    'auth.companySigninOverline': 'Acces entreprise',
+    'auth.companySigninTitle': 'Entrer dans le tableau',
+    'auth.companySignupOverline': 'Inscription entreprise',
+    'auth.companySignupTitle': 'Creer un compte entreprise',
+    'auth.companyTab': 'Entreprise',
+    'auth.companyToggleSignin': 'J ai deja un compte entreprise',
+    'auth.companyToggleSignup': 'Je dois creer un compte entreprise',
+    'auth.demoNote': 'Mode demo : apres ajout des cles Supabase dans `.env`, ces formulaires utiliseront de vrais acces.',
+    'auth.driverButton': 'Entrer comme chauffeur',
+    'auth.driverMissing': 'Saisis le nom utilisateur chauffeur et le mot de passe.',
+    'auth.driverOverline': 'Acces chauffeur',
+    'auth.driverTab': 'Chauffeur',
+    'auth.driverTitle': 'Entrer avec nom utilisateur',
+    'auth.driverUsernameLabel': 'Utilisateur chauffeur',
+    'auth.driverUsernamePlaceholder': 'Ex. mario.rossi',
+    'auth.emailPasswordMissing': 'Saisis email entreprise et mot de passe.',
+    'auth.heroText': 'L entreprise suit permis, controles, assurances et visites medicales. Le chauffeur entre avec le nom utilisateur cree par l entreprise, recoit des alertes dans l app, charge ses documents et signale les pannes.',
+    'auth.heroTitle': 'Connexion entreprise et chauffeur, tout au meme endroit.',
+    'auth.passwordLabel': 'Mot de passe',
+    'auth.passwordPlaceholder': 'Mot de passe',
+    'auth.proofDriver': 'Espace chauffeur',
+    'auth.proofOperations': 'Checks et pannes',
+    'auth.proofSecurity': 'RLS Supabase',
+    'auth.registrationSent': 'Inscription envoyee. Controle ton email pour confirmer le compte.',
+    'auth.signinButton': 'Se connecter',
+    'auth.signupButton': 'S inscrire',
+    'brand.tagline': 'Echeances et alertes flotte',
+    'driver.area': 'Espace chauffeur',
+    'driver.emptyMessage': 'Reessaie dans quelques secondes ou reconnecte-toi.',
+    'driver.emptyTitle': 'Espace chauffeur indisponible',
+    'driver.loadingDetail': 'Recuperation des donnees du profil.',
+    'driver.loadingTitle': 'Chargement espace chauffeur',
+    'driver.noteBody': 'Quand Supabase sera connecte, cette vue lira seulement les donnees du chauffeur connecte et affichera alertes personnelles, documents, checks du matin et pannes.',
+    'driver.noteOverline': 'Notifications',
+    'driver.noteTitle': 'Les alertes app arrivent ici',
+    'hero.aria': 'Controle des echeances',
+    'hero.description': 'Un ecran clair pour voir tout de suite echeances, checks du matin et pannes a gerer.',
+    'hero.factDrivers': 'chauffeurs actifs',
+    'hero.factNotifications': 'notifications ouvertes',
+    'hero.factVehicles': 'vehicules en flotte',
+    'hero.newDeadline': 'Nouvelle echeance',
+    'hero.openBell': 'Ouvrir alertes',
+    'hero.priorityAria': 'Priorites du jour',
+    'hero.priorityCriticalDetail': 'checks avec anomalies a ouvrir',
+    'hero.priorityCriticalLabel': 'Checks critiques',
+    'hero.priorityDeadlineDetail': '{count} critiques ou expirees',
+    'hero.priorityDeadlineLabel': 'Echeances 30 jours',
+    'hero.priorityFaultDetail': 'signalements encore ouverts',
+    'hero.priorityFaultLabel': 'Pannes ouvertes',
+    'language.label': 'Langue',
+    'language.short': 'Langue',
+    'nav.chat': 'Chat',
+    'nav.deadlines': 'Echeances',
+    'nav.notifications': 'Alertes',
+    'nav.records': 'Fiches',
+    'nav.settings': 'Reglages',
+    'records.aria': 'Fiches entreprise',
+    'records.documentsLabel': 'Documents',
+    'records.documentsText': 'Echeances et fichiers chauffeurs',
+    'records.driversLabel': 'Chauffeurs',
+    'records.driversText': 'Identifiants, telephone et profil',
+    'records.fleetLabel': 'Flotte',
+    'records.fleetText': 'Fourgons, porteurs, tracteurs et semi-remorques',
+    'records.overline': 'Archive entreprise',
+    'records.tablist': 'Choisir une fiche',
+    'records.title': 'Fiches',
+    'session.companyArea': 'Espace entreprise',
+    'session.dashboardTitle': 'Tableau entreprise',
+    'session.signOut': 'Sortir',
+    'sync.addKeys': 'Ajoute les cles .env',
+    'sync.connected': 'Supabase connecte',
+    'sync.demo': 'Demo locale',
+    'topbar.searchPlaceholder': 'Chercher permis, plaque, chauffeur...',
+    'topbar.searchSr': 'Chercher echeances',
+  },
+  de: {
+    'auth.companyEmailLabel': 'Firmen-E-Mail',
+    'auth.companyEmailPlaceholder': 'firma@beispiel.de',
+    'auth.companyNameLabel': 'Transportunternehmen / Firmenname',
+    'auth.companyNameMissing': 'Firmennamen oder rechtlichen Namen eingeben.',
+    'auth.companyNamePlaceholder': 'z. B. Spedifast GmbH',
+    'auth.companySigninOverline': 'Firmenzugang',
+    'auth.companySigninTitle': 'Dashboard offnen',
+    'auth.companySignupOverline': 'Firma registrieren',
+    'auth.companySignupTitle': 'Firmenkonto erstellen',
+    'auth.companyTab': 'Firma',
+    'auth.companyToggleSignin': 'Ich habe bereits ein Firmenkonto',
+    'auth.companyToggleSignup': 'Ich muss ein Firmenkonto erstellen',
+    'auth.demoNote': 'Demo-Modus: Nach dem Hinzufugen der Supabase-Schlussel in `.env` nutzen diese Formulare echte Logins.',
+    'auth.driverButton': 'Als Fahrer offnen',
+    'auth.driverMissing': 'Fahrer-Benutzername und Passwort eingeben.',
+    'auth.driverOverline': 'Fahrerzugang',
+    'auth.driverTab': 'Fahrer',
+    'auth.driverTitle': 'Mit Benutzername offnen',
+    'auth.driverUsernameLabel': 'Fahrer-Benutzername',
+    'auth.driverUsernamePlaceholder': 'z. B. mario.rossi',
+    'auth.emailPasswordMissing': 'Firmen-E-Mail und Passwort eingeben.',
+    'auth.heroText': 'Die Firma uberwacht Fuhrerscheine, Prufungen, Versicherungen und medizinische Checks. Fahrer melden sich mit dem von der Firma erstellten Benutzernamen an, erhalten App-Hinweise, laden Dokumente hoch und melden Schaden.',
+    'auth.heroTitle': 'Login fur Firma und Fahrer, alles an einem Ort.',
+    'auth.passwordLabel': 'Passwort',
+    'auth.passwordPlaceholder': 'Passwort',
+    'auth.proofDriver': 'Fahrerbereich',
+    'auth.proofOperations': 'Checks und Schaden',
+    'auth.proofSecurity': 'Supabase RLS',
+    'auth.registrationSent': 'Registrierung gesendet. E-Mail bestatigen, um das Konto zu aktivieren.',
+    'auth.signinButton': 'Einloggen',
+    'auth.signupButton': 'Registrieren',
+    'brand.tagline': 'Flottenfristen und Hinweise',
+    'driver.area': 'Fahrerbereich',
+    'driver.emptyMessage': 'In einigen Sekunden erneut versuchen oder neu anmelden.',
+    'driver.emptyTitle': 'Fahrerbereich nicht verfugbar',
+    'driver.loadingDetail': 'Profildaten werden geladen.',
+    'driver.loadingTitle': 'Fahrerbereich wird geladen',
+    'driver.noteBody': 'Wenn Supabase verbunden ist, liest diese Ansicht nur die Daten des angemeldeten Fahrers und zeigt personliche Hinweise, Dokumente, Morgenchecks und Schadenmeldungen.',
+    'driver.noteOverline': 'Benachrichtigungen',
+    'driver.noteTitle': 'App-Hinweise kommen hier an',
+    'hero.aria': 'Fristenkontrolle',
+    'hero.description': 'Eine klare Ansicht fur Fristen, Morgenchecks und offene Schaden.',
+    'hero.factDrivers': 'aktive Fahrer',
+    'hero.factNotifications': 'offene Hinweise',
+    'hero.factVehicles': 'Fahrzeuge',
+    'hero.newDeadline': 'Neue Frist',
+    'hero.openBell': 'Hinweise offnen',
+    'hero.priorityAria': 'Prioritaten heute',
+    'hero.priorityCriticalDetail': 'Checks mit Problemen offnen',
+    'hero.priorityCriticalLabel': 'Kritische Checks',
+    'hero.priorityDeadlineDetail': '{count} kritisch oder abgelaufen',
+    'hero.priorityDeadlineLabel': 'Fristen 30 Tage',
+    'hero.priorityFaultDetail': 'Meldungen noch offen',
+    'hero.priorityFaultLabel': 'Offene Schaden',
+    'language.label': 'Sprache',
+    'language.short': 'Sprache',
+    'nav.chat': 'Chat',
+    'nav.deadlines': 'Fristen',
+    'nav.notifications': 'Hinweise',
+    'nav.records': 'Stammdaten',
+    'nav.settings': 'Einstellungen',
+    'records.aria': 'Firmen-Stammdaten',
+    'records.documentsLabel': 'Dokumente',
+    'records.documentsText': 'Fahrerdokumente und Fristen',
+    'records.driversLabel': 'Fahrer',
+    'records.driversText': 'Zugangsdaten, Telefon und Profil',
+    'records.fleetLabel': 'Flotte',
+    'records.fleetText': 'Transporter, Lkw, Sattelzugmaschinen und Auflieger',
+    'records.overline': 'Firmenarchiv',
+    'records.tablist': 'Stammdaten auswahlen',
+    'records.title': 'Stammdaten',
+    'session.companyArea': 'Firmenbereich',
+    'session.dashboardTitle': 'Firmen-Dashboard',
+    'session.signOut': 'Ausloggen',
+    'sync.addKeys': '.env-Schlussel hinzufugen',
+    'sync.connected': 'Supabase verbunden',
+    'sync.demo': 'Lokale Demo',
+    'topbar.searchPlaceholder': 'Fuhrerschein, Kennzeichen, Fahrer suchen...',
+    'topbar.searchSr': 'Fristen suchen',
+  },
+}
+
+function getInitialLanguage() {
+  if (typeof window === 'undefined') return defaultLanguage
+
+  const storedLanguage = localStorage.getItem(languageStorageKey)
+  if (supportedLanguageCodes.has(storedLanguage)) return storedLanguage
+
+  const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language]
+  const detectedLanguage = browserLanguages
+    .map((language) => language?.slice(0, 2).toLowerCase())
+    .find((language) => supportedLanguageCodes.has(language))
+
+  return detectedLanguage ?? defaultLanguage
+}
+
+function translate(language, key, values = {}) {
+  const message = translations[language]?.[key] ?? translations[defaultLanguage][key] ?? key
+
+  return Object.entries(values).reduce(
+    (currentMessage, [valueKey, value]) => currentMessage.replaceAll(`{${valueKey}}`, String(value)),
+    message,
+  )
+}
 
 function getChatReactionEmoji(value) {
   const legacyReactionMap = {
@@ -478,6 +918,7 @@ function startChatBottomScroll(scrollToBottom, listElement) {
 
 function App() {
   const [session, setSession] = useState(null)
+  const [language, setLanguage] = useState(getInitialLanguage)
   const [items, setItems] = useState(complianceItems)
   const [documentRecords, setDocumentRecords] = useState(driverDocuments)
   const [driverRecords, setDriverRecords] = useState(drivers)
@@ -520,6 +961,7 @@ function App() {
   const [acknowledgedCheckIds, setAcknowledgedCheckIds] = useState(loadAcknowledgedCheckIds)
   const [archivedFaultOverrideIds, setArchivedFaultOverrideIds] = useState(loadArchivedFaultOverrideIds)
 
+  const t = useCallback((key, values) => translate(language, key, values), [language])
   const decoratedItems = useMemo(() => decorateCompliance(items, driverRecords, vehicleRecords), [driverRecords, items, vehicleRecords])
   const summary = useMemo(() => getSummary(decoratedItems), [decoratedItems])
   const hasCompanyDataConnection = Boolean(isSupabaseConfigured && activeCompanyId)
@@ -541,6 +983,11 @@ function App() {
         .filter(isPreviewableAssetPath),
     [chatMessageRecords, companyProfile.logoPath, driverRecords, faultReportRecords],
   )
+
+  useEffect(() => {
+    localStorage.setItem(languageStorageKey, language)
+    document.documentElement.lang = language
+  }, [language])
 
   useEffect(() => {
     function handleBeforeInstallPrompt(event) {
@@ -2114,7 +2561,14 @@ function App() {
   ).length
 
   if (!session) {
-    return <AuthScreen onAuthenticated={handleAuthenticated} />
+    return (
+      <AuthScreen
+        language={language}
+        onAuthenticated={handleAuthenticated}
+        onLanguageChange={setLanguage}
+        t={t}
+      />
+    )
   }
 
   if (session.role === 'driver') {
@@ -2147,6 +2601,7 @@ function App() {
         operationsStatus={operationsSyncStatus}
         faultReported={faultReported}
         isLoading={driverSessionLoading}
+        language={language}
         morningCheckSent={morningCheckSent}
         uploadSent={driverUploadSent}
         uploadingDocumentId={uploadingDriverDocumentId}
@@ -2157,6 +2612,8 @@ function App() {
         notificationStatus={phoneNotificationStatus}
         onEnablePhoneNotifications={enablePhoneNotifications}
         onInstallPhoneApp={installPhoneApp}
+        onLanguageChange={setLanguage}
+        t={t}
       />
     )
   }
@@ -2227,6 +2684,7 @@ function App() {
         onNavigate={navigateCompanyView}
         onSignOut={handleSignOut}
         session={session}
+        t={t}
       />
       <main className="workspace">
         <Topbar
@@ -2241,6 +2699,7 @@ function App() {
           onUpdateFaultStatus={updateFaultReportStatus}
           query={query}
           setQuery={setQuery}
+          t={t}
           vehicleCheckRecords={vehicleCheckRecords}
           vehicleRecords={vehicleRecords}
         />
@@ -2269,6 +2728,7 @@ function App() {
             onUpdateVehicle={updateVehicleRecord}
             driversSyncStatus={driversSyncStatus}
             fleetSyncStatus={fleetSyncStatus}
+            t={t}
             vehicleRecords={vehicleRecords}
           />
         ) : activeView === 'notifications' ? (
@@ -2304,14 +2764,17 @@ function App() {
             companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
             installPromptAvailable={Boolean(installPromptEvent)}
             isStandaloneMode={isStandaloneMode}
+            language={language}
             notificationEnabled={phoneNotificationEnabled}
             notificationStatus={phoneNotificationStatus}
             onCompanyLogoUpload={uploadCompanyLogo}
             onEnablePhoneNotifications={enablePhoneNotifications}
             onInstallPhoneApp={installPhoneApp}
+            onLanguageChange={setLanguage}
             onUpdateCompanyProfile={updateCompanyProfile}
             showInstallAction={showCompanyInstallAction}
             syncStatus={companySettingsStatus}
+            t={t}
           />
         ) : (
           <>
@@ -2330,6 +2793,7 @@ function App() {
                 onOpenNotifications={() => openNotifications('inbox')}
                 openFaultCount={openFaultCount}
                 summary={summary}
+                t={t}
               />
             </section>
             <section className="content-grid content-grid-full">
@@ -2356,14 +2820,14 @@ function App() {
       <footer className="mobile-logout-footer" aria-label="Uscita area azienda">
         <button className="logout-button" onClick={handleSignOut} type="button">
           <LogOut size={17} />
-          Esci
+          {t('session.signOut')}
         </button>
       </footer>
     </div>
   )
 }
 
-function AuthScreen({ onAuthenticated }) {
+function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
   const [mode, setMode] = useState('company')
   const [companyMode, setCompanyMode] = useState('signin')
   const [companyForm, setCompanyForm] = useState({
@@ -2391,13 +2855,13 @@ function AuthScreen({ onAuthenticated }) {
 
     if (!cleanCompanyForm.email || !cleanCompanyForm.password) {
       setIsSubmitting(false)
-      setStatus('Inserisci email aziendale e password.')
+      setStatus(t('auth.emailPasswordMissing'))
       return
     }
 
     if (companyMode === 'signup' && !cleanCompanyForm.companyName) {
       setIsSubmitting(false)
-      setStatus('Inserisci il nome del trasportatore o la ragione sociale.')
+      setStatus(t('auth.companyNameMissing'))
       return
     }
 
@@ -2414,7 +2878,7 @@ function AuthScreen({ onAuthenticated }) {
     }
 
     if (companyMode === 'signup' && isSupabaseConfigured && !result.data?.session) {
-      setStatus('Registrazione inviata. Controlla la mail per confermare l account.')
+      setStatus(t('auth.registrationSent'))
       return
     }
 
@@ -2464,7 +2928,7 @@ function AuthScreen({ onAuthenticated }) {
 
     if (!cleanDriverForm.username || !cleanDriverForm.password) {
       setIsSubmitting(false)
-      setStatus('Inserisci nome utente autista e password.')
+      setStatus(t('auth.driverMissing'))
       return
     }
 
@@ -2490,60 +2954,60 @@ function AuthScreen({ onAuthenticated }) {
       <section className="auth-brand-panel">
         <div className="brand auth-brand">
           <div className="brand-mark">
-            <Route size={24} strokeWidth={2.4} />
+            <CamionChiaroMark />
           </div>
           <div>
             <strong>Camion Chiaro</strong>
-            <span>Scadenze e notifiche flotta</span>
+            <span>{t('brand.tagline')}</span>
           </div>
         </div>
-        <h1>Login azienda e autista, tutto nello stesso posto.</h1>
-        <p>
-          L azienda controlla patenti, revisioni, assicurazioni e visite mediche. L autista entra con il
-          nome utente creato dall azienda, riceve notifiche in app, carica documenti e segnala guasti.
-        </p>
+        <h1>{t('auth.heroTitle')}</h1>
+        <p>{t('auth.heroText')}</p>
         <div className="auth-proof-grid">
           <div>
             <ShieldCheck size={18} />
-            RLS Supabase
+            {t('auth.proofSecurity')}
           </div>
           <div>
             <Smartphone size={18} />
-            Area autista
+            {t('auth.proofDriver')}
           </div>
           <div>
             <Wrench size={18} />
-            Check e guasti
+            {t('auth.proofOperations')}
           </div>
         </div>
       </section>
 
       <section className="auth-card" aria-label="Accesso Camion Chiaro">
+        <div className="auth-language-row">
+          <LanguageSelector language={language} onLanguageChange={onLanguageChange} t={t} />
+        </div>
         <div className="auth-tabs">
           <button className={mode === 'company' ? 'is-active' : ''} onClick={() => setMode('company')} type="button">
             <Building2 size={17} />
-            Azienda
+            {t('auth.companyTab')}
           </button>
           <button className={mode === 'driver' ? 'is-active' : ''} onClick={() => setMode('driver')} type="button">
             <UserRound size={17} />
-            Autista
+            {t('auth.driverTab')}
           </button>
         </div>
 
         {mode === 'company' ? (
           <form className="auth-form" onSubmit={handleCompanySubmit}>
             <div>
-              <p className="overline">{companyMode === 'signup' ? 'Registrazione azienda' : 'Accesso azienda'}</p>
-              <h2>{companyMode === 'signup' ? 'Crea account azienda' : 'Entra nel pannello'}</h2>
+              <p className="overline">{companyMode === 'signup' ? t('auth.companySignupOverline') : t('auth.companySigninOverline')}</p>
+              <h2>{companyMode === 'signup' ? t('auth.companySignupTitle') : t('auth.companySigninTitle')}</h2>
             </div>
             {companyMode === 'signup' && (
               <label>
-                Nome trasportatore / Ragione sociale
+                {t('auth.companyNameLabel')}
                 <span>
                   <Building2 size={17} />
                   <input
                     autoComplete="organization"
-                    placeholder="Es. Spedifast SRL"
+                    placeholder={t('auth.companyNamePlaceholder')}
                     required
                     value={companyForm.companyName}
                     onChange={(event) => setCompanyForm({ ...companyForm, companyName: event.target.value })}
@@ -2552,13 +3016,13 @@ function AuthScreen({ onAuthenticated }) {
               </label>
             )}
             <label>
-              Email aziendale
+              {t('auth.companyEmailLabel')}
               <span>
                 <Mail size={17} />
                 <input
                   autoComplete="email"
                   name="email"
-                  placeholder="azienda@esempio.it"
+                  placeholder={t('auth.companyEmailPlaceholder')}
                   required
                   value={companyForm.email}
                   onChange={(event) => setCompanyForm({ ...companyForm, email: event.target.value })}
@@ -2567,13 +3031,13 @@ function AuthScreen({ onAuthenticated }) {
               </span>
             </label>
             <label>
-              Password
+              {t('auth.passwordLabel')}
               <span>
                 <LockKeyhole size={17} />
                 <input
                   autoComplete={companyMode === 'signup' ? 'new-password' : 'current-password'}
                   name="password"
-                  placeholder="Password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   required
                   value={companyForm.password}
                   onChange={(event) => setCompanyForm({ ...companyForm, password: event.target.value })}
@@ -2583,24 +3047,24 @@ function AuthScreen({ onAuthenticated }) {
             </label>
             <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
               <KeyRound size={17} />
-              {companyMode === 'signup' ? 'Registrati' : 'Accedi'}
+              {companyMode === 'signup' ? t('auth.signupButton') : t('auth.signinButton')}
             </button>
             <button
               className="link-button"
               onClick={switchCompanyMode}
               type="button"
             >
-              {companyMode === 'signup' ? 'Ho già un account azienda' : 'Devo creare l account azienda'}
+              {companyMode === 'signup' ? t('auth.companyToggleSignin') : t('auth.companyToggleSignup')}
             </button>
           </form>
         ) : (
           <form className="auth-form" onSubmit={handleDriverSubmit}>
             <div>
-              <p className="overline">Accesso autista</p>
-              <h2>Entra con nome utente</h2>
+              <p className="overline">{t('auth.driverOverline')}</p>
+              <h2>{t('auth.driverTitle')}</h2>
             </div>
             <label>
-              Nome utente autista
+              {t('auth.driverUsernameLabel')}
               <span>
                 <UserRound size={17} />
                 <input
@@ -2608,7 +3072,7 @@ function AuthScreen({ onAuthenticated }) {
                   autoComplete="username"
                   autoCorrect="off"
                   name="username"
-                  placeholder="Es. mario.rossi"
+                  placeholder={t('auth.driverUsernamePlaceholder')}
                   required
                   spellCheck={false}
                   value={driverForm.username}
@@ -2617,13 +3081,13 @@ function AuthScreen({ onAuthenticated }) {
               </span>
             </label>
             <label>
-              Password
+              {t('auth.passwordLabel')}
               <span>
                 <LockKeyhole size={17} />
                 <input
                   autoComplete="current-password"
                   name="password"
-                  placeholder="Password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   required
                   value={driverForm.password}
                   onChange={(event) => setDriverForm({ ...driverForm, password: event.target.value })}
@@ -2633,7 +3097,7 @@ function AuthScreen({ onAuthenticated }) {
             </label>
             <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
               <Smartphone size={17} />
-              Entra come autista
+              {t('auth.driverButton')}
             </button>
           </form>
         )}
@@ -2641,7 +3105,7 @@ function AuthScreen({ onAuthenticated }) {
         {status && <p className="auth-status">{status}</p>}
         {!isSupabaseConfigured && (
           <p className="auth-demo-note">
-            Modalità demo: quando aggiungi le chiavi Supabase in `.env`, questi form useranno login reali.
+            {t('auth.demoNote')}
           </p>
         )}
       </section>
@@ -2649,24 +3113,24 @@ function AuthScreen({ onAuthenticated }) {
   )
 }
 
-function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onHome, onNavigate, onSignOut, session }) {
+function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onHome, onNavigate, onSignOut, session, t }) {
   const navItems = [
-    { id: 'dashboard', label: 'Scadenze', icon: CalendarClock },
-    { id: 'records', label: 'Anagrafiche', icon: Users },
-    { id: 'notifications', label: 'Notifiche', icon: Bell },
-    { id: 'chat', label: 'Chat', icon: Mail },
-    { id: 'settings', label: 'Impostazioni', icon: SettingsIcon },
+    { id: 'dashboard', label: t('nav.deadlines'), icon: CalendarClock },
+    { id: 'records', label: t('nav.records'), icon: Users },
+    { id: 'notifications', label: t('nav.notifications'), icon: Bell },
+    { id: 'chat', label: t('nav.chat'), icon: Mail },
+    { id: 'settings', label: t('nav.settings'), icon: SettingsIcon },
   ]
 
   return (
     <aside className="sidebar" aria-label="Navigazione principale">
       <button className="brand brand-button" onClick={onHome} type="button">
         <div className="brand-mark">
-          <Route size={22} strokeWidth={2.4} />
+          <CamionChiaroMark />
         </div>
         <div>
           <strong>Camion Chiaro</strong>
-          <span>Area azienda</span>
+          <span>{t('session.companyArea')}</span>
         </div>
       </button>
 
@@ -2689,14 +3153,14 @@ function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onH
       <div className="sync-card">
         <RadioTower size={19} />
         <div>
-          <strong>{isSupabaseConfigured ? 'Supabase collegato' : 'Demo locale'}</strong>
-          <span>{session.email ?? 'Aggiungi le chiavi .env'}</span>
+          <strong>{isSupabaseConfigured ? t('sync.connected') : t('sync.demo')}</strong>
+          <span>{session.email ?? t('sync.addKeys')}</span>
         </div>
       </div>
 
       <button className="logout-button" onClick={onSignOut} type="button">
         <LogOut size={17} />
-        Esci
+        {t('session.signOut')}
       </button>
     </aside>
   )
@@ -2714,23 +3178,24 @@ function Topbar({
   onUpdateFaultStatus,
   query,
   setQuery,
+  t,
   vehicleCheckRecords,
   vehicleRecords,
 }) {
   return (
     <header className="topbar">
       <div>
-        <p className="overline">Area azienda</p>
-        <h1>Dashboard azienda</h1>
+        <p className="overline">{t('session.companyArea')}</p>
+        <h1>{t('session.dashboardTitle')}</h1>
       </div>
       <div className="topbar-actions">
         <label className="search-box">
           <Search size={18} aria-hidden="true" />
-          <span className="sr-only">Cerca scadenze</span>
+          <span className="sr-only">{t('topbar.searchSr')}</span>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cerca patente, targa, autista..."
+            placeholder={t('topbar.searchPlaceholder')}
           />
         </label>
         <TopbarNotifications
@@ -2953,6 +3418,49 @@ function TopbarNotifications({
   )
 }
 
+function CamionChiaroMark() {
+  return (
+    <svg className="camion-logo-mark" viewBox="0 0 72 72" role="img" aria-label="Camion Chiaro">
+      <rect width="72" height="72" rx="16" fill="#020617" />
+      <path
+        d="M10 50c13-3 17-16 27-20 9-4 17-1 25-8"
+        fill="none"
+        stroke="#12c6df"
+        strokeLinecap="round"
+        strokeWidth="7"
+      />
+      <rect x="13" y="31" width="33" height="15" rx="4" fill="#12c6df" />
+      <path d="M46 34h9l7 8v4H46z" fill="#7dd3fc" />
+      <path d="M18 37h20" stroke="#ffffff" strokeLinecap="round" strokeWidth="3" />
+      <circle cx="24" cy="50" r="5.5" fill="#ffffff" />
+      <circle cx="24" cy="50" r="2.4" fill="#020617" />
+      <circle cx="52" cy="50" r="5.5" fill="#ffffff" />
+      <circle cx="52" cy="50" r="2.4" fill="#020617" />
+      <path d="M54 15l2.1 4.5 4.9 1.6-4.9 1.7L54 28l-2.1-4.2-4.9-1.7 4.9-1.6z" fill="#ffffff" />
+    </svg>
+  )
+}
+
+function LanguageSelector({ language, onLanguageChange, t, variant = 'light' }) {
+  return (
+    <label className={`language-selector is-${variant}`}>
+      <Globe2 size={16} aria-hidden="true" />
+      <span>{t('language.short')}</span>
+      <select
+        aria-label={t('language.label')}
+        value={language}
+        onChange={(event) => onLanguageChange(event.target.value)}
+      >
+        {languageOptions.map((option) => (
+          <option key={option.code} value={option.code}>
+            {option.shortLabel} · {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 function EntityAvatar({ imageUrl, name, variant = 'default' }) {
   return (
     <span className={`entity-avatar avatar-${variant}`}>
@@ -3090,14 +3598,17 @@ function SettingsWorkspace({
   companyProfile,
   installPromptAvailable,
   isStandaloneMode,
+  language,
   notificationEnabled,
   notificationStatus,
   onCompanyLogoUpload,
   onEnablePhoneNotifications,
   onInstallPhoneApp,
+  onLanguageChange,
   onUpdateCompanyProfile,
   showInstallAction,
   syncStatus,
+  t,
 }) {
   const [form, setForm] = useState({
     headquarters: companyProfile.headquarters ?? '',
@@ -3158,6 +3669,18 @@ function SettingsWorkspace({
         {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
       </form>
       <div className="settings-side-column">
+        <aside className="panel settings-language-panel">
+          <div className="panel-header compact">
+            <div>
+              <p className="overline">{t('nav.settings')}</p>
+              <h2>{t('language.label')}</h2>
+            </div>
+            <Globe2 size={20} />
+          </div>
+          <div className="settings-language-body">
+            <LanguageSelector language={language} onLanguageChange={onLanguageChange} t={t} />
+          </div>
+        </aside>
         <aside className="panel settings-summary-panel">
           <div className="panel-header compact">
             <div>
@@ -3203,31 +3726,32 @@ function HeroPanel({
   onOpenNotifications,
   openFaultCount,
   summary,
+  t,
 }) {
   const priorityCards = [
     {
-      detail: 'check con anomalie da aprire',
+      detail: t('hero.priorityCriticalDetail'),
       icon: AlertTriangle,
       isActive: criticalCheckCount > 0,
-      label: 'Check critici',
+      label: t('hero.priorityCriticalLabel'),
       onClick: onOpenCriticalChecks,
       tone: 'danger',
       value: criticalCheckCount,
     },
     {
-      detail: 'segnalazioni ancora aperte',
+      detail: t('hero.priorityFaultDetail'),
       icon: Wrench,
       isActive: openFaultCount > 0,
-      label: 'Guasti aperti',
+      label: t('hero.priorityFaultLabel'),
       onClick: onOpenFaults,
       tone: 'warning',
       value: openFaultCount,
     },
     {
-      detail: `${summary.critical} critiche o scadute`,
+      detail: t('hero.priorityDeadlineDetail', { count: summary.critical }),
       icon: CalendarClock,
       isActive: summary.next30 > 0,
-      label: 'Scadenze 30 giorni',
+      label: t('hero.priorityDeadlineLabel'),
       onClick: onOpenDeadlineWindow,
       tone: 'info',
       value: summary.next30,
@@ -3235,41 +3759,39 @@ function HeroPanel({
   ]
 
   return (
-    <section className="hero-panel" aria-label="Controllo scadenze">
+    <section className="hero-panel" aria-label={t('hero.aria')}>
       <div className="hero-copy">
         <div className="company-title-row">
           <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
           <h2>{companyName}</h2>
         </div>
-        <p>
-          Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.
-        </p>
+        <p>{t('hero.description')}</p>
         <div className="hero-facts" aria-label="Dimensione azienda">
           <div>
             <strong>{activeDriverCount}</strong>
-            <span>autisti attivi</span>
+            <span>{t('hero.factDrivers')}</span>
           </div>
           <div>
             <strong>{activeVehicleCount}</strong>
-            <span>mezzi in flotta</span>
+            <span>{t('hero.factVehicles')}</span>
           </div>
           <div>
             <strong>{notificationCount}</strong>
-            <span>notifiche aperte</span>
+            <span>{t('hero.factNotifications')}</span>
           </div>
         </div>
         <div className="hero-actions">
           <button className="primary-button" onClick={onNewDeadline} type="button">
             <Plus size={17} />
-            Nuova scadenza
+            {t('hero.newDeadline')}
           </button>
           <button className="ghost-button" onClick={onOpenNotifications} type="button">
             <Bell size={17} />
-            Apri campanella
+            {t('hero.openBell')}
           </button>
         </div>
       </div>
-      <div className="priority-grid" aria-label="Priorita di oggi">
+      <div className="priority-grid" aria-label={t('hero.priorityAria')}>
         {priorityCards.map((card) => (
           <button
             aria-label={`Apri ${card.label.toLowerCase()}: ${card.value}`}
@@ -3317,6 +3839,7 @@ function RecordsWorkspace({
   onUpdateDocument,
   onUpdateDriver,
   onUpdateVehicle,
+  t,
   vehicleRecords,
 }) {
   const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
@@ -3326,36 +3849,36 @@ function RecordsWorkspace({
       count: activeDrivers.length,
       icon: Users,
       id: 'drivers',
-      label: 'Autisti',
-      text: 'Credenziali, telefono e profilo autista',
+      label: t('records.driversLabel'),
+      text: t('records.driversText'),
     },
     {
       count: activeVehicles.length,
       icon: Truck,
       id: 'fleet',
-      label: 'Flotta',
-      text: 'Furgoni, motrici, trattori e semirimorchi',
+      label: t('records.fleetLabel'),
+      text: t('records.fleetText'),
     },
     {
       count: documentRecords.length,
       icon: FileText,
       id: 'documents',
-      label: 'Documenti',
-      text: 'Scadenze documentali e file autisti',
+      label: t('records.documentsLabel'),
+      text: t('records.documentsText'),
     },
   ]
 
   return (
-    <section className="records-workspace" aria-label="Anagrafiche azienda">
+    <section className="records-workspace" aria-label={t('records.aria')}>
       <div className="panel records-switch-panel">
         <div className="panel-header compact">
           <div>
-            <p className="overline">Archivio azienda</p>
-            <h2>Anagrafiche</h2>
+            <p className="overline">{t('records.overline')}</p>
+            <h2>{t('records.title')}</h2>
           </div>
           <Users size={20} />
         </div>
-        <div className="records-tabs" role="tablist" aria-label="Scegli anagrafica">
+        <div className="records-tabs" role="tablist" aria-label={t('records.tablist')}>
           {tabs.map((tab) => (
             <button
               aria-selected={activeTab === tab.id}
@@ -5728,6 +6251,7 @@ function DriverAppView({
   isLoading,
   isStandaloneMode,
   items,
+  language,
   morningCheckSent,
   notificationEnabled,
   notificationStatus,
@@ -5739,6 +6263,7 @@ function DriverAppView({
   onFaultReport,
   onEnablePhoneNotifications,
   onInstallPhoneApp,
+  onLanguageChange,
   onMarkChatRead,
   onMorningCheck,
   onOpenDriverDocument,
@@ -5747,6 +6272,7 @@ function DriverAppView({
   onSignOut,
   onUpload,
   operationsStatus,
+  t,
   uploadSent,
   uploadingDocumentId,
   vehicleCheckRecords,
@@ -5759,17 +6285,17 @@ function DriverAppView({
           <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
           <div>
             <strong>{companyName}</strong>
-            <span>Area autista</span>
+            <span>{t('driver.area')}</span>
           </div>
         </div>
         <button className="logout-button" onClick={onSignOut} type="button">
-          <LogOut size={17} />
-          Esci
+            <LogOut size={17} />
+          {t('session.signOut')}
         </button>
       </header>
       <div className="driver-page-content">
         {isLoading ? (
-          <DriverLoadingPhone companyLogoUrl={companyLogoUrl} companyName={companyName} />
+          <DriverLoadingPhone companyLogoUrl={companyLogoUrl} companyName={companyName} t={t} />
         ) : driverRecords.length > 0 ? (
           <DriverMobile
             assetPreviewUrl={assetPreviewUrl}
@@ -5785,6 +6311,7 @@ function DriverAppView({
             installPromptAvailable={installPromptAvailable}
             isStandaloneMode={isStandaloneMode}
             items={items}
+            language={language}
             morningCheckSent={morningCheckSent}
             notificationEnabled={notificationEnabled}
             notificationStatus={notificationStatus}
@@ -5796,12 +6323,14 @@ function DriverAppView({
             onEnablePhoneNotifications={onEnablePhoneNotifications}
             onFaultReport={onFaultReport}
             onInstallPhoneApp={onInstallPhoneApp}
+            onLanguageChange={onLanguageChange}
             onMarkChatRead={onMarkChatRead}
             onReactToMessage={onReactToMessage}
             onSendChatMessage={onSendChatMessage}
             onMorningCheck={onMorningCheck}
             onOpenDriverDocument={onOpenDriverDocument}
             operationsStatus={operationsStatus}
+            t={t}
             uploadSent={uploadSent}
             onUpload={onUpload}
             uploadingDocumentId={uploadingDocumentId}
@@ -5809,30 +6338,27 @@ function DriverAppView({
             vehicleRecords={vehicleRecords}
           />
         ) : (
-          <DriverEmptyPhone companyLogoUrl={companyLogoUrl} companyName={companyName} message={operationsStatus} />
+          <DriverEmptyPhone companyLogoUrl={companyLogoUrl} companyName={companyName} message={operationsStatus} t={t} />
         )}
         <div className="driver-info-column">
           <section className="panel driver-note-panel">
-            <p className="overline">Notifiche</p>
-            <h1>Qui arrivano gli avvisi in app</h1>
-            <p>
-              Quando Supabase sarà collegato, questa vista leggerà solo le scadenze dell'autista loggato e
-              mostrerà avvisi personali, documenti caricati, check mattutini e segnalazioni guasto.
-            </p>
+            <p className="overline">{t('driver.noteOverline')}</p>
+            <h1>{t('driver.noteTitle')}</h1>
+            <p>{t('driver.noteBody')}</p>
           </section>
         </div>
       </div>
       <footer className="driver-logout-footer">
         <button className="logout-button" onClick={onSignOut} type="button">
           <LogOut size={17} />
-          Esci
+          {t('session.signOut')}
         </button>
       </footer>
     </main>
   )
 }
 
-function DriverLoadingPhone({ companyLogoUrl, companyName }) {
+function DriverLoadingPhone({ companyLogoUrl, companyName, t }) {
   return (
     <section className="phone-frame" aria-label="Caricamento app autista">
       <div className="phone-top">
@@ -5843,21 +6369,21 @@ function DriverLoadingPhone({ companyLogoUrl, companyName }) {
         <div className="driver-company-strip">
           <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
           <div>
-            <span>Azienda</span>
+            <span>{t('auth.companyTab')}</span>
             <strong>{companyName}</strong>
           </div>
         </div>
         <div className="driver-loading-state">
           <RadioTower size={24} />
-          <strong>Caricamento area autista</strong>
-          <span>Sto recuperando i dati del profilo.</span>
+          <strong>{t('driver.loadingTitle')}</strong>
+          <span>{t('driver.loadingDetail')}</span>
         </div>
       </div>
     </section>
   )
 }
 
-function DriverEmptyPhone({ companyLogoUrl, companyName, message }) {
+function DriverEmptyPhone({ companyLogoUrl, companyName, message, t }) {
   return (
     <section className="phone-frame" aria-label="Area autista non disponibile">
       <div className="phone-top">
@@ -5868,14 +6394,14 @@ function DriverEmptyPhone({ companyLogoUrl, companyName, message }) {
         <div className="driver-company-strip">
           <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
           <div>
-            <span>Azienda</span>
+            <span>{t('auth.companyTab')}</span>
             <strong>{companyName}</strong>
           </div>
         </div>
         <div className="driver-loading-state">
           <AlertTriangle size={24} />
-          <strong>Area autista non disponibile</strong>
-          <span>{message || 'Riprova tra qualche secondo o accedi di nuovo.'}</span>
+          <strong>{t('driver.emptyTitle')}</strong>
+          <span>{message || t('driver.emptyMessage')}</span>
         </div>
       </div>
     </section>

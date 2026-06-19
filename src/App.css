@@ -45,7 +45,7 @@
 }
 
 .auth-brand .brand-mark {
-  background: #0284c7;
+  background: transparent;
 }
 
 .auth-brand strong,
@@ -95,6 +95,12 @@
 .auth-card {
   align-self: center;
   padding: 18px;
+}
+
+.auth-language-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
 }
 
 .auth-tabs {
@@ -314,7 +320,7 @@
 }
 
 .brand-button:hover .brand-mark {
-  background: #67e8f9;
+  transform: translateY(-1px);
 }
 
 .brand-mark {
@@ -326,6 +332,60 @@
   border-radius: 8px;
   color: #020617;
   background: var(--brand-bright);
+  overflow: hidden;
+  transition: transform 160ms ease;
+}
+
+.camion-logo-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.language-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid #c9e5f2;
+  border-radius: 8px;
+  color: #075985;
+  background: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.language-selector svg {
+  flex: 0 0 auto;
+}
+
+.language-selector span {
+  color: inherit;
+  font-size: 0.82rem;
+}
+
+.language-selector select {
+  min-width: 128px;
+  height: 34px;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.language-selector.is-dark {
+  border-color: rgba(148, 163, 184, 0.34);
+  color: #e0f2fe;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.language-selector.is-dark select {
+  color: #ffffff;
 }
 
 .brand strong,
@@ -1234,6 +1294,19 @@
   grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   gap: 20px;
   align-items: start;
+}
+
+.settings-language-body {
+  padding: 0 20px 20px;
+}
+
+.settings-language-body .language-selector {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.settings-language-body .language-selector select {
+  flex: 1;
 }
 
 .drivers-main {

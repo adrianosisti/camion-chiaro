@@ -29,6 +29,8 @@
 html {
   min-width: 320px;
   background: var(--bg);
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {

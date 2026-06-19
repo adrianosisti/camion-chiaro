@@ -423,6 +423,10 @@
   background: rgba(18, 198, 223, 0.1);
 }
 
+.mobile-logout-footer {
+  display: none;
+}
+
 .workspace {
   display: grid;
   flex: 1;
@@ -2849,6 +2853,25 @@
     border-bottom: 1px solid var(--line);
   }
 
+  .sidebar > .logout-button {
+    display: none;
+  }
+
+  .mobile-logout-footer {
+    display: block;
+    padding: 16px;
+    border-top: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  .mobile-logout-footer .logout-button {
+    width: 100%;
+    min-height: 44px;
+    color: #0f172a;
+    background: #ffffff;
+    border-color: #b7dce7;
+  }
+
   .nav-list {
     display: flex;
     max-width: 100%;
@@ -2890,6 +2913,24 @@
 
   .settings-summary-panel {
     position: static;
+  }
+
+  .auth-form input,
+  .auth-form select,
+  .search-box input,
+  .driver-row input,
+  .driver-row select,
+  .fleet-field-grid input,
+  .fleet-field-grid select,
+  .document-field-grid input,
+  .document-field-grid select,
+  .form-grid input,
+  .form-grid select,
+  .check-card input,
+  .check-card select,
+  .check-card textarea,
+  .driver-preview-selector select {
+    font-size: 16px;
   }
 }
 

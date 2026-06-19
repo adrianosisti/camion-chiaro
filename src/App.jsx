@@ -1417,6 +1417,12 @@ function App() {
           </>
         )}
       </main>
+      <footer className="mobile-logout-footer" aria-label="Uscita area azienda">
+        <button className="logout-button" onClick={handleSignOut} type="button">
+          <LogOut size={17} />
+          Esci
+        </button>
+      </footer>
     </div>
   )
 }

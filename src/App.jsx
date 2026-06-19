@@ -455,7 +455,7 @@ function App() {
   const [fleetSyncStatus, setFleetSyncStatus] = useState('')
   const [operationsSyncStatus, setOperationsSyncStatus] = useState('')
   const [companySettingsStatus, setCompanySettingsStatus] = useState('')
-  const [chatSyncStatus, setChatSyncStatus] = useState('')
+  const [, setChatSyncStatus] = useState('')
   const [driverDocumentUploadStatus, setDriverDocumentUploadStatus] = useState('')
   const [driverSessionLoading, setDriverSessionLoading] = useState(false)
   const [uploadingDriverDocumentId, setUploadingDriverDocumentId] = useState('')
@@ -2067,7 +2067,6 @@ function App() {
       <DriverAppView
         assetPreviewUrl={getAssetPreviewUrl}
         chatMessages={chatMessageRecords}
-        chatSyncStatus={chatSyncStatus}
         chatThreads={chatThreadRecords}
         companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
         companyName={getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')}
@@ -2235,7 +2234,6 @@ function App() {
             onMarkRead={markChatThreadRead}
             onReactToMessage={updateChatMessageReaction}
             onSendMessage={sendChatMessage}
-            syncStatus={chatSyncStatus}
           />
         ) : activeView === 'settings' ? (
           <SettingsWorkspace
@@ -4694,7 +4692,6 @@ function ChatWorkspace({
   onMarkRead,
   onReactToMessage,
   onSendMessage,
-  syncStatus,
 }) {
   const availableDrivers = useMemo(
     () => driverRecords.filter((driver) => driver.status !== 'Archiviato'),
@@ -4892,7 +4889,6 @@ function ChatWorkspace({
             </div>
           )}
         </div>
-        {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
       </div>
 
       <div className="panel chat-thread-panel">
@@ -4995,7 +4991,6 @@ function ChatWorkspace({
             </button>
           </div>
           {photoFile && <small>Foto pronta: {photoFile.name}</small>}
-          {syncStatus && <p className="sync-status-line chat-compose-status">{syncStatus}</p>}
         </form>
       </div>
     </section>
@@ -5596,7 +5591,6 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
 function DriverAppView({
   assetPreviewUrl,
   chatMessages,
-  chatSyncStatus,
   chatThreads,
   companyLogoUrl,
   companyName,
@@ -5655,7 +5649,6 @@ function DriverAppView({
           <DriverMobile
             assetPreviewUrl={assetPreviewUrl}
             chatMessages={chatMessages}
-            chatSyncStatus={chatSyncStatus}
             chatThreads={chatThreads}
             companyLogoUrl={companyLogoUrl}
             companyName={companyName}
@@ -5767,7 +5760,6 @@ function DriverEmptyPhone({ companyLogoUrl, companyName, message }) {
 function DriverMobile({
   assetPreviewUrl = () => '',
   chatMessages = [],
-  chatSyncStatus = '',
   chatThreads = [],
   companyLogoUrl = '',
   companyName = 'Azienda',
@@ -6220,7 +6212,6 @@ function DriverMobile({
               ? `Apri chat (${unreadCompanyMessageCount})`
               : 'Apri chat'}
           </button>
-          {chatSyncStatus && <small className="operation-status">{chatSyncStatus}</small>}
         </article>
         <article className={isFaultFormOpen ? 'check-card fault-card is-open' : 'check-card fault-card'}>
           <div className="fault-card-header">
@@ -6297,7 +6288,6 @@ function DriverMobile({
           <DriverChatScreen
             assetPreviewUrl={assetPreviewUrl}
             chatMessages={driverChatMessages}
-            chatSyncStatus={chatSyncStatus}
             driver={driver}
             onClose={() => setIsDriverChatOpen(false)}
             onReactToMessage={onReactToMessage}
@@ -6437,7 +6427,6 @@ function DriverMobile({
 function DriverChatScreen({
   assetPreviewUrl = () => '',
   chatMessages = [],
-  chatSyncStatus = '',
   driver,
   onClose,
   onReactToMessage,
@@ -6574,7 +6563,6 @@ function DriverChatScreen({
             {isSending ? 'Invio...' : 'Invia'}
           </button>
         </div>
-        {chatSyncStatus && <small className="operation-status">{chatSyncStatus}</small>}
       </form>
     </div>
   )

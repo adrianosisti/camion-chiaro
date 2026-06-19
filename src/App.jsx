@@ -289,6 +289,7 @@ function App() {
   const [assetPreviewUrls, setAssetPreviewUrls] = useState({})
   const [activeView, setActiveView] = useState('dashboard')
   const [activeFilter, setActiveFilter] = useState('all')
+  const [operationsFilter, setOperationsFilter] = useState('inbox')
   const [query, setQuery] = useState('')
   const [driversSyncStatus, setDriversSyncStatus] = useState('')
   const [documentsSyncStatus, setDocumentsSyncStatus] = useState('')
@@ -714,6 +715,7 @@ function App() {
     setQuery('')
     setActiveView('dashboard')
     setActiveFilter('all')
+    setOperationsFilter('inbox')
     setOperationsSyncStatus('')
     setCompanySettingsStatus('')
     setActiveCompanyId('')
@@ -1264,18 +1266,54 @@ function App() {
     }, 0)
   }
 
+  function openNotifications(filter = 'inbox') {
+    setOperationsFilter(filter)
+    setActiveView('notifications')
+  }
+
+  function openComplianceFilter(filter) {
+    setActiveFilter(filter)
+    setActiveView('dashboard')
+    window.setTimeout(() => {
+      document.getElementById('compliance-board-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
+
+  function navigateCompanyView(viewId) {
+    if (viewId === 'notifications') {
+      openNotifications('inbox')
+      return
+    }
+
+    setActiveView(viewId)
+  }
+
   return (
     <div className="app-shell">
       <Sidebar
         activeView={activeView}
         notificationCount={notificationCount}
         onHome={openDashboardHome}
-        onNavigate={setActiveView}
+        onNavigate={navigateCompanyView}
         onSignOut={handleSignOut}
         session={session}
       />
       <main className="workspace">
-        <Topbar query={query} setQuery={setQuery} />
+        <Topbar
+          acknowledgedCheckIds={acknowledgedCheckIds}
+          assetPreviewUrl={getAssetPreviewUrl}
+          driverRecords={driverRecords}
+          faultReportRecords={visibleFaultReportRecords}
+          notificationCount={notificationCount}
+          onAcknowledgeCheck={acknowledgeCheck}
+          onMarkCheckUnread={markCheckUnread}
+          onOpenNotifications={() => openNotifications('inbox')}
+          onUpdateFaultStatus={updateFaultReportStatus}
+          query={query}
+          setQuery={setQuery}
+          vehicleCheckRecords={vehicleCheckRecords}
+          vehicleRecords={vehicleRecords}
+        />
         {activeView === 'drivers' ? (
           <DriversWorkspace
             assetPreviewUrl={getAssetPreviewUrl}
@@ -1314,8 +1352,10 @@ function App() {
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
             onAcknowledgeCheck={acknowledgeCheck}
+            onFilterChange={setOperationsFilter}
             onMarkCheckUnread={markCheckUnread}
             onUpdateFaultStatus={updateFaultReportStatus}
+            selectedFilter={operationsFilter}
             syncStatus={operationsSyncStatus}
             vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
@@ -1340,8 +1380,11 @@ function App() {
                 companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
                 criticalCheckCount={criticalCheckCount}
                 notificationCount={notificationCount}
+                onOpenCriticalChecks={() => openNotifications('critical_checks')}
+                onOpenDeadlineWindow={() => openComplianceFilter('month')}
+                onOpenFaults={() => openNotifications('faults')}
                 onNewDeadline={openNewDeadlinePanel}
-                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenNotifications={() => openNotifications('inbox')}
                 openFaultCount={openFaultCount}
                 summary={summary}
               />
@@ -1353,7 +1396,7 @@ function App() {
                 onOpenFleet={() => setActiveView('fleet')}
               />
             )}
-            <section className="content-grid">
+            <section className="content-grid content-grid-full">
               <div className="main-column">
                 <ComplianceBoard
                   activeFilter={activeFilter}
@@ -1370,16 +1413,6 @@ function App() {
                   vehicleRecords={vehicleRecords}
                 />
               </div>
-              <aside className="side-column dashboard-side" aria-label="Notifiche azienda">
-                <NotificationPanel
-                  acknowledgedCheckIds={acknowledgedCheckIds}
-                  driverRecords={driverRecords}
-                  faultReportRecords={visibleFaultReportRecords}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  vehicleCheckRecords={vehicleCheckRecords}
-                  vehicleRecords={vehicleRecords}
-                />
-              </aside>
             </section>
           </>
         )}
@@ -1729,23 +1762,254 @@ function Sidebar({ activeView, notificationCount, onHome, onNavigate, onSignOut,
   )
 }
 
-function Topbar({ query, setQuery }) {
+function Topbar({
+  acknowledgedCheckIds,
+  assetPreviewUrl,
+  driverRecords,
+  faultReportRecords,
+  notificationCount,
+  onAcknowledgeCheck,
+  onMarkCheckUnread,
+  onOpenNotifications,
+  onUpdateFaultStatus,
+  query,
+  setQuery,
+  vehicleCheckRecords,
+  vehicleRecords,
+}) {
   return (
     <header className="topbar">
       <div>
         <p className="overline">Area azienda</p>
         <h1>Dashboard azienda</h1>
       </div>
-      <label className="search-box">
-        <Search size={18} aria-hidden="true" />
-        <span className="sr-only">Cerca scadenze</span>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Cerca patente, targa, autista..."
+      <div className="topbar-actions">
+        <label className="search-box">
+          <Search size={18} aria-hidden="true" />
+          <span className="sr-only">Cerca scadenze</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Cerca patente, targa, autista..."
+          />
+        </label>
+        <TopbarNotifications
+          acknowledgedCheckIds={acknowledgedCheckIds}
+          assetPreviewUrl={assetPreviewUrl}
+          driverRecords={driverRecords}
+          faultReportRecords={faultReportRecords}
+          notificationCount={notificationCount}
+          onAcknowledgeCheck={onAcknowledgeCheck}
+          onMarkCheckUnread={onMarkCheckUnread}
+          onOpenNotifications={onOpenNotifications}
+          onUpdateFaultStatus={onUpdateFaultStatus}
+          vehicleCheckRecords={vehicleCheckRecords}
+          vehicleRecords={vehicleRecords}
         />
-      </label>
+      </div>
     </header>
+  )
+}
+
+function TopbarNotifications({
+  acknowledgedCheckIds,
+  assetPreviewUrl = () => '',
+  driverRecords,
+  faultReportRecords,
+  notificationCount,
+  onAcknowledgeCheck,
+  onMarkCheckUnread,
+  onOpenNotifications,
+  onUpdateFaultStatus,
+  vehicleCheckRecords,
+  vehicleRecords,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [filter, setFilter] = useState('all')
+  const [modalOperationKey, setModalOperationKey] = useState('')
+  const allOperations = useMemo(
+    () =>
+      [
+        ...faultReportRecords.map((report) => ({
+          createdAt: report.createdAt,
+          data: report,
+          id: report.id,
+          kind: 'fault',
+        })),
+        ...vehicleCheckRecords.map((check) => ({
+          createdAt: check.createdAt,
+          data: check,
+          id: check.id,
+          kind: 'check',
+        })),
+      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    [faultReportRecords, vehicleCheckRecords],
+  )
+  const notifications = allOperations.map((operation) => {
+    if (operation.kind === 'fault') {
+      const report = operation.data
+      const driver = driverRecords.find((entry) => entry.id === report.driverId)
+      const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
+      const trailer = vehicleRecords.find((entry) => entry.id === report.semitrailerId)
+      const isRead = isFaultArchived(report)
+      const isCritical = ['high', 'stop_vehicle'].includes(report.severity) && !isRead
+
+      return {
+        detail: `${driver?.name ?? 'Autista'} · ${vehicle?.plate ?? 'Mezzo non trovato'}${trailer ? ` · ${trailer.plate}` : ''}`,
+        isCritical,
+        isRead,
+        key: `${operation.kind}-${operation.id}`,
+        operation,
+        status: isRead ? 'Archiviata' : isCritical ? 'Critica' : 'Da leggere',
+        time: formatShortDateTime(report.createdAt),
+        title: report.title,
+        type: 'Guasto',
+      }
+    }
+
+    const check = operation.data
+    const driver = driverRecords.find((entry) => entry.id === check.driverId)
+    const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
+    const isRead = acknowledgedCheckIds.includes(check.id)
+    const isCritical = hasCheckIssues(check) && !isRead
+
+    return {
+      detail: `${driver?.name ?? 'Autista'} · ${vehicle?.plate ?? 'Mezzo non trovato'}`,
+      isCritical,
+      isRead,
+      key: `${operation.kind}-${operation.id}`,
+      operation,
+      status: isRead ? 'Archiviata' : isCritical ? 'Critica' : 'Da leggere',
+      time: formatShortDateTime(check.createdAt),
+      title: 'Check mattutino',
+      type: 'Check',
+    }
+  })
+  const unreadNotifications = notifications.filter((notification) => !notification.isRead)
+  const readNotifications = notifications.filter((notification) => notification.isRead)
+  const visibleNotifications = notifications.filter((notification) => {
+    if (filter === 'unread') return !notification.isRead
+    if (filter === 'read') return notification.isRead
+    return true
+  })
+  const modalOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === modalOperationKey)
+
+  function openNotification(operation) {
+    setModalOperationKey(`${operation.kind}-${operation.id}`)
+    setIsOpen(false)
+  }
+
+  function openFullNotifications() {
+    setIsOpen(false)
+    onOpenNotifications?.()
+  }
+
+  function toggleNotification(notification) {
+    const { operation } = notification
+
+    if (operation.kind === 'fault') {
+      onUpdateFaultStatus?.(operation.id, notification.isRead ? 'open' : 'closed')
+      return
+    }
+
+    if (notification.isRead) {
+      onMarkCheckUnread?.(operation.id)
+      return
+    }
+
+    onAcknowledgeCheck?.(operation.id)
+  }
+
+  return (
+    <div className="topbar-notifications">
+      <button
+        aria-expanded={isOpen}
+        aria-label={`Notifiche: ${notificationCount} da leggere`}
+        className={notificationCount > 0 ? 'icon-button notification-bell-button has-alerts' : 'icon-button notification-bell-button'}
+        onClick={() => setIsOpen((currentValue) => !currentValue)}
+        type="button"
+      >
+        <Bell size={19} />
+        {notificationCount > 0 && <span className="topbar-notification-badge">{notificationCount}</span>}
+      </button>
+
+      {isOpen && (
+        <div className="notifications-popover" role="dialog" aria-label="Notifiche azienda">
+          <div className="notifications-popover-header">
+            <div>
+              <p className="overline">Campanella</p>
+              <strong>Notifiche</strong>
+            </div>
+            <button className="small-button" onClick={openFullNotifications} type="button">
+              Vista completa
+            </button>
+          </div>
+          <div className="notification-filter-tabs" role="tablist" aria-label="Filtra notifiche">
+            <button className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')} type="button">
+              Tutte ({notifications.length})
+            </button>
+            <button className={filter === 'unread' ? 'is-active' : ''} onClick={() => setFilter('unread')} type="button">
+              Da leggere ({unreadNotifications.length})
+            </button>
+            <button className={filter === 'read' ? 'is-active' : ''} onClick={() => setFilter('read')} type="button">
+              Archiviate ({readNotifications.length})
+            </button>
+          </div>
+          <div className="notifications-popover-list">
+            {visibleNotifications.map((notification) => (
+              <article
+                className={[
+                  'notification-popover-row',
+                  notification.isRead ? 'is-read' : '',
+                  notification.isCritical ? 'is-critical' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                key={notification.key}
+              >
+                <span className="notification-row-type">{notification.type}</span>
+                <div className="notification-row-main">
+                  <div>
+                    <strong>{notification.title}</strong>
+                    <span className={notification.isCritical ? 'status-pill tone-danger' : 'status-pill tone-info'}>
+                      {notification.status}
+                    </span>
+                  </div>
+                  <small>{notification.detail} · {notification.time}</small>
+                </div>
+                <div className="notification-row-actions">
+                  <button className="small-button" onClick={() => openNotification(notification.operation)} type="button">
+                    Apri
+                  </button>
+                  <button
+                    className={notification.isRead ? 'small-button' : 'small-button danger-action'}
+                    onClick={() => toggleNotification(notification)}
+                    type="button"
+                  >
+                    {notification.isRead ? 'Segna da leggere' : 'Archivia'}
+                  </button>
+                </div>
+              </article>
+            ))}
+            {visibleNotifications.length === 0 && (
+              <p className="notifications-empty">Nessuna notifica in questa sezione.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <OperationDetailModal
+        acknowledgedCheckIds={acknowledgedCheckIds}
+        assetPreviewUrl={assetPreviewUrl}
+        driverRecords={driverRecords}
+        operation={modalOperation}
+        onAcknowledgeCheck={onAcknowledgeCheck}
+        onClose={() => setModalOperationKey('')}
+        onMarkCheckUnread={onMarkCheckUnread}
+        onUpdateFaultStatus={onUpdateFaultStatus}
+        vehicleRecords={vehicleRecords}
+      />
+    </div>
   )
 }
 
@@ -1896,6 +2160,9 @@ function HeroPanel({
   companyLogoUrl,
   criticalCheckCount,
   notificationCount,
+  onOpenCriticalChecks,
+  onOpenDeadlineWindow,
+  onOpenFaults,
   onNewDeadline,
   onOpenNotifications,
   openFaultCount,
@@ -1907,6 +2174,7 @@ function HeroPanel({
       icon: AlertTriangle,
       isActive: criticalCheckCount > 0,
       label: 'Check critici',
+      onClick: onOpenCriticalChecks,
       tone: 'danger',
       value: criticalCheckCount,
     },
@@ -1915,14 +2183,16 @@ function HeroPanel({
       icon: Wrench,
       isActive: openFaultCount > 0,
       label: 'Guasti aperti',
+      onClick: onOpenFaults,
       tone: 'warning',
       value: openFaultCount,
     },
     {
       detail: `${summary.critical} critiche o scadute`,
       icon: CalendarClock,
-      isActive: summary.critical > 0,
+      isActive: summary.next30 > 0,
       label: 'Scadenze 30 giorni',
+      onClick: onOpenDeadlineWindow,
       tone: 'info',
       value: summary.next30,
     },
@@ -1965,7 +2235,13 @@ function HeroPanel({
       </div>
       <div className="priority-grid" aria-label="Priorita di oggi">
         {priorityCards.map((card) => (
-          <article className={`priority-card tone-${card.tone}${card.isActive ? ' is-active' : ''}`} key={card.label}>
+          <button
+            aria-label={`Apri ${card.label.toLowerCase()}: ${card.value}`}
+            className={`priority-card tone-${card.tone}${card.isActive ? ' is-active' : ''}`}
+            key={card.label}
+            onClick={card.onClick}
+            type="button"
+          >
             <div>
               <span className="priority-icon">
                 <card.icon size={20} />
@@ -1974,7 +2250,7 @@ function HeroPanel({
             </div>
             <strong>{card.value}</strong>
             <small>{card.detail}</small>
-          </article>
+          </button>
         ))}
       </div>
     </section>
@@ -3055,13 +3331,15 @@ function OperationsWorkspace({
   driverRecords,
   faultReportRecords,
   onAcknowledgeCheck,
+  onFilterChange,
   onMarkCheckUnread,
   onUpdateFaultStatus,
+  selectedFilter = 'inbox',
   syncStatus,
   vehicleCheckRecords,
   vehicleRecords,
 }) {
-  const [filter, setFilter] = useState('inbox')
+  const filter = selectedFilter
   const [selectedOperationKey, setSelectedOperationKey] = useState('')
   const [modalOperationKey, setModalOperationKey] = useState('')
   const isCriticalFault = (report) => ['high', 'stop_vehicle'].includes(report.severity) && !isFaultArchived(report)
@@ -3099,6 +3377,9 @@ function OperationsWorkspace({
           (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id) && hasCheckIssues(operation.data))
         )
       }
+      if (filter === 'critical_checks') {
+        return operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id) && hasCheckIssues(operation.data)
+      }
       if (filter === 'archive') {
         return (
           (operation.kind === 'fault' && isFaultArchived(operation.data)) ||
@@ -3110,7 +3391,7 @@ function OperationsWorkspace({
       return false
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  const selectedOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
+  const selectedOperation = operations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
   const modalOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === modalOperationKey)
   const fallbackSelection = operations[0]
   const detailOperation = selectedOperation ?? fallbackSelection
@@ -3121,7 +3402,7 @@ function OperationsWorkspace({
   }
 
   function changeFilter(nextFilter) {
-    setFilter(nextFilter)
+    onFilterChange?.(nextFilter)
     setSelectedOperationKey('')
   }
 
@@ -3159,6 +3440,9 @@ function OperationsWorkspace({
           </button>
           <button className={filter === 'critical' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical')} type="button">
             Critiche ({criticalFaults.length + criticalChecks.length})
+          </button>
+          <button className={filter === 'critical_checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical_checks')} type="button">
+            Check critici ({criticalChecks.length})
           </button>
           <button className={filter === 'checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('checks')} type="button">
             Check ({unreadChecks.length})
@@ -3553,7 +3837,7 @@ function FormValidationAlert({ message }) {
 
 function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onReminder, onRenew }) {
   return (
-    <section className="panel compliance-panel">
+    <section className="panel compliance-panel" id="compliance-board-panel">
       <div className="panel-header">
         <div>
           <p className="overline">Agenda operativa</p>
@@ -4352,67 +4636,6 @@ function DriverMobile({
         <CalendarClock size={17} />
         <Truck size={17} />
         <UserRound size={17} />
-      </div>
-    </section>
-  )
-}
-
-function NotificationPanel({
-  acknowledgedCheckIds = [],
-  driverRecords,
-  faultReportRecords,
-  onOpenNotifications,
-  vehicleCheckRecords,
-  vehicleRecords,
-}) {
-  const latestOperations = [
-    ...vehicleCheckRecords
-      .filter((check) => !acknowledgedCheckIds.includes(check.id))
-      .map((check) => ({
-        createdAt: check.createdAt,
-        detail: `${vehicleRecords.find((vehicle) => vehicle.id === check.tractorId)?.plate ?? 'Mezzo'} · ${formatShortDateTime(check.createdAt)}`,
-        isCritical: hasCheckIssues(check),
-        label: driverRecords.find((driver) => driver.id === check.driverId)?.name ?? 'Autista',
-        type: 'Check',
-      })),
-    ...faultReportRecords
-      .filter(isFaultUnread)
-      .map((report) => ({
-        createdAt: report.createdAt,
-        detail: `${vehicleRecords.find((vehicle) => vehicle.id === report.vehicleId)?.plate ?? 'Mezzo'} · ${getFaultSeverityLabel(report.severity)}`,
-        isCritical: ['high', 'stop_vehicle'].includes(report.severity),
-        label: report.title,
-        type: 'Guasto',
-      })),
-  ]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 4)
-
-  return (
-    <section className="panel notification-panel">
-      <div className="panel-header compact">
-        <div>
-          <p className="overline">Campanella</p>
-          <h2>Ultime notifiche</h2>
-        </div>
-        <Bell size={20} />
-      </div>
-      <div className="operation-feed">
-        {latestOperations.map((operation) => (
-          <button
-            className={operation.isCritical ? 'operation-feed-row is-critical' : 'operation-feed-row'}
-            key={`${operation.type}-${operation.label}-${operation.detail}`}
-            onClick={onOpenNotifications}
-            type="button"
-          >
-            <span>{operation.type}</span>
-            <div>
-              <strong>{operation.label}</strong>
-              <small>{operation.detail}</small>
-            </div>
-          </button>
-        ))}
-        {latestOperations.length === 0 && <small>Nessuna notifica da aprire. Check archiviati e guasti chiusi restano in archivio.</small>}
       </div>
     </section>
   )

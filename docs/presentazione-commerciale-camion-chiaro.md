@@ -69,4 +69,4 @@ Prezzo in base ad autisti, mezzi, notifiche, storico, report e funzioni Premium.
 ## Slide 10 - Chiusura
 Camion Chiaro: la flotta sotto controllo, ogni giorno.
 
-Call to action: prova gratuita, demo guidata, attivazione in 30 minuti.
+Call to action: acquista l abbonamento, attiva l azienda e parti con onboarding iniziale.

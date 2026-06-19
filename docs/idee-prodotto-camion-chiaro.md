@@ -4,7 +4,7 @@ Questa roadmap raccoglie idee pratiche per trasformare Camion Chiaro da app util
 
 ## Prima del lancio
 
-- Pagamenti e abbonamenti: Stripe con piani mensili, prova gratuita, blocco accesso se il cliente non paga.
+- Pagamenti e abbonamenti: Stripe con piani mensili, acquisto diretto, blocco accesso se il cliente non paga.
 - Onboarding guidato: checklist per azienda nuova con autisti, flotta, documenti, notifiche e prima chat.
 - Ruoli azienda: titolare, responsabile traffico, amministrazione, officina, sola lettura.
 - Audit storico: chi ha aperto, archiviato, modificato, caricato o cancellato ogni documento, guasto e check.

@@ -57,7 +57,7 @@ Voce: "Le anomalie diventano notifiche critiche, non messaggi persi."
 
 Chiusura: "Ogni viaggio parte piu chiaro."
 
-## Video 5 - "Demo commerciale"
+## Video 5 - "Video prodotto completo"
 
 Durata: 60 secondi.
 
@@ -68,4 +68,4 @@ Struttura:
 4. Guasto con foto.
 5. Documento da mostrare.
 6. Chat e notifiche.
-7. Call to action: "Prenota una demo".
+7. Call to action: "Acquista Camion Chiaro".

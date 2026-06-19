@@ -2585,7 +2585,7 @@ Object.entries(regionalTranslations).forEach(([translationLanguage, translationE
 
 const supportSections = [
   {
-    description: 'Risposte rapide alle domande che un azienda o un autista fanno subito durante una demo.',
+    description: 'Risposte rapide alle domande che un azienda o un autista fanno prima di acquistare.',
     icon: BadgeCheck,
     id: 'faq',
     titleKey: 'support.faq',
@@ -2649,7 +2649,7 @@ const supportSections = [
     ],
   },
   {
-    description: 'Traccia pronta per una demo commerciale o una presentazione clienti.',
+    description: 'Traccia pronta per una presentazione clienti orientata all acquisto.',
     icon: FileText,
     id: 'launch',
     titleKey: 'support.launch',
@@ -2671,7 +2671,7 @@ const supportSections = [
         title: 'Benefici',
       },
       {
-        body: 'Prova gratuita, demo guidata e attivazione rapida per mettere ordine alla flotta.',
+        body: 'Acquisto abbonamento, attivazione rapida e onboarding iniziale per mettere ordine alla flotta.',
         title: 'Chiusura',
       },
     ],
@@ -2699,8 +2699,8 @@ const supportSections = [
         title: 'Check mattutino',
       },
       {
-        body: '60 secondi: problema, dashboard, app autista, guasto con foto, documento, chat, call to action.',
-        title: 'Demo completa',
+        body: '60 secondi: problema, dashboard, app autista, guasto con foto, documento, chat, invito ad acquistare.',
+        title: 'Video prodotto completo',
       },
     ],
   },

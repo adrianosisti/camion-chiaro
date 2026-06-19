@@ -79,6 +79,7 @@ import {
   signOut,
   signUpCompany,
   subscribeToChatMessages,
+  subscribeToChatPresence,
   subscribeToOperationalUpdates,
   uploadCompanyLogoFile as uploadSupabaseCompanyLogoFile,
   uploadDriverDocumentFile as uploadSupabaseDriverDocumentFile,
@@ -154,6 +155,12 @@ const chatReactionOptions = [
   { emoji: '🙏', label: 'Grazie', value: 'thanks' },
   { emoji: '👀', label: 'Visto', value: 'seen' },
 ]
+const chatTypingExpiryMs = 3500
+const emptyChatLiveState = {
+  lastSeenByActor: {},
+  onlineByActor: {},
+  typingByThread: {},
+}
 const deepLinkViews = new Set(['chat', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const defaultLanguage = 'it'
@@ -711,6 +718,7 @@ const workflowTranslations = {
     'chat.noDriversHint': 'Aggiungi un autista prima di aprire una chat.',
     'chat.noMessages': 'Nessun messaggio',
     'chat.noMessagesYet': 'Nessun messaggio ancora',
+    'chat.online': 'Online',
     'chat.firstMessageHint': 'Scrivi il primo messaggio all autista.',
     'chat.createdOnFirstMessage': 'La chat verra creata al primo messaggio.',
     'chat.selectDriver': 'Seleziona autista',
@@ -732,6 +740,7 @@ const workflowTranslations = {
     'chat.open': 'Apri chat',
     'chat.openWithCount': 'Apri chat ({count})',
     'chat.emptyDriverHint': 'Scrivi all azienda quando hai bisogno di comunicare velocemente.',
+    'chat.typing': 'Sta scrivendo...',
     'common.add': 'Aggiungi',
     'common.addDocument': 'Aggiungi documento',
     'common.archive': 'Archivia',
@@ -1006,6 +1015,7 @@ const workflowTranslations = {
     'chat.noDriversHint': 'Add a driver before opening a chat.',
     'chat.noMessages': 'No messages',
     'chat.noMessagesYet': 'No messages yet',
+    'chat.online': 'Online',
     'chat.firstMessageHint': 'Write the first message to the driver.',
     'chat.createdOnFirstMessage': 'The chat will be created with the first message.',
     'chat.selectDriver': 'Select driver',
@@ -1027,6 +1037,7 @@ const workflowTranslations = {
     'chat.open': 'Open chat',
     'chat.openWithCount': 'Open chat ({count})',
     'chat.emptyDriverHint': 'Write to the company when you need quick communication.',
+    'chat.typing': 'Typing...',
     'common.add': 'Add',
     'common.addDocument': 'Add document',
     'common.archive': 'Archive',
@@ -2894,6 +2905,70 @@ function hasChatReactions(message) {
   return Object.values(message?.reactions ?? {}).some(Boolean)
 }
 
+function getChatActorKey(actorRole, actorId) {
+  return actorRole && actorId ? `${actorRole}:${actorId}` : ''
+}
+
+function getThreadTypingKey(threadId, actorRole, actorId) {
+  return threadId && actorRole && actorId ? `${threadId}:${actorRole}:${actorId}` : ''
+}
+
+function isChatActorOnline(chatLiveState, actorRole, actorId) {
+  const actorKey = getChatActorKey(actorRole, actorId)
+  return Boolean(actorKey && chatLiveState?.onlineByActor?.[actorKey])
+}
+
+function getChatActorLastSeenAt(chatLiveState, actorRole, actorId) {
+  const actorKey = getChatActorKey(actorRole, actorId)
+  return actorKey ? chatLiveState?.lastSeenByActor?.[actorKey] ?? '' : ''
+}
+
+function getTypingActors(chatLiveState, threadId, actorRole) {
+  const now = Date.now()
+
+  return Object.values(chatLiveState?.typingByThread ?? {}).filter(
+    (entry) =>
+      entry.threadId === threadId &&
+      entry.actorRole === actorRole &&
+      entry.expiresAt > now,
+  )
+}
+
+function removeExpiredTypingEntries(chatLiveState) {
+  const now = Date.now()
+  const typingByThread = Object.fromEntries(
+    Object.entries(chatLiveState.typingByThread ?? {}).filter(([, entry]) => entry.expiresAt > now),
+  )
+
+  if (Object.keys(typingByThread).length === Object.keys(chatLiveState.typingByThread ?? {}).length) {
+    return chatLiveState
+  }
+
+  return { ...chatLiveState, typingByThread }
+}
+
+function formatRelativeChatTime(value) {
+  if (!value) return ''
+
+  const distanceSeconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000))
+  if (distanceSeconds < 60) return 'ora'
+
+  const distanceMinutes = Math.floor(distanceSeconds / 60)
+  if (distanceMinutes < 60) return `${distanceMinutes} min fa`
+
+  const distanceHours = Math.floor(distanceMinutes / 60)
+  if (distanceHours < 24) return `${distanceHours} h fa`
+
+  return formatShortDateTime(value)
+}
+
+function getChatPresenceLabel({ isOnline, isTyping, lastSeenAt, onlineLabel = 'Online', typingLabel = 'Sta scrivendo...' }) {
+  if (isTyping) return typingLabel
+  if (isOnline) return onlineLabel
+  if (lastSeenAt) return `Ultimo accesso ${formatRelativeChatTime(lastSeenAt)}`
+  return 'Offline'
+}
+
 function shouldIgnoreReactionGesture(target) {
   return Boolean(target?.closest?.('a, button, input, label, select, textarea'))
 }
@@ -2959,6 +3034,49 @@ function useReactionPicker() {
     getReactionTriggerProps,
     openReactionMessageId,
   }
+}
+
+function useChatTypingSignal({ actorRole, onTyping, threadId }) {
+  const isTypingRef = useRef(false)
+  const stopTimerRef = useRef(0)
+
+  const sendTyping = useCallback(
+    (isTyping) => {
+      if (!threadId) return
+      if (isTypingRef.current === isTyping) return
+      isTypingRef.current = isTyping
+      onTyping?.({ actorRole, isTyping, threadId })
+    },
+    [actorRole, onTyping, threadId],
+  )
+
+  const signalTyping = useCallback(
+    (value) => {
+      if (typeof window === 'undefined') return
+
+      const hasText = Boolean(String(value ?? '').trim())
+      if (!hasText) {
+        window.clearTimeout(stopTimerRef.current)
+        sendTyping(false)
+        return
+      }
+
+      sendTyping(true)
+      window.clearTimeout(stopTimerRef.current)
+      stopTimerRef.current = window.setTimeout(() => sendTyping(false), 1400)
+    },
+    [sendTyping],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') window.clearTimeout(stopTimerRef.current)
+      if (isTypingRef.current) onTyping?.({ actorRole, isTyping: false, threadId })
+      isTypingRef.current = false
+    }
+  }, [actorRole, onTyping, threadId])
+
+  return signalTyping
 }
 
 function getInitialActiveView() {
@@ -3203,6 +3321,7 @@ function App() {
   const [faultReportRecords, setFaultReportRecords] = useState([])
   const [chatThreadRecords, setChatThreadRecords] = useState([])
   const [chatMessageRecords, setChatMessageRecords] = useState([])
+  const [chatLiveState, setChatLiveState] = useState(emptyChatLiveState)
   const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState({
@@ -3236,6 +3355,7 @@ function App() {
   const [faultReported, setFaultReported] = useState(false)
   const [acknowledgedCheckIds, setAcknowledgedCheckIds] = useState(loadAcknowledgedCheckIds)
   const [archivedFaultOverrideIds, setArchivedFaultOverrideIds] = useState(loadArchivedFaultOverrideIds)
+  const chatTypingSenderRef = useRef(() => {})
 
   const t = useCallback((key, values) => translate(language, key, values), [language])
   const i18nValue = useMemo(
@@ -3352,6 +3472,7 @@ function App() {
     setFaultReportRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
+    setChatLiveState(emptyChatLiveState)
     setDocumentEventRecords([])
     setDriverUploadSent(false)
     setMorningCheckSent(false)
@@ -3987,6 +4108,7 @@ function App() {
     setFaultReportRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
+    setChatLiveState(emptyChatLiveState)
     setDocumentEventRecords([])
     setChatSyncStatus('')
     setCompanyProfile({
@@ -4837,6 +4959,119 @@ function App() {
     setAcknowledgedCheckIds((currentIds) => currentIds.filter((id) => id !== checkId))
   }
 
+  const sendChatTyping = useCallback((typingState) => {
+    chatTypingSenderRef.current?.(typingState)
+  }, [])
+  const chatPresenceDriverId = session?.role === 'driver' ? driverRecords[0]?.id ?? '' : ''
+  const chatPresenceDriverName = session?.role === 'driver' ? driverRecords[0]?.name ?? '' : ''
+
+  useEffect(() => {
+    if (!session || !activeCompanyId || !isSupabaseConfigured) return
+
+    const actorRole = session.role
+    const actorId = actorRole === 'driver' ? chatPresenceDriverId : activeCompanyId
+    const actorName =
+      actorRole === 'driver'
+        ? chatPresenceDriverName
+        : getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
+
+    if (!actorId || !['company', 'driver'].includes(actorRole)) return
+
+    let isMounted = true
+    let cleanupPresence = () => {}
+    chatTypingSenderRef.current = () => {}
+
+    subscribeToChatPresence(
+      activeCompanyId,
+      {
+        actorId,
+        actorName,
+        actorRole,
+      },
+      {
+        onPresenceChange: (presences) => {
+          if (!isMounted) return
+
+          setChatLiveState((currentState) => {
+            const lastSeenByActor = { ...currentState.lastSeenByActor }
+            const onlineByActor = {}
+
+            presences.forEach((presence) => {
+              const actorKey = getChatActorKey(presence.actorRole, presence.actorId)
+              if (!actorKey) return
+
+              onlineByActor[actorKey] = presence
+              lastSeenByActor[actorKey] = presence.lastSeenAt ?? presence.onlineAt ?? new Date().toISOString()
+            })
+
+            return {
+              ...currentState,
+              lastSeenByActor,
+              onlineByActor,
+            }
+          })
+        },
+        onTyping: (typingPayload) => {
+          if (!isMounted) return
+
+          setChatLiveState((currentState) => {
+            const typingKey = getThreadTypingKey(
+              typingPayload.threadId,
+              typingPayload.actorRole,
+              typingPayload.actorId,
+            )
+            const actorKey = getChatActorKey(typingPayload.actorRole, typingPayload.actorId)
+            if (!typingKey) return currentState
+
+            const typingByThread = { ...currentState.typingByThread }
+            const lastSeenByActor = { ...currentState.lastSeenByActor }
+
+            if (typingPayload.isTyping) {
+              typingByThread[typingKey] = {
+                ...typingPayload,
+                expiresAt: Date.now() + chatTypingExpiryMs,
+              }
+            } else {
+              delete typingByThread[typingKey]
+            }
+
+            if (actorKey) {
+              lastSeenByActor[actorKey] = typingPayload.sentAt ?? new Date().toISOString()
+            }
+
+            return {
+              ...currentState,
+              lastSeenByActor,
+              typingByThread,
+            }
+          })
+        },
+      },
+    ).then((presenceChannel) => {
+      if (!isMounted) {
+        presenceChannel.cleanup()
+        return
+      }
+
+      cleanupPresence = presenceChannel.cleanup
+      chatTypingSenderRef.current = presenceChannel.sendTyping
+    })
+
+    return () => {
+      isMounted = false
+      chatTypingSenderRef.current = () => {}
+      cleanupPresence()
+    }
+  }, [activeCompanyId, chatPresenceDriverId, chatPresenceDriverName, companyProfile.name, session])
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setChatLiveState(removeExpiredTypingEntries)
+    }, 1000)
+
+    return () => window.clearInterval(timerId)
+  }, [])
+
   const unreadCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id)).length
   const openFaultCount = visibleFaultReportRecords.filter(isFaultUnread).length
   const criticalCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id) && hasCheckIssues(check)).length
@@ -4863,6 +5098,7 @@ function App() {
       <I18nContext.Provider value={i18nValue}>
         <DriverAppView
           assetPreviewUrl={getAssetPreviewUrl}
+          chatLiveState={chatLiveState}
           chatMessages={chatMessageRecords}
           chatThreads={chatThreadRecords}
           companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
@@ -4882,6 +5118,7 @@ function App() {
           onMarkChatRead={markChatThreadRead}
           onReactToMessage={updateChatMessageReaction}
           onSendChatMessage={sendChatMessage}
+          onTyping={sendChatTyping}
           onMorningCheck={submitMorningCheck}
           onOpenDriverDocument={openDriverDocumentFile}
           onSignOut={handleSignOut}
@@ -5039,12 +5276,14 @@ function App() {
         ) : activeView === 'chat' ? (
           <ChatWorkspace
             assetPreviewUrl={getAssetPreviewUrl}
+            chatLiveState={chatLiveState}
             chatMessages={chatMessageRecords}
             chatThreads={chatThreadRecords}
             driverRecords={driverRecords}
             onMarkRead={markChatThreadRead}
             onReactToMessage={updateChatMessageReaction}
             onSendMessage={sendChatMessage}
+            onTyping={sendChatTyping}
           />
         ) : activeView === 'support' ? (
           <SupportWorkspace t={t} />
@@ -8026,12 +8265,14 @@ function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, on
 
 function ChatWorkspace({
   assetPreviewUrl = () => '',
+  chatLiveState = emptyChatLiveState,
   chatMessages = [],
   chatThreads = [],
   driverRecords = [],
   onMarkRead,
   onReactToMessage,
   onSendMessage,
+  onTyping,
 }) {
   const { t } = useI18n()
   const availableDrivers = useMemo(
@@ -8096,14 +8337,35 @@ function ChatWorkspace({
     ? [...(messagesByThread.get(selectedThread.id) ?? [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
     : []
   const lastVisibleMessageId = visibleMessages[visibleMessages.length - 1]?.id ?? ''
+  const selectedDriverIsOnline = isChatActorOnline(chatLiveState, 'driver', selectedDriver?.id)
+  const selectedDriverIsTyping = Boolean(
+    selectedThread?.id && getTypingActors(chatLiveState, selectedThread.id, 'driver').length > 0,
+  )
+  const selectedDriverPresenceLabel = selectedDriver
+    ? getChatPresenceLabel({
+        isOnline: selectedDriverIsOnline,
+        isTyping: selectedDriverIsTyping,
+        lastSeenAt: getChatActorLastSeenAt(chatLiveState, 'driver', selectedDriver.id),
+        typingLabel: `${selectedDriver.name} sta scrivendo...`,
+      })
+    : t('chat.createdOnFirstMessage')
   const hasUnreadDriverMessages = visibleMessages.some(
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
   )
+  const signalCompanyTyping = useChatTypingSignal({
+    actorRole: 'company',
+    onTyping,
+    threadId: selectedThread?.id,
+  })
 
   useLayoutEffect(() => {
     if (!selectedThread?.id) return
     return startChatBottomScroll(scrollCompanyChatToBottom, messagesListRef.current)
   }, [isCompanyChatOpen, lastVisibleMessageId, scrollCompanyChatToBottom, selectedThread?.id, visibleMessages.length])
+
+  useEffect(() => {
+    if (selectedDriverIsTyping) scrollCompanyChatToBottom()
+  }, [scrollCompanyChatToBottom, selectedDriverIsTyping])
 
   useEffect(() => {
     if (selectedThread?.id && hasUnreadDriverMessages) {
@@ -8150,6 +8412,7 @@ function ChatWorkspace({
     setIsSending(false)
 
     if (sent) {
+      signalCompanyTyping('')
       setMessageBody('')
       setPhotoFile(null)
     }
@@ -8189,6 +8452,10 @@ function ChatWorkspace({
             const lastMessage = getLastDriverMessage(driver.id)
             const isSelected = selectedDriver?.id === driver.id
             const driverThread = getDriverThread(driver.id)
+            const driverIsOnline = isChatActorOnline(chatLiveState, 'driver', driver.id)
+            const driverIsTyping = Boolean(
+              driverThread?.id && getTypingActors(chatLiveState, driverThread.id, 'driver').length > 0,
+            )
             const unreadMessageCount = driverThread
               ? (messagesByThread.get(driverThread.id) ?? []).filter(
                   (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
@@ -8206,7 +8473,9 @@ function ChatWorkspace({
                 <span>
                   <strong>{driver.name}</strong>
                   <small>
-                    {lastMessage
+                    {driverIsTyping
+                      ? t('chat.typing')
+                      : lastMessage
                       ? `${lastMessage.senderRole === 'driver' ? t('chat.driver') : t('chat.company')}: ${
                           lastMessage.body || t('chat.photoAttached')
                         }`
@@ -8214,6 +8483,7 @@ function ChatWorkspace({
                   </small>
                 </span>
                 <span className="chat-row-meta">
+                  {driverIsOnline && <span className="chat-online-badge">{t('chat.online')}</span>}
                   {unreadMessageCount > 0 && <strong className="chat-unread-badge">{unreadMessageCount}</strong>}
                   {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
                 </span>
@@ -8245,6 +8515,9 @@ function ChatWorkspace({
           <div>
             <p className="overline">{t('chat.conversation')}</p>
             <h2>{selectedDriver?.name ?? t('chat.selectDriver')}</h2>
+            <span className={selectedDriverIsTyping ? 'chat-presence-text is-typing' : 'chat-presence-text'}>
+              {selectedDriverPresenceLabel}
+            </span>
           </div>
           {selectedDriver && <EntityAvatar imageUrl={assetPreviewUrl(selectedDriver.profileImagePath)} name={selectedDriver.name} />}
         </div>
@@ -8303,13 +8576,24 @@ function ChatWorkspace({
               </article>
             )
           })}
+          {selectedDriverIsTyping && (
+            <div className="chat-typing-indicator">
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+              <strong>{selectedDriver?.name ?? t('chat.driver')} sta scrivendo...</strong>
+            </div>
+          )}
           <span className="chat-scroll-anchor" />
         </div>
         <form className="chat-compose" onSubmit={handleSubmit}>
           <textarea
             disabled={!selectedDriver}
             onKeyDown={handleComposeKeyDown}
-            onChange={(event) => setMessageBody(event.target.value)}
+            onChange={(event) => {
+              setMessageBody(event.target.value)
+              signalCompanyTyping(event.target.value)
+            }}
             placeholder={selectedDriver ? t('chat.writePlaceholder') : t('chat.selectDriver')}
             value={messageBody}
           />
@@ -8942,6 +9226,7 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
 
 function DriverAppView({
   assetPreviewUrl,
+  chatLiveState = emptyChatLiveState,
   chatMessages,
   chatThreads,
   companyLogoUrl,
@@ -8973,6 +9258,7 @@ function DriverAppView({
   onOpenDriverDocument,
   onReactToMessage,
   onSendChatMessage,
+  onTyping,
   onSignOut,
   onUpload,
   operationsStatus,
@@ -9003,6 +9289,7 @@ function DriverAppView({
         ) : driverRecords.length > 0 ? (
           <DriverMobile
             assetPreviewUrl={assetPreviewUrl}
+            chatLiveState={chatLiveState}
             chatMessages={chatMessages}
             chatThreads={chatThreads}
             companyLogoUrl={companyLogoUrl}
@@ -9031,6 +9318,7 @@ function DriverAppView({
             onMarkChatRead={onMarkChatRead}
             onReactToMessage={onReactToMessage}
             onSendChatMessage={onSendChatMessage}
+            onTyping={onTyping}
             onMorningCheck={onMorningCheck}
             onOpenDriverDocument={onOpenDriverDocument}
             operationsStatus={operationsStatus}
@@ -9114,6 +9402,7 @@ function DriverEmptyPhone({ companyLogoUrl, companyName, message, t }) {
 
 function DriverMobile({
   assetPreviewUrl = () => '',
+  chatLiveState = emptyChatLiveState,
   chatMessages = [],
   chatThreads = [],
   companyLogoUrl = '',
@@ -9142,6 +9431,7 @@ function DriverMobile({
   onOpenDriverDocument,
   onReactToMessage,
   onSendChatMessage,
+  onTyping,
   onUpload,
   operationsStatus,
   showDriverSelector = false,
@@ -9215,6 +9505,11 @@ function DriverMobile({
     (message) => message.senderRole === 'company' && !message.readByDriverAt,
   ).length
   const hasUnreadCompanyMessages = unreadCompanyMessageCount > 0
+  const companyPresenceId = driverChatThread?.companyId ?? driver.companyId ?? ''
+  const companyIsTyping = Boolean(
+    driverChatThread?.id && getTypingActors(chatLiveState, driverChatThread.id, 'company').length > 0,
+  )
+  const companyIsOnline = isChatActorOnline(chatLiveState, 'company', companyPresenceId)
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false)
   const vehicleLabel = selectedVehicle
     ? `${selectedVehicle.plate} · ${getFleetTypeLabel(selectedVehicle.fleetType, t)}`
@@ -9526,11 +9821,15 @@ function DriverMobile({
           <div>
             <strong>{t('driverApp.companyMessages')}</strong>
             <span>
-              {unreadCompanyMessageCount > 0
+              {companyIsTyping
+                ? 'Azienda sta scrivendo...'
+                : unreadCompanyMessageCount > 0
                 ? t('driverApp.messageUnread', { count: unreadCompanyMessageCount })
                 : driverChatMessages.length > 0
                   ? t('driverApp.messages', { count: driverChatMessages.length })
-                  : t('chat.noMessages')}
+                  : companyIsOnline
+                    ? t('chat.online')
+                    : t('chat.noMessages')}
             </span>
           </div>
           {unreadCompanyMessageCount > 0 && (
@@ -9644,11 +9943,15 @@ function DriverMobile({
         {isDriverChatOpen && (
           <DriverChatScreen
             assetPreviewUrl={assetPreviewUrl}
+            chatLiveState={chatLiveState}
             chatMessages={driverChatMessages}
+            companyPresenceId={companyPresenceId}
+            companyIsTyping={companyIsTyping}
             driver={driver}
             onClose={() => setIsDriverChatOpen(false)}
             onReactToMessage={onReactToMessage}
             onSendChatMessage={onSendChatMessage}
+            onTyping={onTyping}
             thread={driverChatThread}
           />
         )}
@@ -9783,11 +10086,15 @@ function DriverMobile({
 
 function DriverChatScreen({
   assetPreviewUrl = () => '',
+  chatLiveState = emptyChatLiveState,
   chatMessages = [],
+  companyIsTyping = false,
+  companyPresenceId = '',
   driver,
   onClose,
   onReactToMessage,
   onSendChatMessage,
+  onTyping,
   thread,
 }) {
   const { t } = useI18n()
@@ -9803,10 +10110,25 @@ function DriverChatScreen({
     const listElement = messagesListRef.current
     if (listElement) listElement.scrollTop = listElement.scrollHeight
   }, [])
+  const companyPresenceLabel = getChatPresenceLabel({
+    isOnline: isChatActorOnline(chatLiveState, 'company', companyPresenceId),
+    isTyping: companyIsTyping,
+    lastSeenAt: getChatActorLastSeenAt(chatLiveState, 'company', companyPresenceId),
+    typingLabel: 'Azienda sta scrivendo...',
+  })
+  const signalDriverTyping = useChatTypingSignal({
+    actorRole: 'driver',
+    onTyping,
+    threadId: thread?.id,
+  })
 
   useLayoutEffect(() => {
     return startChatBottomScroll(scrollDriverChatToBottom, messagesListRef.current)
   }, [chatMessages.length, lastMessageId, scrollDriverChatToBottom])
+
+  useEffect(() => {
+    if (companyIsTyping) scrollDriverChatToBottom()
+  }, [companyIsTyping, scrollDriverChatToBottom])
 
   function handlePhotoFile(event) {
     const file = event.target.files?.[0] ?? null
@@ -9829,6 +10151,7 @@ function DriverChatScreen({
     setIsSending(false)
 
     if (sent) {
+      signalDriverTyping('')
       setChatForm({ body: '', photoFile: null })
     }
   }
@@ -9842,7 +10165,7 @@ function DriverChatScreen({
         <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
         <div>
           <strong>{t('chat.company')}</strong>
-          <span>{driver.name}</span>
+          <span>{companyPresenceLabel}</span>
         </div>
       </div>
 
@@ -9892,6 +10215,14 @@ function DriverChatScreen({
             <span>{t('chat.emptyDriverHint')}</span>
           </div>
         )}
+        {companyIsTyping && (
+          <div className="chat-typing-indicator is-driver-view">
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <strong>Azienda sta scrivendo...</strong>
+          </div>
+        )}
         <span className="chat-scroll-anchor" />
       </div>
 
@@ -9905,7 +10236,10 @@ function DriverChatScreen({
           </div>
         )}
         <textarea
-          onChange={(event) => setChatForm((currentForm) => ({ ...currentForm, body: event.target.value }))}
+          onChange={(event) => {
+            setChatForm((currentForm) => ({ ...currentForm, body: event.target.value }))
+            signalDriverTyping(event.target.value)
+          }}
           placeholder={t('chat.messagePlaceholder')}
           value={chatForm.body}
         />

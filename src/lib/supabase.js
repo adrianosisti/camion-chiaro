@@ -1373,6 +1373,74 @@ export async function subscribeToChatMessages(companyId, onMessage) {
   }
 }
 
+export async function subscribeToChatPresence(companyId, actor, handlers = {}) {
+  const supabase = await getSupabaseClient()
+  const actorId = actor?.actorId
+  const actorRole = actor?.actorRole
+
+  if (!supabase || !companyId || !actorId || !['company', 'driver'].includes(actorRole)) {
+    return {
+      cleanup: () => {},
+      sendTyping: () => {},
+    }
+  }
+
+  const clientId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+  const presencePayload = {
+    actorId,
+    actorName: actor.actorName ?? '',
+    actorRole,
+    lastSeenAt: new Date().toISOString(),
+    onlineAt: new Date().toISOString(),
+  }
+  const channel = supabase
+    .channel(`chat-presence-${companyId}`, {
+      config: {
+        presence: {
+          key: `${actorRole}:${actorId}:${clientId}`,
+        },
+      },
+    })
+    .on('presence', { event: 'sync' }, () => {
+      const presenceState = channel.presenceState()
+      const presences = Object.values(presenceState)
+        .flat()
+        .filter((presence) => presence?.actorId && presence?.actorRole)
+
+      handlers.onPresenceChange?.(presences)
+    })
+    .on('broadcast', { event: 'typing' }, ({ payload }) => {
+      if (!payload?.threadId || !payload?.actorId || payload.actorId === actorId) return
+      handlers.onTyping?.(payload)
+    })
+    .subscribe(async (status) => {
+      if (status !== 'SUBSCRIBED') return
+      await channel.track(presencePayload)
+    })
+
+  return {
+    cleanup: () => {
+      channel.untrack()
+      supabase.removeChannel(channel)
+    },
+    sendTyping: ({ isTyping = false, threadId }) => {
+      if (!threadId) return
+      channel.send({
+        event: 'typing',
+        payload: {
+          actorId,
+          actorName: actor.actorName ?? '',
+          actorRole,
+          isTyping,
+          sentAt: new Date().toISOString(),
+          threadId,
+        },
+        type: 'broadcast',
+      })
+    },
+  }
+}
+
 export async function subscribeToOperationalUpdates(companyId, handlers = {}) {
   const supabase = await getSupabaseClient()
 

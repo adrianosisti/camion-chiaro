@@ -91,6 +91,7 @@ import {
   getDeviceInstallHint,
   getExistingPushSubscription,
   getPushSupportStatus,
+  isAppleMobileDevice,
   isStandaloneApp,
   subscribeCurrentBrowserToPush,
 } from './lib/pwa'
@@ -2691,33 +2692,47 @@ function PhoneSetupPanel({
   notificationStatus,
   onEnableNotifications,
   onInstallApp,
+  showInstallAction = true,
 }) {
   const pushSupport = getPushSupportStatus()
   const installStatus = isStandaloneMode ? 'Installata' : installPromptAvailable ? 'Pronta' : 'Da aggiungere'
-  const notificationText = notificationEnabled ? 'Attive' : pushSupport.supported ? 'Da attivare' : 'Non disponibili'
+  const notificationText = notificationEnabled
+    ? 'Attive'
+    : pushSupport.requiresInstall
+      ? 'Prima installa'
+      : pushSupport.supported
+        ? 'Da attivare'
+        : 'Non disponibili'
+  const installButtonLabel = isAppleMobileDevice() && !installPromptAvailable ? 'Come installare' : 'Installa app'
+  const notificationButtonDisabled = notificationEnabled || (!pushSupport.supported && !pushSupport.requiresInstall)
+  const panelTitle = showInstallAction ? 'App e notifiche' : 'Notifiche telefono'
 
   return (
     <article className={compact ? 'phone-setup-panel is-compact' : 'panel phone-setup-panel'}>
       <div className="phone-setup-heading">
         <div>
           <p className="overline">Telefono</p>
-          <h2>App e notifiche</h2>
+          <h2>{panelTitle}</h2>
         </div>
         <Smartphone size={20} />
       </div>
       <div className="phone-setup-grid">
-        <div>
-          <strong>{installStatus}</strong>
-          <span>{isStandaloneMode ? 'Aperta come app' : getDeviceInstallHint()}</span>
-        </div>
-        <button className="small-button" disabled={isStandaloneMode} onClick={onInstallApp} type="button">
-          Installa app
-        </button>
+        {showInstallAction && (
+          <>
+            <div>
+              <strong>{installStatus}</strong>
+              <span>{isStandaloneMode ? 'Aperta come app' : getDeviceInstallHint()}</span>
+            </div>
+            <button className="small-button" disabled={isStandaloneMode} onClick={onInstallApp} type="button">
+              {installButtonLabel}
+            </button>
+          </>
+        )}
         <div>
           <strong>{notificationText}</strong>
           <span>{pushSupport.supported ? 'Chat, guasti e documenti' : pushSupport.reason}</span>
         </div>
-        <button className="small-button" disabled={notificationEnabled || !pushSupport.supported} onClick={onEnableNotifications} type="button">
+        <button className="small-button" disabled={notificationButtonDisabled} onClick={onEnableNotifications} type="button">
           Abilita notifiche
         </button>
       </div>
@@ -2828,10 +2843,11 @@ function SettingsWorkspace({
           installPromptAvailable={installPromptAvailable}
           isStandaloneMode={isStandaloneMode}
           notificationEnabled={notificationEnabled}
-          notificationStatus={notificationStatus}
-          onEnableNotifications={onEnablePhoneNotifications}
-          onInstallApp={onInstallPhoneApp}
-        />
+        notificationStatus={notificationStatus}
+        onEnableNotifications={onEnablePhoneNotifications}
+        onInstallApp={onInstallPhoneApp}
+        showInstallAction={false}
+      />
         <aside className="panel settings-summary-panel">
           <div className="panel-header compact">
             <div>

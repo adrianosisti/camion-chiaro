@@ -19,16 +19,23 @@ export function isStandaloneApp() {
   return window.matchMedia('(display-mode: standalone)').matches || Boolean(window.navigator.standalone)
 }
 
+export function isAppleMobileDevice() {
+  if (typeof navigator === 'undefined') return false
+
+  const ua = navigator.userAgent || ''
+  const platform = navigator.platform || ''
+
+  return /iPhone|iPad|iPod/i.test(ua) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 export function getDeviceInstallHint() {
   if (typeof navigator === 'undefined') return 'Apri Camion Chiaro dal browser del telefono.'
 
-  const ua = navigator.userAgent || ''
-
-  if (/iPhone|iPad|iPod/i.test(ua)) {
+  if (isAppleMobileDevice()) {
     return 'Su iPhone apri Safari, premi Condividi e scegli Aggiungi a schermata Home.'
   }
 
-  if (/Android/i.test(ua)) {
+  if (/Android/i.test(navigator.userAgent || '')) {
     return 'Su Android apri Chrome e usa Installa app o Aggiungi a schermata Home.'
   }
 
@@ -38,13 +45,23 @@ export function getDeviceInstallHint() {
 export function getPushSupportStatus() {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return {
+      requiresInstall: false,
       supported: false,
       reason: 'Notifiche telefono non disponibili in questo ambiente.',
     }
   }
 
+  if (isAppleMobileDevice() && !isStandaloneApp()) {
+    return {
+      requiresInstall: true,
+      supported: false,
+      reason: 'Su iPhone prima aggiungi Camion Chiaro alla schermata Home, poi aprila dall icona e abilita le notifiche.',
+    }
+  }
+
   if (!('serviceWorker' in navigator)) {
     return {
+      requiresInstall: false,
       supported: false,
       reason: 'Questo browser non supporta il service worker necessario alle notifiche.',
     }
@@ -52,6 +69,7 @@ export function getPushSupportStatus() {
 
   if (!('PushManager' in window) || !('Notification' in window)) {
     return {
+      requiresInstall: false,
       supported: false,
       reason: 'Questo browser non supporta notifiche push web. Resta attiva la campanella in app.',
     }
@@ -59,12 +77,13 @@ export function getPushSupportStatus() {
 
   if (!webPushPublicKey) {
     return {
+      requiresInstall: false,
       supported: false,
       reason: 'Manca la chiave pubblica push nelle variabili Netlify.',
     }
   }
 
-  return { supported: true, reason: '' }
+  return { requiresInstall: false, supported: true, reason: '' }
 }
 
 export async function registerAppServiceWorker() {
@@ -89,7 +108,27 @@ export async function subscribeCurrentBrowserToPush() {
     return { error: { message: support.reason }, subscription: null }
   }
 
-  const permission = await window.Notification.requestPermission()
+  if (window.Notification.permission === 'denied') {
+    return {
+      error: {
+        message: 'Notifiche bloccate sul telefono. Riattivale dalle impostazioni del browser o dell app Camion Chiaro.',
+      },
+      subscription: null,
+    }
+  }
+
+  let permission
+
+  try {
+    permission = await window.Notification.requestPermission()
+  } catch {
+    return {
+      error: {
+        message: 'Non posso aprire la richiesta notifiche da questo browser. Su iPhone usa l app aggiunta alla schermata Home.',
+      },
+      subscription: null,
+    }
+  }
 
   if (permission !== 'granted') {
     return { error: { message: 'Notifiche non autorizzate su questo telefono.' }, subscription: null }

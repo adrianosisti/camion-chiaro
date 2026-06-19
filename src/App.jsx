@@ -165,6 +165,70 @@ function getChatReactionEmoji(value) {
   return chatReactionOptions.find((reaction) => reaction.value === value)?.emoji ?? legacyReactionMap[value] ?? value
 }
 
+function hasChatReactions(message) {
+  return Object.values(message?.reactions ?? {}).some(Boolean)
+}
+
+function shouldIgnoreReactionGesture(target) {
+  return Boolean(target?.closest?.('a, button, input, label, select, textarea'))
+}
+
+function useReactionPicker() {
+  const [openReactionMessageId, setOpenReactionMessageId] = useState('')
+  const holdTimerRef = useRef(null)
+
+  function clearReactionHold() {
+    if (holdTimerRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+  }
+
+  function openReactionPicker(messageId) {
+    clearReactionHold()
+    setOpenReactionMessageId(messageId)
+  }
+
+  function closeReactionPicker() {
+    clearReactionHold()
+    setOpenReactionMessageId('')
+  }
+
+  function getReactionTriggerProps(messageId) {
+    return {
+      onContextMenu: (event) => {
+        if (shouldIgnoreReactionGesture(event.target)) return
+        event.preventDefault()
+        openReactionPicker(messageId)
+      },
+      onPointerCancel: clearReactionHold,
+      onPointerDown: (event) => {
+        if (shouldIgnoreReactionGesture(event.target)) return
+        if (event.pointerType !== 'touch' && typeof event.button === 'number' && event.button !== 0) return
+
+        clearReactionHold()
+        holdTimerRef.current = window.setTimeout(() => openReactionPicker(messageId), 480)
+      },
+      onPointerLeave: clearReactionHold,
+      onPointerUp: clearReactionHold,
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(holdTimerRef.current)
+      }
+    }
+  }, [])
+
+  return {
+    closeReactionPicker,
+    getReactionTriggerProps,
+    openReactionMessageId,
+  }
+}
+
 function getInitialActiveView() {
   if (typeof window === 'undefined') return 'dashboard'
 
@@ -4410,10 +4474,15 @@ function MessageStatus({ status }) {
   )
 }
 
-function ChatReactionBar({ actorRole, message, onReact }) {
+function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, onReact }) {
   const reactions = message.reactions ?? {}
   const currentReaction = reactions[actorRole] ?? ''
   const visibleReactions = Object.entries(reactions).filter(([, reaction]) => reaction)
+
+  function handleReactionClick(reaction) {
+    onReact?.(message, actorRole, currentReaction === reaction.value ? '' : reaction.value)
+    onClose?.()
+  }
 
   return (
     <div className="chat-reaction-row">
@@ -4426,20 +4495,22 @@ function ChatReactionBar({ actorRole, message, onReact }) {
           ))}
         </div>
       )}
-      <div className="chat-reaction-actions" aria-label="Aggiungi reazione">
-        {chatReactionOptions.map((reaction) => (
-          <button
-            aria-label={reaction.label}
-            className={currentReaction === reaction.value ? 'chat-reaction-button is-active' : 'chat-reaction-button'}
-            key={reaction.value}
-            onClick={() => onReact?.(message, actorRole, reaction.value)}
-            title={reaction.label}
-            type="button"
-          >
-            {reaction.emoji}
-          </button>
-        ))}
-      </div>
+      {isPickerOpen && (
+        <div className="chat-reaction-picker" aria-label="Scegli reazione" onPointerDown={(event) => event.stopPropagation()}>
+          {chatReactionOptions.map((reaction) => (
+            <button
+              aria-label={reaction.label}
+              className={currentReaction === reaction.value ? 'chat-reaction-button is-active' : 'chat-reaction-button'}
+              key={reaction.value}
+              onClick={() => handleReactionClick(reaction)}
+              title={reaction.label}
+              type="button"
+            >
+              {reaction.emoji}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -4464,6 +4535,7 @@ function ChatWorkspace({
   const [isSending, setIsSending] = useState(false)
   const messagesListRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const reactionPicker = useReactionPicker()
   const messagesByThread = useMemo(() => {
     const groupedMessages = new Map()
 
@@ -4667,11 +4739,18 @@ function ChatWorkspace({
           )}
           {visibleMessages.map((message) => {
             const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
+            const isReactionPickerOpen = reactionPicker.openReactionMessageId === message.id
+            const messageClassName = [
+              message.senderRole === 'company' ? 'chat-message is-company' : 'chat-message is-driver',
+              hasChatReactions(message) ? 'has-reaction' : '',
+              isReactionPickerOpen ? 'has-reaction-picker' : '',
+            ].filter(Boolean).join(' ')
 
             return (
               <article
-                className={message.senderRole === 'company' ? 'chat-message is-company' : 'chat-message is-driver'}
+                className={messageClassName}
                 key={message.id}
+                {...reactionPicker.getReactionTriggerProps(message.id)}
               >
                 <div className="chat-message-meta">
                   <span>{message.senderRole === 'company' ? 'Azienda' : selectedDriver?.name ?? 'Autista'}</span>
@@ -4687,7 +4766,13 @@ function ChatWorkspace({
                 {message.senderRole === 'company' && (
                   <MessageStatus status={getMessageStatus(message, 'company')} />
                 )}
-                <ChatReactionBar actorRole="company" message={message} onReact={onReactToMessage} />
+                <ChatReactionBar
+                  actorRole="company"
+                  isPickerOpen={isReactionPickerOpen}
+                  message={message}
+                  onClose={reactionPicker.closeReactionPicker}
+                  onReact={onReactToMessage}
+                />
               </article>
             )
           })}
@@ -6162,6 +6247,7 @@ function DriverChatScreen({
   const [isSending, setIsSending] = useState(false)
   const messagesListRef = useRef(null)
   const lastMessageId = chatMessages[chatMessages.length - 1]?.id ?? ''
+  const reactionPicker = useReactionPicker()
 
   useEffect(() => {
     window.requestAnimationFrame(() => {
@@ -6211,11 +6297,18 @@ function DriverChatScreen({
       <div className="driver-chat-screen-list" ref={messagesListRef}>
         {chatMessages.map((message) => {
           const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
+          const isReactionPickerOpen = reactionPicker.openReactionMessageId === message.id
+          const messageClassName = [
+            message.senderRole === 'driver' ? 'driver-chat-screen-message is-driver' : 'driver-chat-screen-message is-company',
+            hasChatReactions(message) ? 'has-reaction' : '',
+            isReactionPickerOpen ? 'has-reaction-picker' : '',
+          ].filter(Boolean).join(' ')
 
           return (
             <article
-              className={message.senderRole === 'driver' ? 'driver-chat-screen-message is-driver' : 'driver-chat-screen-message is-company'}
+              className={messageClassName}
               key={message.id}
+              {...reactionPicker.getReactionTriggerProps(message.id)}
             >
               {message.body && <p>{message.body}</p>}
               {message.attachmentPath && attachmentUrl && (
@@ -6229,7 +6322,13 @@ function DriverChatScreen({
                   <MessageStatus status={getMessageStatus(message, 'driver')} />
                 )}
               </small>
-              <ChatReactionBar actorRole="driver" message={message} onReact={onReactToMessage} />
+              <ChatReactionBar
+                actorRole="driver"
+                isPickerOpen={isReactionPickerOpen}
+                message={message}
+                onClose={reactionPicker.closeReactionPicker}
+                onReact={onReactToMessage}
+              />
             </article>
           )
         })}

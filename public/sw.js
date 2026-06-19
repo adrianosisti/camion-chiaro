@@ -1,4 +1,4 @@
-const CACHE_NAME = 'camion-chiaro-v1'
+const CACHE_NAME = 'camion-chiaro-v2'
 const CORE_ASSETS = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {

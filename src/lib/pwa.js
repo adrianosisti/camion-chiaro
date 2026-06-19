@@ -90,7 +90,15 @@ export async function registerAppServiceWorker() {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
   if (!import.meta.env.PROD) return null
 
-  return navigator.serviceWorker.register('/sw.js')
+  const registration = await navigator.serviceWorker.register('/sw.js')
+
+  try {
+    await registration.update()
+  } catch {
+    // Il service worker registrato resta valido anche se il controllo aggiornamenti fallisce.
+  }
+
+  return registration
 }
 
 export async function getExistingPushSubscription() {

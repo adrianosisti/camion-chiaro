@@ -1969,11 +1969,17 @@
   display: grid;
   gap: 7px;
   width: min(78%, 520px);
-  padding: 11px 12px 18px;
+  padding: 11px 12px;
   border: 1px solid #d6e6f5;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 8px 20px rgba(2, 6, 23, 0.04);
+}
+
+.chat-message.has-reaction,
+.chat-message.has-reaction-picker {
+  margin-bottom: 10px;
+  padding-bottom: 18px;
 }
 
 .chat-message.is-company {
@@ -2030,12 +2036,6 @@
   display: contents;
 }
 
-.chat-reaction-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
 .chat-reaction-summary {
   position: absolute;
   right: 10px;
@@ -2066,13 +2066,24 @@
   line-height: 1;
 }
 
-.chat-reaction-actions {
-  opacity: 0.62;
+.chat-reaction-picker {
+  position: absolute;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid #c9e5f2;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.18);
 }
 
-.chat-message:hover .chat-reaction-actions,
-.driver-chat-screen-message:hover .chat-reaction-actions {
-  opacity: 1;
+.chat-message.is-driver .chat-reaction-picker,
+.driver-chat-screen-message.is-company .chat-reaction-picker {
+  right: auto;
+  left: 8px;
 }
 
 .chat-reaction-button {
@@ -3229,11 +3240,17 @@
   gap: 5px;
   width: fit-content;
   max-width: 82%;
-  padding: 8px 9px 18px;
+  padding: 8px 9px 6px;
   border: 1px solid #d6e6f5;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(2, 6, 23, 0.05);
+}
+
+.driver-chat-screen-message.has-reaction,
+.driver-chat-screen-message.has-reaction-picker {
+  margin-bottom: 9px;
+  padding-bottom: 18px;
 }
 
 .driver-chat-screen-message.is-driver {

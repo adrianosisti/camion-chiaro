@@ -41,3 +41,12 @@ Se Supabase da errore copiando il file intero, usa i due file separati:
 2. `14B_chat_policy.sql`
 
 Esegui prima `14A`, aspetta `Success`, poi esegui `14B`.
+
+Se anche `14B_chat_policy.sql` risulta troppo lungo da copiare, usa questi file ancora piu piccoli:
+
+1. `14B1_chat_regole_conversazioni.sql`
+2. `14B2_chat_regole_messaggi.sql`
+3. `14B3_chat_storage_foto.sql`
+4. `14B4_chat_tempo_reale.sql`
+
+Eseguili uno alla volta, sempre dopo `14A_chat_tabelle.sql`.

@@ -83,3 +83,8 @@ Se Supabase non ti fa incollare il file `18` intero, usa questi due file separat
 2. `18B_storico_documenti_funzione.sql`
 
 Eseguili uno alla volta, sempre in questo ordine.
+
+## Reazioni chat
+
+Il file `19_chat_reazioni.sql` abilita le reazioni rapide ai messaggi della chat.
+Eseguilo una sola volta dopo `18_storico_documenti.sql`.

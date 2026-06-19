@@ -192,10 +192,42 @@ function mapChatMessage(row) {
     id: row.id,
     readByCompanyAt: row.read_by_company_at,
     readByDriverAt: row.read_by_driver_at,
+    reactions: row.reactions ?? {},
     senderRole: row.sender_role,
     senderUserId: row.sender_user_id,
     threadId: row.thread_id,
   }
+}
+
+const chatMessageSelectColumns = `
+  id,
+  thread_id,
+  company_id,
+  sender_user_id,
+  sender_role,
+  body,
+  attachment_path,
+  read_by_company_at,
+  read_by_driver_at,
+  created_at,
+  reactions
+`
+
+const chatMessageSelectColumnsWithoutReactions = `
+  id,
+  thread_id,
+  company_id,
+  sender_user_id,
+  sender_role,
+  body,
+  attachment_path,
+  read_by_company_at,
+  read_by_driver_at,
+  created_at
+`
+
+function isMissingReactionsColumn(error) {
+  return error?.code === '42703' && String(error.message ?? '').includes('reactions')
 }
 
 function toDriverPayload(driver, companyId = configuredCompanyId) {
@@ -649,25 +681,24 @@ export async function fetchChatMessages(companyId = configuredCompanyId) {
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('chat_messages')
-    .select(
-      `
-        id,
-        thread_id,
-        company_id,
-        sender_user_id,
-        sender_role,
-        body,
-        attachment_path,
-        read_by_company_at,
-        read_by_driver_at,
-        created_at
-      `,
-    )
+    .select(chatMessageSelectColumns)
     .eq('company_id', companyId)
     .order('created_at', { ascending: true })
     .limit(500)
+
+  if (isMissingReactionsColumn(error)) {
+    const fallbackResult = await supabase
+      .from('chat_messages')
+      .select(chatMessageSelectColumnsWithoutReactions)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: true })
+      .limit(500)
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   return { data: data?.map(mapChatMessage) ?? null, error }
 }
@@ -1002,20 +1033,7 @@ export async function createChatMessageRecord(message, companyId = configuredCom
   const { data, error } = await supabase
     .from('chat_messages')
     .insert(toChatMessagePayload({ ...message, attachmentPath }, companyId))
-    .select(
-      `
-        id,
-        thread_id,
-        company_id,
-        sender_user_id,
-        sender_role,
-        body,
-        attachment_path,
-        read_by_company_at,
-        read_by_driver_at,
-        created_at
-      `,
-    )
+    .select(chatMessageSelectColumnsWithoutReactions)
     .single()
 
   if (error && attachmentPath) {
@@ -1034,28 +1052,62 @@ export async function markChatMessagesRead(threadId, readerRole) {
 
   const timestampColumn = readerRole === 'company' ? 'read_by_company_at' : 'read_by_driver_at'
   const senderRole = readerRole === 'company' ? 'driver' : 'company'
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('chat_messages')
     .update({ [timestampColumn]: new Date().toISOString() })
     .eq('thread_id', threadId)
     .eq('sender_role', senderRole)
     .is(timestampColumn, null)
-    .select(
-      `
-        id,
-        thread_id,
-        company_id,
-        sender_user_id,
-        sender_role,
-        body,
-        attachment_path,
-        read_by_company_at,
-        read_by_driver_at,
-        created_at
-      `,
-    )
+    .select(chatMessageSelectColumns)
+
+  if (isMissingReactionsColumn(error)) {
+    const fallbackResult = await supabase
+      .from('chat_messages')
+      .update({ [timestampColumn]: new Date().toISOString() })
+      .eq('thread_id', threadId)
+      .eq('sender_role', senderRole)
+      .is(timestampColumn, null)
+      .select(chatMessageSelectColumnsWithoutReactions)
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   return { data: data?.map(mapChatMessage) ?? null, error }
+}
+
+export async function updateChatMessageReaction(message, actorRole, reaction) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !message?.id || !['company', 'driver'].includes(actorRole)) {
+    return { data: null, error: null }
+  }
+
+  const reactions = { ...(message.reactions ?? {}) }
+
+  if (reaction) {
+    reactions[actorRole] = reaction
+  } else {
+    delete reactions[actorRole]
+  }
+
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .update({ reactions })
+    .eq('id', message.id)
+    .select(chatMessageSelectColumns)
+    .single()
+
+  if (isMissingReactionsColumn(error)) {
+    return {
+      data: null,
+      error: {
+        message: 'Manca SQL reazioni chat. Esegui il file 19_chat_reazioni.sql in Supabase.',
+      },
+    }
+  }
+
+  return { data: data ? mapChatMessage(data) : null, error }
 }
 
 export async function updateFaultReportStatus(reportId, status) {

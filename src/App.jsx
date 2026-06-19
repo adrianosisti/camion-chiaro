@@ -83,6 +83,7 @@ import {
   uploadDriverProfileImageFile as uploadSupabaseDriverProfileImageFile,
   updateDriverDocumentRecord as updateSupabaseDriverDocument,
   updateDriverRecord as updateSupabaseDriver,
+  updateChatMessageReaction as updateSupabaseChatMessageReaction,
   updateCompanyProfile as updateSupabaseCompanyProfile,
   updateFaultReportStatus as updateSupabaseFaultReportStatus,
   updateVehicleRecord as updateSupabaseVehicle,
@@ -145,6 +146,7 @@ const faultStatusOptions = [
   { value: 'in_progress', label: 'Da leggere' },
   { value: 'closed', label: 'Archiviato' },
 ]
+const chatReactionOptions = ['OK', 'Cuore', 'Grazie', 'Visto']
 const deepLinkViews = new Set(['chat', 'documents', 'notifications', 'settings'])
 
 function getInitialActiveView() {
@@ -1713,6 +1715,7 @@ function App() {
       id: `chat-message-${Date.now()}`,
       readByCompanyAt: null,
       readByDriverAt: null,
+      reactions: {},
       senderRole,
       senderUserId: '',
       threadId: localThread.id,
@@ -1753,6 +1756,43 @@ function App() {
         setChatMessageRecords((currentMessages) =>
           result.data.reduce((messages, message) => upsertRecordById(messages, message), currentMessages),
         )
+      }
+    }
+
+    return true
+  }
+
+  async function updateChatMessageReaction(message, actorRole, reaction) {
+    if (!message?.id || !['company', 'driver'].includes(actorRole)) return false
+
+    const nextReactions = { ...(message.reactions ?? {}) }
+
+    if (nextReactions[actorRole] === reaction || !reaction) {
+      delete nextReactions[actorRole]
+    } else {
+      nextReactions[actorRole] = reaction
+    }
+
+    setChatMessageRecords((currentMessages) =>
+      currentMessages.map((currentMessage) =>
+        currentMessage.id === message.id ? { ...currentMessage, reactions: nextReactions } : currentMessage,
+      ),
+    )
+
+    if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
+      const result = await updateSupabaseChatMessageReaction(
+        { ...message, reactions: message.reactions ?? {} },
+        actorRole,
+        nextReactions[actorRole] ?? '',
+      )
+
+      if (result.error) {
+        setChatSyncStatus(`Reazione salvata localmente. Supabase: ${result.error.message}`)
+        return true
+      }
+
+      if (result.data) {
+        setChatMessageRecords((currentMessages) => upsertRecordById(currentMessages, result.data))
       }
     }
 
@@ -1831,6 +1871,7 @@ function App() {
         onDriverProfileImageRemove={removeDriverProfileImage}
         onFaultReport={submitFaultReport}
         onMarkChatRead={markChatThreadRead}
+        onReactToMessage={updateChatMessageReaction}
         onSendChatMessage={sendChatMessage}
         onMorningCheck={submitMorningCheck}
         onOpenDriverDocument={openDriverDocumentFile}
@@ -1978,6 +2019,7 @@ function App() {
             chatThreads={chatThreadRecords}
             driverRecords={driverRecords}
             onMarkRead={markChatThreadRead}
+            onReactToMessage={updateChatMessageReaction}
             onSendMessage={sendChatMessage}
             syncStatus={chatSyncStatus}
           />
@@ -2697,7 +2739,8 @@ function PhoneSetupPanel({
         ? 'Da attivare'
         : 'Non disponibili'
   const installButtonLabel = isAppleMobileDevice() && !installPromptAvailable ? 'Come installare' : 'Installa app'
-  const notificationButtonDisabled = notificationEnabled || (!pushSupport.supported && !pushSupport.requiresInstall)
+  const notificationButtonDisabled = !pushSupport.supported && !pushSupport.requiresInstall
+  const notificationButtonLabel = notificationEnabled ? 'Verifica notifiche' : 'Abilita notifiche'
   const panelTitle = showInstallAction ? 'App e notifiche' : 'Notifiche telefono'
 
   return (
@@ -2726,7 +2769,7 @@ function PhoneSetupPanel({
           <span>{pushSupport.supported ? 'Chat, guasti e documenti' : pushSupport.reason}</span>
         </div>
         <button className="small-button" disabled={notificationButtonDisabled} onClick={onEnableNotifications} type="button">
-          Abilita notifiche
+          {notificationButtonLabel}
         </button>
       </div>
       {notificationStatus && <p className="sync-status-line">{notificationStatus}</p>}
@@ -4338,28 +4381,56 @@ function MessageStatus({ status }) {
   )
 }
 
+function ChatReactionBar({ actorRole, message, onReact }) {
+  const reactions = message.reactions ?? {}
+  const currentReaction = reactions[actorRole] ?? ''
+  const visibleReactions = Object.entries(reactions).filter(([, reaction]) => reaction)
+
+  return (
+    <div className="chat-reaction-row">
+      {visibleReactions.length > 0 && (
+        <div className="chat-reaction-summary" aria-label="Reazioni al messaggio">
+          {visibleReactions.map(([role, reaction]) => (
+            <span key={role}>{role === 'company' ? 'Azienda' : 'Autista'}: {reaction}</span>
+          ))}
+        </div>
+      )}
+      <div className="chat-reaction-actions" aria-label="Aggiungi reazione">
+        {chatReactionOptions.map((reaction) => (
+          <button
+            className={currentReaction === reaction ? 'chat-reaction-button is-active' : 'chat-reaction-button'}
+            key={reaction}
+            onClick={() => onReact?.(message, actorRole, reaction)}
+            type="button"
+          >
+            {reaction}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ChatWorkspace({
   assetPreviewUrl = () => '',
   chatMessages = [],
   chatThreads = [],
   driverRecords = [],
   onMarkRead,
+  onReactToMessage,
   onSendMessage,
   syncStatus,
 }) {
-  const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
+  const availableDrivers = useMemo(
+    () => driverRecords.filter((driver) => driver.status !== 'Archiviato'),
+    [driverRecords],
+  )
   const [selectedDriverId, setSelectedDriverId] = useState('')
   const [messageBody, setMessageBody] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [isSending, setIsSending] = useState(false)
   const messagesListRef = useRef(null)
-  const selectedDriver =
-    activeDrivers.find((driver) => driver.id === selectedDriverId) ??
-    activeDrivers[0] ??
-    null
-  const selectedThread = selectedDriver
-    ? chatThreads.find((thread) => thread.driverId === selectedDriver.id && thread.contextType === 'general')
-    : null
+  const messagesEndRef = useRef(null)
   const messagesByThread = useMemo(() => {
     const groupedMessages = new Map()
 
@@ -4371,6 +4442,38 @@ function ChatWorkspace({
 
     return groupedMessages
   }, [chatMessages])
+  const activeDrivers = useMemo(
+    () =>
+      [...availableDrivers].sort((firstDriver, secondDriver) => {
+        const firstThread = chatThreads.find(
+          (thread) => thread.driverId === firstDriver.id && thread.contextType === 'general',
+        )
+        const secondThread = chatThreads.find(
+          (thread) => thread.driverId === secondDriver.id && thread.contextType === 'general',
+        )
+        const firstMessages = firstThread ? messagesByThread.get(firstThread.id) ?? [] : []
+        const secondMessages = secondThread ? messagesByThread.get(secondThread.id) ?? [] : []
+        const firstLastMessage = firstMessages[firstMessages.length - 1]
+        const secondLastMessage = secondMessages[secondMessages.length - 1]
+        const firstTime = new Date(
+          firstLastMessage?.createdAt ?? firstThread?.lastMessageAt ?? firstThread?.updatedAt ?? firstThread?.createdAt ?? 0,
+        ).getTime()
+        const secondTime = new Date(
+          secondLastMessage?.createdAt ?? secondThread?.lastMessageAt ?? secondThread?.updatedAt ?? secondThread?.createdAt ?? 0,
+        ).getTime()
+
+        if (firstTime !== secondTime) return secondTime - firstTime
+        return firstDriver.name.localeCompare(secondDriver.name)
+      }),
+    [availableDrivers, chatThreads, messagesByThread],
+  )
+  const selectedDriver =
+    activeDrivers.find((driver) => driver.id === selectedDriverId) ??
+    activeDrivers[0] ??
+    null
+  const selectedThread = selectedDriver
+    ? chatThreads.find((thread) => thread.driverId === selectedDriver.id && thread.contextType === 'general')
+    : null
   const visibleMessages = selectedThread
     ? [...(messagesByThread.get(selectedThread.id) ?? [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
     : []
@@ -4385,6 +4488,7 @@ function ChatWorkspace({
     function scrollToBottom() {
       const listElement = messagesListRef.current
       if (listElement) listElement.scrollTop = listElement.scrollHeight
+      messagesEndRef.current?.scrollIntoView({ block: 'end' })
     }
 
     scrollToBottom()
@@ -4536,7 +4640,7 @@ function ChatWorkspace({
                 className={message.senderRole === 'company' ? 'chat-message is-company' : 'chat-message is-driver'}
                 key={message.id}
               >
-                <div>
+                <div className="chat-message-meta">
                   <span>{message.senderRole === 'company' ? 'Azienda' : selectedDriver?.name ?? 'Autista'}</span>
                   <small>{formatShortDateTime(message.createdAt)}</small>
                 </div>
@@ -4550,9 +4654,11 @@ function ChatWorkspace({
                 {message.senderRole === 'company' && (
                   <MessageStatus status={getMessageStatus(message, 'company')} />
                 )}
+                <ChatReactionBar actorRole="company" message={message} onReact={onReactToMessage} />
               </article>
             )
           })}
+          <span className="chat-scroll-anchor" ref={messagesEndRef} />
         </div>
         <form className="chat-compose" onSubmit={handleSubmit}>
           <textarea
@@ -5209,6 +5315,7 @@ function DriverAppView({
   onMarkChatRead,
   onMorningCheck,
   onOpenDriverDocument,
+  onReactToMessage,
   onSendChatMessage,
   onSignOut,
   onUpload,
@@ -5258,6 +5365,7 @@ function DriverAppView({
             onDriverProfileImageUpload={onDriverProfileImageUpload}
             onFaultReport={onFaultReport}
             onMarkChatRead={onMarkChatRead}
+            onReactToMessage={onReactToMessage}
             onSendChatMessage={onSendChatMessage}
             onMorningCheck={onMorningCheck}
             onOpenDriverDocument={onOpenDriverDocument}
@@ -5290,6 +5398,12 @@ function DriverAppView({
           />
         </div>
       </div>
+      <footer className="driver-logout-footer">
+        <button className="logout-button" onClick={onSignOut} type="button">
+          <LogOut size={17} />
+          Esci
+        </button>
+      </footer>
     </main>
   )
 }
@@ -5367,6 +5481,7 @@ function DriverMobile({
   onMarkChatRead,
   onMorningCheck,
   onOpenDriverDocument,
+  onReactToMessage,
   onSendChatMessage,
   onUpload,
   operationsStatus,
@@ -5863,6 +5978,7 @@ function DriverMobile({
             chatSyncStatus={chatSyncStatus}
             driver={driver}
             onClose={() => setIsDriverChatOpen(false)}
+            onReactToMessage={onReactToMessage}
             onSendChatMessage={onSendChatMessage}
             thread={driverChatThread}
           />
@@ -6002,6 +6118,7 @@ function DriverChatScreen({
   chatSyncStatus = '',
   driver,
   onClose,
+  onReactToMessage,
   onSendChatMessage,
   thread,
 }) {
@@ -6079,6 +6196,7 @@ function DriverChatScreen({
                   <MessageStatus status={getMessageStatus(message, 'driver')} />
                 )}
               </small>
+              <ChatReactionBar actorRole="driver" message={message} onReact={onReactToMessage} />
             </article>
           )
         })}

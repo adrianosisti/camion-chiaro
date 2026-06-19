@@ -253,6 +253,20 @@
   min-width: 0;
 }
 
+.driver-logout-footer {
+  max-width: 980px;
+  margin: 18px auto 0;
+}
+
+.driver-logout-footer .logout-button {
+  width: 100%;
+  min-height: 46px;
+  justify-content: center;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #b7dce7;
+}
+
 .driver-note-panel h1 {
   color: var(--ink);
   font-size: clamp(1.8rem, 4vw, 3.2rem);
@@ -1121,7 +1135,7 @@
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .settings-workspace {
@@ -1162,6 +1176,14 @@
 .chat-list-panel,
 .chat-thread-panel {
   overflow: hidden;
+}
+
+.chat-thread-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: min(620px, calc(100dvh - 140px));
+  min-height: min(500px, calc(100dvh - 140px));
+  max-height: calc(100dvh - 140px);
 }
 
 .settings-panel {
@@ -1913,8 +1935,7 @@
   display: grid;
   align-content: start;
   gap: 10px;
-  min-height: 430px;
-  max-height: min(620px, calc(100vh - 270px));
+  min-height: 0;
   overflow: auto;
   padding: 16px 20px;
   border-top: 1px solid var(--line);
@@ -1964,7 +1985,7 @@
   justify-self: start;
 }
 
-.chat-message div {
+.chat-message-meta {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -2002,6 +2023,54 @@
 
 .message-status.is-read {
   color: #0284c7;
+}
+
+.chat-reaction-row {
+  display: grid;
+  gap: 6px;
+}
+
+.chat-reaction-summary,
+.chat-reaction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chat-reaction-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #075985;
+  background: #dff7ff;
+  font-size: 0.7rem;
+  font-weight: 820;
+}
+
+.chat-reaction-button {
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid #d6e6f5;
+  border-radius: 999px;
+  color: #475569;
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 780;
+}
+
+.chat-reaction-button:hover,
+.chat-reaction-button.is-active {
+  border-color: #12c6df;
+  color: #075985;
+  background: #ecfeff;
+}
+
+.chat-scroll-anchor {
+  width: 1px;
+  height: 1px;
 }
 
 .chat-attachment img {

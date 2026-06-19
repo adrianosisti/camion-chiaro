@@ -874,9 +874,99 @@
   margin-top: 22px;
 }
 
+.daily-motivation {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 14px;
+  padding: 9px 11px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  color: #075985;
+  background: #ecfeff;
+}
+
+.daily-motivation svg {
+  color: #029bb7;
+}
+
+.daily-motivation span {
+  color: #0369a1;
+  font-size: 0.7rem;
+  font-weight: 820;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.daily-motivation strong {
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.daily-motivation.is-driver {
+  grid-template-columns: auto minmax(0, 1fr);
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+}
+
+.daily-motivation.is-driver span {
+  grid-column: 2;
+  font-size: 0.62rem;
+}
+
+.daily-motivation.is-driver strong {
+  grid-column: 1 / -1;
+  font-size: 0.74rem;
+}
+
 .setup-panel {
   margin-top: 20px;
   overflow: hidden;
+}
+
+.setup-intro {
+  margin: 0;
+  padding: 0 20px 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.52;
+}
+
+.setup-summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #b7dce7;
+  border-radius: 8px;
+  color: #075985;
+  background: #ecfeff;
+  font-size: 0.78rem;
+  font-weight: 820;
+  white-space: nowrap;
+}
+
+.setup-progress {
+  height: 7px;
+  margin: 0 20px 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.setup-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #029bb7, #12c6df);
+  transition: width 220ms ease;
 }
 
 .setup-list {
@@ -908,6 +998,10 @@
   transform: translateY(-1px);
 }
 
+.setup-row.is-done {
+  background: #f8fbff;
+}
+
 .setup-row svg {
   color: #0284c7;
 }
@@ -922,6 +1016,15 @@
   background: #e0f2fe;
   font-size: 0.86rem;
   font-weight: 820;
+}
+
+.setup-row.is-done .setup-index {
+  color: #ffffff;
+  background: #059669;
+}
+
+.setup-row.is-done > svg {
+  color: #059669;
 }
 
 .setup-row span:not(.setup-index) {
@@ -3050,6 +3153,17 @@
 .driver-card strong {
   color: var(--ink);
   font-size: 1rem;
+}
+
+.driver-card .daily-motivation span {
+  color: #0369a1;
+  font-size: 0.62rem;
+}
+
+.driver-card .daily-motivation strong {
+  color: #0f172a;
+  font-size: 0.74rem;
+  line-height: 1.35;
 }
 
 .driver-card .image-upload-control {

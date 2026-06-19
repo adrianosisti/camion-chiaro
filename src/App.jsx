@@ -162,6 +162,8 @@ const languageOptions = [
   { code: 'es', label: 'Español', shortLabel: 'ES' },
   { code: 'fr', label: 'Français', shortLabel: 'FR' },
   { code: 'de', label: 'Deutsch', shortLabel: 'DE' },
+  { code: 'ro', label: 'Romana', shortLabel: 'RO' },
+  { code: 'pl', label: 'Polski', shortLabel: 'PL' },
 ]
 const supportedLanguageCodes = new Set(languageOptions.map((option) => option.code))
 const translations = {
@@ -227,6 +229,22 @@ const translations = {
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
     'nav.settings': 'Impostazioni',
+    'onboarding.body': 'Completa questi passaggi per rendere Camion Chiaro operativo senza confusione.',
+    'onboarding.companyBody': 'Nome azienda, sede e logo visibili nella dashboard.',
+    'onboarding.companyTitle': 'Completa profilo azienda',
+    'onboarding.completed': '{count}/{total} completati',
+    'onboarding.deadlinesBody': 'Inserisci almeno una patente, visita, revisione o assicurazione da ricordare.',
+    'onboarding.deadlinesTitle': 'Aggiungi una scadenza',
+    'onboarding.done': 'Fatto',
+    'onboarding.driversBody': 'Crea il primo autista con nome utente e telefono.',
+    'onboarding.driversTitle': 'Aggiungi autista',
+    'onboarding.fleetBody': 'Registra furgoni, motrici, trattori o semirimorchi.',
+    'onboarding.fleetTitle': 'Aggiungi mezzo',
+    'onboarding.notificationsBody': 'Attiva notifiche su telefono per chat, guasti e check critici.',
+    'onboarding.notificationsTitle': 'Attiva notifiche',
+    'onboarding.overline': 'Primi passi',
+    'onboarding.progress': 'Configurazione',
+    'onboarding.title': 'Prepara l azienda',
     'records.aria': 'Anagrafiche azienda',
     'records.documentsLabel': 'Documenti',
     'records.documentsText': 'Scadenze documentali e file autisti',
@@ -308,6 +326,22 @@ const translations = {
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
     'nav.settings': 'Settings',
+    'onboarding.body': 'Complete these steps to make Camion Chiaro operational without confusion.',
+    'onboarding.companyBody': 'Company name, headquarters and logo visible in the dashboard.',
+    'onboarding.companyTitle': 'Complete company profile',
+    'onboarding.completed': '{count}/{total} completed',
+    'onboarding.deadlinesBody': 'Add at least one licence, medical check, inspection or insurance deadline.',
+    'onboarding.deadlinesTitle': 'Add a deadline',
+    'onboarding.done': 'Done',
+    'onboarding.driversBody': 'Create the first driver with username and phone.',
+    'onboarding.driversTitle': 'Add driver',
+    'onboarding.fleetBody': 'Register vans, rigids, tractors or semi-trailers.',
+    'onboarding.fleetTitle': 'Add vehicle',
+    'onboarding.notificationsBody': 'Enable phone notifications for chat, faults and critical checks.',
+    'onboarding.notificationsTitle': 'Enable notifications',
+    'onboarding.overline': 'First steps',
+    'onboarding.progress': 'Setup',
+    'onboarding.title': 'Prepare the company',
     'records.aria': 'Company records',
     'records.documentsLabel': 'Documents',
     'records.documentsText': 'Driver document files and deadlines',
@@ -389,6 +423,22 @@ const translations = {
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
     'nav.settings': 'Ajustes',
+    'onboarding.body': 'Completa estos pasos para poner Camion Chiaro operativo sin confusion.',
+    'onboarding.companyBody': 'Nombre empresa, sede y logo visibles en el panel.',
+    'onboarding.companyTitle': 'Completar perfil empresa',
+    'onboarding.completed': '{count}/{total} completados',
+    'onboarding.deadlinesBody': 'Añade al menos un permiso, revision medica, inspeccion o seguro.',
+    'onboarding.deadlinesTitle': 'Añadir vencimiento',
+    'onboarding.done': 'Hecho',
+    'onboarding.driversBody': 'Crea el primer conductor con usuario y telefono.',
+    'onboarding.driversTitle': 'Añadir conductor',
+    'onboarding.fleetBody': 'Registra furgonetas, rigidos, tractoras o semirremolques.',
+    'onboarding.fleetTitle': 'Añadir vehiculo',
+    'onboarding.notificationsBody': 'Activa avisos en telefono para chat, averias y checks criticos.',
+    'onboarding.notificationsTitle': 'Activar avisos',
+    'onboarding.overline': 'Primeros pasos',
+    'onboarding.progress': 'Configuracion',
+    'onboarding.title': 'Preparar empresa',
     'records.aria': 'Ficheros empresa',
     'records.documentsLabel': 'Documentos',
     'records.documentsText': 'Vencimientos y archivos de conductores',
@@ -470,6 +520,22 @@ const translations = {
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
     'nav.settings': 'Reglages',
+    'onboarding.body': 'Complete ces etapes pour rendre Camion Chiaro operationnel sans confusion.',
+    'onboarding.companyBody': 'Nom entreprise, siege et logo visibles dans le tableau.',
+    'onboarding.companyTitle': 'Completer profil entreprise',
+    'onboarding.completed': '{count}/{total} termines',
+    'onboarding.deadlinesBody': 'Ajoute au moins un permis, visite medicale, controle ou assurance.',
+    'onboarding.deadlinesTitle': 'Ajouter echeance',
+    'onboarding.done': 'Fait',
+    'onboarding.driversBody': 'Cree le premier chauffeur avec utilisateur et telephone.',
+    'onboarding.driversTitle': 'Ajouter chauffeur',
+    'onboarding.fleetBody': 'Enregistre fourgons, porteurs, tracteurs ou semi-remorques.',
+    'onboarding.fleetTitle': 'Ajouter vehicule',
+    'onboarding.notificationsBody': 'Active les alertes telephone pour chat, pannes et checks critiques.',
+    'onboarding.notificationsTitle': 'Activer alertes',
+    'onboarding.overline': 'Premiers pas',
+    'onboarding.progress': 'Configuration',
+    'onboarding.title': 'Preparer entreprise',
     'records.aria': 'Fiches entreprise',
     'records.documentsLabel': 'Documents',
     'records.documentsText': 'Echeances et fichiers chauffeurs',
@@ -551,6 +617,22 @@ const translations = {
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
     'nav.settings': 'Einstellungen',
+    'onboarding.body': 'Schliesse diese Schritte ab, damit Camion Chiaro sauber einsatzbereit ist.',
+    'onboarding.companyBody': 'Firmenname, Sitz und Logo sichtbar im Dashboard.',
+    'onboarding.companyTitle': 'Firmenprofil vervollstandigen',
+    'onboarding.completed': '{count}/{total} erledigt',
+    'onboarding.deadlinesBody': 'Mindestens eine Lizenz, Untersuchung, Prufung oder Versicherung eintragen.',
+    'onboarding.deadlinesTitle': 'Frist hinzufugen',
+    'onboarding.done': 'Erledigt',
+    'onboarding.driversBody': 'Ersten Fahrer mit Benutzername und Telefon erstellen.',
+    'onboarding.driversTitle': 'Fahrer hinzufugen',
+    'onboarding.fleetBody': 'Transporter, Lkw, Sattelzugmaschinen oder Auflieger erfassen.',
+    'onboarding.fleetTitle': 'Fahrzeug hinzufugen',
+    'onboarding.notificationsBody': 'Telefon-Hinweise fur Chat, Schaden und kritische Checks aktivieren.',
+    'onboarding.notificationsTitle': 'Hinweise aktivieren',
+    'onboarding.overline': 'Erste Schritte',
+    'onboarding.progress': 'Einrichtung',
+    'onboarding.title': 'Firma vorbereiten',
     'records.aria': 'Firmen-Stammdaten',
     'records.documentsLabel': 'Dokumente',
     'records.documentsText': 'Fahrerdokumente und Fristen',
@@ -2232,6 +2314,211 @@ Object.entries(microcopyTranslations).forEach(([translationLanguage, translation
   }
 })
 
+const dailyTranslations = {
+  it: {
+    'daily.overline': 'Frase del giorno',
+    'daily.company.0': 'Ogni scadenza vista in tempo vale una telefonata in meno domani.',
+    'daily.company.1': 'Una flotta ordinata lavora meglio e costa meno.',
+    'daily.company.2': 'Il controllo di oggi e la serenita del viaggio di domani.',
+    'daily.company.3': 'Meno rincorse, piu strada chiara.',
+    'daily.company.4': 'I dettagli giusti salvano tempo, multe e nervi.',
+    'daily.company.5': 'Un avviso aperto adesso evita un problema in piazzale.',
+    'daily.driver.0': 'Un check fatto bene protegge te, il mezzo e chi ti aspetta.',
+    'daily.driver.1': 'La strada premia chi parte preparato.',
+    'daily.driver.2': 'Una foto chiara oggi aiuta l azienda a risolvere prima.',
+    'daily.driver.3': 'Documenti pronti, testa libera.',
+    'daily.driver.4': 'Ogni segnalazione precisa fa viaggiare tutti meglio.',
+    'daily.driver.5': 'Partire ordinati e gia mezzo lavoro.',
+  },
+  en: {
+    'daily.overline': 'Today note',
+    'daily.company.0': 'A deadline handled today is one less call tomorrow.',
+    'daily.company.1': 'An ordered fleet works better and costs less.',
+    'daily.company.2': 'Today s control is tomorrow s calmer trip.',
+    'daily.company.3': 'Less chasing, clearer roads.',
+    'daily.company.4': 'The right details save time, fines and nerves.',
+    'daily.company.5': 'Opening an alert now prevents a yard problem later.',
+    'daily.driver.0': 'A good check protects you, the vehicle and the people waiting.',
+    'daily.driver.1': 'The road rewards those who start prepared.',
+    'daily.driver.2': 'A clear photo today helps the company solve faster.',
+    'daily.driver.3': 'Documents ready, mind clear.',
+    'daily.driver.4': 'Every precise report helps everyone travel better.',
+    'daily.driver.5': 'Starting organized is already half the job.',
+  },
+  es: {
+    'daily.overline': 'Frase del dia',
+    'daily.company.0': 'Un vencimiento visto a tiempo es una llamada menos manana.',
+    'daily.company.1': 'Una flota ordenada trabaja mejor y cuesta menos.',
+    'daily.company.2': 'El control de hoy es el viaje tranquilo de manana.',
+    'daily.company.3': 'Menos persecuciones, mas carretera clara.',
+    'daily.company.4': 'Los detalles correctos ahorran tiempo, multas y nervios.',
+    'daily.company.5': 'Abrir un aviso ahora evita un problema luego.',
+    'daily.driver.0': 'Un buen check te protege a ti, al vehiculo y a quien te espera.',
+    'daily.driver.1': 'La carretera premia a quien sale preparado.',
+    'daily.driver.2': 'Una foto clara hoy ayuda a resolver antes.',
+    'daily.driver.3': 'Documentos listos, mente libre.',
+    'daily.driver.4': 'Cada aviso preciso ayuda a viajar mejor.',
+    'daily.driver.5': 'Salir ordenado ya es medio trabajo.',
+  },
+  fr: {
+    'daily.overline': 'Phrase du jour',
+    'daily.company.0': 'Une echeance vue a temps fait un appel de moins demain.',
+    'daily.company.1': 'Une flotte ordonnee travaille mieux et coute moins.',
+    'daily.company.2': 'Le controle d aujourd hui, c est le trajet serein de demain.',
+    'daily.company.3': 'Moins de poursuites, plus de route claire.',
+    'daily.company.4': 'Les bons details economisent temps, amendes et nerfs.',
+    'daily.company.5': 'Ouvrir une alerte maintenant evite un probleme plus tard.',
+    'daily.driver.0': 'Un bon check te protege, protege le vehicule et ceux qui t attendent.',
+    'daily.driver.1': 'La route recompense ceux qui partent prepares.',
+    'daily.driver.2': 'Une photo claire aujourd hui aide a resoudre plus vite.',
+    'daily.driver.3': 'Documents prets, esprit libre.',
+    'daily.driver.4': 'Chaque signalement precis aide tout le monde a mieux rouler.',
+    'daily.driver.5': 'Partir organise, c est deja la moitie du travail.',
+  },
+  de: {
+    'daily.overline': 'Satz des Tages',
+    'daily.company.0': 'Eine heute geklarte Frist ist morgen ein Anruf weniger.',
+    'daily.company.1': 'Eine geordnete Flotte arbeitet besser und kostet weniger.',
+    'daily.company.2': 'Die Kontrolle von heute ist die ruhige Fahrt von morgen.',
+    'daily.company.3': 'Weniger Hinterherlaufen, klarere Wege.',
+    'daily.company.4': 'Die richtigen Details sparen Zeit, Strafen und Nerven.',
+    'daily.company.5': 'Ein jetzt geoffneter Hinweis verhindert spater Probleme.',
+    'daily.driver.0': 'Ein guter Check schutzt dich, das Fahrzeug und alle, die warten.',
+    'daily.driver.1': 'Die Strasse belohnt, wer vorbereitet startet.',
+    'daily.driver.2': 'Ein klares Foto heute hilft der Firma schneller zu losen.',
+    'daily.driver.3': 'Dokumente bereit, Kopf frei.',
+    'daily.driver.4': 'Jede genaue Meldung hilft allen besser zu fahren.',
+    'daily.driver.5': 'Gut geordnet starten ist schon die halbe Arbeit.',
+  },
+  ro: {
+    'daily.overline': 'Mesajul zilei',
+    'daily.company.0': 'O scadenta rezolvata azi inseamna un telefon mai putin maine.',
+    'daily.company.1': 'O flota ordonata lucreaza mai bine si costa mai putin.',
+    'daily.company.2': 'Controlul de azi aduce drumul linistit de maine.',
+    'daily.company.3': 'Mai putina alergatura, drum mai clar.',
+    'daily.company.4': 'Detaliile corecte economisesc timp, amenzi si nervi.',
+    'daily.company.5': 'O alerta deschisa acum evita o problema mai tarziu.',
+    'daily.driver.0': 'Un check facut bine te protejeaza pe tine, vehiculul si pe cei care te asteapta.',
+    'daily.driver.1': 'Drumul ii rasplateste pe cei care pleaca pregatiti.',
+    'daily.driver.2': 'O poza clara azi ajuta firma sa rezolve mai repede.',
+    'daily.driver.3': 'Documente pregatite, minte libera.',
+    'daily.driver.4': 'Fiecare raport precis ajuta pe toti sa circule mai bine.',
+    'daily.driver.5': 'Sa pleci organizat inseamna deja jumatate de treaba.',
+  },
+  pl: {
+    'daily.overline': 'Zdanie dnia',
+    'daily.company.0': 'Termin dopilnowany dzisiaj to jeden telefon mniej jutro.',
+    'daily.company.1': 'Uporzadkowana flota pracuje lepiej i kosztuje mniej.',
+    'daily.company.2': 'Dzisiejsza kontrola to spokojniejsza trasa jutro.',
+    'daily.company.3': 'Mniej gonienia, wiecej jasnej drogi.',
+    'daily.company.4': 'Dobre szczegoly oszczedzaja czas, mandaty i nerwy.',
+    'daily.company.5': 'Alert otwarty teraz zapobiega problemom pozniej.',
+    'daily.driver.0': 'Dobry check chroni ciebie, pojazd i tych, ktorzy czekaja.',
+    'daily.driver.1': 'Droga nagradza tych, ktorzy ruszaja przygotowani.',
+    'daily.driver.2': 'Wyrazne zdjecie dzis pomaga firmie szybciej reagowac.',
+    'daily.driver.3': 'Dokumenty gotowe, glowa spokojna.',
+    'daily.driver.4': 'Kazde precyzyjne zgloszenie pomaga wszystkim jechac lepiej.',
+    'daily.driver.5': 'Start w porzadku to juz polowa pracy.',
+  },
+}
+
+Object.entries(dailyTranslations).forEach(([translationLanguage, translationEntries]) => {
+  translations[translationLanguage] = {
+    ...translations[translationLanguage],
+    ...translationEntries,
+  }
+})
+
+const regionalTranslations = {
+  ro: {
+    'auth.companyTab': 'Firma',
+    'auth.driverTab': 'Sofer',
+    'brand.tagline': 'Scadente si notificari flota',
+    'common.add': 'Adauga',
+    'common.back': 'Inapoi',
+    'common.close': 'Inchide',
+    'common.open': 'Deschide',
+    'common.save': 'Salveaza',
+    'driver.area': 'Zona sofer',
+    'driverApp.greeting': 'Buna ziua',
+    'hero.description': 'O pagina clara pentru scadente, check-uri de dimineata si defectiuni de gestionat.',
+    'hero.factDrivers': 'soferi activi',
+    'hero.factNotifications': 'notificari deschise',
+    'hero.factVehicles': 'vehicule in flota',
+    'hero.newDeadline': 'Scadenta noua',
+    'hero.openBell': 'Deschide notificari',
+    'language.label': 'Limba',
+    'language.short': 'Limba',
+    'nav.chat': 'Chat',
+    'nav.deadlines': 'Scadente',
+    'nav.notifications': 'Notificari',
+    'nav.records': 'Date',
+    'nav.settings': 'Setari',
+    'onboarding.body': 'Completeaza acesti pasi pentru a porni Camion Chiaro fara confuzie.',
+    'onboarding.companyTitle': 'Completeaza profilul firmei',
+    'onboarding.completed': '{count}/{total} completate',
+    'onboarding.deadlinesTitle': 'Adauga o scadenta',
+    'onboarding.done': 'Gata',
+    'onboarding.driversTitle': 'Adauga sofer',
+    'onboarding.fleetTitle': 'Adauga vehicul',
+    'onboarding.notificationsTitle': 'Activeaza notificari',
+    'onboarding.overline': 'Primii pasi',
+    'onboarding.title': 'Pregateste firma',
+    'records.documentsLabel': 'Documente',
+    'records.driversLabel': 'Soferi',
+    'records.fleetLabel': 'Flota',
+    'records.title': 'Date',
+    'session.signOut': 'Iesi',
+  },
+  pl: {
+    'auth.companyTab': 'Firma',
+    'auth.driverTab': 'Kierowca',
+    'brand.tagline': 'Terminy i powiadomienia floty',
+    'common.add': 'Dodaj',
+    'common.back': 'Wstecz',
+    'common.close': 'Zamknij',
+    'common.open': 'Otworz',
+    'common.save': 'Zapisz',
+    'driver.area': 'Strefa kierowcy',
+    'driverApp.greeting': 'Dzien dobry',
+    'hero.description': 'Czytelny ekran terminow, porannych kontroli i usterek do obslugi.',
+    'hero.factDrivers': 'aktywni kierowcy',
+    'hero.factNotifications': 'otwarte powiadomienia',
+    'hero.factVehicles': 'pojazdy we flocie',
+    'hero.newDeadline': 'Nowy termin',
+    'hero.openBell': 'Otworz powiadomienia',
+    'language.label': 'Jezyk',
+    'language.short': 'Jezyk',
+    'nav.chat': 'Chat',
+    'nav.deadlines': 'Terminy',
+    'nav.notifications': 'Powiadomienia',
+    'nav.records': 'Kartoteki',
+    'nav.settings': 'Ustawienia',
+    'onboarding.body': 'Wykonaj te kroki, aby Camion Chiaro bylo gotowe do pracy.',
+    'onboarding.companyTitle': 'Uzupelnij profil firmy',
+    'onboarding.completed': '{count}/{total} gotowe',
+    'onboarding.deadlinesTitle': 'Dodaj termin',
+    'onboarding.done': 'Gotowe',
+    'onboarding.driversTitle': 'Dodaj kierowce',
+    'onboarding.fleetTitle': 'Dodaj pojazd',
+    'onboarding.notificationsTitle': 'Wlacz powiadomienia',
+    'onboarding.overline': 'Pierwsze kroki',
+    'onboarding.title': 'Przygotuj firme',
+    'records.documentsLabel': 'Dokumenty',
+    'records.driversLabel': 'Kierowcy',
+    'records.fleetLabel': 'Flota',
+    'records.title': 'Kartoteki',
+    'session.signOut': 'Wyjdz',
+  },
+}
+
+Object.entries(regionalTranslations).forEach(([translationLanguage, translationEntries]) => {
+  translations[translationLanguage] = {
+    ...translations[translationLanguage],
+    ...translationEntries,
+  }
+})
+
 const documentTypeTranslationKeys = {
   'Assicurazione RCA': 'docType.insurance',
   Bollo: 'docType.roadTax',
@@ -2293,6 +2580,10 @@ const urgencyTranslationKeys = {
   soon: 'urgency.soon',
   watch: 'urgency.watch',
 }
+const dailyMotivationKeys = {
+  company: Array.from({ length: 6 }, (_, index) => `daily.company.${index}`),
+  driver: Array.from({ length: 6 }, (_, index) => `daily.driver.${index}`),
+}
 
 function translatedValue(t, keyMap, value, fallback = value) {
   return keyMap[value] ? t(keyMap[value]) : fallback
@@ -2322,6 +2613,13 @@ function getUrgencyLabel(urgency, t) {
   return t(urgencyTranslationKeys[urgency.key] ?? urgency.label)
 }
 
+function getDailyMotivation(role, t, date = new Date()) {
+  const keys = dailyMotivationKeys[role] ?? dailyMotivationKeys.company
+  const dayStart = new Date(date.getFullYear(), 0, 0)
+  const dayNumber = Math.floor((date - dayStart) / 86400000)
+  return t(keys[dayNumber % keys.length])
+}
+
 function getInitialLanguage() {
   if (typeof window === 'undefined') return defaultLanguage
 
@@ -2337,7 +2635,7 @@ function getInitialLanguage() {
 }
 
 function translate(language, key, values = {}) {
-  const message = translations[language]?.[key] ?? translations[defaultLanguage][key] ?? key
+  const message = translations[language]?.[key] ?? translations.en?.[key] ?? translations[defaultLanguage][key] ?? key
 
   return Object.entries(values).reduce(
     (currentMessage, [valueKey, value]) => currentMessage.replaceAll(`{${valueKey}}`, String(value)),
@@ -3723,7 +4021,7 @@ function App() {
         driverId: result.data.driverId,
         tag: `document-created-${result.data.id}`,
         targetRole: 'driver',
-        title: 'Nuovo documento',
+        title: companyName,
         url: '/?view=documents',
       })
       return result.data
@@ -3853,7 +4151,7 @@ function App() {
             driverId: result.data.driverId,
             tag: `document-file-${result.data.id}`,
             targetRole: 'driver',
-            title: 'Documento aggiornato',
+            title: companyName,
             url: '/?view=documents',
           })
         }
@@ -3951,10 +4249,10 @@ function App() {
 
       if (criticalIssues.length > 0) {
         const pushResult = await notifyPhone({
-          body: `${getDriverDisplayName(check.driverId)} ha segnalato: ${criticalIssues.join(', ')} su ${getVehicleDisplayName(check.tractorId)}.`,
+          body: `Check critico: ${criticalIssues.join(', ')} su ${getVehicleDisplayName(check.tractorId)}.`,
           tag: `critical-check-${result.data.id}`,
           targetRole: 'company',
-          title: 'Check critico autista',
+          title: getDriverDisplayName(check.driverId),
           url: '/?view=notifications',
         })
 
@@ -4007,10 +4305,10 @@ function App() {
       setFaultReportRecords((currentReports) => [result.data, ...currentReports])
       setFaultReported(true)
       const pushResult = await notifyPhone({
-        body: `${getDriverDisplayName(reportData.driverId)}: ${result.data.title} su ${getVehicleDisplayName(reportData.vehicleId)}.`,
+        body: `${result.data.title} su ${getVehicleDisplayName(reportData.vehicleId)}.`,
         tag: `fault-report-${result.data.id}`,
         targetRole: 'company',
-        title: result.data.severity === 'stop_vehicle' ? 'Guasto urgente autista' : 'Nuovo guasto autista',
+        title: getDriverDisplayName(reportData.driverId),
         url: '/?view=notifications',
       })
 
@@ -4107,13 +4405,14 @@ function App() {
         }),
       )
       setChatSyncStatus('Messaggio inviato.')
+      const chatNotificationBody = cleanBody || 'Foto allegata in chat.'
       if (senderRole === 'company') {
         const pushResult = await notifyPhone({
-          body: cleanBody || 'Foto allegata in chat.',
+          body: chatNotificationBody,
           driverId,
           tag: `chat-${targetThread.id}`,
           targetRole: 'driver',
-          title: 'Messaggio azienda',
+          title: companyName,
           url: '/?view=chat',
         })
 
@@ -4124,10 +4423,10 @@ function App() {
         }
       } else if (senderRole === 'driver') {
         const pushResult = await notifyPhone({
-          body: `${getDriverDisplayName(driverId)}: ${cleanBody || 'Foto allegata in chat.'}`,
+          body: chatNotificationBody,
           tag: `chat-company-${targetThread.id}`,
           targetRole: 'company',
-          title: 'Messaggio autista',
+          title: getDriverDisplayName(driverId),
           url: '/?view=chat',
         })
 
@@ -4251,11 +4550,11 @@ function App() {
 
         if (actorRole === 'company' && reactionThread?.driverId) {
           const pushResult = await notifyPhone({
-            body: `L azienda ha reagito con ${reactionLabel} al tuo messaggio.`,
+            body: `Ha reagito con ${reactionLabel} al tuo messaggio.`,
             driverId: reactionThread.driverId,
             tag: `reaction-driver-${message.id}-${actorRole}`,
             targetRole: 'driver',
-            title: 'Nuova reaction',
+            title: companyName,
             url: '/?view=chat',
           })
 
@@ -4266,10 +4565,10 @@ function App() {
           )
         } else if (actorRole === 'driver') {
           const pushResult = await notifyPhone({
-            body: `${getDriverDisplayName(reactionThread?.driverId)} ha reagito con ${reactionLabel} al messaggio.`,
+            body: `Ha reagito con ${reactionLabel} al messaggio.`,
             tag: `reaction-company-${message.id}-${actorRole}`,
             targetRole: 'company',
-            title: 'Reaction autista',
+            title: getDriverDisplayName(reactionThread?.driverId),
             url: '/?view=chat',
           })
 
@@ -4569,6 +4868,19 @@ function App() {
                 onOpenNotifications={() => openNotifications('inbox')}
                 openFaultCount={openFaultCount}
                 summary={summary}
+                t={t}
+              />
+              <OnboardingPanel
+                activeDriverCount={activeDriverCount}
+                activeVehicleCount={activeVehicleCount}
+                companyProfile={companyProfile}
+                complianceItemCount={items.length + documentRecords.length}
+                notificationEnabled={phoneNotificationEnabled}
+                onAddDeadline={openNewDeadlinePanel}
+                onOpenDocuments={() => openRecords('documents')}
+                onOpenDrivers={() => openRecords('drivers')}
+                onOpenFleet={() => openRecords('fleet')}
+                onOpenSettings={() => setActiveView('settings')}
                 t={t}
               />
             </section>
@@ -5495,6 +5807,111 @@ function SettingsWorkspace({
   )
 }
 
+function DailyMotivation({ role, t }) {
+  return (
+    <div className={`daily-motivation is-${role}`}>
+      <ShieldCheck size={16} />
+      <span>{t('daily.overline')}</span>
+      <strong>{getDailyMotivation(role, t)}</strong>
+    </div>
+  )
+}
+
+function OnboardingPanel({
+  activeDriverCount,
+  activeVehicleCount,
+  companyProfile,
+  complianceItemCount,
+  notificationEnabled,
+  onAddDeadline,
+  onOpenDocuments,
+  onOpenDrivers,
+  onOpenFleet,
+  onOpenSettings,
+  t,
+}) {
+  const companyProfileReady = Boolean(
+    companyProfile.name &&
+    !placeholderCompanyNames.has(companyProfile.name) &&
+    companyProfile.logoPath,
+  )
+  const steps = [
+    {
+      action: onOpenSettings,
+      body: t('onboarding.companyBody'),
+      done: companyProfileReady,
+      icon: Building2,
+      title: t('onboarding.companyTitle'),
+    },
+    {
+      action: onOpenDrivers,
+      body: t('onboarding.driversBody'),
+      done: activeDriverCount > 0,
+      icon: Users,
+      title: t('onboarding.driversTitle'),
+    },
+    {
+      action: onOpenFleet,
+      body: t('onboarding.fleetBody'),
+      done: activeVehicleCount > 0,
+      icon: Truck,
+      title: t('onboarding.fleetTitle'),
+    },
+    {
+      action: complianceItemCount > 0 ? onOpenDocuments : onAddDeadline,
+      body: t('onboarding.deadlinesBody'),
+      done: complianceItemCount > 0,
+      icon: CalendarClock,
+      title: t('onboarding.deadlinesTitle'),
+    },
+    {
+      action: onOpenSettings,
+      body: t('onboarding.notificationsBody'),
+      done: notificationEnabled,
+      icon: Bell,
+      title: t('onboarding.notificationsTitle'),
+    },
+  ]
+  const completedCount = steps.filter((step) => step.done).length
+  const progressValue = Math.round((completedCount / steps.length) * 100)
+
+  if (completedCount === steps.length) return null
+
+  return (
+    <article className="panel setup-panel" aria-label={t('onboarding.title')}>
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">{t('onboarding.overline')}</p>
+          <h2>{t('onboarding.title')}</h2>
+        </div>
+        <span className="setup-summary">{t('onboarding.completed', { count: completedCount, total: steps.length })}</span>
+      </div>
+      <p className="setup-intro">{t('onboarding.body')}</p>
+      <div className="setup-progress" aria-label={t('onboarding.progress')}>
+        <span style={{ width: `${progressValue}%` }} />
+      </div>
+      <div className="setup-list">
+        {steps.map((step, index) => (
+          <button
+            className={step.done ? 'setup-row is-done' : 'setup-row'}
+            key={step.title}
+            onClick={step.action}
+            type="button"
+          >
+            <span className="setup-index">{step.done ? <Check size={15} /> : index + 1}</span>
+            <step.icon size={20} />
+            <span>
+              <strong>{step.title}</strong>
+              <small>{step.body}</small>
+            </span>
+            <b>{step.done ? t('onboarding.done') : t('common.open')}</b>
+          </button>
+        ))}
+      </div>
+    </article>
+  )
+}
+
 function HeroPanel({
   activeDriverCount,
   activeVehicleCount,
@@ -5549,6 +5966,7 @@ function HeroPanel({
           <h2>{companyName}</h2>
         </div>
         <p>{t('hero.description')}</p>
+        <DailyMotivation role="company" t={t} />
         <div className="hero-facts" aria-label="Dimensione azienda">
           <div>
             <strong>{activeDriverCount}</strong>
@@ -8501,6 +8919,7 @@ function DriverMobile({
           <div>
             <p>{t('driverApp.greeting')}</p>
             <strong>{driver.name}</strong>
+            <DailyMotivation role="driver" t={t} />
             <div className="driver-photo-actions">
               <ImageUploadControl label={driverImageUrl ? t('common.change') : t('companyLogo.upload')} onUpload={(file) => onDriverProfileImageUpload?.(driver.id, file)} />
               {driverImageUrl && (

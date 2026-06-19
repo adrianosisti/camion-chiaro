@@ -522,7 +522,7 @@ function App() {
       return false
     }
 
-    if (isSupabaseConfigured && !activeCompanyId) {
+    if (isSupabaseConfigured && session.role === 'company' && !activeCompanyId) {
       setPhoneNotificationStatus('Aspetta il caricamento azienda, poi riprova.')
       return false
     }
@@ -542,11 +542,18 @@ function App() {
       return false
     }
 
-    const saveResult = await savePushSubscription(subscriptionResult.subscription, activeCompanyId)
+    const saveResult = await savePushSubscription(
+      subscriptionResult.subscription,
+      session.role === 'driver' ? activeCompanyId || null : activeCompanyId,
+    )
 
     if (saveResult.error) {
       setPhoneNotificationStatus(`Supabase: ${saveResult.error.message}`)
       return false
+    }
+
+    if (saveResult.data?.company_id && !activeCompanyId) {
+      setActiveCompanyId(saveResult.data.company_id)
     }
 
     setPhoneNotificationEnabled(true)

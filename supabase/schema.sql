@@ -54,6 +54,26 @@ create table public.company_invoices (
   unique (company_id, invoice_number)
 );
 
+create table public.company_billing_profiles (
+  company_id uuid primary key references public.companies(id) on delete cascade,
+  legal_name text not null,
+  vat_number text,
+  tax_code text,
+  billing_email text not null,
+  phone text,
+  contact_name text,
+  address_line1 text not null,
+  address_line2 text,
+  postal_code text not null,
+  city text not null,
+  province text,
+  country text not null default 'IT',
+  pec text,
+  sdi_code text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table public.drivers (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -439,6 +459,7 @@ create index user_profiles_account_type_idx on public.user_profiles (account_typ
 create index companies_billing_status_idx on public.companies (billing_status, billing_current_period_end);
 create index company_members_user_id_idx on public.company_members (user_id);
 create index company_invoices_company_issued_idx on public.company_invoices (company_id, issued_at desc);
+create index company_billing_profiles_email_idx on public.company_billing_profiles (billing_email);
 create index drivers_company_status_idx on public.drivers (company_id, status);
 create index drivers_user_id_idx on public.drivers (user_id) where user_id is not null;
 create index drivers_username_idx on public.drivers (username);
@@ -479,6 +500,7 @@ alter table public.user_profiles enable row level security;
 alter table public.companies enable row level security;
 alter table public.company_members enable row level security;
 alter table public.company_invoices enable row level security;
+alter table public.company_billing_profiles enable row level security;
 alter table public.drivers enable row level security;
 alter table public.vehicles enable row level security;
 alter table public.driver_documents enable row level security;
@@ -522,6 +544,19 @@ on public.company_invoices
 for select
 to authenticated
 using ((select public.is_company_member(company_id)));
+
+create policy "Members can read company billing profile"
+on public.company_billing_profiles
+for select
+to authenticated
+using ((select public.is_company_member(company_id)));
+
+create policy "Operators can manage company billing profile"
+on public.company_billing_profiles
+for all
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
 
 create policy "Members can read company membership"
 on public.company_members

@@ -162,11 +162,13 @@ function mapFaultReport(row) {
 function mapCompanyProfile(row) {
   return {
     billingActivatedAt: row.billing_activated_at ?? '',
+    billingCustomerId: row.billing_customer_id ?? '',
     billingCurrentPeriodEnd: row.billing_current_period_end ?? '',
     billingEmail: row.billing_email ?? '',
     billingPlan: row.billing_plan ?? 'starter',
     billingProvider: row.billing_provider ?? 'manual',
     billingStatus: row.billing_status ?? 'active',
+    billingSubscriptionId: row.billing_subscription_id ?? '',
     headquarters: row.headquarters ?? '',
     id: row.id,
     logoPath: row.logo_path ?? '',
@@ -203,6 +205,8 @@ const companyProfileBillingSelectColumns = `
   billing_status,
   billing_email,
   billing_provider,
+  billing_customer_id,
+  billing_subscription_id,
   billing_current_period_end,
   billing_activated_at
 `
@@ -1437,6 +1441,80 @@ export async function createCompanyInvoiceSignedUrl(filePath) {
   }
 
   return supabase.storage.from(companyInvoicesBucket).createSignedUrl(filePath, 600)
+}
+
+export async function createBillingCheckoutSession({ billingProfile, companyId = configuredCompanyId, plan }) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase) {
+    return { data: null, error: null, demo: true }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione azienda mancante. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/create-checkout-session', {
+      body: JSON.stringify({
+        billingProfile,
+        companyId,
+        plan,
+      }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const responsePayload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: responsePayload.error ?? 'Checkout non avviato.' } }
+    }
+
+    return { data: responsePayload, error: null }
+  } catch {
+    return { data: null, error: { message: 'Checkout non raggiungibile. Dopo il deploy Netlify riprova.' } }
+  }
+}
+
+export async function createBillingPortalSession(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase) {
+    return { data: null, error: null, demo: true }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione azienda mancante. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/create-billing-portal', {
+      body: JSON.stringify({ companyId }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const responsePayload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: responsePayload.error ?? 'Portale fatturazione non aperto.' } }
+    }
+
+    return { data: responsePayload, error: null }
+  } catch {
+    return { data: null, error: { message: 'Portale fatturazione non raggiungibile. Dopo il deploy Netlify riprova.' } }
+  }
 }
 
 export async function subscribeToChatMessages(companyId, onMessage) {

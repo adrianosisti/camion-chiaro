@@ -135,11 +135,13 @@ function mapFaultReport(row) {
 function mapCompanyProfile(row) {
   return {
     billingActivatedAt: row.billing_activated_at ?? '',
+    billingCustomerId: row.billing_customer_id ?? '',
     billingCurrentPeriodEnd: row.billing_current_period_end ?? '',
     billingEmail: row.billing_email ?? '',
     billingPlan: row.billing_plan ?? 'starter',
     billingProvider: row.billing_provider ?? 'manual',
     billingStatus: row.billing_status ?? 'active',
+    billingSubscriptionId: row.billing_subscription_id ?? '',
     headquarters: row.headquarters ?? '',
     id: row.id,
     logoPath: row.logo_path ?? '',
@@ -159,6 +161,8 @@ const companyProfileBillingSelectColumns = `
   billing_status,
   billing_email,
   billing_provider,
+  billing_customer_id,
+  billing_subscription_id,
   billing_current_period_end,
   billing_activated_at
 `

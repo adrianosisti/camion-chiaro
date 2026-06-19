@@ -46,6 +46,8 @@ import {
   archiveVehicleRecord as archiveSupabaseVehicle,
   clearDriverProfileImageFile as clearSupabaseDriverProfileImageFile,
   createCompanyAssetSignedUrl,
+  createBillingCheckoutSession,
+  createBillingPortalSession,
   createCompanyInvoiceSignedUrl,
   createChatMessageRecord as createSupabaseChatMessage,
   createChatThreadRecord as createSupabaseChatThread,
@@ -152,6 +154,30 @@ const billingStatusLabels = {
   pending: 'In attesa di attivazione',
   suspended: 'Sospeso',
 }
+const billingCheckoutPlans = [
+  {
+    bestFor: 'Piccole flotte che vogliono partire ordinate.',
+    features: ['Fino a 5 autisti', 'Fino a 5 mezzi', 'Scadenze e documenti', 'Notifiche base'],
+    id: 'starter',
+    price: '49 euro/mese',
+    title: 'Starter',
+  },
+  {
+    bestFor: 'La scelta giusta per la maggior parte delle aziende.',
+    features: ['Fino a 20 autisti', 'Fino a 25 mezzi', 'Chat, check e guasti', 'Documenti autista e push'],
+    id: 'pro',
+    isRecommended: true,
+    price: '99 euro/mese',
+    title: 'Pro',
+  },
+  {
+    bestFor: 'Flotte piu strutturate con piu controllo operativo.',
+    features: ['Fino a 60 autisti', 'Fino a 80 mezzi', 'Priorita supporto', 'Storico e gestione avanzata'],
+    id: 'business',
+    price: '199 euro/mese',
+    title: 'Business',
+  },
+]
 const faultSeverityOptions = [
   { value: 'low', label: 'Bassa' },
   { value: 'medium', label: 'Media' },
@@ -3382,11 +3408,13 @@ function App() {
   const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState({
     billingActivatedAt: '',
+    billingCustomerId: '',
     billingCurrentPeriodEnd: '',
     billingEmail: '',
     billingPlan: 'starter',
     billingProvider: 'manual',
     billingStatus: 'active',
+    billingSubscriptionId: '',
     headquarters: company.location,
     id: '',
     logoPath: company.logoPath ?? '',
@@ -3408,6 +3436,8 @@ function App() {
   const [fleetSyncStatus, setFleetSyncStatus] = useState('')
   const [operationsSyncStatus, setOperationsSyncStatus] = useState('')
   const [companySettingsStatus, setCompanySettingsStatus] = useState('')
+  const [billingCheckoutStatus, setBillingCheckoutStatus] = useState('')
+  const [isBillingCheckoutLoading, setIsBillingCheckoutLoading] = useState(false)
   const [, setChatSyncStatus] = useState('')
   const [driverDocumentUploadStatus, setDriverDocumentUploadStatus] = useState('')
   const [driverSessionLoading, setDriverSessionLoading] = useState(false)
@@ -3454,6 +3484,34 @@ function App() {
     localStorage.setItem(languageStorageKey, language)
     document.documentElement.lang = language
   }, [language])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const url = new URL(window.location.href)
+    const billingResult = url.searchParams.get('billing')
+
+    if (!billingResult) return
+
+    window.setTimeout(() => {
+      if (billingResult === 'success') {
+        setBillingCheckoutStatus('Pagamento ricevuto. Sto aggiornando lo stato azienda...')
+        setCompanySettingsStatus('Pagamento ricevuto. Stato abbonamento in aggiornamento.')
+      }
+
+      if (billingResult === 'cancelled') {
+        setBillingCheckoutStatus('Pagamento annullato. Puoi riprovare quando vuoi.')
+      }
+
+      if (billingResult === 'portal') {
+        setCompanySettingsStatus('Portale fatturazione chiuso.')
+      }
+    }, 0)
+
+    url.searchParams.delete('billing')
+    url.searchParams.delete('session_id')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  }, [])
 
   useEffect(() => {
     function handleBeforeInstallPrompt(event) {
@@ -4164,6 +4222,8 @@ function App() {
     setOperationsFilter('inbox')
     setOperationsSyncStatus('')
     setCompanySettingsStatus('')
+    setBillingCheckoutStatus('')
+    setIsBillingCheckoutLoading(false)
     setActiveCompanyId('')
     setAssetPreviewUrls({})
     setDriverSessionLoading(false)
@@ -4181,11 +4241,13 @@ function App() {
     setChatSyncStatus('')
     setCompanyProfile({
       billingActivatedAt: '',
+      billingCustomerId: '',
       billingCurrentPeriodEnd: '',
       billingEmail: '',
       billingPlan: 'starter',
       billingProvider: 'manual',
       billingStatus: 'active',
+      billingSubscriptionId: '',
       headquarters: company.location,
       id: '',
       logoPath: company.logoPath ?? '',
@@ -4644,6 +4706,48 @@ function App() {
 
     window.open(result.data.signedUrl, '_blank', 'noopener,noreferrer')
     setCompanySettingsStatus('Fattura aperta in una nuova scheda.')
+    return true
+  }
+
+  async function startBillingCheckout({ billingProfile, plan }) {
+    if (!activeCompanyId) {
+      setBillingCheckoutStatus('Azienda non ancora collegata. Aggiorna la pagina e riprova.')
+      return false
+    }
+
+    setIsBillingCheckoutLoading(true)
+    setBillingCheckoutStatus('Preparo il pagamento sicuro...')
+    const result = await createBillingCheckoutSession({
+      billingProfile,
+      companyId: activeCompanyId,
+      plan,
+    })
+    setIsBillingCheckoutLoading(false)
+
+    if (result.error || !result.data?.url) {
+      setBillingCheckoutStatus(result.error?.message ?? 'Checkout non disponibile.')
+      return false
+    }
+
+    window.location.assign(result.data.url)
+    return true
+  }
+
+  async function openBillingPortal() {
+    if (!activeCompanyId) {
+      setCompanySettingsStatus('Azienda non ancora collegata.')
+      return false
+    }
+
+    setCompanySettingsStatus('Apro portale fatturazione...')
+    const result = await createBillingPortalSession(activeCompanyId)
+
+    if (result.error || !result.data?.url) {
+      setCompanySettingsStatus(result.error?.message ?? 'Portale fatturazione non disponibile.')
+      return false
+    }
+
+    window.location.assign(result.data.url)
     return true
   }
 
@@ -5263,8 +5367,16 @@ function App() {
 
   if (!companyLicenseActive) {
     return (
-      <I18nContext.Provider value={i18nValue}>
-        <CompanyLicenseGate companyName={companyName} companyProfile={companyProfile} onSignOut={handleSignOut} />
+        <I18nContext.Provider value={i18nValue}>
+        <CompanyLicenseGate
+          checkoutStatus={billingCheckoutStatus}
+          companyEmail={session.email}
+          companyName={companyName}
+          companyProfile={companyProfile}
+          isCheckoutLoading={isBillingCheckoutLoading}
+          onSignOut={handleSignOut}
+          onStartCheckout={startBillingCheckout}
+        />
       </I18nContext.Provider>
     )
   }
@@ -5423,6 +5535,7 @@ function App() {
             onEnablePhoneNotifications={enablePhoneNotifications}
             onInstallPhoneApp={installPhoneApp}
             onLanguageChange={setLanguage}
+            onOpenBillingPortal={openBillingPortal}
             onOpenCompanyInvoice={openCompanyInvoiceFile}
             onUpdateCompanyProfile={updateCompanyProfile}
             showInstallAction={showCompanyInstallAction}
@@ -5494,37 +5607,210 @@ function App() {
   )
 }
 
-function CompanyLicenseGate({ companyName, companyProfile, onSignOut }) {
+function CompanyLicenseGate({
+  checkoutStatus,
+  companyEmail,
+  companyName,
+  companyProfile,
+  isCheckoutLoading,
+  onSignOut,
+  onStartCheckout,
+}) {
+  const initialPlan = billingCheckoutPlans.some((plan) => plan.id === companyProfile.billingPlan)
+    ? companyProfile.billingPlan
+    : 'pro'
+  const [selectedPlan, setSelectedPlan] = useState(initialPlan)
+  const [billingForm, setBillingForm] = useState({
+    addressLine1: companyProfile.headquarters ?? '',
+    addressLine2: '',
+    billingEmail: companyProfile.billingEmail || companyEmail || '',
+    city: '',
+    contactName: '',
+    country: 'IT',
+    pec: '',
+    phone: '',
+    postalCode: '',
+    province: '',
+    sdiCode: '',
+    taxCode: '',
+    vatNumber: companyProfile.vatNumber ?? '',
+    legalName: companyName,
+  })
+  const [validationMessage, setValidationMessage] = useState('')
+  const selectedPlanDetails = billingCheckoutPlans.find((plan) => plan.id === selectedPlan) ?? billingCheckoutPlans[1]
+
+  function updateBillingField(field, value) {
+    setBillingForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  async function handleCheckoutSubmit(event) {
+    event.preventDefault()
+    const requiredFields = [
+      ['legalName', 'ragione sociale'],
+      ['billingEmail', 'email fatturazione'],
+      ['addressLine1', 'indirizzo sede legale'],
+      ['postalCode', 'CAP'],
+      ['city', 'citta'],
+      ['country', 'nazione'],
+    ]
+    const missingField = requiredFields.find(([field]) => !billingForm[field]?.trim())
+
+    if (missingField) {
+      setValidationMessage(`Compila ${missingField[1]}.`)
+      return
+    }
+
+    setValidationMessage('')
+    await onStartCheckout?.({
+      billingProfile: billingForm,
+      plan: selectedPlan,
+    })
+  }
+
   return (
     <main className="license-gate">
-      <section className="license-gate-panel">
-        <div className="brand-mark">CC</div>
-        <p className="overline">Camion Chiaro</p>
-        <h1>{companyName}</h1>
-        <span className={`billing-status-pill is-${companyProfile.billingStatus || 'pending'}`}>
-          {getBillingStatusLabel(companyProfile.billingStatus)}
-        </span>
-        <p>
-          Account creato correttamente. Per usare dashboard, autisti, notifiche, chat e documenti serve
-          l attivazione della licenza aziendale.
-        </p>
-        <div className="license-gate-details">
-          <DetailLine label="Piano richiesto" value={getBillingPlanLabel(companyProfile.billingPlan)} />
-          <DetailLine label="Stato" value={getBillingStatusLabel(companyProfile.billingStatus)} />
-          <DetailLine
-            label="Fatturazione"
-            value={companyProfile.billingEmail || 'Da completare'}
-          />
+      <section className="license-gate-panel license-checkout-panel">
+        <div className="license-gate-heading">
+          <div className="brand-mark">CC</div>
+          <div>
+            <p className="overline">Camion Chiaro</p>
+            <h1>{companyName}</h1>
+          </div>
+          <span className={`billing-status-pill is-${companyProfile.billingStatus || 'pending'}`}>
+            {getBillingStatusLabel(companyProfile.billingStatus)}
+          </span>
         </div>
-        <div className="license-gate-actions">
-          <button className="primary-button" onClick={() => window.location.reload()} type="button">
-            <RadioTower size={17} />
-            Aggiorna stato
-          </button>
-          <button className="secondary-button" onClick={onSignOut} type="button">
-            <LogOut size={17} />
-            Esci
-          </button>
+        <p>
+          Account creato. Scegli il piano, completa i dati fiscali e paga la prima mensilita: appena Stripe conferma,
+          la dashboard si sblocca automaticamente.
+        </p>
+
+        <form className="license-checkout-form" onSubmit={handleCheckoutSubmit}>
+          <div className="billing-plan-grid" role="radiogroup" aria-label="Scegli piano Camion Chiaro">
+            {billingCheckoutPlans.map((plan) => (
+              <button
+                aria-checked={selectedPlan === plan.id}
+                className={[
+                  'billing-plan-card',
+                  selectedPlan === plan.id ? 'is-selected' : '',
+                  plan.isRecommended ? 'is-recommended' : '',
+                ].filter(Boolean).join(' ')}
+                key={plan.id}
+                onClick={() => setSelectedPlan(plan.id)}
+                role="radio"
+                type="button"
+              >
+                <span>
+                  <strong>{plan.title}</strong>
+                  {plan.isRecommended && <em>Consigliato</em>}
+                </span>
+                <b>{plan.price}</b>
+                <small>{plan.bestFor}</small>
+                <ul>
+                  {plan.features.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+              </button>
+            ))}
+          </div>
+
+          <div className="billing-form-grid">
+            <label className="wide-field">
+              Ragione sociale
+              <input
+                required
+                value={billingForm.legalName}
+                onChange={(event) => updateBillingField('legalName', event.target.value)}
+              />
+            </label>
+            <label>
+              Partita IVA
+              <input value={billingForm.vatNumber} onChange={(event) => updateBillingField('vatNumber', event.target.value)} />
+            </label>
+            <label>
+              Codice fiscale
+              <input value={billingForm.taxCode} onChange={(event) => updateBillingField('taxCode', event.target.value)} />
+            </label>
+            <label className="wide-field">
+              Indirizzo sede legale
+              <input
+                required
+                value={billingForm.addressLine1}
+                onChange={(event) => updateBillingField('addressLine1', event.target.value)}
+              />
+            </label>
+            <label>
+              CAP
+              <input required value={billingForm.postalCode} onChange={(event) => updateBillingField('postalCode', event.target.value)} />
+            </label>
+            <label>
+              Citta
+              <input required value={billingForm.city} onChange={(event) => updateBillingField('city', event.target.value)} />
+            </label>
+            <label>
+              Provincia
+              <input value={billingForm.province} onChange={(event) => updateBillingField('province', event.target.value)} />
+            </label>
+            <label>
+              Nazione
+              <input
+                maxLength={2}
+                required
+                value={billingForm.country}
+                onChange={(event) => updateBillingField('country', event.target.value.toUpperCase())}
+              />
+            </label>
+            <label>
+              PEC
+              <input value={billingForm.pec} onChange={(event) => updateBillingField('pec', event.target.value)} />
+            </label>
+            <label>
+              Codice SDI
+              <input value={billingForm.sdiCode} onChange={(event) => updateBillingField('sdiCode', event.target.value)} />
+            </label>
+            <label>
+              Email fatturazione
+              <input
+                required
+                type="email"
+                value={billingForm.billingEmail}
+                onChange={(event) => updateBillingField('billingEmail', event.target.value)}
+              />
+            </label>
+            <label>
+              Telefono referente
+              <input value={billingForm.phone} onChange={(event) => updateBillingField('phone', event.target.value)} />
+            </label>
+            <label className="wide-field">
+              Referente amministrativo
+              <input value={billingForm.contactName} onChange={(event) => updateBillingField('contactName', event.target.value)} />
+            </label>
+          </div>
+
+          {validationMessage && <FormValidationAlert message={validationMessage} />}
+          {checkoutStatus && <p className="sync-status-line">{checkoutStatus}</p>}
+
+          <div className="license-gate-actions">
+            <button className="primary-button" disabled={isCheckoutLoading} type="submit">
+              <BadgeCheck size={17} />
+              {isCheckoutLoading ? 'Apro pagamento...' : `Paga ${selectedPlanDetails.title} con Stripe`}
+            </button>
+            <button className="secondary-button" onClick={() => window.location.reload()} type="button">
+              <RadioTower size={17} />
+              Aggiorna stato
+            </button>
+            <button className="secondary-button" onClick={onSignOut} type="button">
+              <LogOut size={17} />
+              Esci
+            </button>
+          </div>
+        </form>
+
+        <div className="license-gate-details">
+          <DetailLine label="Piano selezionato" value={selectedPlanDetails.title} />
+          <DetailLine label="Pagamento" value="Carta o metodi abilitati da Stripe" />
+          <DetailLine label="Fatture" value="Salvate nello storico azienda" />
         </div>
       </section>
     </main>
@@ -6600,6 +6886,7 @@ function SettingsWorkspace({
   onEnablePhoneNotifications,
   onInstallPhoneApp,
   onLanguageChange,
+  onOpenBillingPortal,
   onOpenCompanyInvoice,
   onUpdateCompanyProfile,
   showInstallAction,
@@ -6710,6 +6997,15 @@ function SettingsWorkspace({
               label="Rinnovo"
               value={companyProfile.billingCurrentPeriodEnd ? formatDate(companyProfile.billingCurrentPeriodEnd) : 'Manuale'}
             />
+            <button
+              className="secondary-button full-inline-button"
+              disabled={companyProfile.billingProvider !== 'stripe' || !companyProfile.billingCustomerId}
+              onClick={onOpenBillingPortal}
+              type="button"
+            >
+              <BadgeCheck size={16} />
+              Gestisci pagamento
+            </button>
           </div>
           <div className="invoice-list">
             <div className="invoice-list-heading">

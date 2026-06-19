@@ -104,3 +104,6 @@ Le aziende gia presenti restano attive; le nuove registrazioni azienda partirann
 
 Il file `23B_fatture_aziende.sql` aggiunge lo storico fatture e il bucket privato per i PDF fattura.
 Eseguilo dopo `23A_licenze_aziende.sql`.
+
+Il file `24_dati_fatturazione_stripe.sql` aggiunge la scheda dati fatturazione azienda usata prima del pagamento Stripe.
+Eseguilo dopo `23B_fatture_aziende.sql`.

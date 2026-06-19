@@ -3283,7 +3283,7 @@
 }
 
 .license-gate-panel {
-  width: min(100%, 560px);
+  width: min(100%, 980px);
   display: grid;
   justify-items: start;
   gap: 14px;
@@ -3292,6 +3292,18 @@
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 24px 70px rgba(2, 6, 23, 0.12);
+}
+
+.license-gate-panel:not(.license-checkout-panel) {
+  width: min(100%, 560px);
+}
+
+.license-gate-heading {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
 }
 
 .license-gate-panel .brand-mark {
@@ -3337,6 +3349,108 @@
 .license-gate-actions .primary-button,
 .license-gate-actions .secondary-button {
   min-height: 42px;
+}
+
+.license-checkout-form {
+  width: 100%;
+  display: grid;
+  gap: 16px;
+}
+
+.billing-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.billing-plan-card {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-height: 100%;
+  padding: 14px;
+  border: 1px solid #d6e6f5;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #f8fbff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.billing-plan-card.is-selected {
+  border-color: #029bb7;
+  background: #ecfeff;
+  box-shadow: 0 0 0 2px rgba(18, 198, 223, 0.18);
+}
+
+.billing-plan-card > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.billing-plan-card strong {
+  font-size: 1rem;
+}
+
+.billing-plan-card em {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #075985;
+  background: #bae6fd;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.billing-plan-card b {
+  color: #020617;
+  font-size: 1.15rem;
+}
+
+.billing-plan-card small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.billing-plan-card ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 17px;
+  color: #334155;
+  font-size: 0.78rem;
+}
+
+.billing-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+  width: 100%;
+}
+
+.billing-form-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.77rem;
+  font-weight: 730;
+}
+
+.billing-form-grid input {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  border: 1px solid #d6e6f5;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0 10px;
 }
 
 .panel-header {
@@ -3752,6 +3866,10 @@
 .full-button {
   width: calc(100% - 40px);
   margin: 0 20px 20px;
+}
+
+.full-inline-button {
+  width: 100%;
 }
 
 .phone-setup-panel {
@@ -4836,6 +4954,19 @@
 }
 
 @media (max-width: 980px) {
+  .billing-plan-grid,
+  .billing-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .license-gate-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .license-gate-heading .billing-status-pill {
+    grid-column: 1 / -1;
+  }
+
   .public-hero,
   .public-product-preview,
   .driver-page-content {

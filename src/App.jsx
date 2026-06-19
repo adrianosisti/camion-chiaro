@@ -991,6 +991,14 @@ function App() {
   const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
+  const isEmptyCompanyDashboard = activeDriverCount === 0 && activeVehicleCount === 0 && decoratedItems.length === 0
+
+  function openNewDeadlinePanel() {
+    setActiveView('dashboard')
+    window.setTimeout(() => {
+      document.getElementById('new-deadline-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
 
   return (
     <div className="app-shell">
@@ -1058,11 +1066,19 @@ function App() {
                 companyName={companyName}
                 criticalCheckCount={criticalCheckCount}
                 notificationCount={notificationCount}
+                onNewDeadline={openNewDeadlinePanel}
                 onOpenNotifications={() => setActiveView('notifications')}
                 openFaultCount={openFaultCount}
                 summary={summary}
               />
             </section>
+            {isEmptyCompanyDashboard && (
+              <CompanyOnboardingPanel
+                onNewDeadline={openNewDeadlinePanel}
+                onOpenDrivers={() => setActiveView('drivers')}
+                onOpenFleet={() => setActiveView('fleet')}
+              />
+            )}
             <section className="content-grid">
               <div className="main-column">
                 <ComplianceBoard
@@ -1507,6 +1523,7 @@ function HeroPanel({
   companyName,
   criticalCheckCount,
   notificationCount,
+  onNewDeadline,
   onOpenNotifications,
   openFaultCount,
   summary,
@@ -1535,10 +1552,6 @@ function HeroPanel({
     },
   ]
 
-  function scrollToNewDeadline() {
-    document.getElementById('new-deadline-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
   return (
     <section className="hero-panel" aria-label="Controllo scadenze">
       <div className="hero-copy">
@@ -1563,7 +1576,7 @@ function HeroPanel({
           </div>
         </div>
         <div className="hero-actions">
-          <button className="primary-button" onClick={scrollToNewDeadline} type="button">
+          <button className="primary-button" onClick={onNewDeadline} type="button">
             <Plus size={17} />
             Nuova scadenza
           </button>
@@ -1583,6 +1596,57 @@ function HeroPanel({
             <strong>{card.value}</strong>
             <small>{card.detail}</small>
           </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CompanyOnboardingPanel({ onNewDeadline, onOpenDrivers, onOpenFleet }) {
+  const steps = [
+    {
+      action: onOpenDrivers,
+      button: 'Aggiungi autista',
+      detail: 'Nome utente e accesso app',
+      icon: UserPlus,
+      label: 'Primo autista',
+    },
+    {
+      action: onOpenFleet,
+      button: 'Aggiungi mezzo',
+      detail: 'Furgone, motrice, trattore o semirimorchio',
+      icon: Truck,
+      label: 'Primo mezzo',
+    },
+    {
+      action: onNewDeadline,
+      button: 'Prima scadenza',
+      detail: 'Patente, revisione, assicurazione o visita',
+      icon: CalendarClock,
+      label: 'Prima scadenza',
+    },
+  ]
+
+  return (
+    <section className="panel setup-panel" aria-label="Primi passi azienda">
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">Azienda nuova</p>
+          <h2>Primi passi</h2>
+        </div>
+        <BadgeCheck size={20} />
+      </div>
+      <div className="setup-list">
+        {steps.map((step, index) => (
+          <button className="setup-row" key={step.label} onClick={step.action} type="button">
+            <span className="setup-index">{index + 1}</span>
+            <step.icon size={19} />
+            <span>
+              <strong>{step.label}</strong>
+              <small>{step.detail}</small>
+            </span>
+            <b>{step.button}</b>
+          </button>
         ))}
       </div>
     </section>
@@ -2962,6 +3026,15 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onRem
             onRenew={() => onRenew(item.id)}
           />
         ))}
+        {filteredItems.length === 0 && (
+          <div className="empty-state-row">
+            <CalendarClock size={20} />
+            <div>
+              <strong>Nessuna scadenza inserita</strong>
+              <span>Le prossime scadenze compariranno qui.</span>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )
@@ -3059,6 +3132,15 @@ function FleetStatus({ driverRecords, vehicleRecords }) {
             </div>
           )
         })}
+        {activeVehicleRecords.length === 0 && (
+          <div className="empty-state-row">
+            <Truck size={20} />
+            <div>
+              <strong>Nessun mezzo in flotta</strong>
+              <span>Furgoni, motrici, trattori e semirimorchi compariranno qui.</span>
+            </div>
+          </div>
+        )}
       </div>
     </article>
   )
@@ -3074,6 +3156,7 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
   })
 
   const assignees = form.scope === 'driver' ? driverRecords : vehicleRecords
+  const canSubmit = Boolean(form.assigneeId)
 
   function updateField(field, value) {
     setForm((currentForm) => {
@@ -3132,7 +3215,7 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
         </label>
         <label>
           Soggetto
-          <select value={form.assigneeId} onChange={(event) => updateField('assigneeId', event.target.value)}>
+          <select disabled={assignees.length === 0} value={form.assigneeId} onChange={(event) => updateField('assigneeId', event.target.value)}>
             {assignees.map((assignee) => (
               <option key={assignee.id} value={assignee.id}>
                 {'name' in assignee ? assignee.name : assignee.plate}
@@ -3149,7 +3232,8 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
           <input value={form.owner} onChange={(event) => updateField('owner', event.target.value)} />
         </label>
       </div>
-      <button className="primary-button full-button" type="submit">
+      {!canSubmit && <p className="form-hint">Aggiungi prima almeno un autista o un mezzo.</p>}
+      <button className="primary-button full-button" disabled={!canSubmit} type="submit">
         <Plus size={17} />
         Aggiungi
       </button>

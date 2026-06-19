@@ -1,5 +1,5 @@
--- FIX NOTIFICHE PUSH - DIGEST SUPABASE
--- Corregge le funzioni push quando pgcrypto/digest vive nello schema extensions.
+-- FIX NOTIFICHE PUSH - ACCOUNT ROLE
+-- Corregge il vincolo account_role per registrare telefoni azienda/autista.
 
 create extension if not exists pgcrypto with schema extensions;
 
@@ -134,23 +134,4 @@ begin
 end;
 $$;
 
-create or replace function public.delete_push_subscription(
-  subscription_endpoint text
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = public, extensions
-as $$
-begin
-  update public.push_subscriptions
-  set disabled_at = now(), updated_at = now()
-  where endpoint_hash = encode(extensions.digest(trim(subscription_endpoint), 'sha256'), 'hex')
-    and user_id = (select auth.uid());
-
-  return found;
-end;
-$$;
-
 grant execute on function public.upsert_push_subscription(text, text, text, text, uuid) to authenticated;
-grant execute on function public.delete_push_subscription(text) to authenticated;

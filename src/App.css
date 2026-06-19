@@ -1965,10 +1965,11 @@
 }
 
 .chat-message {
+  position: relative;
   display: grid;
   gap: 7px;
   width: min(78%, 520px);
-  padding: 11px 12px;
+  padding: 11px 12px 18px;
   border: 1px solid #d6e6f5;
   border-radius: 8px;
   background: #ffffff;
@@ -2026,39 +2027,67 @@
 }
 
 .chat-reaction-row {
-  display: grid;
-  gap: 6px;
+  display: contents;
 }
 
-.chat-reaction-summary,
 .chat-reaction-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
+}
+
+.chat-reaction-summary {
+  position: absolute;
+  right: 10px;
+  bottom: -12px;
+  display: inline-flex;
+  gap: 2px;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 1px solid #d6e6f5;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.12);
+}
+
+.chat-message.is-driver .chat-reaction-summary,
+.driver-chat-screen-message.is-company .chat-reaction-summary {
+  right: auto;
+  left: 10px;
 }
 
 .chat-reaction-summary span {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 999px;
-  color: #075985;
-  background: #dff7ff;
-  font-size: 0.7rem;
-  font-weight: 820;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 0.88rem;
+  line-height: 1;
+}
+
+.chat-reaction-actions {
+  opacity: 0.62;
+}
+
+.chat-message:hover .chat-reaction-actions,
+.driver-chat-screen-message:hover .chat-reaction-actions {
+  opacity: 1;
 }
 
 .chat-reaction-button {
-  min-height: 26px;
-  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
   border: 1px solid #d6e6f5;
   border-radius: 999px;
-  color: #475569;
   background: #ffffff;
   font: inherit;
-  font-size: 0.7rem;
-  font-weight: 780;
+  font-size: 0.86rem;
+  line-height: 1;
 }
 
 .chat-reaction-button:hover,
@@ -3093,6 +3122,7 @@
 }
 
 .driver-chat-bubble {
+  position: relative;
   display: grid;
   gap: 4px;
   width: 84%;
@@ -3194,11 +3224,12 @@
 }
 
 .driver-chat-screen-message {
+  position: relative;
   display: grid;
   gap: 5px;
   width: fit-content;
   max-width: 82%;
-  padding: 8px 9px 6px;
+  padding: 8px 9px 18px;
   border: 1px solid #d6e6f5;
   border-radius: 8px;
   background: #ffffff;

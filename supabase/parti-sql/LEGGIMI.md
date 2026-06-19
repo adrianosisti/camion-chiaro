@@ -92,3 +92,5 @@ Eseguilo una sola volta dopo `18_storico_documenti.sql`.
 ## Fix notifiche push
 
 Se premendo `Verifica notifiche` compare l errore `function digest(text, unknown) does not exist`, esegui una sola volta il file `20_fix_push_digest.sql`.
+
+Se compare l errore `push_subscriptions_account_role_check`, esegui una sola volta il file `21_fix_push_account_role.sql`.

@@ -841,7 +841,7 @@ begin
     raise exception 'Push auth required';
   end if;
 
-  select d.company_id, d.id, 'driver'
+  select d.company_id, d.id, 'driver'::text
   into current_company_id, current_driver_id, current_role
   from public.drivers d
   where d.user_id = current_user_id
@@ -851,7 +851,7 @@ begin
   limit 1;
 
   if current_company_id is null then
-    select cm.company_id, null::uuid, 'company'
+    select cm.company_id, null::uuid, 'company'::text
     into current_company_id, current_driver_id, current_role
     from public.company_members cm
     where cm.user_id = current_user_id

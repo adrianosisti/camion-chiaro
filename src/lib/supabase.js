@@ -55,6 +55,7 @@ function mapDriver(row) {
   return {
     id: row.id,
     authEmail: row.auth_email,
+    companyId: row.company_id,
     depot: row.depot ?? '',
     email: row.email ?? row.auth_email ?? '',
     name: row.full_name,
@@ -752,7 +753,7 @@ export async function createDriverRecord(driver, companyId = configuredCompanyId
   const { data, error } = await supabase
     .from('drivers')
     .insert(toDriverPayload(driver, companyId))
-    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
     .single()
 
   return { data: data ? mapDriver(data) : null, error }

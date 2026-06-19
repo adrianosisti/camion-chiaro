@@ -44,6 +44,7 @@ function normalizeDriverUsername(value) {
 function mapDriver(row) {
   return {
     authEmail: row.auth_email,
+    companyId: row.company_id,
     depot: row.depot ?? '',
     email: row.email ?? row.auth_email ?? '',
     id: row.id,
@@ -310,7 +311,7 @@ export async function handler(event) {
       .from('drivers')
       .update({ user_id: authData.user.id })
       .eq('id', driver.id)
-      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, role, depot, status')
+      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
       .single()
 
     if (error) {

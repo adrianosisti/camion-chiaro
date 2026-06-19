@@ -146,8 +146,24 @@ const faultStatusOptions = [
   { value: 'in_progress', label: 'Da leggere' },
   { value: 'closed', label: 'Archiviato' },
 ]
-const chatReactionOptions = ['OK', 'Cuore', 'Grazie', 'Visto']
+const chatReactionOptions = [
+  { emoji: '👍', label: 'OK', value: 'ok' },
+  { emoji: '❤️', label: 'Cuore', value: 'heart' },
+  { emoji: '🙏', label: 'Grazie', value: 'thanks' },
+  { emoji: '👀', label: 'Visto', value: 'seen' },
+]
 const deepLinkViews = new Set(['chat', 'documents', 'notifications', 'settings'])
+
+function getChatReactionEmoji(value) {
+  const legacyReactionMap = {
+    Cuore: '❤️',
+    Grazie: '🙏',
+    OK: '👍',
+    Visto: '👀',
+  }
+
+  return chatReactionOptions.find((reaction) => reaction.value === value)?.emoji ?? legacyReactionMap[value] ?? value
+}
 
 function getInitialActiveView() {
   if (typeof window === 'undefined') return 'dashboard'
@@ -1626,13 +1642,19 @@ function App() {
     if (attachmentFile && !validateImageFile(attachmentFile, setChatSyncStatus)) return false
 
     const selectedDriver = driverRecords.find((driver) => driver.id === driverId)
+    const messageCompanyId = activeCompanyId || selectedDriver?.companyId || ''
     const existingThread = chatThreadRecords.find(
       (thread) => thread.id === threadId || (thread.driverId === driverId && thread.contextType === 'general'),
     )
 
     setChatSyncStatus('Invio messaggio...')
 
-    if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
+    if (isSupabaseConfigured && ['company', 'driver'].includes(session?.role) && !messageCompanyId) {
+      setChatSyncStatus('Chat non inviata: azienda non caricata. Riapri l app e riprova.')
+      return false
+    }
+
+    if (isSupabaseConfigured && messageCompanyId && ['company', 'driver'].includes(session?.role)) {
       let targetThread = existingThread
 
       if (!targetThread) {
@@ -1642,7 +1664,7 @@ function App() {
             driverId,
             title: selectedDriver?.name ? `Chat ${selectedDriver.name}` : 'Chat autista',
           },
-          activeCompanyId,
+          messageCompanyId,
         )
 
         if (threadResult.error || !threadResult.data) {
@@ -1661,7 +1683,7 @@ function App() {
           senderRole,
           threadId: targetThread.id,
         },
-        activeCompanyId,
+        messageCompanyId,
         attachmentFile,
       )
 
@@ -4398,19 +4420,23 @@ function ChatReactionBar({ actorRole, message, onReact }) {
       {visibleReactions.length > 0 && (
         <div className="chat-reaction-summary" aria-label="Reazioni al messaggio">
           {visibleReactions.map(([role, reaction]) => (
-            <span key={role}>{role === 'company' ? 'Azienda' : 'Autista'}: {reaction}</span>
+            <span key={role} title={role === 'company' ? 'Reazione azienda' : 'Reazione autista'}>
+              {getChatReactionEmoji(reaction)}
+            </span>
           ))}
         </div>
       )}
       <div className="chat-reaction-actions" aria-label="Aggiungi reazione">
         {chatReactionOptions.map((reaction) => (
           <button
-            className={currentReaction === reaction ? 'chat-reaction-button is-active' : 'chat-reaction-button'}
-            key={reaction}
-            onClick={() => onReact?.(message, actorRole, reaction)}
+            aria-label={reaction.label}
+            className={currentReaction === reaction.value ? 'chat-reaction-button is-active' : 'chat-reaction-button'}
+            key={reaction.value}
+            onClick={() => onReact?.(message, actorRole, reaction.value)}
+            title={reaction.label}
             type="button"
           >
-            {reaction}
+            {reaction.emoji}
           </button>
         ))}
       </div>

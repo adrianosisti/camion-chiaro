@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
 import BadgeCheck from 'lucide-react/dist/esm/icons/badge-check.mjs'
@@ -37,6 +38,7 @@ import { daysUntil, decorateCompliance, formatDate, getSummary } from './lib/exp
 import {
   archiveDriverRecord as archiveSupabaseDriver,
   archiveVehicleRecord as archiveSupabaseVehicle,
+  createCompanyAssetSignedUrl,
   createDriverDocumentSignedUrl,
   createDriverAccount as createSupabaseDriverAccount,
   createFaultReportRecord as createSupabaseFaultReport,
@@ -59,7 +61,9 @@ import {
   signInCompany,
   signOut,
   signUpCompany,
+  uploadCompanyLogoFile as uploadSupabaseCompanyLogoFile,
   uploadDriverDocumentFile as uploadSupabaseDriverDocumentFile,
+  uploadDriverProfileImageFile as uploadSupabaseDriverProfileImageFile,
   updateDriverDocumentRecord as updateSupabaseDriverDocument,
   updateDriverRecord as updateSupabaseDriver,
   updateCompanyProfile as updateSupabaseCompanyProfile,
@@ -91,6 +95,7 @@ const documentTypes = [
 
 const driverDocumentStatusOptions = ['Caricato', 'Verificato', 'Scaduto', 'Mancante']
 const maxDriverDocumentFileSize = 10 * 1024 * 1024
+const maxProfileImageFileSize = 5 * 1024 * 1024
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
 const demoCompanyName = 'Spedifast SRL'
@@ -199,6 +204,31 @@ function hasCheckIssues(check) {
   return getCheckIssues(check).length > 0
 }
 
+function formatMissingFields(fields) {
+  if (fields.length === 0) return ''
+
+  return `Mancano: ${fields.join(', ')}.`
+}
+
+function getInitials(name) {
+  const parts = String(name ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (parts.length === 0) return 'CC'
+
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('')
+}
+
+function isPreviewableAssetPath(path) {
+  return Boolean(path && !/^(blob:|data:|https?:)/.test(path))
+}
+
+function isSupportedImageFile(file) {
+  return Boolean(file?.type?.startsWith('image/'))
+}
+
 function loadAcknowledgedCheckIds() {
   try {
     const storedIds = JSON.parse(localStorage.getItem('camionChiaroAcknowledgedChecks') ?? '[]')
@@ -241,9 +271,11 @@ function App() {
   const [companyProfile, setCompanyProfile] = useState({
     headquarters: company.location,
     id: '',
+    logoPath: company.logoPath ?? '',
     name: company.name,
     vatNumber: company.vat,
   })
+  const [assetPreviewUrls, setAssetPreviewUrls] = useState({})
   const [activeView, setActiveView] = useState('dashboard')
   const [activeFilter, setActiveFilter] = useState('all')
   const [query, setQuery] = useState('')
@@ -270,6 +302,43 @@ function App() {
       ),
     [archivedFaultOverrideIds, faultReportRecords],
   )
+  const assetPaths = useMemo(
+    () =>
+      [companyProfile.logoPath, ...driverRecords.map((driver) => driver.profileImagePath)]
+        .filter(isPreviewableAssetPath),
+    [companyProfile.logoPath, driverRecords],
+  )
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || assetPaths.length === 0) return
+
+    let isMounted = true
+    const missingPaths = assetPaths.filter((path) => !assetPreviewUrls[path])
+
+    if (missingPaths.length === 0) return
+
+    async function loadAssetUrls() {
+      const entries = await Promise.all(
+        missingPaths.map(async (path) => {
+          const result = await createCompanyAssetSignedUrl(path)
+          return [path, result.data?.signedUrl ?? '']
+        }),
+      )
+
+      if (!isMounted) return
+
+      setAssetPreviewUrls((currentUrls) => ({
+        ...currentUrls,
+        ...Object.fromEntries(entries.filter(([, url]) => Boolean(url))),
+      }))
+    }
+
+    loadAssetUrls()
+
+    return () => {
+      isMounted = false
+    }
+  }, [assetPaths, assetPreviewUrls])
 
   function handleAuthenticated(nextSession) {
     setActiveCompanyId('')
@@ -293,6 +362,104 @@ function App() {
     setFaultReported(false)
     setDriverDocumentUploadStatus('')
     setUploadingDriverDocumentId('')
+  }
+
+  function getAssetPreviewUrl(path) {
+    if (!path) return ''
+    if (!isPreviewableAssetPath(path)) return path
+
+    return assetPreviewUrls[path] ?? ''
+  }
+
+  function validateImageFile(file, setStatus) {
+    if (!file) return false
+
+    if (!isSupportedImageFile(file)) {
+      setStatus('Carica un file immagine: JPG, PNG, WEBP o HEIC.')
+      return false
+    }
+
+    if (file.size > maxProfileImageFileSize) {
+      setStatus('Immagine troppo grande. Usa una foto sotto 5 MB.')
+      return false
+    }
+
+    return true
+  }
+
+  async function uploadCompanyLogo(file) {
+    if (!validateImageFile(file, setCompanySettingsStatus)) return false
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setCompanySettingsStatus('Caricamento logo azienda...')
+      const result = await uploadSupabaseCompanyLogoFile(file, activeCompanyId)
+
+      if (result.error) {
+        setCompanySettingsStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setCompanyProfile(result.data)
+        if (result.data.logoPath) {
+          const signedUrlResult = await createCompanyAssetSignedUrl(result.data.logoPath)
+          if (signedUrlResult.data?.signedUrl) {
+            setAssetPreviewUrls((currentUrls) => ({
+              ...currentUrls,
+              [result.data.logoPath]: signedUrlResult.data.signedUrl,
+            }))
+          }
+        }
+      }
+
+      setCompanySettingsStatus('Logo azienda aggiornato.')
+      return true
+    }
+
+    const previewUrl = URL.createObjectURL(file)
+    setCompanyProfile((currentProfile) => ({ ...currentProfile, logoPath: previewUrl }))
+    setCompanySettingsStatus('Logo azienda aggiornato in modalità locale.')
+    return true
+  }
+
+  async function uploadDriverProfileImage(driverId, file) {
+    const setStatus = session?.role === 'driver' ? setDriverDocumentUploadStatus : setDriversSyncStatus
+    if (!validateImageFile(file, setStatus)) return false
+
+    if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
+      setStatus('Caricamento foto profilo...')
+      const result = await uploadSupabaseDriverProfileImageFile(driverId, file, activeCompanyId)
+
+      if (result.error) {
+        setStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setDriverRecords((currentDrivers) =>
+          currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, ...result.data } : driver)),
+        )
+        if (result.data.profileImagePath) {
+          const signedUrlResult = await createCompanyAssetSignedUrl(result.data.profileImagePath)
+          if (signedUrlResult.data?.signedUrl) {
+            setAssetPreviewUrls((currentUrls) => ({
+              ...currentUrls,
+              [result.data.profileImagePath]: signedUrlResult.data.signedUrl,
+            }))
+          }
+        }
+      }
+
+      setStatus('Foto profilo aggiornata.')
+      return true
+    }
+
+    const previewUrl = URL.createObjectURL(file)
+    setDriverRecords((currentDrivers) =>
+      currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, profileImagePath: previewUrl } : driver)),
+    )
+    setStatus('Foto profilo aggiornata in modalità locale.')
+    return true
   }
 
   useEffect(() => {
@@ -487,6 +654,7 @@ function App() {
     setCompanyProfile({
       headquarters: company.location,
       id: '',
+      logoPath: company.logoPath ?? '',
       name: company.name,
       vatNumber: company.vat,
     })
@@ -966,6 +1134,7 @@ function App() {
   if (session.role === 'driver') {
     return (
       <DriverAppView
+        assetPreviewUrl={getAssetPreviewUrl}
         documentUploadStatus={driverDocumentUploadStatus}
         items={decoratedItems}
         documentRecords={documentRecords}
@@ -973,6 +1142,7 @@ function App() {
         faultReportRecords={visibleFaultReportRecords}
         vehicleRecords={vehicleRecords}
         onDriverDocumentUpload={uploadDriverDocumentFile}
+        onDriverProfileImageUpload={uploadDriverProfileImage}
         onFaultReport={submitFaultReport}
         onMorningCheck={submitMorningCheck}
         onOpenDriverDocument={openDriverDocumentFile}
@@ -1000,11 +1170,19 @@ function App() {
     }, 0)
   }
 
+  function openDashboardHome() {
+    setActiveView('dashboard')
+    window.setTimeout(() => {
+      window.scrollTo({ behavior: 'smooth', top: 0 })
+    }, 0)
+  }
+
   return (
     <div className="app-shell">
       <Sidebar
         activeView={activeView}
         notificationCount={notificationCount}
+        onHome={openDashboardHome}
         onNavigate={setActiveView}
         onSignOut={handleSignOut}
         session={session}
@@ -1013,9 +1191,12 @@ function App() {
         <Topbar query={query} setQuery={setQuery} />
         {activeView === 'drivers' ? (
           <DriversWorkspace
+            assetPreviewUrl={getAssetPreviewUrl}
             driverRecords={driverRecords}
             onAddDriver={addDriverRecord}
             onArchiveDriver={archiveDriverRecord}
+            onBackHome={openDashboardHome}
+            onDriverProfileImageUpload={uploadDriverProfileImage}
             onUpdateDriver={updateDriverRecord}
             syncStatus={driversSyncStatus}
             vehicleRecords={vehicleRecords}
@@ -1034,6 +1215,7 @@ function App() {
             driverRecords={driverRecords}
             onAddVehicle={addVehicleRecord}
             onArchiveVehicle={archiveVehicleRecord}
+            onBackHome={openDashboardHome}
             onUpdateVehicle={updateVehicleRecord}
             syncStatus={fleetSyncStatus}
             vehicleRecords={vehicleRecords}
@@ -1054,6 +1236,8 @@ function App() {
             key={`${companyProfile.name}-${companyProfile.vatNumber}-${companyProfile.headquarters}`}
             companyEmail={session.email}
             companyProfile={{ ...companyProfile, name: companyName }}
+            companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
+            onCompanyLogoUpload={uploadCompanyLogo}
             onUpdateCompanyProfile={updateCompanyProfile}
             syncStatus={companySettingsStatus}
           />
@@ -1064,6 +1248,7 @@ function App() {
                 activeDriverCount={activeDriverCount}
                 activeVehicleCount={activeVehicleCount}
                 companyName={companyName}
+                companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
                 criticalCheckCount={criticalCheckCount}
                 notificationCount={notificationCount}
                 onNewDeadline={openNewDeadlinePanel}
@@ -1089,7 +1274,12 @@ function App() {
                   onReminder={sendReminder}
                   onRenew={markRenewing}
                 />
-                <FleetAndForms driverRecords={driverRecords} onAdd={addComplianceItem} vehicleRecords={vehicleRecords} />
+                <FleetAndForms
+                  driverRecords={driverRecords}
+                  onAdd={addComplianceItem}
+                  onBackHome={openDashboardHome}
+                  vehicleRecords={vehicleRecords}
+                />
               </div>
               <aside className="side-column dashboard-side" aria-label="Notifiche azienda">
                 <NotificationPanel
@@ -1365,7 +1555,7 @@ function AuthScreen({ onAuthenticated }) {
   )
 }
 
-function Sidebar({ activeView, notificationCount, onNavigate, onSignOut, session }) {
+function Sidebar({ activeView, notificationCount, onHome, onNavigate, onSignOut, session }) {
   const navItems = [
     { id: 'dashboard', label: 'Scadenze', icon: CalendarClock },
     { id: 'drivers', label: 'Autisti', icon: Users },
@@ -1377,7 +1567,7 @@ function Sidebar({ activeView, notificationCount, onNavigate, onSignOut, session
 
   return (
     <aside className="sidebar" aria-label="Navigazione principale">
-      <div className="brand">
+      <button className="brand brand-button" onClick={onHome} type="button">
         <div className="brand-mark">
           <Route size={22} strokeWidth={2.4} />
         </div>
@@ -1385,7 +1575,7 @@ function Sidebar({ activeView, notificationCount, onNavigate, onSignOut, session
           <strong>Camion Chiaro</strong>
           <span>Area azienda</span>
         </div>
-      </div>
+      </button>
 
       <nav className="nav-list">
         {navItems.map((item) => (
@@ -1440,7 +1630,44 @@ function Topbar({ query, setQuery }) {
   )
 }
 
-function SettingsWorkspace({ companyEmail, companyProfile, onUpdateCompanyProfile, syncStatus }) {
+function EntityAvatar({ imageUrl, name, variant = 'default' }) {
+  return (
+    <span className={`entity-avatar avatar-${variant}`}>
+      {imageUrl ? <img alt="" src={imageUrl} /> : <span>{getInitials(name)}</span>}
+    </span>
+  )
+}
+
+function ImageUploadControl({ label, onUpload }) {
+  function handleChange(event) {
+    const file = event.target.files?.[0]
+    onUpload?.(file)
+    event.target.value = ''
+  }
+
+  return (
+    <label className="small-button image-upload-control">
+      <Upload size={15} />
+      {label}
+      <input accept="image/*" className="sr-only" onChange={handleChange} type="file" />
+    </label>
+  )
+}
+
+function CompanyLogoUploader({ companyName, logoUrl, onUpload }) {
+  return (
+    <div className="company-logo-uploader">
+      <EntityAvatar imageUrl={logoUrl} name={companyName} variant="company" />
+      <div>
+        <strong>Logo azienda</strong>
+        <span>Appare accanto al nome nella dashboard.</span>
+      </div>
+      <ImageUploadControl label={logoUrl ? 'Cambia logo' : 'Carica logo'} onUpload={onUpload} />
+    </div>
+  )
+}
+
+function SettingsWorkspace({ companyEmail, companyLogoUrl, companyProfile, onCompanyLogoUpload, onUpdateCompanyProfile, syncStatus }) {
   const [form, setForm] = useState({
     headquarters: companyProfile.headquarters ?? '',
     name: companyProfile.name ?? '',
@@ -1469,6 +1696,7 @@ function SettingsWorkspace({ companyEmail, companyProfile, onUpdateCompanyProfil
           </div>
           <SettingsIcon size={20} />
         </div>
+        <CompanyLogoUploader companyName={form.name} logoUrl={companyLogoUrl} onUpload={onCompanyLogoUpload} />
         <div className="form-grid">
           <label className="wide-field">
             Ragione sociale
@@ -1521,6 +1749,7 @@ function HeroPanel({
   activeDriverCount,
   activeVehicleCount,
   companyName,
+  companyLogoUrl,
   criticalCheckCount,
   notificationCount,
   onNewDeadline,
@@ -1555,7 +1784,8 @@ function HeroPanel({
   return (
     <section className="hero-panel" aria-label="Controllo scadenze">
       <div className="hero-copy">
-        <div>
+        <div className="company-title-row">
+          <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
           <h2>{companyName}</h2>
         </div>
         <p>
@@ -1653,7 +1883,17 @@ function CompanyOnboardingPanel({ onNewDeadline, onOpenDrivers, onOpenFleet }) {
   )
 }
 
-function DriversWorkspace({ driverRecords, onAddDriver, onArchiveDriver, onUpdateDriver, syncStatus, vehicleRecords }) {
+function DriversWorkspace({
+  assetPreviewUrl,
+  driverRecords,
+  onAddDriver,
+  onArchiveDriver,
+  onBackHome,
+  onDriverProfileImageUpload,
+  onUpdateDriver,
+  syncStatus,
+  vehicleRecords,
+}) {
   const [editingId, setEditingId] = useState(null)
   const [draftById, setDraftById] = useState({})
   const [savingId, setSavingId] = useState(null)
@@ -1726,6 +1966,7 @@ function DriversWorkspace({ driverRecords, onAddDriver, onArchiveDriver, onUpdat
             </div>
             {activeDrivers.map((driver) => (
               <DriverManagementRow
+                assetPreviewUrl={assetPreviewUrl}
                 draft={draftById[driver.id]}
                 driver={driver}
                 editing={editingId === driver.id}
@@ -1733,6 +1974,7 @@ function DriversWorkspace({ driverRecords, onAddDriver, onArchiveDriver, onUpdat
                 onArchive={() => archiveDriver(driver.id)}
                 onCancel={() => setEditingId(null)}
                 onEdit={() => startEditing(driver)}
+                onPhotoUpload={(file) => onDriverProfileImageUpload(driver.id, file)}
                 onSave={() => saveDraft(driver.id)}
                 onUpdateDraft={(field, value) => updateDraft(driver.id, field, value)}
                 saving={savingId === driver.id}
@@ -1746,18 +1988,20 @@ function DriversWorkspace({ driverRecords, onAddDriver, onArchiveDriver, onUpdat
           )}
         </div>
       </div>
-      <DriverCreatePanel onAddDriver={onAddDriver} vehicleRecords={vehicleRecords} />
+      <DriverCreatePanel onAddDriver={onAddDriver} onBackHome={onBackHome} vehicleRecords={vehicleRecords} />
     </section>
   )
 }
 
 function DriverManagementRow({
+  assetPreviewUrl,
   draft,
   driver,
   editing,
   onArchive,
   onCancel,
   onEdit,
+  onPhotoUpload,
   onSave,
   onUpdateDraft,
   saving,
@@ -1809,8 +2053,12 @@ function DriverManagementRow({
   return (
     <article className="driver-row">
       <div className="driver-person">
-        <strong>{driver.name}</strong>
-        <span>{driver.phone}</span>
+        <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
+        <div>
+          <strong>{driver.name}</strong>
+          <span>{driver.phone}</span>
+        </div>
+        <ImageUploadControl label="Foto" onUpload={onPhotoUpload} />
       </div>
       <div>
         <strong>{username}</strong>
@@ -1834,12 +2082,20 @@ function DriverManagementRow({
   )
 }
 
-function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
+function DriverCreatePanel({ onAddDriver, onBackHome, vehicleRecords }) {
   const [isSaving, setIsSaving] = useState(false)
   const [form, setForm] = useState(getDriverCreateDefaults)
+  const [showValidation, setShowValidation] = useState(false)
 
   const authEmail = form.username ? buildDriverAuthEmail(form.username) : ''
-  const canSubmit = Boolean(form.name.trim() && form.username.trim() && form.phone.trim() && form.password.trim().length >= 8)
+  const missingRequiredFields = [
+    form.name.trim() ? null : 'nome e cognome',
+    form.username.trim() ? null : 'username app',
+    form.phone.trim() ? null : 'telefono',
+    form.password.trim() ? null : 'password temporanea',
+    form.password.trim() && form.password.trim().length < 8 ? 'password di almeno 8 caratteri' : null,
+  ].filter(Boolean)
+  const canSubmit = missingRequiredFields.length === 0
 
   function updateField(field, value) {
     setForm((currentForm) => {
@@ -1857,6 +2113,7 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
 
   async function handleSubmit(event) {
     event.preventDefault()
+    setShowValidation(true)
     if (!canSubmit) return
 
     setIsSaving(true)
@@ -1877,17 +2134,24 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
 
     if (!added) return
 
+    setShowValidation(false)
     setForm(getDriverCreateDefaults())
   }
 
   return (
-    <form className="panel driver-create-panel" onSubmit={handleSubmit}>
+    <form className="panel driver-create-panel" noValidate onSubmit={handleSubmit}>
       <div className="panel-header compact">
         <div>
           <p className="overline">Nuovo accesso</p>
           <h2>Crea autista</h2>
         </div>
-        <UserPlus size={20} />
+        <div className="panel-header-actions">
+          <button className="small-button" onClick={onBackHome} type="button">
+            <ArrowLeft size={15} />
+            Indietro
+          </button>
+          <UserPlus size={20} />
+        </div>
       </div>
       <div className="form-grid single-column">
         <label>
@@ -1942,7 +2206,8 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
         <strong>Email tecnica Supabase</strong>
         <span>{authEmail || 'Compila username per generarla'}</span>
       </div>
-      <button className="primary-button full-button" disabled={isSaving || !canSubmit} type="submit">
+      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields)} />}
+      <button className="primary-button full-button" disabled={isSaving} type="submit">
         <UserPlus size={17} />
         {isSaving ? 'Creazione account...' : 'Crea account autista'}
       </button>
@@ -1950,7 +2215,7 @@ function DriverCreatePanel({ onAddDriver, vehicleRecords }) {
   )
 }
 
-function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onUpdateVehicle, syncStatus, vehicleRecords }) {
+function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onBackHome, onUpdateVehicle, syncStatus, vehicleRecords }) {
   const [editingId, setEditingId] = useState(null)
   const [draftById, setDraftById] = useState({})
   const [savingId, setSavingId] = useState(null)
@@ -2047,7 +2312,7 @@ function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onUpdat
           )}
         </div>
       </div>
-      <VehicleCreatePanel onAddVehicle={onAddVehicle} />
+      <VehicleCreatePanel onAddVehicle={onAddVehicle} onBackHome={onBackHome} />
     </section>
   )
 }
@@ -2144,8 +2409,9 @@ function VehicleManagementRow({
   )
 }
 
-function VehicleCreatePanel({ onAddVehicle }) {
+function VehicleCreatePanel({ onAddVehicle, onBackHome }) {
   const [isSaving, setIsSaving] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
   const [form, setForm] = useState({
     fleetType: 'trattore',
     km: 0,
@@ -2154,6 +2420,10 @@ function VehicleCreatePanel({ onAddVehicle }) {
     status: 'Operativo',
     type: 'Trattore stradale',
   })
+  const missingRequiredFields = [
+    form.plate.trim() ? null : 'targa',
+  ].filter(Boolean)
+  const canSubmit = missingRequiredFields.length === 0
 
   function updateField(field, value) {
     setForm((currentForm) => {
@@ -2174,7 +2444,8 @@ function VehicleCreatePanel({ onAddVehicle }) {
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (!form.plate.trim()) return
+    setShowValidation(true)
+    if (!canSubmit) return
 
     setIsSaving(true)
     const added = await onAddVehicle({
@@ -2190,6 +2461,7 @@ function VehicleCreatePanel({ onAddVehicle }) {
 
     if (!added) return
 
+    setShowValidation(false)
     setForm({
       fleetType: 'trattore',
       km: 0,
@@ -2201,13 +2473,19 @@ function VehicleCreatePanel({ onAddVehicle }) {
   }
 
   return (
-    <form className="panel vehicle-create-panel" onSubmit={handleSubmit}>
+    <form className="panel vehicle-create-panel" noValidate onSubmit={handleSubmit}>
       <div className="panel-header compact">
         <div>
           <p className="overline">Nuovo mezzo</p>
           <h2>Aggiungi alla flotta</h2>
         </div>
-        <Truck size={20} />
+        <div className="panel-header-actions">
+          <button className="small-button" onClick={onBackHome} type="button">
+            <ArrowLeft size={15} />
+            Indietro
+          </button>
+          <Truck size={20} />
+        </div>
       </div>
       <div className="form-grid single-column">
         <label>
@@ -2245,6 +2523,7 @@ function VehicleCreatePanel({ onAddVehicle }) {
           </select>
         </label>
       </div>
+      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields)} />}
       <button className="primary-button full-button" disabled={isSaving} type="submit">
         <Plus size={17} />
         {isSaving ? 'Salvataggio...' : 'Aggiungi mezzo'}
@@ -2990,6 +3269,17 @@ function DetailLine({ label, value }) {
   )
 }
 
+function FormValidationAlert({ message }) {
+  if (!message) return null
+
+  return (
+    <div className="form-alert" role="alert">
+      <AlertTriangle size={17} />
+      <span>{message}</span>
+    </div>
+  )
+}
+
 function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onReminder, onRenew }) {
   return (
     <section className="panel compliance-panel">
@@ -3079,11 +3369,11 @@ function DeadlineRow({ item, onClose, onReminder, onRenew }) {
   )
 }
 
-function FleetAndForms({ driverRecords, onAdd, vehicleRecords }) {
+function FleetAndForms({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
   return (
     <section className="lower-grid" aria-label="Gestione flotta e inserimento">
       <FleetStatus driverRecords={driverRecords} vehicleRecords={vehicleRecords} />
-      <AddDeadlineForm driverRecords={driverRecords} onAdd={onAdd} vehicleRecords={vehicleRecords} />
+      <AddDeadlineForm driverRecords={driverRecords} onAdd={onAdd} onBackHome={onBackHome} vehicleRecords={vehicleRecords} />
     </section>
   )
 }
@@ -3146,7 +3436,8 @@ function FleetStatus({ driverRecords, vehicleRecords }) {
   )
 }
 
-function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
+function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
+  const [showValidation, setShowValidation] = useState(false)
   const [form, setForm] = useState({
     type: 'Visita medica',
     scope: 'driver',
@@ -3156,7 +3447,13 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
   })
 
   const assignees = form.scope === 'driver' ? driverRecords : vehicleRecords
-  const canSubmit = Boolean(form.assigneeId)
+  const hasAssigneeChoices = assignees.length > 0
+  const missingRequiredFields = [
+    hasAssigneeChoices ? null : form.scope === 'driver' ? 'almeno un autista' : 'almeno un mezzo',
+    form.assigneeId ? null : form.scope === 'driver' ? 'autista' : 'mezzo',
+    form.dueDate ? null : 'data scadenza',
+  ].filter(Boolean)
+  const canSubmit = missingRequiredFields.length === 0
 
   function updateField(field, value) {
     setForm((currentForm) => {
@@ -3171,7 +3468,8 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
 
   function handleSubmit(event) {
     event.preventDefault()
-    if (!form.assigneeId) return
+    setShowValidation(true)
+    if (!canSubmit) return
 
     onAdd({
       id: `cmp-${Date.now()}`,
@@ -3186,16 +3484,23 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
       documentNumber: `NEW-${Date.now().toString().slice(-5)}`,
       lastReminderAt: null,
     })
+    setShowValidation(false)
   }
 
   return (
-    <form className="panel add-panel" id="new-deadline-panel" onSubmit={handleSubmit}>
+    <form className="panel add-panel" id="new-deadline-panel" noValidate onSubmit={handleSubmit}>
       <div className="panel-header compact">
         <div>
           <p className="overline">Inserimento rapido</p>
           <h2>Nuova scadenza</h2>
         </div>
-        <Plus size={20} />
+        <div className="panel-header-actions">
+          <button className="small-button" onClick={onBackHome} type="button">
+            <ArrowLeft size={15} />
+            Indietro
+          </button>
+          <Plus size={20} />
+        </div>
       </div>
       <div className="form-grid">
         <label>
@@ -3232,8 +3537,9 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
           <input value={form.owner} onChange={(event) => updateField('owner', event.target.value)} />
         </label>
       </div>
-      {!canSubmit && <p className="form-hint">Aggiungi prima almeno un autista o un mezzo.</p>}
-      <button className="primary-button full-button" disabled={!canSubmit} type="submit">
+      {!hasAssigneeChoices && <p className="form-hint">Aggiungi prima almeno un autista o un mezzo.</p>}
+      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields)} />}
+      <button className="primary-button full-button" type="submit">
         <Plus size={17} />
         Aggiungi
       </button>
@@ -3242,6 +3548,7 @@ function AddDeadlineForm({ driverRecords, onAdd, vehicleRecords }) {
 }
 
 function DriverAppView({
+  assetPreviewUrl,
   documentUploadStatus,
   documentRecords,
   driverRecords,
@@ -3250,6 +3557,7 @@ function DriverAppView({
   items,
   morningCheckSent,
   onDriverDocumentUpload,
+  onDriverProfileImageUpload,
   onFaultReport,
   onMorningCheck,
   onOpenDriverDocument,
@@ -3280,6 +3588,7 @@ function DriverAppView({
       </header>
       <div className="driver-page-content">
         <DriverMobile
+          assetPreviewUrl={assetPreviewUrl}
           documentUploadStatus={documentUploadStatus}
           documentRecords={documentRecords}
           driverRecords={driverRecords}
@@ -3288,6 +3597,7 @@ function DriverAppView({
           items={items}
           morningCheckSent={morningCheckSent}
           onDriverDocumentUpload={onDriverDocumentUpload}
+          onDriverProfileImageUpload={onDriverProfileImageUpload}
           onFaultReport={onFaultReport}
           onMorningCheck={onMorningCheck}
           onOpenDriverDocument={onOpenDriverDocument}
@@ -3312,6 +3622,7 @@ function DriverAppView({
 }
 
 function DriverMobile({
+  assetPreviewUrl = () => '',
   documentUploadStatus,
   documentRecords = driverDocuments,
   driverRecords = drivers,
@@ -3320,6 +3631,7 @@ function DriverMobile({
   items = [],
   morningCheckSent,
   onDriverDocumentUpload,
+  onDriverProfileImageUpload,
   onFaultReport,
   onMorningCheck,
   onOpenDriverDocument,
@@ -3370,6 +3682,7 @@ function DriverMobile({
   const vehicleLabel = selectedVehicle
     ? `${selectedVehicle.plate} · ${getFleetTypeLabel(selectedVehicle.fleetType)}`
     : 'Nessun mezzo disponibile'
+  const driverImageUrl = assetPreviewUrl(driver.profileImagePath)
 
   function handleDocumentFile(document, event) {
     const file = event.target.files?.[0]
@@ -3451,9 +3764,11 @@ function DriverMobile({
           </label>
         )}
         <div className="driver-card">
+          <EntityAvatar imageUrl={driverImageUrl} name={driver.name} />
           <div>
             <p>Buongiorno</p>
             <strong>{driver.name}</strong>
+            <ImageUploadControl label={driverImageUrl ? 'Cambia foto' : 'Carica foto'} onUpload={(file) => onDriverProfileImageUpload?.(driver.id, file)} />
           </div>
           <Smartphone size={24} />
         </div>

@@ -49,6 +49,7 @@ function mapDriver(row) {
     id: row.id,
     name: row.full_name,
     phone: row.phone,
+    profileImagePath: row.profile_image_path ?? '',
     role: row.role ?? 'Autista',
     status: driverStatusLabels[row.status] ?? row.status,
     username: row.username,
@@ -142,7 +143,7 @@ async function findDriver(serviceClient, authUser) {
   for (const candidate of candidates) {
     const { data, error } = await serviceClient
       .from('drivers')
-      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, role, depot, status')
+      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
       .eq(candidate.column, candidate.value)
       .maybeSingle()
 

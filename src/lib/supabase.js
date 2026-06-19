@@ -5,6 +5,7 @@ export const configuredCompanyId = import.meta.env.VITE_SUPABASE_COMPANY_ID
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 export const isCompanyDataConfigured = Boolean(isSupabaseConfigured && configuredCompanyId)
 export const driverDocumentsBucket = 'driver-documents'
+export const companyAssetsBucket = 'company-assets'
 
 const driverStatusLabels = {
   active: 'In servizio',
@@ -58,6 +59,7 @@ function mapDriver(row) {
     email: row.email ?? row.auth_email ?? '',
     name: row.full_name,
     phone: row.phone,
+    profileImagePath: row.profile_image_path ?? '',
     role: row.role ?? 'Autista',
     status: driverStatusLabels[row.status] ?? row.status,
     username: row.username,
@@ -142,6 +144,7 @@ function mapCompanyProfile(row) {
   return {
     headquarters: row.headquarters ?? '',
     id: row.id,
+    logoPath: row.logo_path ?? '',
     name: row.name,
     vatNumber: row.vat_number ?? '',
   }
@@ -155,6 +158,7 @@ function toDriverPayload(driver, companyId = configuredCompanyId) {
     email: driver.email,
     full_name: driver.name,
     phone: driver.phone,
+    profile_image_path: driver.profileImagePath || null,
     role: driver.role,
     status: driverStatusValues[driver.status] ?? 'available',
     username: driver.username,
@@ -169,6 +173,7 @@ function toDriverUpdatePayload(updates) {
   if ('email' in updates) payload.email = updates.email
   if ('name' in updates) payload.full_name = updates.name
   if ('phone' in updates) payload.phone = updates.phone
+  if ('profileImagePath' in updates) payload.profile_image_path = updates.profileImagePath || null
   if ('role' in updates) payload.role = updates.role
   if ('status' in updates) payload.status = driverStatusValues[updates.status] ?? updates.status
   if ('username' in updates) payload.username = updates.username
@@ -207,6 +212,7 @@ function toCompanyProfileUpdatePayload(updates) {
   if ('name' in updates) payload.name = updates.name.trim()
   if ('vatNumber' in updates) payload.vat_number = updates.vatNumber.trim() || null
   if ('headquarters' in updates) payload.headquarters = updates.headquarters.trim() || null
+  if ('logoPath' in updates) payload.logo_path = updates.logoPath || null
 
   return payload
 }
@@ -302,7 +308,7 @@ export async function fetchDrivers(companyId = configuredCompanyId) {
 
   const { data, error } = await supabase
     .from('drivers')
-    .select('id, username, auth_email, full_name, email, phone, role, depot, status')
+    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
     .eq('company_id', companyId)
     .order('full_name', { ascending: true })
 
@@ -326,7 +332,7 @@ export async function ensureCompanyForCurrentUser(companyName) {
   if (error && configuredCompanyId) {
     const fallbackResult = await supabase
       .from('companies')
-      .select('id, name, vat_number, headquarters')
+      .select('id, name, vat_number, headquarters, logo_path')
       .eq('id', configuredCompanyId)
       .maybeSingle()
 
@@ -349,7 +355,7 @@ export async function fetchCompanyProfile(companyId = configuredCompanyId) {
 
   const { data, error } = await supabase
     .from('companies')
-    .select('id, name, vat_number, headquarters')
+    .select('id, name, vat_number, headquarters, logo_path')
     .eq('id', companyId)
     .maybeSingle()
 
@@ -368,7 +374,7 @@ export async function updateCompanyProfile(updates, companyId = configuredCompan
     .from('companies')
     .update(payload)
     .eq('id', companyId)
-    .select('id, name, vat_number, headquarters')
+    .select('id, name, vat_number, headquarters, logo_path')
     .maybeSingle()
 
   return { data: data ? mapCompanyProfile(data) : null, error }
@@ -549,7 +555,7 @@ export async function createDriverRecord(driver, companyId = configuredCompanyId
   const { data, error } = await supabase
     .from('drivers')
     .insert(toDriverPayload(driver, companyId))
-    .select('id, username, auth_email, full_name, email, phone, role, depot, status')
+    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
     .single()
 
   return { data: data ? mapDriver(data) : null, error }
@@ -606,7 +612,7 @@ export async function updateDriverRecord(driverId, updates) {
     .from('drivers')
     .update(toDriverUpdatePayload(updates))
     .eq('id', driverId)
-    .select('id, username, auth_email, full_name, email, phone, role, depot, status')
+    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
     .single()
 
   return { data: data ? mapDriver(data) : null, error }
@@ -846,6 +852,70 @@ export async function uploadDriverDocumentFile(document, file, companyId = confi
   return { data: data ? mapDriverDocument(data) : null, error: null }
 }
 
+export async function uploadCompanyLogoFile(file, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !file) {
+    return { data: null, error: null }
+  }
+
+  const cleanFileName = sanitizeStorageFileName(file.name)
+  const filePath = `${companyId}/company-logo/${Date.now()}-${cleanFileName}`
+  const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, file, {
+    cacheControl: '3600',
+    contentType: file.type || undefined,
+    upsert: false,
+  })
+
+  if (uploadError) {
+    return { data: null, error: uploadError }
+  }
+
+  const { data, error } = await supabase.rpc('set_company_logo_file', {
+    target_company_id: companyId,
+    uploaded_file_path: filePath,
+  })
+
+  if (error) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+    return { data: null, error }
+  }
+
+  return { data: data ? mapCompanyProfile(data) : null, error: null }
+}
+
+export async function uploadDriverProfileImageFile(driverId, file, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !driverId || !file) {
+    return { data: null, error: null }
+  }
+
+  const cleanFileName = sanitizeStorageFileName(file.name)
+  const filePath = `${companyId}/drivers/${driverId}/profile/${Date.now()}-${cleanFileName}`
+  const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, file, {
+    cacheControl: '3600',
+    contentType: file.type || undefined,
+    upsert: false,
+  })
+
+  if (uploadError) {
+    return { data: null, error: uploadError }
+  }
+
+  const { data, error } = await supabase.rpc('set_driver_profile_image_file', {
+    target_driver_id: driverId,
+    uploaded_file_path: filePath,
+  })
+
+  if (error) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+    return { data: null, error }
+  }
+
+  return { data: data ? mapDriver(data) : null, error: null }
+}
+
 export async function createDriverDocumentSignedUrl(filePath) {
   const supabase = await getSupabaseClient()
 
@@ -854,6 +924,16 @@ export async function createDriverDocumentSignedUrl(filePath) {
   }
 
   return supabase.storage.from(driverDocumentsBucket).createSignedUrl(filePath, 600)
+}
+
+export async function createCompanyAssetSignedUrl(filePath) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !filePath) {
+    return { data: null, error: null }
+  }
+
+  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 600)
 }
 
 export async function getCurrentAuthSession() {

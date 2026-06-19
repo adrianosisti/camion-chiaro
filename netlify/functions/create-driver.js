@@ -49,6 +49,7 @@ function mapDriver(row) {
     email: row.email ?? row.auth_email ?? '',
     name: row.full_name,
     phone: row.phone,
+    profileImagePath: row.profile_image_path ?? '',
     role: row.role ?? 'Autista',
     status: driverStatusLabels[row.status] ?? row.status,
     username: row.username,
@@ -64,6 +65,7 @@ function toDriverPayload(driver, companyId, authUserId, authEmail, username) {
     email: driver.email || authEmail,
     full_name: driver.name,
     phone: driver.phone,
+    profile_image_path: driver.profileImagePath || null,
     role: driver.role ?? 'Autista',
     status: driverStatusValues[driver.status] ?? 'available',
     user_id: authUserId,
@@ -178,7 +180,7 @@ export async function handler(event) {
   const { data: driverRow, error: insertDriverError } = await serviceClient
     .from('drivers')
     .insert(toDriverPayload(driver, companyId, createdUser.user.id, authEmail, username))
-    .select('id, username, auth_email, full_name, email, phone, role, depot, status')
+    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
     .single()
 
   if (insertDriverError) {

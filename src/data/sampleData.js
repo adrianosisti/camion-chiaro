@@ -3,6 +3,7 @@ export const company = {
   vat: 'IT04291880965',
   location: 'Verona Hub',
   plan: 'Scadenze chiare',
+  logoPath: '',
 }
 
 export const drivers = [
@@ -15,6 +16,7 @@ export const drivers = [
     depot: 'Verona',
     vehicleId: 'veh-001',
     status: 'In servizio',
+    profileImagePath: '',
   },
   {
     id: 'drv-002',
@@ -25,6 +27,7 @@ export const drivers = [
     depot: 'Padova',
     vehicleId: 'veh-003',
     status: 'Disponibile',
+    profileImagePath: '',
   },
   {
     id: 'drv-003',
@@ -35,6 +38,7 @@ export const drivers = [
     depot: 'Brescia',
     vehicleId: 'veh-002',
     status: 'In viaggio',
+    profileImagePath: '',
   },
   {
     id: 'drv-004',
@@ -45,6 +49,7 @@ export const drivers = [
     depot: 'Vicenza',
     vehicleId: 'veh-004',
     status: 'In servizio',
+    profileImagePath: '',
   },
 ]
 

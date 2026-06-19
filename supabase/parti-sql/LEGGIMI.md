@@ -76,3 +76,10 @@ Eseguili uno alla volta, sempre in questo ordine.
 
 Il file `18_storico_documenti.sql` abilita lo storico dei documenti autista.
 Eseguilo una sola volta dopo `17_push_notifiche_telefono.sql`.
+
+Se Supabase non ti fa incollare il file `18` intero, usa questi due file separati:
+
+1. `18A_storico_documenti_tabella_policy.sql`
+2. `18B_storico_documenti_funzione.sql`
+
+Eseguili uno alla volta, sempre in questo ordine.

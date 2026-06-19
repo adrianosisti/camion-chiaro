@@ -2773,6 +2773,37 @@
   cursor: pointer;
 }
 
+.fault-card {
+  background:
+    linear-gradient(180deg, #ffffff, #fff7f7 130%),
+    #ffffff;
+}
+
+.fault-card-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.fault-card-header > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fault-card-header .fault-button {
+  width: auto;
+  min-width: 108px;
+  min-height: 34px;
+  padding-inline: 12px;
+}
+
+.fault-card.is-open .fault-card-header .fault-button {
+  color: #7f1d1d;
+  background: #fee2e2;
+}
+
 .upload-button:disabled,
 .fault-button:disabled {
   cursor: not-allowed;

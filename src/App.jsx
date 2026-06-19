@@ -4869,6 +4869,7 @@ function DriverMobile({
     title: '',
   })
   const [isDriverChatOpen, setIsDriverChatOpen] = useState(false)
+  const [isFaultFormOpen, setIsFaultFormOpen] = useState(false)
   const [sendingOperation, setSendingOperation] = useState('')
   const selectedVehicle = driveableVehicles.find((entry) => entry.id === selectedVehicleId) ?? assignedVehicle ?? driveableVehicles[0] ?? null
   const attachedTrailer = semitrailers.find((entry) => entry.id === attachedTrailerId) ?? null
@@ -4979,6 +4980,7 @@ function DriverMobile({
 
     if (sent) {
       setFaultForm({ description: '', photoFile: null, severity: 'medium', title: '' })
+      setIsFaultFormOpen(false)
     }
   }
 
@@ -5004,6 +5006,7 @@ function DriverMobile({
               onChange={(event) => {
                 setSelectedPreviewDriverId(event.target.value)
                 setIsDriverChatOpen(false)
+                setIsFaultFormOpen(false)
               }}
             >
               {driverRecords.length === 0 && <option value={driver.id}>{driver.name}</option>}
@@ -5145,69 +5148,6 @@ function DriverMobile({
           {lastCheck && <small>Ultimo check: {formatShortDateTime(lastCheck.createdAt)}</small>}
         </article>
         )}
-        <article className="check-card">
-          <div>
-            <strong>Segnala guasto</strong>
-            <span>
-              {vehicleLabel}
-              {attachedTrailer ? ` · agganciato ${attachedTrailer.plate}` : ''}
-            </span>
-          </div>
-          <form className="check-form" onSubmit={handleFaultSubmit}>
-            <label>
-              Gravità
-              <select value={faultForm.severity} onChange={(event) => updateFaultField('severity', event.target.value)}>
-                {faultSeverityOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Titolo guasto
-              <input
-                onChange={(event) => updateFaultField('title', event.target.value)}
-                placeholder="Es. spia motore accesa"
-                value={faultForm.title}
-              />
-            </label>
-            <label>
-              Dettagli
-              <textarea
-                onChange={(event) => updateFaultField('description', event.target.value)}
-                placeholder="Descrivi cosa succede"
-                value={faultForm.description}
-              />
-            </label>
-            <div className="fault-photo-actions">
-              <label className="document-action-button">
-                Scatta foto
-                <input accept="image/*" capture="environment" onChange={handleFaultPhotoFile} type="file" />
-              </label>
-              <label className="document-action-button">
-                Galleria
-                <input accept="image/*" onChange={handleFaultPhotoFile} type="file" />
-              </label>
-              {faultForm.photoFile && (
-                <button className="small-button" onClick={() => updateFaultField('photoFile', null)} type="button">
-                  Rimuovi foto
-                </button>
-              )}
-            </div>
-            {faultForm.photoFile && <small>Foto pronta: {faultForm.photoFile.name}</small>}
-            <button
-              className="fault-button"
-              disabled={!selectedVehicle || !faultForm.title.trim() || sendingOperation === 'fault'}
-              type="submit"
-            >
-              <Wrench size={16} />
-              {sendingOperation === 'fault' ? 'Invio...' : faultReported ? 'Guasto segnalato' : 'Segnala guasto'}
-            </button>
-          </form>
-          {openFaults.length > 0 && <small>{openFaults.length} guasti aperti</small>}
-          {operationsStatus && <small className="operation-status">{operationsStatus}</small>}
-        </article>
         <article className="check-card driver-chat-card">
           <div>
             <strong>Messaggi azienda</strong>
@@ -5257,6 +5197,77 @@ function DriverMobile({
           </button>
           {chatSyncStatus && <small className="operation-status">{chatSyncStatus}</small>}
         </article>
+        <article className={isFaultFormOpen ? 'check-card fault-card is-open' : 'check-card fault-card'}>
+          <div className="fault-card-header">
+            <div>
+              <strong>Segnala guasto</strong>
+              <span>
+                {vehicleLabel}
+                {attachedTrailer ? ` · agganciato ${attachedTrailer.plate}` : ''}
+              </span>
+            </div>
+            <button className="fault-button" onClick={() => setIsFaultFormOpen((isOpen) => !isOpen)} type="button">
+              <Wrench size={16} />
+              {isFaultFormOpen ? 'Chiudi' : 'Segnala'}
+            </button>
+          </div>
+          {isFaultFormOpen && (
+            <form className="check-form" onSubmit={handleFaultSubmit}>
+              <label>
+                Gravità
+                <select value={faultForm.severity} onChange={(event) => updateFaultField('severity', event.target.value)}>
+                  {faultSeverityOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Titolo guasto
+                <input
+                  onChange={(event) => updateFaultField('title', event.target.value)}
+                  placeholder="Es. spia motore accesa"
+                  value={faultForm.title}
+                />
+              </label>
+              <label>
+                Dettagli
+                <textarea
+                  onChange={(event) => updateFaultField('description', event.target.value)}
+                  placeholder="Descrivi cosa succede"
+                  value={faultForm.description}
+                />
+              </label>
+              <div className="fault-photo-actions">
+                <label className="document-action-button">
+                  Scatta foto
+                  <input accept="image/*" capture="environment" onChange={handleFaultPhotoFile} type="file" />
+                </label>
+                <label className="document-action-button">
+                  Galleria
+                  <input accept="image/*" onChange={handleFaultPhotoFile} type="file" />
+                </label>
+                {faultForm.photoFile && (
+                  <button className="small-button" onClick={() => updateFaultField('photoFile', null)} type="button">
+                    Rimuovi foto
+                  </button>
+                )}
+              </div>
+              {faultForm.photoFile && <small>Foto pronta: {faultForm.photoFile.name}</small>}
+              <button
+                className="fault-button"
+                disabled={!selectedVehicle || !faultForm.title.trim() || sendingOperation === 'fault'}
+                type="submit"
+              >
+                <Wrench size={16} />
+                {sendingOperation === 'fault' ? 'Invio...' : faultReported ? 'Guasto segnalato' : 'Invia guasto'}
+              </button>
+            </form>
+          )}
+          {openFaults.length > 0 && <small>{openFaults.length} guasti aperti</small>}
+          {operationsStatus && <small className="operation-status">{operationsStatus}</small>}
+        </article>
         {isDriverChatOpen && (
           <DriverChatScreen
             assetPreviewUrl={assetPreviewUrl}
@@ -5269,7 +5280,7 @@ function DriverMobile({
           />
         )}
         <div className="documents-card">
-          <strong>Documenti da mostrare</strong>
+          <strong>Documenti da mostrare alla polizia</strong>
           {docs.map((document) => (
             <div className="document-row" key={document.id}>
               <FileText size={15} />

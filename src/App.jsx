@@ -55,6 +55,7 @@ import {
   createVehicleRecord as createSupabaseVehicle,
   createVehicleCheckRecord as createSupabaseVehicleCheck,
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
+  fetchDriverDocumentEvents,
   ensureCompanyForCurrentUser,
   fetchChatMessages,
   fetchChatThreads,
@@ -67,6 +68,9 @@ import {
   fetchVehicles,
   getCurrentAuthSession,
   isSupabaseConfigured,
+  logDriverDocumentEvent as logSupabaseDriverDocumentEvent,
+  savePushSubscription,
+  sendPushNotification,
   markChatMessagesRead as markSupabaseChatMessagesRead,
   signInDriver,
   signInCompany,
@@ -83,6 +87,13 @@ import {
   updateFaultReportStatus as updateSupabaseFaultReportStatus,
   updateVehicleRecord as updateSupabaseVehicle,
 } from './lib/supabase'
+import {
+  getDeviceInstallHint,
+  getExistingPushSubscription,
+  getPushSupportStatus,
+  isStandaloneApp,
+  subscribeCurrentBrowserToPush,
+} from './lib/pwa'
 import './App.css'
 
 const filters = [
@@ -133,6 +144,14 @@ const faultStatusOptions = [
   { value: 'in_progress', label: 'Da leggere' },
   { value: 'closed', label: 'Archiviato' },
 ]
+const deepLinkViews = new Set(['chat', 'documents', 'notifications', 'settings'])
+
+function getInitialActiveView() {
+  if (typeof window === 'undefined') return 'dashboard'
+
+  const viewFromUrl = new URLSearchParams(window.location.search).get('view')
+  return deepLinkViews.has(viewFromUrl) ? viewFromUrl : 'dashboard'
+}
 
 function getFleetTypeLabel(value) {
   return fleetTypeOptions.find((option) => option.value === value)?.label ?? value
@@ -311,6 +330,7 @@ function App() {
   const [faultReportRecords, setFaultReportRecords] = useState([])
   const [chatThreadRecords, setChatThreadRecords] = useState([])
   const [chatMessageRecords, setChatMessageRecords] = useState([])
+  const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState({
     headquarters: company.location,
@@ -320,7 +340,11 @@ function App() {
     vatNumber: company.vat,
   })
   const [assetPreviewUrls, setAssetPreviewUrls] = useState({})
-  const [activeView, setActiveView] = useState('dashboard')
+  const [installPromptEvent, setInstallPromptEvent] = useState(null)
+  const [isStandaloneMode, setIsStandaloneMode] = useState(isStandaloneApp)
+  const [phoneNotificationEnabled, setPhoneNotificationEnabled] = useState(false)
+  const [phoneNotificationStatus, setPhoneNotificationStatus] = useState('')
+  const [activeView, setActiveView] = useState(getInitialActiveView)
   const [activeFilter, setActiveFilter] = useState('all')
   const [operationsFilter, setOperationsFilter] = useState('inbox')
   const [query, setQuery] = useState('')
@@ -360,6 +384,31 @@ function App() {
         .filter(isPreviewableAssetPath),
     [chatMessageRecords, companyProfile.logoPath, driverRecords, faultReportRecords],
   )
+
+  useEffect(() => {
+    function handleBeforeInstallPrompt(event) {
+      event.preventDefault()
+      setInstallPromptEvent(event)
+    }
+
+    function handleInstalled() {
+      setIsStandaloneMode(true)
+      setInstallPromptEvent(null)
+      setPhoneNotificationStatus('Camion Chiaro installata sul telefono.')
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    window.addEventListener('appinstalled', handleInstalled)
+
+    getExistingPushSubscription()
+      .then((subscription) => setPhoneNotificationEnabled(Boolean(subscription)))
+      .catch(() => {})
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleInstalled)
+    }
+  }, [])
 
   useEffect(() => {
     if (!isSupabaseConfigured || assetPaths.length === 0) return
@@ -415,6 +464,7 @@ function App() {
     setFaultReportRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
+    setDocumentEventRecords([])
     setDriverUploadSent(false)
     setMorningCheckSent(false)
     setFaultReported(false)
@@ -444,6 +494,104 @@ function App() {
     }
 
     return true
+  }
+
+  async function installPhoneApp() {
+    if (installPromptEvent?.prompt) {
+      await installPromptEvent.prompt()
+      const choiceResult = await installPromptEvent.userChoice?.catch(() => null)
+      setInstallPromptEvent(null)
+
+      if (choiceResult?.outcome === 'accepted') {
+        setIsStandaloneMode(true)
+        setPhoneNotificationStatus('Camion Chiaro installata sul telefono.')
+        return true
+      }
+    }
+
+    setPhoneNotificationStatus(getDeviceInstallHint())
+    return false
+  }
+
+  async function enablePhoneNotifications() {
+    if (!session) {
+      setPhoneNotificationStatus('Accedi prima di abilitare le notifiche.')
+      return false
+    }
+
+    if (isSupabaseConfigured && !activeCompanyId) {
+      setPhoneNotificationStatus('Aspetta il caricamento azienda, poi riprova.')
+      return false
+    }
+
+    const support = getPushSupportStatus()
+
+    if (!support.supported) {
+      setPhoneNotificationStatus(support.reason)
+      return false
+    }
+
+    setPhoneNotificationStatus('Richiesta autorizzazione notifiche...')
+    const subscriptionResult = await subscribeCurrentBrowserToPush()
+
+    if (subscriptionResult.error || !subscriptionResult.subscription) {
+      setPhoneNotificationStatus(subscriptionResult.error?.message ?? 'Notifiche non abilitate.')
+      return false
+    }
+
+    const saveResult = await savePushSubscription(subscriptionResult.subscription, activeCompanyId)
+
+    if (saveResult.error) {
+      setPhoneNotificationStatus(`Supabase: ${saveResult.error.message}`)
+      return false
+    }
+
+    setPhoneNotificationEnabled(true)
+    setPhoneNotificationStatus('Notifiche telefono abilitate.')
+    return true
+  }
+
+  async function notifyPhone(payload) {
+    if (!hasCompanyDataConnection || !payload?.targetRole) return false
+
+    const result = await sendPushNotification({
+      companyId: activeCompanyId,
+      ...payload,
+    })
+
+    return !result.error
+  }
+
+  async function recordDocumentEvent(document, eventType, details = {}) {
+    if (!document?.id) return false
+
+    if (!hasCompanyDataConnection) {
+      const localEvent = {
+        actorRole: session?.role ?? 'system',
+        createdAt: new Date().toISOString(),
+        documentId: document.id,
+        documentNumber: document.documentNumber ?? '',
+        documentType: document.type,
+        driverId: document.driverId,
+        eventType,
+        filePath: details.filePath ?? '',
+        id: `doc-event-${Date.now()}`,
+        notes: details.notes ?? '',
+        previousFilePath: details.previousFilePath ?? '',
+      }
+
+      setDocumentEventRecords((currentEvents) => [localEvent, ...currentEvents].slice(0, 80))
+      return true
+    }
+
+    const result = await logSupabaseDriverDocumentEvent(document.id, eventType, details)
+
+    if (result.data) {
+      setDocumentEventRecords((currentEvents) => [result.data, ...currentEvents].slice(0, 80))
+      return true
+    }
+
+    return false
   }
 
   async function uploadCompanyLogo(file) {
@@ -591,6 +739,16 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!session || session.role !== 'company') return
+
+    const viewFromUrl = new URLSearchParams(window.location.search).get('view')
+
+    if (deepLinkViews.has(viewFromUrl)) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [session])
+
+  useEffect(() => {
     if (!session || session.role !== 'company' || !isSupabaseConfigured) return
 
     let isMounted = true
@@ -623,6 +781,7 @@ function App() {
         vehiclesResult,
         complianceResult,
         documentsResult,
+        documentEventsResult,
         checksResult,
         faultsResult,
         chatThreadsResult,
@@ -632,6 +791,7 @@ function App() {
         fetchVehicles(companyId),
         fetchComplianceItems(companyId),
         fetchDriverDocuments(companyId),
+        fetchDriverDocumentEvents(companyId),
         fetchVehicleChecks(companyId),
         fetchFaultReports(companyId),
         fetchChatThreads(companyId),
@@ -652,6 +812,7 @@ function App() {
       if (vehiclesResult.data) setVehicleRecords(vehiclesResult.data)
       if (complianceResult.data) setItems(complianceResult.data)
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
+      if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
@@ -779,11 +940,15 @@ function App() {
     }
 
     async function refreshDriverDocuments() {
-      const documentsResult = await fetchDriverDocuments(activeCompanyId)
+      const [documentsResult, documentEventsResult] = await Promise.all([
+        fetchDriverDocuments(activeCompanyId),
+        fetchDriverDocumentEvents(activeCompanyId),
+      ])
 
       if (!isMounted) return
 
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
+      if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
     }
 
     subscribeToChatMessages(activeCompanyId, (message, payload) => {
@@ -911,6 +1076,7 @@ function App() {
     setFaultReportRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
+    setDocumentEventRecords([])
     setChatSyncStatus('')
     setCompanyProfile({
       headquarters: company.location,
@@ -1153,6 +1319,15 @@ function App() {
 
       setDocumentRecords((currentDocuments) => [result.data, ...currentDocuments])
       setDocumentsSyncStatus('Documento salvato su Supabase.')
+      void recordDocumentEvent(result.data, 'created')
+      void notifyPhone({
+        body: `${result.data.type} disponibile in app.`,
+        driverId: result.data.driverId,
+        tag: `document-created-${result.data.id}`,
+        targetRole: 'driver',
+        title: 'Nuovo documento',
+        url: '/?view=documents',
+      })
       return result.data
     }
 
@@ -1167,11 +1342,13 @@ function App() {
 
       setDocumentRecords((currentDocuments) => [result.data, ...currentDocuments])
       setDocumentsSyncStatus('Documento autista creato.')
+      void recordDocumentEvent(result.data, 'created')
       return result.data
     }
 
     setDocumentRecords((currentDocuments) => [cleanDocument, ...currentDocuments])
     setDocumentsSyncStatus('Documento aggiunto in modalità locale.')
+    void recordDocumentEvent(cleanDocument, 'created')
     return cleanDocument
   }
 
@@ -1215,6 +1392,7 @@ function App() {
     const removed = await updateDriverDocumentRecord(document.id, nextDocument)
 
     if (removed) {
+      void recordDocumentEvent(document, 'file_removed', { previousFilePath: document.filePath })
       setDriverDocumentUploadStatus('File documento eliminato. La scheda resta disponibile.')
     }
 
@@ -1222,7 +1400,10 @@ function App() {
   }
 
   async function removeDriverDocumentRecord(documentId) {
+    const document = documentRecords.find((currentDocument) => currentDocument.id === documentId)
+
     if (hasCompanyDataConnection && session?.role === 'company') {
+      if (document) await recordDocumentEvent(document, 'deleted')
       setDocumentsSyncStatus('Rimozione documento da Supabase...')
       const result = await deleteSupabaseDriverDocument(documentId)
 
@@ -1232,6 +1413,7 @@ function App() {
       }
     }
 
+    if (!hasCompanyDataConnection && document) void recordDocumentEvent(document, 'deleted')
     setDocumentRecords((currentDocuments) => currentDocuments.filter((document) => document.id !== documentId))
     setDocumentsSyncStatus(hasCompanyDataConnection ? 'Documento rimosso.' : 'Documento rimosso in modalità locale.')
     return true
@@ -1263,6 +1445,29 @@ function App() {
             currentDocument.id === document.id ? result.data : currentDocument,
           ),
         )
+        void recordDocumentEvent(result.data, 'file_uploaded', {
+          filePath: result.data.filePath,
+          previousFilePath: document.filePath,
+        })
+        if (session?.role === 'company') {
+          void notifyPhone({
+            body: `${result.data.type} aggiornato dall azienda.`,
+            driverId: result.data.driverId,
+            tag: `document-file-${result.data.id}`,
+            targetRole: 'driver',
+            title: 'Documento aggiornato',
+            url: '/?view=documents',
+          })
+        } else {
+          const driver = driverRecords.find((driverRecord) => driverRecord.id === result.data.driverId)
+          void notifyPhone({
+            body: `${driver?.name ?? 'Un autista'} ha caricato ${result.data.type}.`,
+            tag: `document-file-${result.data.id}`,
+            targetRole: 'company',
+            title: 'Documento autista caricato',
+            url: '/?view=documents',
+          })
+        }
       }
       setDriverUploadSent(true)
       setDriverDocumentUploadStatus('Documento caricato. Ora puoi aprirlo dall app.')
@@ -1279,6 +1484,10 @@ function App() {
     setUploadingDriverDocumentId('')
     setDriverUploadSent(true)
     setDriverDocumentUploadStatus('Documento selezionato in modalità locale.')
+    void recordDocumentEvent({ ...document, filePath: file.name, status: 'Caricato' }, 'file_uploaded', {
+      filePath: file.name,
+      previousFilePath: document.filePath,
+    })
     return true
   }
 
@@ -1331,6 +1540,14 @@ function App() {
       setVehicleCheckRecords((currentChecks) => [result.data, ...currentChecks])
       setMorningCheckSent(true)
       setOperationsSyncStatus('Check mattutino inviato all azienda.')
+      const driver = driverRecords.find((driverRecord) => driverRecord.id === result.data.driverId)
+      void notifyPhone({
+        body: `${driver?.name ?? 'Un autista'} ha inviato il check mattutino.`,
+        tag: `check-${result.data.id}`,
+        targetRole: 'company',
+        title: hasCheckIssues(result.data) ? 'Check critico' : 'Check mattutino',
+        url: '/?view=notifications',
+      })
       return true
     }
 
@@ -1371,6 +1588,14 @@ function App() {
       setFaultReportRecords((currentReports) => [result.data, ...currentReports])
       setFaultReported(true)
       setOperationsSyncStatus('Guasto segnalato all azienda.')
+      const driver = driverRecords.find((driverRecord) => driverRecord.id === result.data.driverId)
+      void notifyPhone({
+        body: `${driver?.name ?? 'Un autista'}: ${result.data.title}`,
+        tag: `fault-${result.data.id}`,
+        targetRole: 'company',
+        title: ['high', 'stop_vehicle'].includes(result.data.severity) ? 'Guasto critico' : 'Nuovo guasto',
+        url: '/?view=notifications',
+      })
       return true
     }
 
@@ -1453,6 +1678,14 @@ function App() {
         }),
       )
       setChatSyncStatus('Messaggio inviato.')
+      void notifyPhone({
+        body: cleanBody || 'Foto allegata in chat.',
+        driverId,
+        tag: `chat-${targetThread.id}`,
+        targetRole: senderRole === 'company' ? 'driver' : 'company',
+        title: senderRole === 'company' ? 'Messaggio azienda' : 'Messaggio autista',
+        url: '/?view=chat',
+      })
       return true
     }
 
@@ -1610,6 +1843,12 @@ function App() {
         uploadSent={driverUploadSent}
         uploadingDocumentId={uploadingDriverDocumentId}
         vehicleCheckRecords={vehicleCheckRecords}
+        installPromptAvailable={Boolean(installPromptEvent)}
+        isStandaloneMode={isStandaloneMode}
+        notificationEnabled={phoneNotificationEnabled}
+        notificationStatus={phoneNotificationStatus}
+        onEnablePhoneNotifications={enablePhoneNotifications}
+        onInstallPhoneApp={installPhoneApp}
       />
     )
   }
@@ -1696,6 +1935,7 @@ function App() {
           />
         ) : activeView === 'documents' ? (
           <DocumentsWorkspace
+            documentEvents={documentEventRecords}
             documentRecords={documentRecords}
             driverRecords={driverRecords}
             onAddDocument={addDriverDocumentRecord}
@@ -1747,7 +1987,13 @@ function App() {
             companyEmail={session.email}
             companyProfile={{ ...companyProfile, name: companyName }}
             companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
+            installPromptAvailable={Boolean(installPromptEvent)}
+            isStandaloneMode={isStandaloneMode}
+            notificationEnabled={phoneNotificationEnabled}
+            notificationStatus={phoneNotificationStatus}
             onCompanyLogoUpload={uploadCompanyLogo}
+            onEnablePhoneNotifications={enablePhoneNotifications}
+            onInstallPhoneApp={installPhoneApp}
             onUpdateCompanyProfile={updateCompanyProfile}
             syncStatus={companySettingsStatus}
           />
@@ -2437,6 +2683,49 @@ function CompanyLogoUploader({ companyName, logoUrl, onUpload }) {
   )
 }
 
+function PhoneSetupPanel({
+  compact = false,
+  installPromptAvailable,
+  isStandaloneMode,
+  notificationEnabled,
+  notificationStatus,
+  onEnableNotifications,
+  onInstallApp,
+}) {
+  const pushSupport = getPushSupportStatus()
+  const installStatus = isStandaloneMode ? 'Installata' : installPromptAvailable ? 'Pronta' : 'Da aggiungere'
+  const notificationText = notificationEnabled ? 'Attive' : pushSupport.supported ? 'Da attivare' : 'Non disponibili'
+
+  return (
+    <article className={compact ? 'phone-setup-panel is-compact' : 'panel phone-setup-panel'}>
+      <div className="phone-setup-heading">
+        <div>
+          <p className="overline">Telefono</p>
+          <h2>App e notifiche</h2>
+        </div>
+        <Smartphone size={20} />
+      </div>
+      <div className="phone-setup-grid">
+        <div>
+          <strong>{installStatus}</strong>
+          <span>{isStandaloneMode ? 'Aperta come app' : getDeviceInstallHint()}</span>
+        </div>
+        <button className="small-button" disabled={isStandaloneMode} onClick={onInstallApp} type="button">
+          Installa app
+        </button>
+        <div>
+          <strong>{notificationText}</strong>
+          <span>{pushSupport.supported ? 'Chat, guasti e documenti' : pushSupport.reason}</span>
+        </div>
+        <button className="small-button" disabled={notificationEnabled || !pushSupport.supported} onClick={onEnableNotifications} type="button">
+          Abilita notifiche
+        </button>
+      </div>
+      {notificationStatus && <p className="sync-status-line">{notificationStatus}</p>}
+    </article>
+  )
+}
+
 function PhotoPreviewModal({ imageUrl, name, onClose }) {
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
@@ -2462,7 +2751,20 @@ function PhotoPreviewModal({ imageUrl, name, onClose }) {
   )
 }
 
-function SettingsWorkspace({ companyEmail, companyLogoUrl, companyProfile, onCompanyLogoUpload, onUpdateCompanyProfile, syncStatus }) {
+function SettingsWorkspace({
+  companyEmail,
+  companyLogoUrl,
+  companyProfile,
+  installPromptAvailable,
+  isStandaloneMode,
+  notificationEnabled,
+  notificationStatus,
+  onCompanyLogoUpload,
+  onEnablePhoneNotifications,
+  onInstallPhoneApp,
+  onUpdateCompanyProfile,
+  syncStatus,
+}) {
   const [form, setForm] = useState({
     headquarters: companyProfile.headquarters ?? '',
     name: companyProfile.name ?? '',
@@ -2521,21 +2823,31 @@ function SettingsWorkspace({ companyEmail, companyLogoUrl, companyProfile, onCom
         </button>
         {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
       </form>
-      <aside className="panel settings-summary-panel">
-        <div className="panel-header compact">
-          <div>
-            <p className="overline">Anteprima</p>
-            <h2>Dati azienda</h2>
+      <div className="settings-side-column">
+        <PhoneSetupPanel
+          installPromptAvailable={installPromptAvailable}
+          isStandaloneMode={isStandaloneMode}
+          notificationEnabled={notificationEnabled}
+          notificationStatus={notificationStatus}
+          onEnableNotifications={onEnablePhoneNotifications}
+          onInstallApp={onInstallPhoneApp}
+        />
+        <aside className="panel settings-summary-panel">
+          <div className="panel-header compact">
+            <div>
+              <p className="overline">Anteprima</p>
+              <h2>Dati azienda</h2>
+            </div>
+            <Building2 size={20} />
           </div>
-          <Building2 size={20} />
-        </div>
-        <div className="settings-summary-list">
-          <DetailLine label="Dashboard" value={form.name} />
-          <DetailLine label="Partita IVA" value={form.vatNumber || 'Non inserita'} />
-          <DetailLine label="Sede" value={form.headquarters || 'Non inserita'} />
-          <DetailLine label="Email accesso" value={companyEmail || 'Non disponibile'} />
-        </div>
-      </aside>
+          <div className="settings-summary-list">
+            <DetailLine label="Dashboard" value={form.name} />
+            <DetailLine label="Partita IVA" value={form.vatNumber || 'Non inserita'} />
+            <DetailLine label="Sede" value={form.headquarters || 'Non inserita'} />
+            <DetailLine label="Email accesso" value={companyEmail || 'Non disponibile'} />
+          </div>
+        </aside>
+      </div>
     </section>
   )
 }
@@ -3364,6 +3676,7 @@ function VehicleCreatePanel({ onAddVehicle, onBackHome }) {
 }
 
 function DocumentsWorkspace({
+  documentEvents = [],
   documentRecords,
   driverRecords,
   onAddDocument,
@@ -3478,12 +3791,54 @@ function DocumentsWorkspace({
           {documentRecords.length === 0 && <p className="archive-note">Nessun documento inserito.</p>}
           {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
         </div>
+        <DocumentHistoryPanel documentEvents={documentEvents} driverRecords={driverRecords} />
       </div>
       <DocumentCreatePanel
         driverRecords={driverRecords}
         onAddDocument={onAddDocument}
         onDriverDocumentUpload={onDriverDocumentUpload}
       />
+    </section>
+  )
+}
+
+const documentEventLabels = {
+  created: 'Creato',
+  deleted: 'Eliminato',
+  file_removed: 'File rimosso',
+  file_uploaded: 'File caricato',
+  updated: 'Aggiornato',
+}
+
+function DocumentHistoryPanel({ documentEvents = [], driverRecords = [] }) {
+  return (
+    <section className="panel document-history-panel" aria-label="Storico documenti">
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">Storico</p>
+          <h2>Movimenti documenti</h2>
+        </div>
+        <Clock3 size={20} />
+      </div>
+      <div className="document-history-list">
+        {documentEvents.map((event) => {
+          const driver = driverRecords.find((driverRecord) => driverRecord.id === event.driverId)
+
+          return (
+            <article className="document-history-row" key={event.id}>
+              <span className="status-pill tone-info">{documentEventLabels[event.eventType] ?? event.eventType}</span>
+              <div>
+                <strong>{event.documentType}</strong>
+                <small>
+                  {driver?.name ?? 'Autista non disponibile'} · {event.actorRole === 'driver' ? 'Autista' : 'Azienda'}
+                </small>
+              </div>
+              <small>{formatShortDateTime(event.createdAt)}</small>
+            </article>
+          )
+        })}
+        {documentEvents.length === 0 && <p className="archive-note">Lo storico comparirà al prossimo movimento documento.</p>}
+      </div>
     </section>
   )
 }
@@ -4841,15 +5196,21 @@ function DriverAppView({
   driverRecords,
   faultReportRecords,
   faultReported,
+  installPromptAvailable,
   isLoading,
+  isStandaloneMode,
   items,
   morningCheckSent,
+  notificationEnabled,
+  notificationStatus,
   onDriverDocumentCreate,
   onDriverDocumentFileRemove,
   onDriverDocumentUpload,
   onDriverProfileImageRemove,
   onDriverProfileImageUpload,
   onFaultReport,
+  onEnablePhoneNotifications,
+  onInstallPhoneApp,
   onMarkChatRead,
   onMorningCheck,
   onOpenDriverDocument,
@@ -4915,14 +5276,24 @@ function DriverAppView({
         ) : (
           <DriverEmptyPhone companyLogoUrl={companyLogoUrl} companyName={companyName} message={operationsStatus} />
         )}
-        <section className="panel driver-note-panel">
-          <p className="overline">Notifiche</p>
-          <h1>Qui arrivano gli avvisi in app</h1>
-          <p>
-            Quando Supabase sarà collegato, questa vista leggerà solo le scadenze dell autista loggato e
-            mostrerà avvisi personali, documenti caricati, check mattutini e segnalazioni guasto.
-          </p>
-        </section>
+        <div className="driver-info-column">
+          <section className="panel driver-note-panel">
+            <p className="overline">Notifiche</p>
+            <h1>Qui arrivano gli avvisi in app</h1>
+            <p>
+              Quando Supabase sarà collegato, questa vista leggerà solo le scadenze dell'autista loggato e
+              mostrerà avvisi personali, documenti caricati, check mattutini e segnalazioni guasto.
+            </p>
+          </section>
+          <PhoneSetupPanel
+            installPromptAvailable={installPromptAvailable}
+            isStandaloneMode={isStandaloneMode}
+            notificationEnabled={notificationEnabled}
+            notificationStatus={notificationStatus}
+            onEnableNotifications={onEnablePhoneNotifications}
+            onInstallApp={onInstallPhoneApp}
+          />
+        </div>
       </div>
     </main>
   )

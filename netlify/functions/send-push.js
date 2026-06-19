@@ -1,0 +1,249 @@
+import { createClient } from '@supabase/supabase-js'
+import webPush from 'web-push'
+
+const jsonHeaders = {
+  'Content-Type': 'application/json',
+}
+
+function jsonResponse(statusCode, body) {
+  return {
+    body: JSON.stringify(body),
+    headers: jsonHeaders,
+    statusCode,
+  }
+}
+
+async function getSenderContext(serviceClient, userId, companyId) {
+  const [membershipResult, driverResult] = await Promise.all([
+    serviceClient
+      .from('company_members')
+      .select('role')
+      .eq('company_id', companyId)
+      .eq('user_id', userId)
+      .maybeSingle(),
+    serviceClient
+      .from('drivers')
+      .select('id, company_id, full_name')
+      .eq('company_id', companyId)
+      .eq('user_id', userId)
+      .neq('status', 'archived')
+      .maybeSingle(),
+  ])
+
+  if (membershipResult.error) return { data: null, error: membershipResult.error }
+  if (driverResult.error) return { data: null, error: driverResult.error }
+
+  if (membershipResult.data) {
+    return {
+      data: {
+        companyId,
+        driverId: null,
+        role: 'company',
+      },
+      error: null,
+    }
+  }
+
+  if (driverResult.data) {
+    return {
+      data: {
+        companyId,
+        driverId: driverResult.data.id,
+        role: 'driver',
+      },
+      error: null,
+    }
+  }
+
+  return { data: null, error: null }
+}
+
+async function getRecipientUserIds(serviceClient, senderContext, targetRole, driverId) {
+  if (targetRole === 'company') {
+    const { data, error } = await serviceClient
+      .from('company_members')
+      .select('user_id')
+      .eq('company_id', senderContext.companyId)
+      .in('role', ['owner', 'admin', 'operator'])
+
+    if (error) return { data: null, error }
+
+    return {
+      data: data.map((member) => member.user_id).filter((userId) => userId),
+      error: null,
+    }
+  }
+
+  if (targetRole === 'driver') {
+    if (senderContext.role !== 'company') {
+      return { data: null, error: { message: 'Solo l azienda puo inviare notifiche push agli autisti.' } }
+    }
+
+    const { data, error } = await serviceClient
+      .from('drivers')
+      .select('user_id')
+      .eq('company_id', senderContext.companyId)
+      .eq('id', driverId)
+      .neq('status', 'archived')
+      .maybeSingle()
+
+    if (error) return { data: null, error }
+
+    return { data: data?.user_id ? [data.user_id] : [], error: null }
+  }
+
+  return { data: null, error: { message: 'Destinatario notifica non valido.' } }
+}
+
+export async function handler(event) {
+  if (event.httpMethod === 'OPTIONS') {
+    return jsonResponse(204, {})
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return jsonResponse(405, { error: 'Metodo non consentito.' })
+  }
+
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const vapidPublicKey = process.env.WEB_PUSH_PUBLIC_KEY ?? process.env.VITE_WEB_PUSH_PUBLIC_KEY
+  const vapidPrivateKey = process.env.WEB_PUSH_PRIVATE_KEY
+  const vapidSubject = process.env.WEB_PUSH_SUBJECT ?? 'mailto:info@camionchiaro.app'
+
+  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+    return jsonResponse(500, { error: 'Configurazione Supabase Netlify mancante.' })
+  }
+
+  if (!vapidPublicKey || !vapidPrivateKey) {
+    return jsonResponse(500, {
+      error: 'Configurazione push mancante. Aggiungi WEB_PUSH_PUBLIC_KEY e WEB_PUSH_PRIVATE_KEY su Netlify.',
+    })
+  }
+
+  const authorization = event.headers.authorization ?? event.headers.Authorization ?? ''
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : ''
+
+  if (!token) {
+    return jsonResponse(401, { error: 'Sessione mancante. Fai login e riprova.' })
+  }
+
+  let body
+  try {
+    body = JSON.parse(event.body || '{}')
+  } catch {
+    return jsonResponse(400, { error: 'Dati richiesta non validi.' })
+  }
+
+  const companyId = String(body.companyId ?? '')
+  const targetRole = String(body.targetRole ?? '')
+  const driverId = body.driverId ? String(body.driverId) : ''
+  const title = String(body.title ?? 'Camion Chiaro').slice(0, 120)
+  const messageBody = String(body.body ?? 'Nuovo aggiornamento disponibile.').slice(0, 240)
+  const url = String(body.url ?? '/')
+  const tag = String(body.tag ?? `camion-chiaro-${Date.now()}`)
+
+  if (!companyId || !['company', 'driver'].includes(targetRole)) {
+    return jsonResponse(400, { error: 'Azienda o destinatario non valido.' })
+  }
+
+  const userClient = createClient(supabaseUrl, supabaseAnonKey)
+  const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+
+  const { data: authData, error: authError } = await userClient.auth.getUser(token)
+
+  if (authError || !authData.user) {
+    return jsonResponse(401, { error: 'Sessione non valida. Fai login e riprova.' })
+  }
+
+  const senderContextResult = await getSenderContext(serviceClient, authData.user.id, companyId)
+
+  if (senderContextResult.error) {
+    return jsonResponse(500, { error: senderContextResult.error.message })
+  }
+
+  if (!senderContextResult.data) {
+    return jsonResponse(403, { error: 'Utente non collegato a questa azienda.' })
+  }
+
+  const recipientsResult = await getRecipientUserIds(
+    serviceClient,
+    senderContextResult.data,
+    targetRole,
+    driverId,
+  )
+
+  if (recipientsResult.error) {
+    return jsonResponse(403, { error: recipientsResult.error.message })
+  }
+
+  const recipientUserIds = recipientsResult.data.filter((userId) => userId !== authData.user.id)
+
+  if (recipientUserIds.length === 0) {
+    return jsonResponse(200, { sent: 0, skipped: true })
+  }
+
+  const { data: subscriptions, error: subscriptionsError } = await serviceClient
+    .from('push_subscriptions')
+    .select('id, endpoint, p256dh, auth')
+    .eq('company_id', companyId)
+    .in('user_id', recipientUserIds)
+    .is('disabled_at', null)
+
+  if (subscriptionsError) {
+    return jsonResponse(500, { error: subscriptionsError.message })
+  }
+
+  if (!subscriptions || subscriptions.length === 0) {
+    return jsonResponse(200, { sent: 0, skipped: true })
+  }
+
+  webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+
+  const payload = JSON.stringify({
+    body: messageBody,
+    tag,
+    title,
+    url,
+  })
+
+  const results = await Promise.allSettled(
+    subscriptions.map((subscription) =>
+      webPush.sendNotification(
+        {
+          endpoint: subscription.endpoint,
+          keys: {
+            auth: subscription.auth,
+            p256dh: subscription.p256dh,
+          },
+        },
+        payload,
+      ),
+    ),
+  )
+
+  const expiredSubscriptionIds = results
+    .map((result, index) => ({ result, subscription: subscriptions[index] }))
+    .filter(({ result }) => {
+      const statusCode = result.reason?.statusCode
+      return result.status === 'rejected' && [404, 410].includes(statusCode)
+    })
+    .map(({ subscription }) => subscription.id)
+
+  if (expiredSubscriptionIds.length > 0) {
+    await serviceClient
+      .from('push_subscriptions')
+      .update({ disabled_at: new Date().toISOString() })
+      .in('id', expiredSubscriptionIds)
+  }
+
+  const sent = results.filter((result) => result.status === 'fulfilled').length
+  const failed = results.length - sent
+
+  return jsonResponse(200, { failed, sent })
+}

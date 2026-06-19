@@ -1,0 +1,38 @@
+{
+  "name": "Camion Chiaro",
+  "short_name": "Camion Chiaro",
+  "description": "Scadenze, documenti, check, guasti e chat per aziende logistica e autisti.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f0f9ff",
+  "theme_color": "#020617",
+  "categories": ["business", "productivity", "utilities"],
+  "lang": "it",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Documenti",
+      "short_name": "Documenti",
+      "description": "Apri l'area documenti",
+      "url": "/?view=documents",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Chat",
+      "short_name": "Chat",
+      "description": "Apri la chat",
+      "url": "/?view=chat",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

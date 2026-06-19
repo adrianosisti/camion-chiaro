@@ -73,6 +73,22 @@ create table public.driver_documents (
   updated_at timestamptz not null default now()
 );
 
+create table public.driver_document_events (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid references public.drivers(id) on delete set null,
+  document_id uuid references public.driver_documents(id) on delete set null,
+  document_type text not null,
+  document_number text,
+  event_type text not null check (event_type in ('created', 'updated', 'file_uploaded', 'file_removed', 'deleted')),
+  actor_user_id uuid references auth.users(id) on delete set null,
+  actor_role text not null check (actor_role in ('company', 'driver', 'system')),
+  file_path text,
+  previous_file_path text,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
 create table public.compliance_items (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -105,6 +121,23 @@ create table public.notification_preferences (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (company_id, driver_id)
+);
+
+create table public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid references public.drivers(id) on delete cascade,
+  account_role text not null check (account_role in ('company', 'driver')),
+  endpoint text not null,
+  endpoint_hash text not null unique,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  disabled_at timestamptz,
+  last_seen_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table public.in_app_notifications (
@@ -227,6 +260,10 @@ for each row execute function public.touch_updated_at();
 
 create trigger touch_notification_preferences_updated_at
 before update on public.notification_preferences
+for each row execute function public.touch_updated_at();
+
+create trigger touch_push_subscriptions_updated_at
+before update on public.push_subscriptions
 for each row execute function public.touch_updated_at();
 
 create trigger touch_fault_reports_updated_at
@@ -379,6 +416,14 @@ create index drivers_phone_idx on public.drivers (phone);
 create index vehicles_company_status_idx on public.vehicles (company_id, status);
 create index vehicles_company_type_idx on public.vehicles (company_id, fleet_type, status);
 create index driver_documents_driver_idx on public.driver_documents (driver_id, expires_at);
+create index driver_document_events_company_created_idx
+  on public.driver_document_events (company_id, created_at desc);
+create index driver_document_events_driver_created_idx
+  on public.driver_document_events (driver_id, created_at desc)
+  where driver_id is not null;
+create index driver_document_events_document_created_idx
+  on public.driver_document_events (document_id, created_at desc)
+  where document_id is not null;
 create index compliance_items_company_due_idx
   on public.compliance_items (company_id, due_date)
   where status in ('open', 'renewing');
@@ -390,6 +435,11 @@ create index compliance_items_vehicle_due_idx
   where vehicle_id is not null and status in ('open', 'renewing');
 create index notification_preferences_company_idx on public.notification_preferences (company_id);
 create index notification_preferences_driver_idx on public.notification_preferences (driver_id) where driver_id is not null;
+create index push_subscriptions_user_active_idx on public.push_subscriptions (user_id, disabled_at);
+create index push_subscriptions_company_active_idx on public.push_subscriptions (company_id, account_role, disabled_at);
+create index push_subscriptions_driver_active_idx
+  on public.push_subscriptions (driver_id, disabled_at)
+  where driver_id is not null;
 create index in_app_notifications_driver_created_idx on public.in_app_notifications (driver_id, created_at desc);
 create index vehicle_checks_driver_created_idx on public.vehicle_checks (driver_id, created_at desc);
 create index fault_reports_company_status_idx on public.fault_reports (company_id, status, created_at desc);
@@ -401,8 +451,10 @@ alter table public.company_members enable row level security;
 alter table public.drivers enable row level security;
 alter table public.vehicles enable row level security;
 alter table public.driver_documents enable row level security;
+alter table public.driver_document_events enable row level security;
 alter table public.compliance_items enable row level security;
 alter table public.notification_preferences enable row level security;
+alter table public.push_subscriptions enable row level security;
 alter table public.in_app_notifications enable row level security;
 alter table public.vehicle_checks enable row level security;
 alter table public.fault_reports enable row level security;
@@ -500,6 +552,18 @@ to authenticated
 using ((select public.is_company_operator(company_id)))
 with check ((select public.is_company_operator(company_id)));
 
+create policy "Members and drivers can read document events"
+on public.driver_document_events
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (
+    driver_id is not null
+    and (select public.is_driver_user(driver_id))
+  )
+);
+
 create policy "Members and assigned drivers can read compliance items"
 on public.compliance_items
 for select
@@ -537,6 +601,18 @@ for all
 to authenticated
 using ((select public.is_company_operator(company_id)))
 with check ((select public.is_company_operator(company_id)));
+
+create policy "Users can read own push subscriptions"
+on public.push_subscriptions
+for select
+to authenticated
+using (user_id = (select auth.uid()));
+
+create policy "Users can delete own push subscriptions"
+on public.push_subscriptions
+for delete
+to authenticated
+using (user_id = (select auth.uid()));
 
 create policy "Drivers and members can read in app notifications"
 on public.in_app_notifications
@@ -729,6 +805,203 @@ end;
 $$;
 
 grant execute on function public.create_driver_document_for_current_driver(text, text, date) to authenticated;
+
+create or replace function public.upsert_push_subscription(
+  subscription_endpoint text,
+  subscription_p256dh text,
+  subscription_auth text,
+  subscription_user_agent text default null,
+  subscription_target_company_id uuid default null
+)
+returns public.push_subscriptions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := (select auth.uid());
+  current_company_id uuid;
+  current_driver_id uuid;
+  current_role text;
+  saved_subscription public.push_subscriptions;
+begin
+  if current_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if subscription_endpoint is null or length(trim(subscription_endpoint)) = 0 then
+    raise exception 'Endpoint required';
+  end if;
+
+  if subscription_p256dh is null or length(trim(subscription_p256dh)) = 0 then
+    raise exception 'Push key required';
+  end if;
+
+  if subscription_auth is null or length(trim(subscription_auth)) = 0 then
+    raise exception 'Push auth required';
+  end if;
+
+  select d.company_id, d.id, 'driver'
+  into current_company_id, current_driver_id, current_role
+  from public.drivers d
+  where d.user_id = current_user_id
+    and d.status <> 'archived'
+    and (subscription_target_company_id is null or d.company_id = subscription_target_company_id)
+  order by d.created_at desc
+  limit 1;
+
+  if current_company_id is null then
+    select cm.company_id, null::uuid, 'company'
+    into current_company_id, current_driver_id, current_role
+    from public.company_members cm
+    where cm.user_id = current_user_id
+      and cm.role in ('owner', 'admin', 'operator')
+      and (subscription_target_company_id is null or cm.company_id = subscription_target_company_id)
+    order by cm.created_at desc
+    limit 1;
+  end if;
+
+  if current_company_id is null then
+    raise exception 'Company not found for current user';
+  end if;
+
+  insert into public.push_subscriptions (
+    user_id,
+    company_id,
+    driver_id,
+    account_role,
+    endpoint,
+    endpoint_hash,
+    p256dh,
+    auth,
+    user_agent,
+    disabled_at,
+    last_seen_at
+  )
+  values (
+    current_user_id,
+    current_company_id,
+    current_driver_id,
+    current_role,
+    trim(subscription_endpoint),
+    encode(digest(trim(subscription_endpoint), 'sha256'), 'hex'),
+    trim(subscription_p256dh),
+    trim(subscription_auth),
+    nullif(trim(coalesce(subscription_user_agent, '')), ''),
+    null,
+    now()
+  )
+  on conflict (endpoint_hash) do update
+  set
+    user_id = excluded.user_id,
+    company_id = excluded.company_id,
+    driver_id = excluded.driver_id,
+    account_role = excluded.account_role,
+    endpoint = excluded.endpoint,
+    p256dh = excluded.p256dh,
+    auth = excluded.auth,
+    user_agent = excluded.user_agent,
+    disabled_at = null,
+    last_seen_at = now(),
+    updated_at = now()
+  returning * into saved_subscription;
+
+  return saved_subscription;
+end;
+$$;
+
+create or replace function public.delete_push_subscription(
+  subscription_endpoint text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.push_subscriptions
+  set disabled_at = now(), updated_at = now()
+  where endpoint_hash = encode(digest(trim(subscription_endpoint), 'sha256'), 'hex')
+    and user_id = (select auth.uid());
+
+  return found;
+end;
+$$;
+
+grant execute on function public.upsert_push_subscription(text, text, text, text, uuid) to authenticated;
+grant execute on function public.delete_push_subscription(text) to authenticated;
+
+create or replace function public.log_driver_document_event(
+  target_document_id uuid,
+  event_type text,
+  event_file_path text default null,
+  event_previous_file_path text default null,
+  event_notes text default null
+)
+returns public.driver_document_events
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  document_row public.driver_documents;
+  actor_role text;
+  inserted_event public.driver_document_events;
+begin
+  if event_type not in ('created', 'updated', 'file_uploaded', 'file_removed', 'deleted') then
+    raise exception 'Invalid document event type';
+  end if;
+
+  select *
+  into document_row
+  from public.driver_documents
+  where id = target_document_id;
+
+  if document_row.id is null then
+    raise exception 'Document not found';
+  end if;
+
+  if (select public.is_company_operator(document_row.company_id)) then
+    actor_role := 'company';
+  elsif document_row.visible_to_driver and (select public.is_driver_user(document_row.driver_id)) then
+    actor_role := 'driver';
+  else
+    raise exception 'Document event not allowed';
+  end if;
+
+  insert into public.driver_document_events (
+    company_id,
+    driver_id,
+    document_id,
+    document_type,
+    document_number,
+    event_type,
+    actor_user_id,
+    actor_role,
+    file_path,
+    previous_file_path,
+    notes
+  )
+  values (
+    document_row.company_id,
+    document_row.driver_id,
+    document_row.id,
+    document_row.type,
+    document_row.document_number,
+    event_type,
+    (select auth.uid()),
+    actor_role,
+    event_file_path,
+    event_previous_file_path,
+    nullif(trim(coalesce(event_notes, '')), '')
+  )
+  returning * into inserted_event;
+
+  return inserted_event;
+end;
+$$;
+
+grant execute on function public.log_driver_document_event(uuid, text, text, text, text) to authenticated;
 
 drop policy if exists "Members and assigned drivers can read driver document files" on storage.objects;
 create policy "Members and assigned drivers can read driver document files"

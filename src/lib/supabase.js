@@ -108,6 +108,22 @@ function mapDriverDocument(row) {
   }
 }
 
+function mapDriverDocumentEvent(row) {
+  return {
+    actorRole: row.actor_role,
+    createdAt: row.created_at,
+    documentId: row.document_id,
+    documentNumber: row.document_number ?? '',
+    documentType: row.document_type,
+    driverId: row.driver_id,
+    eventType: row.event_type,
+    filePath: row.file_path ?? '',
+    id: row.id,
+    notes: row.notes ?? '',
+    previousFilePath: row.previous_file_path ?? '',
+  }
+}
+
 function mapVehicleCheck(row) {
   return {
     companyId: row.company_id,
@@ -511,6 +527,25 @@ export async function fetchDriverDocuments(companyId = configuredCompanyId) {
     .order('expires_at', { ascending: true, nullsFirst: false })
 
   return { data: data?.map(mapDriverDocument) ?? null, error }
+}
+
+export async function fetchDriverDocumentEvents(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('driver_document_events')
+    .select(
+      'id, driver_id, document_id, document_type, document_number, event_type, actor_role, file_path, previous_file_path, notes, created_at',
+    )
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(80)
+
+  return { data: data?.map(mapDriverDocumentEvent) ?? null, error }
 }
 
 export async function fetchVehicleChecks(companyId = configuredCompanyId) {
@@ -1109,6 +1144,24 @@ export async function deleteDriverDocumentRecord(documentId) {
   return supabase.from('driver_documents').delete().eq('id', documentId)
 }
 
+export async function logDriverDocumentEvent(documentId, eventType, details = {}) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !documentId || !eventType) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('log_driver_document_event', {
+    event_file_path: details.filePath || null,
+    event_notes: details.notes || null,
+    event_previous_file_path: details.previousFilePath || null,
+    event_type: eventType,
+    target_document_id: documentId,
+  })
+
+  return { data: data ? mapDriverDocumentEvent(data) : null, error }
+}
+
 export async function uploadDriverDocumentFile(document, file, companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -1327,6 +1380,85 @@ export async function getCurrentAuthSession() {
   }
 
   return supabase.auth.getSession()
+}
+
+export async function savePushSubscription(subscription, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase) {
+    return { data: null, error: null, demo: true }
+  }
+
+  const endpoint = subscription?.endpoint
+  const keys = subscription?.keys ?? {}
+
+  if (!endpoint || !keys.p256dh || !keys.auth) {
+    return { data: null, error: { message: 'Iscrizione notifiche non valida.' } }
+  }
+
+  const { data, error } = await supabase.rpc('upsert_push_subscription', {
+    subscription_auth: keys.auth,
+    subscription_endpoint: endpoint,
+    subscription_p256dh: keys.p256dh,
+    subscription_target_company_id: companyId || null,
+    subscription_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+  })
+
+  return { data, error }
+}
+
+export async function deletePushSubscription(endpoint) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !endpoint) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('delete_push_subscription', {
+    subscription_endpoint: endpoint,
+  })
+
+  return { data, error }
+}
+
+export async function sendPushNotification(payload) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase) {
+    return { data: null, error: null, demo: true }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione mancante per inviare notifica telefono.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/send-push', {
+      body: JSON.stringify(payload),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const responsePayload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: responsePayload.error ?? 'Notifica telefono non inviata.' } }
+    }
+
+    return { data: responsePayload, error: null }
+  } catch {
+    return {
+      data: null,
+      error: {
+        message: 'Funzione notifiche non raggiungibile. Dopo il deploy Netlify riprova dal sito online.',
+      },
+    }
+  }
 }
 
 export async function signUpCompany({ email, password, companyName }) {

@@ -60,3 +60,11 @@ Eseguilo una sola volta dopo i file della chat.
 
 Il file `16_documenti_autista.sql` permette all autista di aggiungere un nuovo documento dalla sua app e caricare subito foto o PDF.
 Eseguilo una sola volta dopo `15_realtime_check_guasti.sql`.
+
+## Notifiche telefono e storico documenti
+
+Il file `17_push_notifiche_telefono.sql` registra i telefoni che autorizzano le notifiche push.
+Eseguilo una sola volta dopo `16_documenti_autista.sql`.
+
+Il file `18_storico_documenti.sql` abilita lo storico dei documenti autista.
+Eseguilo una sola volta dopo `17_push_notifiche_telefono.sql`.

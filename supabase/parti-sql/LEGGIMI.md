@@ -35,4 +35,9 @@ Eseguilo una sola volta in Supabase SQL Editor: ogni nuovo account azienda verra
 I file `11_foto_logo_azienda_autisti.sql`, `12_rimuovi_foto_autista.sql` e `13_foto_guasti.sql` abilitano logo azienda, foto profilo autista, rimozione foto e foto dei guasti.
 
 Il file `14_chat_interna.sql` abilita la chat interna tra azienda e autisti, con foto allegate e storico messaggi.
-Eseguilo una sola volta dopo i file precedenti.
+Se Supabase da errore copiando il file intero, usa i due file separati:
+
+1. `14A_chat_tabelle.sql`
+2. `14B_chat_policy.sql`
+
+Esegui prima `14A`, aspetta `Success`, poi esegui `14B`.

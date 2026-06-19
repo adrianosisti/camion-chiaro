@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
@@ -420,6 +420,50 @@ function upsertRecordById(records, nextRecord) {
   }
 
   return [...records, nextRecord]
+}
+
+function startChatBottomScroll(scrollToBottom, listElement) {
+  if (typeof window === 'undefined') return () => {}
+
+  let isActive = true
+  const frameIds = []
+  const timeoutIds = []
+  const run = () => {
+    if (isActive) scrollToBottom()
+  }
+  const queueFrame = (callback) => {
+    const frameId = window.requestAnimationFrame(() => {
+      if (isActive) callback()
+    })
+    frameIds.push(frameId)
+  }
+
+  run()
+  queueFrame(() => {
+    run()
+    queueFrame(run)
+  })
+
+  ;[80, 180, 360, 700, 1200, 1800].forEach((delay) => {
+    timeoutIds.push(window.setTimeout(run, delay))
+  })
+
+  const resizeObserver =
+    listElement && typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(run)
+      : null
+
+  if (resizeObserver) {
+    resizeObserver.observe(listElement)
+    Array.from(listElement.children).forEach((child) => resizeObserver.observe(child))
+  }
+
+  return () => {
+    isActive = false
+    frameIds.forEach((frameId) => window.cancelAnimationFrame(frameId))
+    timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    resizeObserver?.disconnect()
+  }
 }
 
 function App() {
@@ -4703,8 +4747,11 @@ function ChatWorkspace({
   const [isSending, setIsSending] = useState(false)
   const [isCompanyChatOpen, setIsCompanyChatOpen] = useState(false)
   const messagesListRef = useRef(null)
-  const messagesEndRef = useRef(null)
   const reactionPicker = useReactionPicker()
+  const scrollCompanyChatToBottom = useCallback(() => {
+    const listElement = messagesListRef.current
+    if (listElement) listElement.scrollTop = listElement.scrollHeight
+  }, [])
   const messagesByThread = useMemo(() => {
     const groupedMessages = new Map()
 
@@ -4758,27 +4805,8 @@ function ChatWorkspace({
 
   useLayoutEffect(() => {
     if (!selectedThread?.id) return
-
-    function scrollToBottom() {
-      const listElement = messagesListRef.current
-      if (listElement) listElement.scrollTop = listElement.scrollHeight
-      messagesEndRef.current?.scrollIntoView({ block: 'end' })
-    }
-
-    scrollToBottom()
-    const firstFrame = window.requestAnimationFrame(() => {
-      scrollToBottom()
-      window.requestAnimationFrame(scrollToBottom)
-    })
-    const shortDelay = window.setTimeout(scrollToBottom, 80)
-    const longDelay = window.setTimeout(scrollToBottom, 300)
-
-    return () => {
-      window.cancelAnimationFrame(firstFrame)
-      window.clearTimeout(shortDelay)
-      window.clearTimeout(longDelay)
-    }
-  }, [lastVisibleMessageId, selectedThread?.id, visibleMessages.length])
+    return startChatBottomScroll(scrollCompanyChatToBottom, messagesListRef.current)
+  }, [isCompanyChatOpen, lastVisibleMessageId, scrollCompanyChatToBottom, selectedThread?.id, visibleMessages.length])
 
   useEffect(() => {
     if (selectedThread?.id && hasUnreadDriverMessages) {
@@ -4960,7 +4988,7 @@ function ChatWorkspace({
                 {message.body && <p>{message.body}</p>}
                 {message.attachmentPath && attachmentUrl && (
                   <a className="chat-attachment" href={attachmentUrl} rel="noreferrer" target="_blank">
-                    <img alt="Foto allegata in chat" src={attachmentUrl} />
+                    <img alt="Foto allegata in chat" onLoad={scrollCompanyChatToBottom} src={attachmentUrl} />
                   </a>
                 )}
                 {message.attachmentPath && !attachmentUrl && <small>Foto in caricamento...</small>}
@@ -4978,7 +5006,7 @@ function ChatWorkspace({
               </article>
             )
           })}
-          <span className="chat-scroll-anchor" ref={messagesEndRef} />
+          <span className="chat-scroll-anchor" />
         </div>
         <form className="chat-compose" onSubmit={handleSubmit}>
           <textarea
@@ -6458,13 +6486,14 @@ function DriverChatScreen({
   const messagesListRef = useRef(null)
   const lastMessageId = chatMessages[chatMessages.length - 1]?.id ?? ''
   const reactionPicker = useReactionPicker()
+  const scrollDriverChatToBottom = useCallback(() => {
+    const listElement = messagesListRef.current
+    if (listElement) listElement.scrollTop = listElement.scrollHeight
+  }, [])
 
-  useEffect(() => {
-    window.requestAnimationFrame(() => {
-      const listElement = messagesListRef.current
-      if (listElement) listElement.scrollTop = listElement.scrollHeight
-    })
-  }, [chatMessages.length, lastMessageId])
+  useLayoutEffect(() => {
+    return startChatBottomScroll(scrollDriverChatToBottom, messagesListRef.current)
+  }, [chatMessages.length, lastMessageId, scrollDriverChatToBottom])
 
   function handlePhotoFile(event) {
     const file = event.target.files?.[0] ?? null
@@ -6523,7 +6552,7 @@ function DriverChatScreen({
               {message.body && <p>{message.body}</p>}
               {message.attachmentPath && attachmentUrl && (
                 <a href={attachmentUrl} rel="noreferrer" target="_blank">
-                  <img alt="Foto allegata in chat" src={attachmentUrl} />
+                  <img alt="Foto allegata in chat" onLoad={scrollDriverChatToBottom} src={attachmentUrl} />
                 </a>
               )}
               <small>
@@ -6550,6 +6579,7 @@ function DriverChatScreen({
             <span>Scrivi all azienda quando hai bisogno.</span>
           </div>
         )}
+        <span className="chat-scroll-anchor" />
       </div>
 
       <form className="driver-chat-screen-compose" onSubmit={handleSubmit}>

@@ -1385,6 +1385,134 @@
   align-items: start;
 }
 
+.support-workspace {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.support-hero-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  background:
+    linear-gradient(90deg, rgba(18, 198, 223, 0.13), transparent 48%),
+    #ffffff;
+}
+
+.support-hero-panel > div {
+  min-width: 0;
+}
+
+.support-hero-panel h2 {
+  font-size: 1.45rem;
+}
+
+.support-hero-panel p:not(.overline) {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.support-hero-panel > svg {
+  flex: 0 0 auto;
+  color: #0284c7;
+}
+
+.support-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.support-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid #d6e6f5;
+  border-radius: 8px;
+  color: #075985;
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.support-tab svg {
+  color: #0284c7;
+}
+
+.support-tab.is-active {
+  border-color: #12c6df;
+  color: #020617;
+  background: #ecfeff;
+  box-shadow: 0 10px 24px rgba(18, 198, 223, 0.13);
+}
+
+.support-content-panel {
+  overflow: hidden;
+}
+
+.support-section-description {
+  margin: 0;
+  padding: 0 20px 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.support-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.support-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-height: 132px;
+  padding: 15px;
+  border: 1px solid #d6e6f5;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.support-card strong {
+  color: #020617;
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.support-card p,
+.support-card li {
+  color: #475569;
+  font-size: 0.84rem;
+  line-height: 1.48;
+}
+
+.support-card p {
+  margin: 0;
+}
+
+.support-card ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+}
+
 .chat-workspace {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
@@ -4245,6 +4373,20 @@
   .records-tabs {
     grid-template-columns: 1fr;
     padding-inline: 14px;
+  }
+
+  .support-card-grid {
+    grid-template-columns: 1fr;
+    padding-inline: 14px;
+  }
+
+  .support-hero-panel {
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .support-hero-panel > svg {
+    display: none;
   }
 
   .records-tab small {

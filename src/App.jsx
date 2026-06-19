@@ -3,6 +3,7 @@ import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
 import BadgeCheck from 'lucide-react/dist/esm/icons/badge-check.mjs'
+import BookOpen from 'lucide-react/dist/esm/icons/book-open.mjs'
 import Building2 from 'lucide-react/dist/esm/icons/building-2.mjs'
 import CalendarClock from 'lucide-react/dist/esm/icons/calendar-clock.mjs'
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2.mjs'
@@ -153,7 +154,7 @@ const chatReactionOptions = [
   { emoji: '🙏', label: 'Grazie', value: 'thanks' },
   { emoji: '👀', label: 'Visto', value: 'seen' },
 ]
-const deepLinkViews = new Set(['chat', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings'])
+const deepLinkViews = new Set(['chat', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const defaultLanguage = 'it'
 const languageOptions = [
@@ -229,6 +230,7 @@ const translations = {
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
     'nav.settings': 'Impostazioni',
+    'nav.support': 'Guida',
     'onboarding.body': 'Completa questi passaggi per rendere Camion Chiaro operativo senza confusione.',
     'onboarding.companyBody': 'Nome azienda, sede e logo visibili nella dashboard.',
     'onboarding.companyTitle': 'Completa profilo azienda',
@@ -258,6 +260,14 @@ const translations = {
     'session.companyArea': 'Area azienda',
     'session.dashboardTitle': 'Dashboard azienda',
     'session.signOut': 'Esci',
+    'support.faq': 'FAQ',
+    'support.launch': 'Presentazione',
+    'support.manual': 'Manuale rapido',
+    'support.overline': 'Centro supporto',
+    'support.subtitle': 'FAQ, manuale, script video e idee commerciali sempre a portata di mano.',
+    'support.title': 'Guida e materiali',
+    'support.videos': 'Video',
+    'support.vision': 'Visione prodotto',
     'sync.addKeys': 'Aggiungi le chiavi .env',
     'sync.connected': 'Supabase collegato',
     'sync.demo': 'Demo locale',
@@ -326,6 +336,7 @@ const translations = {
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
     'nav.settings': 'Settings',
+    'nav.support': 'Guide',
     'onboarding.body': 'Complete these steps to make Camion Chiaro operational without confusion.',
     'onboarding.companyBody': 'Company name, headquarters and logo visible in the dashboard.',
     'onboarding.companyTitle': 'Complete company profile',
@@ -355,6 +366,14 @@ const translations = {
     'session.companyArea': 'Company area',
     'session.dashboardTitle': 'Company dashboard',
     'session.signOut': 'Sign out',
+    'support.faq': 'FAQ',
+    'support.launch': 'Presentation',
+    'support.manual': 'Quick manual',
+    'support.overline': 'Support center',
+    'support.subtitle': 'FAQ, manual, video scripts and sales ideas always at hand.',
+    'support.title': 'Guide and materials',
+    'support.videos': 'Videos',
+    'support.vision': 'Product vision',
     'sync.addKeys': 'Add .env keys',
     'sync.connected': 'Supabase connected',
     'sync.demo': 'Local demo',
@@ -423,6 +442,7 @@ const translations = {
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
     'nav.settings': 'Ajustes',
+    'nav.support': 'Guia',
     'onboarding.body': 'Completa estos pasos para poner Camion Chiaro operativo sin confusion.',
     'onboarding.companyBody': 'Nombre empresa, sede y logo visibles en el panel.',
     'onboarding.companyTitle': 'Completar perfil empresa',
@@ -452,6 +472,14 @@ const translations = {
     'session.companyArea': 'Area empresa',
     'session.dashboardTitle': 'Panel empresa',
     'session.signOut': 'Salir',
+    'support.faq': 'FAQ',
+    'support.launch': 'Presentacion',
+    'support.manual': 'Manual rapido',
+    'support.overline': 'Centro ayuda',
+    'support.subtitle': 'FAQ, manual, guiones video e ideas comerciales siempre disponibles.',
+    'support.title': 'Guia y materiales',
+    'support.videos': 'Videos',
+    'support.vision': 'Vision producto',
     'sync.addKeys': 'Añade claves .env',
     'sync.connected': 'Supabase conectado',
     'sync.demo': 'Demo local',
@@ -520,6 +548,7 @@ const translations = {
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
     'nav.settings': 'Reglages',
+    'nav.support': 'Guide',
     'onboarding.body': 'Complete ces etapes pour rendre Camion Chiaro operationnel sans confusion.',
     'onboarding.companyBody': 'Nom entreprise, siege et logo visibles dans le tableau.',
     'onboarding.companyTitle': 'Completer profil entreprise',
@@ -549,6 +578,14 @@ const translations = {
     'session.companyArea': 'Espace entreprise',
     'session.dashboardTitle': 'Tableau entreprise',
     'session.signOut': 'Sortir',
+    'support.faq': 'FAQ',
+    'support.launch': 'Presentation',
+    'support.manual': 'Manuel rapide',
+    'support.overline': 'Centre support',
+    'support.subtitle': 'FAQ, manuel, scripts video et idees commerciales toujours disponibles.',
+    'support.title': 'Guide et materiels',
+    'support.videos': 'Videos',
+    'support.vision': 'Vision produit',
     'sync.addKeys': 'Ajoute les cles .env',
     'sync.connected': 'Supabase connecte',
     'sync.demo': 'Demo locale',
@@ -617,6 +654,7 @@ const translations = {
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
     'nav.settings': 'Einstellungen',
+    'nav.support': 'Hilfe',
     'onboarding.body': 'Schliesse diese Schritte ab, damit Camion Chiaro sauber einsatzbereit ist.',
     'onboarding.companyBody': 'Firmenname, Sitz und Logo sichtbar im Dashboard.',
     'onboarding.companyTitle': 'Firmenprofil vervollstandigen',
@@ -646,6 +684,14 @@ const translations = {
     'session.companyArea': 'Firmenbereich',
     'session.dashboardTitle': 'Firmen-Dashboard',
     'session.signOut': 'Ausloggen',
+    'support.faq': 'FAQ',
+    'support.launch': 'Prasentation',
+    'support.manual': 'Kurzanleitung',
+    'support.overline': 'Hilfecenter',
+    'support.subtitle': 'FAQ, Handbuch, Videoskripte und Verkaufsideen immer griffbereit.',
+    'support.title': 'Hilfe und Materialien',
+    'support.videos': 'Videos',
+    'support.vision': 'Produktvision',
     'sync.addKeys': '.env-Schlussel hinzufugen',
     'sync.connected': 'Supabase verbunden',
     'sync.demo': 'Lokale Demo',
@@ -2454,6 +2500,7 @@ const regionalTranslations = {
     'nav.notifications': 'Notificari',
     'nav.records': 'Date',
     'nav.settings': 'Setari',
+    'nav.support': 'Ghid',
     'onboarding.body': 'Completeaza acesti pasi pentru a porni Camion Chiaro fara confuzie.',
     'onboarding.companyTitle': 'Completeaza profilul firmei',
     'onboarding.completed': '{count}/{total} completate',
@@ -2469,6 +2516,14 @@ const regionalTranslations = {
     'records.fleetLabel': 'Flota',
     'records.title': 'Date',
     'session.signOut': 'Iesi',
+    'support.faq': 'FAQ',
+    'support.launch': 'Prezentare',
+    'support.manual': 'Manual rapid',
+    'support.overline': 'Centru suport',
+    'support.subtitle': 'FAQ, manual, scripturi video si idei comerciale la indemana.',
+    'support.title': 'Ghid si materiale',
+    'support.videos': 'Video',
+    'support.vision': 'Viziune produs',
   },
   pl: {
     'auth.companyTab': 'Firma',
@@ -2494,6 +2549,7 @@ const regionalTranslations = {
     'nav.notifications': 'Powiadomienia',
     'nav.records': 'Kartoteki',
     'nav.settings': 'Ustawienia',
+    'nav.support': 'Pomoc',
     'onboarding.body': 'Wykonaj te kroki, aby Camion Chiaro bylo gotowe do pracy.',
     'onboarding.companyTitle': 'Uzupelnij profil firmy',
     'onboarding.completed': '{count}/{total} gotowe',
@@ -2509,6 +2565,14 @@ const regionalTranslations = {
     'records.fleetLabel': 'Flota',
     'records.title': 'Kartoteki',
     'session.signOut': 'Wyjdz',
+    'support.faq': 'FAQ',
+    'support.launch': 'Prezentacja',
+    'support.manual': 'Szybka instrukcja',
+    'support.overline': 'Centrum pomocy',
+    'support.subtitle': 'FAQ, instrukcja, scenariusze wideo i pomysly sprzedazowe pod reka.',
+    'support.title': 'Pomoc i materialy',
+    'support.videos': 'Wideo',
+    'support.vision': 'Wizja produktu',
   },
 }
 
@@ -2518,6 +2582,157 @@ Object.entries(regionalTranslations).forEach(([translationLanguage, translationE
     ...translationEntries,
   }
 })
+
+const supportSections = [
+  {
+    description: 'Risposte rapide alle domande che un azienda o un autista fanno subito durante una demo.',
+    icon: BadgeCheck,
+    id: 'faq',
+    titleKey: 'support.faq',
+    items: [
+      {
+        body: 'Tiene insieme autisti, flotta, scadenze, documenti, check mattutini, guasti, chat e notifiche.',
+        title: 'A cosa serve Camion Chiaro?',
+      },
+      {
+        body: 'No. L azienda entra dal browser. Da telefono puo aggiungere Camion Chiaro alla schermata home come web app.',
+        title: 'Devo installare un programma?',
+      },
+      {
+        body: 'No. L azienda crea username e password. L autista vede solo la sua area: documenti, chat, check, guasti e notifiche.',
+        title: 'L autista vede tutti i dati aziendali?',
+      },
+      {
+        body: 'Si. L autista puo aprire i documenti visibili nella sezione Documenti da mostrare.',
+        title: 'Si possono mostrare documenti alla polizia?',
+      },
+      {
+        body: 'Si. Se l autista segnala luci, gomme o documenti non ok, l azienda riceve una notifica critica.',
+        title: 'Il check mattutino avvisa l azienda?',
+      },
+      {
+        body: 'Si. Le notifiche web push arrivano se telefono e browser le supportano e l utente le ha abilitate.',
+        title: 'Le notifiche arrivano anche con app chiusa?',
+      },
+    ],
+  },
+  {
+    description: 'Percorso operativo minimo per configurare un cliente senza perdersi.',
+    icon: BookOpen,
+    id: 'manual',
+    titleKey: 'support.manual',
+    items: [
+      {
+        points: ['Entra come azienda.', 'Completa ragione sociale, sede e logo.', 'Scegli la lingua preferita.', 'Attiva notifiche se il titolare usera il telefono.'],
+        title: '1. Primo accesso',
+      },
+      {
+        points: ['Aggiungi nome e telefono.', 'Genera username e password.', 'Assegna un mezzo se gia disponibile.', 'Carica foto profilo se utile.'],
+        title: '2. Crea autisti',
+      },
+      {
+        points: ['Inserisci furgoni, motrici, trattori e semirimorchi.', 'Compila targa, modello, km e stato.', 'Archivia i mezzi non operativi.'],
+        title: '3. Registra flotta',
+      },
+      {
+        points: ['Aggiungi patente, CQC, carta tachigrafica e visite mediche.', 'Carica file o foto.', 'Decidi cosa e visibile all autista.'],
+        title: '4. Documenti e scadenze',
+      },
+      {
+        points: ['L autista seleziona mezzo e semirimorchio opzionale.', 'Compila luci, gomme, documenti e km.', 'Se qualcosa non va, arriva notifica critica.'],
+        title: '5. Check mattutino',
+      },
+      {
+        points: ['L autista invia guasto con foto.', 'L azienda apre il dettaglio.', 'Quando gestito, archivia e mantiene lo storico.'],
+        title: '6. Guasti e storico',
+      },
+    ],
+  },
+  {
+    description: 'Traccia pronta per una demo commerciale o una presentazione clienti.',
+    icon: FileText,
+    id: 'launch',
+    titleKey: 'support.launch',
+    items: [
+      {
+        body: 'Camion Chiaro: la piattaforma semplice per non dimenticare scadenze, documenti, guasti e comunicazioni della flotta.',
+        title: 'Titolo',
+      },
+      {
+        body: 'Patenti, CQC, revisioni, assicurazioni, documenti dispersi, guasti comunicati male e autisti che chiamano per tutto.',
+        title: 'Il problema',
+      },
+      {
+        body: 'Dashboard azienda, app autista, notifiche, documenti da mostrare, chat e storico operativo.',
+        title: 'La soluzione',
+      },
+      {
+        body: 'Meno dimenticanze, meno telefonate, piu controllo, piu prove, piu ordine.',
+        title: 'Benefici',
+      },
+      {
+        body: 'Prova gratuita, demo guidata e attivazione rapida per mettere ordine alla flotta.',
+        title: 'Chiusura',
+      },
+    ],
+  },
+  {
+    description: 'Idee video brevi da usare su sito, social, WhatsApp e vendita diretta.',
+    icon: Smartphone,
+    id: 'videos',
+    titleKey: 'support.videos',
+    items: [
+      {
+        body: 'Titolare con fogli e telefono. Poi dashboard ordinata. Messaggio: basta una scadenza dimenticata per fermare tutto.',
+        title: 'La scadenza dimenticata',
+      },
+      {
+        body: 'Autista vede una spia, scatta foto, segnala guasto. L azienda riceve tutto in dashboard.',
+        title: 'Il guasto senza telefonate',
+      },
+      {
+        body: 'Controllo stradale. L autista apre Documenti da mostrare e trova subito quello che serve.',
+        title: 'Documenti sempre pronti',
+      },
+      {
+        body: 'Prima di partire: luci, gomme, documenti, km. Se qualcosa non va, avviso critico.',
+        title: 'Check mattutino',
+      },
+      {
+        body: '60 secondi: problema, dashboard, app autista, guasto con foto, documento, chat, call to action.',
+        title: 'Demo completa',
+      },
+    ],
+  },
+  {
+    description: 'La direzione per farlo diventare un must-have per aziende di trasporto.',
+    icon: ShieldCheck,
+    id: 'vision',
+    titleKey: 'support.vision',
+    items: [
+      {
+        body: 'Prima di partire tutto verde: autista ok, mezzo ok, documenti ok, check ok, nessun guasto urgente.',
+        title: 'Semaforo partenza',
+      },
+      {
+        body: 'Un pulsante pulito per aprire solo i documenti utili durante un controllo.',
+        title: 'Modalita controllo stradale',
+      },
+      {
+        body: 'Adesivo QR sul mezzo: apre check, guasto, documenti e storico del mezzo corretto.',
+        title: 'QR mezzo',
+      },
+      {
+        body: 'Notizie operative filtrate: blocchi, divieti, valichi, scioperi, normative, meteo pesante e carburante.',
+        title: 'Osservatorio trasporti',
+      },
+      {
+        body: 'OCR documenti, report mensili, ruoli avanzati, multi-sede, export Excel, white label e integrazioni.',
+        title: 'Premium',
+      },
+    ],
+  },
+]
 
 const documentTypeTranslationKeys = {
   'Assicurazione RCA': 'docType.insurance',
@@ -4831,6 +5046,8 @@ function App() {
             onReactToMessage={updateChatMessageReaction}
             onSendMessage={sendChatMessage}
           />
+        ) : activeView === 'support' ? (
+          <SupportWorkspace t={t} />
         ) : activeView === 'settings' ? (
           <SettingsWorkspace
             key={`${companyProfile.name}-${companyProfile.vatNumber}-${companyProfile.headquarters}`}
@@ -5208,6 +5425,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onH
     { id: 'records', label: t('nav.records'), icon: Users },
     { id: 'notifications', label: t('nav.notifications'), icon: Bell },
     { id: 'chat', label: t('nav.chat'), icon: Mail },
+    { id: 'support', label: t('nav.support'), icon: BookOpen },
     { id: 'settings', label: t('nav.settings'), icon: SettingsIcon },
   ]
 
@@ -5684,6 +5902,67 @@ function PhotoPreviewModal({ imageUrl, name, onClose }) {
         <img alt={`Foto profilo ${name}`} src={imageUrl} />
       </div>
     </div>
+  )
+}
+
+function SupportWorkspace({ t }) {
+  const [activeSectionId, setActiveSectionId] = useState(supportSections[0].id)
+  const activeSection = supportSections.find((section) => section.id === activeSectionId) ?? supportSections[0]
+  const ActiveIcon = activeSection.icon
+
+  return (
+    <section className="support-workspace" aria-label={t('support.title')}>
+      <div className="panel support-hero-panel">
+        <div>
+          <p className="overline">{t('support.overline')}</p>
+          <h2>{t('support.title')}</h2>
+          <p>{t('support.subtitle')}</p>
+        </div>
+        <BookOpen size={24} />
+      </div>
+
+      <div className="support-tabs" role="tablist" aria-label={t('support.title')}>
+        {supportSections.map((section) => (
+          <button
+            aria-selected={activeSection.id === section.id}
+            className={activeSection.id === section.id ? 'support-tab is-active' : 'support-tab'}
+            key={section.id}
+            onClick={() => setActiveSectionId(section.id)}
+            role="tab"
+            type="button"
+          >
+            <section.icon size={17} />
+            {t(section.titleKey)}
+          </button>
+        ))}
+      </div>
+
+      <article className="panel support-content-panel">
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">{t('nav.support')}</p>
+            <h2>{t(activeSection.titleKey)}</h2>
+          </div>
+          <ActiveIcon size={20} />
+        </div>
+        <p className="support-section-description">{activeSection.description}</p>
+        <div className="support-card-grid">
+          {activeSection.items.map((item) => (
+            <section className="support-card" key={item.title}>
+              <strong>{item.title}</strong>
+              {item.body && <p>{item.body}</p>}
+              {item.points && (
+                <ul>
+                  {item.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </div>
+      </article>
+    </section>
   )
 }
 

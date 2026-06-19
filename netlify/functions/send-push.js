@@ -209,7 +209,10 @@ export async function handler(event) {
 
   if (!subscriptions || subscriptions.length === 0) {
     return jsonResponse(200, {
-      reason: 'Nessun telefono registrato per questo autista. Apri l app autista dal telefono e premi Abilita notifiche.',
+      reason:
+        targetRole === 'company'
+          ? 'Nessun telefono azienda registrato. Entra come azienda dal telefono e premi Abilita notifiche.'
+          : 'Nessun telefono registrato per questo autista. Apri l app autista dal telefono e premi Abilita notifiche.',
       sent: 0,
       skipped: true,
     })

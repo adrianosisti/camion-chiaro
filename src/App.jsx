@@ -28,6 +28,7 @@ import Search from 'lucide-react/dist/esm/icons/search.mjs'
 import Send from 'lucide-react/dist/esm/icons/send.mjs'
 import SettingsIcon from 'lucide-react/dist/esm/icons/settings.mjs'
 import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check.mjs'
+import SmilePlus from 'lucide-react/dist/esm/icons/smile-plus.mjs'
 import Smartphone from 'lucide-react/dist/esm/icons/smartphone.mjs'
 import Stethoscope from 'lucide-react/dist/esm/icons/stethoscope.mjs'
 import Truck from 'lucide-react/dist/esm/icons/truck.mjs'
@@ -194,6 +195,13 @@ function useReactionPicker() {
     setOpenReactionMessageId('')
   }
 
+  function startReactionHold(messageId, event) {
+    if (shouldIgnoreReactionGesture(event.target)) return
+
+    clearReactionHold()
+    holdTimerRef.current = window.setTimeout(() => openReactionPicker(messageId), 500)
+  }
+
   function getReactionTriggerProps(messageId) {
     return {
       onContextMenu: (event) => {
@@ -201,16 +209,16 @@ function useReactionPicker() {
         event.preventDefault()
         openReactionPicker(messageId)
       },
-      onPointerCancel: clearReactionHold,
-      onPointerDown: (event) => {
-        if (shouldIgnoreReactionGesture(event.target)) return
-        if (event.pointerType !== 'touch' && typeof event.button === 'number' && event.button !== 0) return
-
-        clearReactionHold()
-        holdTimerRef.current = window.setTimeout(() => openReactionPicker(messageId), 480)
+      onMouseDown: (event) => {
+        if (event.button !== 0) return
+        startReactionHold(messageId, event)
       },
-      onPointerLeave: clearReactionHold,
-      onPointerUp: clearReactionHold,
+      onMouseLeave: clearReactionHold,
+      onMouseUp: clearReactionHold,
+      onTouchCancel: clearReactionHold,
+      onTouchEnd: clearReactionHold,
+      onTouchMove: clearReactionHold,
+      onTouchStart: (event) => startReactionHold(messageId, event),
     }
   }
 
@@ -1617,6 +1625,25 @@ function App() {
     return true
   }
 
+  function getDriverDisplayName(driverId) {
+    return driverRecords.find((driver) => driver.id === driverId)?.name ?? 'Autista'
+  }
+
+  function getVehicleDisplayName(vehicleId) {
+    const vehicle = vehicleRecords.find((vehicleRecord) => vehicleRecord.id === vehicleId)
+    if (!vehicle) return 'mezzo'
+
+    return [vehicle.plate, vehicle.model].filter(Boolean).join(' - ') || 'mezzo'
+  }
+
+  function getCriticalCheckIssues(check) {
+    return [
+      check.lightsOk === false ? 'luci' : null,
+      check.tiresOk === false ? 'pneumatici' : null,
+      check.documentsOnBoard === false ? 'documenti a bordo' : null,
+    ].filter(Boolean)
+  }
+
   async function submitMorningCheck(check) {
     const localCheck = {
       ...check,
@@ -1636,6 +1663,25 @@ function App() {
 
       setVehicleCheckRecords((currentChecks) => [result.data, ...currentChecks])
       setMorningCheckSent(true)
+      const criticalIssues = getCriticalCheckIssues(check)
+
+      if (criticalIssues.length > 0) {
+        const pushResult = await notifyPhone({
+          body: `${getDriverDisplayName(check.driverId)} ha segnalato: ${criticalIssues.join(', ')} su ${getVehicleDisplayName(check.tractorId)}.`,
+          tag: `critical-check-${result.data.id}`,
+          targetRole: 'company',
+          title: 'Check critico autista',
+          url: '/?view=notifications',
+        })
+
+        setOperationsSyncStatus(
+          pushResult.error
+            ? `Check critico inviato. Notifica titolare non inviata: ${pushResult.error.message}`
+            : 'Check critico inviato. Notifica titolare inviata.',
+        )
+        return true
+      }
+
       setOperationsSyncStatus('Check mattutino inviato all azienda.')
       return true
     }
@@ -1676,7 +1722,19 @@ function App() {
 
       setFaultReportRecords((currentReports) => [result.data, ...currentReports])
       setFaultReported(true)
-      setOperationsSyncStatus('Guasto segnalato all azienda.')
+      const pushResult = await notifyPhone({
+        body: `${getDriverDisplayName(reportData.driverId)}: ${result.data.title} su ${getVehicleDisplayName(reportData.vehicleId)}.`,
+        tag: `fault-report-${result.data.id}`,
+        targetRole: 'company',
+        title: result.data.severity === 'stop_vehicle' ? 'Guasto urgente autista' : 'Nuovo guasto autista',
+        url: '/?view=notifications',
+      })
+
+      setOperationsSyncStatus(
+        pushResult.error
+          ? `Guasto segnalato. Notifica titolare non inviata: ${pushResult.error.message}`
+          : 'Guasto segnalato. Notifica titolare inviata.',
+      )
       return true
     }
 
@@ -1779,6 +1837,20 @@ function App() {
           setChatSyncStatus(`Messaggio inviato. Notifica telefono non inviata: ${pushResult.error.message}`)
         } else {
           setChatSyncStatus('Messaggio inviato. Notifica telefono inviata.')
+        }
+      } else if (senderRole === 'driver') {
+        const pushResult = await notifyPhone({
+          body: `${getDriverDisplayName(driverId)}: ${cleanBody || 'Foto allegata in chat.'}`,
+          tag: `chat-company-${targetThread.id}`,
+          targetRole: 'company',
+          title: 'Messaggio autista',
+          url: '/?view=chat',
+        })
+
+        if (pushResult.error) {
+          setChatSyncStatus(`Messaggio inviato. Notifica titolare non inviata: ${pushResult.error.message}`)
+        } else {
+          setChatSyncStatus('Messaggio inviato. Notifica titolare inviata.')
         }
       }
       return true
@@ -4474,7 +4546,7 @@ function MessageStatus({ status }) {
   )
 }
 
-function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, onReact }) {
+function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, onOpen, onReact }) {
   const reactions = message.reactions ?? {}
   const currentReaction = reactions[actorRole] ?? ''
   const visibleReactions = Object.entries(reactions).filter(([, reaction]) => reaction)
@@ -4486,6 +4558,15 @@ function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, on
 
   return (
     <div className="chat-reaction-row">
+      <button
+        aria-label="Aggiungi reazione"
+        className="chat-reaction-open-button"
+        onClick={onOpen}
+        title="Aggiungi reazione"
+        type="button"
+      >
+        <SmilePlus size={15} />
+      </button>
       {visibleReactions.length > 0 && (
         <div className="chat-reaction-summary" aria-label="Reazioni al messaggio">
           {visibleReactions.map(([role, reaction]) => (
@@ -4496,7 +4577,12 @@ function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, on
         </div>
       )}
       {isPickerOpen && (
-        <div className="chat-reaction-picker" aria-label="Scegli reazione" onPointerDown={(event) => event.stopPropagation()}>
+        <div
+          className="chat-reaction-picker"
+          aria-label="Scegli reazione"
+          onMouseDown={(event) => event.stopPropagation()}
+          onTouchStart={(event) => event.stopPropagation()}
+        >
           {chatReactionOptions.map((reaction) => (
             <button
               aria-label={reaction.label}
@@ -4771,6 +4857,7 @@ function ChatWorkspace({
                   isPickerOpen={isReactionPickerOpen}
                   message={message}
                   onClose={reactionPicker.closeReactionPicker}
+                  onOpen={() => reactionPicker.openReactionPicker(message.id)}
                   onReact={onReactToMessage}
                 />
               </article>
@@ -6327,6 +6414,7 @@ function DriverChatScreen({
                 isPickerOpen={isReactionPickerOpen}
                 message={message}
                 onClose={reactionPicker.closeReactionPicker}
+                onOpen={() => reactionPicker.openReactionPicker(message.id)}
                 onReact={onReactToMessage}
               />
             </article>

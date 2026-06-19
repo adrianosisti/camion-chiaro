@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
@@ -762,6 +762,19 @@ function App() {
     let isMounted = true
     let unsubscribeChat = () => {}
     let unsubscribeOperations = () => {}
+    let chatRefreshTimer = 0
+
+    async function refreshChatRecords() {
+      const [threadsResult, messagesResult] = await Promise.all([
+        fetchChatThreads(activeCompanyId),
+        fetchChatMessages(activeCompanyId),
+      ])
+
+      if (!isMounted) return
+
+      if (threadsResult.data) setChatThreadRecords(threadsResult.data)
+      if (messagesResult.data) setChatMessageRecords(messagesResult.data)
+    }
 
     subscribeToChatMessages(activeCompanyId, (message, payload) => {
       if (!isMounted) return
@@ -825,8 +838,12 @@ function App() {
       unsubscribeOperations = cleanup
     })
 
+    void refreshChatRecords()
+    chatRefreshTimer = window.setInterval(refreshChatRecords, 4000)
+
     return () => {
       isMounted = false
+      window.clearInterval(chatRefreshTimer)
       unsubscribeChat()
       unsubscribeOperations()
     }
@@ -3868,6 +3885,7 @@ function ChatWorkspace({
   const [messageBody, setMessageBody] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [isSending, setIsSending] = useState(false)
+  const messagesListRef = useRef(null)
   const selectedDriver =
     activeDrivers.find((driver) => driver.id === selectedDriverId) ??
     activeDrivers[0] ??
@@ -3889,9 +3907,19 @@ function ChatWorkspace({
   const visibleMessages = selectedThread
     ? [...(messagesByThread.get(selectedThread.id) ?? [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
     : []
+  const lastVisibleMessageId = visibleMessages[visibleMessages.length - 1]?.id ?? ''
   const hasUnreadDriverMessages = visibleMessages.some(
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
   )
+
+  useEffect(() => {
+    if (!selectedThread?.id) return
+
+    window.requestAnimationFrame(() => {
+      const listElement = messagesListRef.current
+      if (listElement) listElement.scrollTop = listElement.scrollHeight
+    })
+  }, [lastVisibleMessageId, selectedThread?.id, visibleMessages.length])
 
   useEffect(() => {
     if (selectedThread?.id && hasUnreadDriverMessages) {
@@ -4004,7 +4032,7 @@ function ChatWorkspace({
           </div>
           {selectedDriver && <EntityAvatar imageUrl={assetPreviewUrl(selectedDriver.profileImagePath)} name={selectedDriver.name} />}
         </div>
-        <div className="chat-message-list">
+        <div className="chat-message-list" ref={messagesListRef}>
           {selectedDriver && visibleMessages.length === 0 && (
             <div className="chat-empty-state">
               <Mail size={24} />
@@ -5352,6 +5380,15 @@ function DriverChatScreen({
     photoFile: null,
   })
   const [isSending, setIsSending] = useState(false)
+  const messagesListRef = useRef(null)
+  const lastMessageId = chatMessages[chatMessages.length - 1]?.id ?? ''
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => {
+      const listElement = messagesListRef.current
+      if (listElement) listElement.scrollTop = listElement.scrollHeight
+    })
+  }, [chatMessages.length, lastMessageId])
 
   function handlePhotoFile(event) {
     const file = event.target.files?.[0] ?? null
@@ -5391,7 +5428,7 @@ function DriverChatScreen({
         </div>
       </div>
 
-      <div className="driver-chat-screen-list">
+      <div className="driver-chat-screen-list" ref={messagesListRef}>
         {chatMessages.map((message) => {
           const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
 

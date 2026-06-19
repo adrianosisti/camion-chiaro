@@ -66,5 +66,13 @@ Eseguilo una sola volta dopo `15_realtime_check_guasti.sql`.
 Il file `17_push_notifiche_telefono.sql` registra i telefoni che autorizzano le notifiche push.
 Eseguilo una sola volta dopo `16_documenti_autista.sql`.
 
+Se Supabase non ti fa incollare il file `17` intero, usa questi tre file separati:
+
+1. `17A_push_tabella_policy.sql`
+2. `17B_push_funzione_salva.sql`
+3. `17C_push_funzione_cancella.sql`
+
+Eseguili uno alla volta, sempre in questo ordine.
+
 Il file `18_storico_documenti.sql` abilita lo storico dei documenti autista.
 Eseguilo una sola volta dopo `17_push_notifiche_telefono.sql`.

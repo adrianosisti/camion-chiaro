@@ -1355,8 +1355,8 @@ function AuthScreen({ onAuthenticated }) {
     password: 'password-demo',
   })
   const [driverForm, setDriverForm] = useState({
-    username: 'marco.bianchi',
-    password: 'password-demo',
+    username: '',
+    password: '',
   })
   const [status, setStatus] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -1436,7 +1436,18 @@ function AuthScreen({ onAuthenticated }) {
     setIsSubmitting(true)
     setStatus('')
 
-    const result = await signInDriver(driverForm)
+    const cleanDriverForm = {
+      password: driverForm.password,
+      username: driverForm.username.trim(),
+    }
+
+    if (!cleanDriverForm.username || !cleanDriverForm.password) {
+      setIsSubmitting(false)
+      setStatus('Inserisci nome utente autista e password.')
+      return
+    }
+
+    const result = await signInDriver(cleanDriverForm)
 
     setIsSubmitting(false)
 
@@ -1448,7 +1459,7 @@ function AuthScreen({ onAuthenticated }) {
     onAuthenticated({
       role: 'driver',
       name: drivers[0].name,
-      username: driverForm.username,
+      username: cleanDriverForm.username,
       demo: result.demo,
     })
   }
@@ -1566,7 +1577,12 @@ function AuthScreen({ onAuthenticated }) {
               <span>
                 <UserRound size={17} />
                 <input
-                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  placeholder="Es. mario.rossi"
+                  required
+                  spellCheck={false}
                   value={driverForm.username}
                   onChange={(event) => setDriverForm({ ...driverForm, username: event.target.value })}
                 />
@@ -1577,7 +1593,9 @@ function AuthScreen({ onAuthenticated }) {
               <span>
                 <LockKeyhole size={17} />
                 <input
-                  autoComplete="current-password"
+                  autoComplete="off"
+                  placeholder="Password"
+                  required
                   value={driverForm.password}
                   onChange={(event) => setDriverForm({ ...driverForm, password: event.target.value })}
                   type="password"

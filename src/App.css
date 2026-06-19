@@ -1463,6 +1463,12 @@
   overflow: hidden;
 }
 
+.operation-detail-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .operation-detail-body {
   display: grid;
   gap: 10px;
@@ -1552,6 +1558,42 @@
 .operation-detail-actions .small-button:disabled {
   cursor: not-allowed;
   opacity: 0.52;
+}
+
+.operation-modal-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.48);
+}
+
+.operation-modal {
+  position: relative;
+  top: auto;
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.28);
+}
+
+.operation-modal .panel-header {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  background: #ffffff;
+}
+
+.operation-modal .fault-photo-preview img {
+  max-height: 460px;
+  object-fit: contain;
+}
+
+.operation-modal-close {
+  width: 34px;
+  height: 34px;
 }
 
 .documents-summary-grid {
@@ -2060,6 +2102,36 @@
   font-size: 0.92rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.driver-loading-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-height: 360px;
+  align-content: center;
+  padding: 28px 16px;
+  border: 1px solid #d6e6f5;
+  border-radius: 8px;
+  color: #075985;
+  background: #ffffff;
+  text-align: center;
+}
+
+.driver-loading-state svg {
+  color: #0284c7;
+}
+
+.driver-loading-state strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.driver-loading-state span {
+  max-width: 230px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
 }
 
 .driver-card {

@@ -34,6 +34,7 @@ import UserPlus from 'lucide-react/dist/esm/icons/user-plus.mjs'
 import UserRound from 'lucide-react/dist/esm/icons/user-round.mjs'
 import Users from 'lucide-react/dist/esm/icons/users.mjs'
 import Wrench from 'lucide-react/dist/esm/icons/wrench.mjs'
+import X from 'lucide-react/dist/esm/icons/x.mjs'
 import { company, complianceItems, driverDocuments, drivers, vehicles } from './data/sampleData'
 import { daysUntil, decorateCompliance, formatDate, getSummary } from './lib/expiry'
 import {
@@ -117,10 +118,10 @@ const faultSeverityOptions = [
   { value: 'stop_vehicle', label: 'Fermo mezzo' },
 ]
 const faultStatusOptions = [
-  { value: 'open', label: 'Aperto' },
-  { value: 'seen', label: 'Visto' },
-  { value: 'in_progress', label: 'In lavorazione' },
-  { value: 'closed', label: 'Chiuso' },
+  { value: 'open', label: 'Da leggere' },
+  { value: 'seen', label: 'Da leggere' },
+  { value: 'in_progress', label: 'Da leggere' },
+  { value: 'closed', label: 'Archiviato' },
 ]
 
 function getFleetTypeLabel(value) {
@@ -133,6 +134,14 @@ function getFaultSeverityLabel(value) {
 
 function getFaultStatusLabel(value) {
   return faultStatusOptions.find((option) => option.value === value)?.label ?? value
+}
+
+function isFaultArchived(report) {
+  return report.status === 'closed'
+}
+
+function isFaultUnread(report) {
+  return !isFaultArchived(report)
 }
 
 function getDisplayCompanyName(name) {
@@ -287,6 +296,7 @@ function App() {
   const [operationsSyncStatus, setOperationsSyncStatus] = useState('')
   const [companySettingsStatus, setCompanySettingsStatus] = useState('')
   const [driverDocumentUploadStatus, setDriverDocumentUploadStatus] = useState('')
+  const [driverSessionLoading, setDriverSessionLoading] = useState(false)
   const [uploadingDriverDocumentId, setUploadingDriverDocumentId] = useState('')
   const [driverUploadSent, setDriverUploadSent] = useState(false)
   const [morningCheckSent, setMorningCheckSent] = useState(false)
@@ -352,6 +362,9 @@ function App() {
 
     if (nextSession.role === 'driver') {
       resetDriverSessionData()
+      setDriverSessionLoading(isSupabaseConfigured)
+    } else {
+      setDriverSessionLoading(false)
     }
 
     setSession(nextSession)
@@ -518,7 +531,16 @@ function App() {
       const authUser = result.data?.session?.user
 
       if (isMounted && authUser) {
-        setSession((currentSession) => currentSession ?? buildAppSessionFromAuthUser(authUser))
+        const nextSession = buildAppSessionFromAuthUser(authUser)
+
+        if (nextSession.role === 'driver') {
+          resetDriverSessionData()
+          setDriverSessionLoading(isSupabaseConfigured)
+        } else {
+          setDriverSessionLoading(false)
+        }
+
+        setSession((currentSession) => currentSession ?? nextSession)
       }
     }
 
@@ -601,6 +623,7 @@ function App() {
     let isMounted = true
 
     async function loadDriverData() {
+      setDriverSessionLoading(true)
       setOperationsSyncStatus('Caricamento area autista...')
       const driverSessionResult = await fetchDriverSessionData()
 
@@ -620,6 +643,7 @@ function App() {
             ? 'Area autista caricata.'
             : 'Nessun mezzo disponibile. L azienda deve aggiungere almeno un furgone, motrice o trattore in Flotta.',
         )
+        setDriverSessionLoading(false)
         return
       }
 
@@ -645,6 +669,7 @@ function App() {
           ? 'Area autista caricata.'
           : driverSessionResult.error?.message ?? 'Nessun mezzo disponibile in area autista.',
       )
+      setDriverSessionLoading(false)
     }
 
     loadDriverData()
@@ -693,6 +718,7 @@ function App() {
     setCompanySettingsStatus('')
     setActiveCompanyId('')
     setAssetPreviewUrls({})
+    setDriverSessionLoading(false)
     setItems(complianceItems)
     setDocumentRecords(driverDocuments)
     setDriverRecords(drivers)
@@ -1142,7 +1168,7 @@ function App() {
   }
 
   async function updateFaultReportStatus(reportId, status) {
-    setOperationsSyncStatus('Aggiornamento guasto...')
+    setOperationsSyncStatus(status === 'closed' ? 'Archiviazione guasto...' : 'Segno il guasto da leggere...')
     setFaultReportRecords((currentReports) =>
       currentReports.map((report) => (report.id === reportId ? { ...report, status } : report)),
     )
@@ -1164,10 +1190,10 @@ function App() {
       setFaultReportRecords((currentReports) =>
         currentReports.map((report) => (report.id === reportId ? result.data : report)),
       )
-      setOperationsSyncStatus('Guasto aggiornato.')
+      setOperationsSyncStatus(status === 'closed' ? 'Guasto archiviato.' : 'Guasto rimesso da leggere.')
       return true
     }
-    setOperationsSyncStatus('Guasto aggiornato in modalità locale.')
+    setOperationsSyncStatus(status === 'closed' ? 'Guasto archiviato in modalità locale.' : 'Guasto rimesso da leggere.')
     return true
   }
 
@@ -1175,8 +1201,12 @@ function App() {
     setAcknowledgedCheckIds((currentIds) => (currentIds.includes(checkId) ? currentIds : [...currentIds, checkId]))
   }
 
+  function markCheckUnread(checkId) {
+    setAcknowledgedCheckIds((currentIds) => currentIds.filter((id) => id !== checkId))
+  }
+
   const unreadCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id)).length
-  const openFaultCount = visibleFaultReportRecords.filter((report) => report.status === 'open').length
+  const openFaultCount = visibleFaultReportRecords.filter(isFaultUnread).length
   const criticalCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id) && hasCheckIssues(check)).length
   const notificationCount = unreadCheckCount + openFaultCount
 
@@ -1206,6 +1236,7 @@ function App() {
         onUpload={() => setDriverUploadSent(true)}
         operationsStatus={operationsSyncStatus}
         faultReported={faultReported}
+        isLoading={driverSessionLoading}
         morningCheckSent={morningCheckSent}
         uploadSent={driverUploadSent}
         uploadingDocumentId={uploadingDriverDocumentId}
@@ -1283,6 +1314,7 @@ function App() {
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
             onAcknowledgeCheck={acknowledgeCheck}
+            onMarkCheckUnread={markCheckUnread}
             onUpdateFaultStatus={updateFaultReportStatus}
             syncStatus={operationsSyncStatus}
             vehicleCheckRecords={vehicleCheckRecords}
@@ -3023,6 +3055,7 @@ function OperationsWorkspace({
   driverRecords,
   faultReportRecords,
   onAcknowledgeCheck,
+  onMarkCheckUnread,
   onUpdateFaultStatus,
   syncStatus,
   vehicleCheckRecords,
@@ -3030,10 +3063,10 @@ function OperationsWorkspace({
 }) {
   const [filter, setFilter] = useState('inbox')
   const [selectedOperationKey, setSelectedOperationKey] = useState('')
-  const isCriticalFault = (report) => ['high', 'stop_vehicle'].includes(report.severity) && report.status !== 'closed'
-  const newFaults = faultReportRecords.filter((report) => report.status === 'open')
-  const workFaults = faultReportRecords.filter((report) => ['seen', 'in_progress'].includes(report.status))
-  const archivedFaults = faultReportRecords.filter((report) => report.status === 'closed')
+  const [modalOperationKey, setModalOperationKey] = useState('')
+  const isCriticalFault = (report) => ['high', 'stop_vehicle'].includes(report.severity) && !isFaultArchived(report)
+  const newFaults = faultReportRecords.filter(isFaultUnread)
+  const archivedFaults = faultReportRecords.filter(isFaultArchived)
   const unreadChecks = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id))
   const archivedChecks = vehicleCheckRecords.filter((check) => acknowledgedCheckIds.includes(check.id))
   const criticalChecks = unreadChecks.filter(hasCheckIssues)
@@ -3056,7 +3089,7 @@ function OperationsWorkspace({
     .filter((operation) => {
       if (filter === 'inbox') {
         return (
-          (operation.kind === 'fault' && operation.data.status === 'open') ||
+          (operation.kind === 'fault' && isFaultUnread(operation.data)) ||
           (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id))
         )
       }
@@ -3066,32 +3099,25 @@ function OperationsWorkspace({
           (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id) && hasCheckIssues(operation.data))
         )
       }
-      if (filter === 'work') return operation.kind === 'fault' && ['seen', 'in_progress'].includes(operation.data.status)
       if (filter === 'archive') {
         return (
-          (operation.kind === 'fault' && operation.data.status === 'closed') ||
+          (operation.kind === 'fault' && isFaultArchived(operation.data)) ||
           (operation.kind === 'check' && acknowledgedCheckIds.includes(operation.id))
         )
       }
-      if (filter === 'faults') return operation.kind === 'fault' && operation.data.status !== 'closed'
+      if (filter === 'faults') return operation.kind === 'fault' && isFaultUnread(operation.data)
       if (filter === 'checks') return operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id)
       return false
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   const selectedOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === selectedOperationKey)
+  const modalOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === modalOperationKey)
   const fallbackSelection = operations[0]
   const detailOperation = selectedOperation ?? fallbackSelection
 
   async function openOperation(operation) {
     setSelectedOperationKey(`${operation.kind}-${operation.id}`)
-
-    if (operation.kind === 'fault' && operation.data.status === 'open') {
-      await onUpdateFaultStatus(operation.id, 'seen')
-    }
-
-    if (operation.kind === 'check') {
-      onAcknowledgeCheck(operation.id)
-    }
+    setModalOperationKey(`${operation.kind}-${operation.id}`)
   }
 
   function changeFilter(nextFilter) {
@@ -3119,8 +3145,8 @@ function OperationsWorkspace({
             <span>critiche</span>
           </div>
           <div>
-            <strong>{workFaults.length}</strong>
-            <span>in lavorazione</span>
+            <strong>{newFaults.length}</strong>
+            <span>guasti attivi</span>
           </div>
           <div>
             <strong>{archivedFaults.length + archivedChecks.length}</strong>
@@ -3134,14 +3160,11 @@ function OperationsWorkspace({
           <button className={filter === 'critical' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical')} type="button">
             Critiche ({criticalFaults.length + criticalChecks.length})
           </button>
-          <button className={filter === 'work' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('work')} type="button">
-            In lavorazione ({workFaults.length})
-          </button>
           <button className={filter === 'checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('checks')} type="button">
             Check ({unreadChecks.length})
           </button>
           <button className={filter === 'faults' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('faults')} type="button">
-            Guasti ({faultReportRecords.length - archivedFaults.length})
+            Guasti ({newFaults.length})
           </button>
           <button className={filter === 'archive' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('archive')} type="button">
             Archivio ({archivedFaults.length + archivedChecks.length})
@@ -3166,6 +3189,7 @@ function OperationsWorkspace({
                 driver={driverRecords.find((driver) => driver.id === operation.data.driverId)}
                 key={`check-${operation.id}`}
                 onMarkRead={() => onAcknowledgeCheck(operation.id)}
+                onMarkUnread={() => onMarkCheckUnread(operation.id)}
                 onOpen={() => openOperation(operation)}
                 read={acknowledgedCheckIds.includes(operation.id)}
                 selected={detailOperation?.kind === 'check' && detailOperation.id === operation.id}
@@ -3184,6 +3208,18 @@ function OperationsWorkspace({
         driverRecords={driverRecords}
         operation={detailOperation}
         onAcknowledgeCheck={onAcknowledgeCheck}
+        onMarkCheckUnread={onMarkCheckUnread}
+        onUpdateFaultStatus={onUpdateFaultStatus}
+        vehicleRecords={vehicleRecords}
+      />
+      <OperationDetailModal
+        acknowledgedCheckIds={acknowledgedCheckIds}
+        assetPreviewUrl={assetPreviewUrl}
+        driverRecords={driverRecords}
+        operation={modalOperation}
+        onAcknowledgeCheck={onAcknowledgeCheck}
+        onClose={() => setModalOperationKey('')}
+        onMarkCheckUnread={onMarkCheckUnread}
         onUpdateFaultStatus={onUpdateFaultStatus}
         vehicleRecords={vehicleRecords}
       />
@@ -3192,9 +3228,7 @@ function OperationsWorkspace({
 }
 
 function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, trailer, vehicle }) {
-  const isClosed = report.status === 'closed'
-  const isSeen = report.status !== 'open'
-  const isWorking = report.status === 'in_progress'
+  const isClosed = isFaultArchived(report)
   const rowClassName = ['operation-row', selected ? 'is-selected' : '', isClosed ? 'is-muted' : '']
     .filter(Boolean)
     .join(' ')
@@ -3221,21 +3255,21 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
         <button className="small-button" onClick={onOpen} type="button">
           Apri
         </button>
-        <button disabled={isSeen} className="small-button" onClick={() => onUpdateStatus(report.id, 'seen')} type="button">
-          {isSeen ? 'Gia visto' : 'Visto'}
-        </button>
-        <button disabled={isClosed || isWorking} className="small-button" onClick={() => onUpdateStatus(report.id, 'in_progress')} type="button">
-          {isWorking ? 'In corso' : 'Lavora'}
-        </button>
-        <button disabled={isClosed} className="small-button danger-action" onClick={() => onUpdateStatus(report.id, 'closed')} type="button">
-          {isClosed ? 'Archiviato' : 'Archivia'}
-        </button>
+        {isClosed ? (
+          <button className="small-button" onClick={() => onUpdateStatus(report.id, 'open')} type="button">
+            Segna da leggere
+          </button>
+        ) : (
+          <button className="small-button danger-action" onClick={() => onUpdateStatus(report.id, 'closed')} type="button">
+            Archivia
+          </button>
+        )}
       </div>
     </article>
   )
 }
 
-function CheckOperationRow({ check, driver, onMarkRead, onOpen, read, selected, trailer, vehicle }) {
+function CheckOperationRow({ check, driver, onMarkRead, onMarkUnread, onOpen, read, selected, trailer, vehicle }) {
   const issueText = getCheckIssues(check)
   const isCritical = issueText.length > 0
   const rowClassName = ['operation-row', selected ? 'is-selected' : '', read ? 'is-muted' : '']
@@ -3251,7 +3285,7 @@ function CheckOperationRow({ check, driver, onMarkRead, onOpen, read, selected, 
         <div className="operation-title">
           <strong>Check mattutino</strong>
           <span className={isCritical ? 'status-pill tone-danger' : 'status-pill tone-success'}>
-            {read ? 'Letto' : isCritical ? 'Critico' : 'Da aprire'}
+            {read ? 'Archiviato' : isCritical ? 'Critico' : 'Da aprire'}
           </span>
         </div>
         <p>{driver?.name ?? 'Autista'} · {vehicle?.plate ?? 'Mezzo non trovato'}</p>
@@ -3266,15 +3300,15 @@ function CheckOperationRow({ check, driver, onMarkRead, onOpen, read, selected, 
         <button className="small-button" onClick={onOpen} type="button">
           Apri
         </button>
-        <button
-          aria-label={read ? 'Check gia visto' : 'Segna check come visto'}
-          className="small-button"
-          disabled={read}
-          onClick={onMarkRead}
-          type="button"
-        >
-          {read ? 'Gia visto' : 'Visto'}
-        </button>
+        {read ? (
+          <button className="small-button" onClick={onMarkUnread} type="button">
+            Segna da leggere
+          </button>
+        ) : (
+          <button aria-label="Archivia check" className="small-button danger-action" onClick={onMarkRead} type="button">
+            Archivia
+          </button>
+        )}
       </div>
     </article>
   )
@@ -3286,12 +3320,82 @@ function OperationDetailPanel({
   driverRecords,
   operation,
   onAcknowledgeCheck,
+  onMarkCheckUnread,
   onUpdateFaultStatus,
   vehicleRecords,
 }) {
+  return (
+    <OperationDetailShell
+      acknowledgedCheckIds={acknowledgedCheckIds}
+      assetPreviewUrl={assetPreviewUrl}
+      driverRecords={driverRecords}
+      operation={operation}
+      onAcknowledgeCheck={onAcknowledgeCheck}
+      onMarkCheckUnread={onMarkCheckUnread}
+      onUpdateFaultStatus={onUpdateFaultStatus}
+      vehicleRecords={vehicleRecords}
+    />
+  )
+}
+
+function OperationDetailModal({
+  acknowledgedCheckIds,
+  assetPreviewUrl = () => '',
+  driverRecords,
+  operation,
+  onAcknowledgeCheck,
+  onClose,
+  onMarkCheckUnread,
+  onUpdateFaultStatus,
+  vehicleRecords,
+}) {
+  if (!operation) return null
+
+  return (
+    <div className="operation-modal-backdrop" onClick={onClose} role="presentation">
+      <OperationDetailShell
+        acknowledgedCheckIds={acknowledgedCheckIds}
+        assetPreviewUrl={assetPreviewUrl}
+        driverRecords={driverRecords}
+        operation={operation}
+        onAcknowledgeCheck={onAcknowledgeCheck}
+        onClose={onClose}
+        onMarkCheckUnread={onMarkCheckUnread}
+        onUpdateFaultStatus={onUpdateFaultStatus}
+        surface="modal"
+        vehicleRecords={vehicleRecords}
+      />
+    </div>
+  )
+}
+
+function OperationDetailShell({
+  acknowledgedCheckIds,
+  assetPreviewUrl = () => '',
+  driverRecords,
+  operation,
+  onAcknowledgeCheck,
+  onClose,
+  onMarkCheckUnread,
+  onUpdateFaultStatus,
+  surface = 'side',
+  vehicleRecords,
+}) {
+  const Shell = surface === 'modal' ? 'section' : 'aside'
+  const shellClassName = surface === 'modal' ? 'panel operation-detail-panel operation-modal' : 'panel operation-detail-panel'
+  const shellProps =
+    surface === 'modal'
+      ? {
+          'aria-label': 'Dettaglio notifica',
+          'aria-modal': 'true',
+          onClick: (event) => event.stopPropagation(),
+          role: 'dialog',
+        }
+      : {}
+
   if (!operation) {
     return (
-      <aside className="panel operation-detail-panel">
+      <Shell className={shellClassName} {...shellProps}>
         <div className="panel-header compact">
           <div>
             <p className="overline">Dettaglio</p>
@@ -3300,7 +3404,7 @@ function OperationDetailPanel({
           <Bell size={20} />
         </div>
         <p className="operation-detail-empty">Seleziona un guasto o un check per vedere tutti i dettagli.</p>
-      </aside>
+      </Shell>
     )
   }
 
@@ -3309,19 +3413,24 @@ function OperationDetailPanel({
     const driver = driverRecords.find((entry) => entry.id === report.driverId)
     const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
     const trailer = vehicleRecords.find((entry) => entry.id === report.semitrailerId)
-    const isClosed = report.status === 'closed'
-    const isSeen = report.status !== 'open'
-    const isWorking = report.status === 'in_progress'
+    const isClosed = isFaultArchived(report)
     const faultPhotoUrl = assetPreviewUrl(report.photoPath)
 
     return (
-      <aside className="panel operation-detail-panel">
+      <Shell className={shellClassName} {...shellProps}>
         <div className="panel-header compact">
           <div>
             <p className="overline">Guasto</p>
             <h2>{report.title}</h2>
           </div>
-          <Wrench size={20} />
+          <div className="operation-detail-header-actions">
+            <Wrench size={20} />
+            {surface === 'modal' && (
+              <button aria-label="Chiudi dettaglio" className="icon-button operation-modal-close" onClick={onClose} type="button">
+                <X size={18} />
+              </button>
+            )}
+          </div>
         </div>
         <div className="operation-detail-body">
           <DetailLine label="Stato" value={getFaultStatusLabel(report.status)} />
@@ -3347,17 +3456,17 @@ function OperationDetailPanel({
           )}
         </div>
         <div className="operation-detail-actions">
-          <button disabled={isSeen} className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'seen')} type="button">
-            {isSeen ? 'Gia visto' : 'Visto'}
-          </button>
-          <button disabled={isClosed || isWorking} className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'in_progress')} type="button">
-            {isWorking ? 'In corso' : 'In lavorazione'}
-          </button>
-          <button disabled={isClosed} className="small-button danger-action" onClick={() => onUpdateFaultStatus(report.id, 'closed')} type="button">
-            {isClosed ? 'Archiviato' : 'Archivia'}
-          </button>
+          {isClosed ? (
+            <button className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'open')} type="button">
+              Segna da leggere
+            </button>
+          ) : (
+            <button className="small-button danger-action" onClick={() => onUpdateFaultStatus(report.id, 'closed')} type="button">
+              Archivia
+            </button>
+          )}
         </div>
-      </aside>
+      </Shell>
     )
   }
 
@@ -3369,16 +3478,23 @@ function OperationDetailPanel({
   const isRead = acknowledgedCheckIds.includes(check.id)
 
   return (
-    <aside className="panel operation-detail-panel">
+    <Shell className={shellClassName} {...shellProps}>
       <div className="panel-header compact">
         <div>
           <p className="overline">Check</p>
           <h2>Check mattutino</h2>
         </div>
-        <ClipboardCheck size={20} />
+        <div className="operation-detail-header-actions">
+          <ClipboardCheck size={20} />
+          {surface === 'modal' && (
+            <button aria-label="Chiudi dettaglio" className="icon-button operation-modal-close" onClick={onClose} type="button">
+              <X size={18} />
+            </button>
+          )}
+        </div>
       </div>
       <div className="operation-detail-body">
-        <DetailLine label="Stato" value={isRead ? 'Visto e archiviato' : issueText.length > 0 ? 'Critico da aprire' : 'Da aprire'} />
+        <DetailLine label="Stato" value={isRead ? 'Archiviato' : issueText.length > 0 ? 'Critico da aprire' : 'Da aprire'} />
         <DetailLine label="Autista" value={driver?.name ?? 'Autista non trovato'} />
         <DetailLine label="Mezzo" value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : 'Mezzo non trovato'} />
         {trailer && <DetailLine label="Semirimorchio" value={`${trailer.plate} · ${trailer.model}`} />}
@@ -3401,11 +3517,17 @@ function OperationDetailPanel({
         )}
       </div>
       <div className="operation-detail-actions">
-        <button disabled={isRead} className="small-button" onClick={() => onAcknowledgeCheck(check.id)} type="button">
-          {isRead ? 'Gia visto' : 'Visto'}
-        </button>
+        {isRead ? (
+          <button className="small-button" onClick={() => onMarkCheckUnread?.(check.id)} type="button">
+            Segna da leggere
+          </button>
+        ) : (
+          <button className="small-button danger-action" onClick={() => onAcknowledgeCheck?.(check.id)} type="button">
+            Archivia
+          </button>
+        )}
       </div>
-    </aside>
+    </Shell>
   )
 }
 
@@ -3705,6 +3827,7 @@ function DriverAppView({
   driverRecords,
   faultReportRecords,
   faultReported,
+  isLoading,
   items,
   morningCheckSent,
   onDriverDocumentUpload,
@@ -3737,30 +3860,36 @@ function DriverAppView({
         </button>
       </header>
       <div className="driver-page-content">
-        <DriverMobile
-          assetPreviewUrl={assetPreviewUrl}
-          companyLogoUrl={companyLogoUrl}
-          companyName={companyName}
-          documentUploadStatus={documentUploadStatus}
-          documentRecords={documentRecords}
-          driverRecords={driverRecords}
-          faultReportRecords={faultReportRecords}
-          faultReported={faultReported}
-          items={items}
-          morningCheckSent={morningCheckSent}
-          onDriverDocumentUpload={onDriverDocumentUpload}
-          onDriverProfileImageRemove={onDriverProfileImageRemove}
-          onDriverProfileImageUpload={onDriverProfileImageUpload}
-          onFaultReport={onFaultReport}
-          onMorningCheck={onMorningCheck}
-          onOpenDriverDocument={onOpenDriverDocument}
-          operationsStatus={operationsStatus}
-          uploadSent={uploadSent}
-          onUpload={onUpload}
-          uploadingDocumentId={uploadingDocumentId}
-          vehicleCheckRecords={vehicleCheckRecords}
-          vehicleRecords={vehicleRecords}
-        />
+        {isLoading ? (
+          <DriverLoadingPhone companyLogoUrl={companyLogoUrl} companyName={companyName} />
+        ) : driverRecords.length > 0 ? (
+          <DriverMobile
+            assetPreviewUrl={assetPreviewUrl}
+            companyLogoUrl={companyLogoUrl}
+            companyName={companyName}
+            documentUploadStatus={documentUploadStatus}
+            documentRecords={documentRecords}
+            driverRecords={driverRecords}
+            faultReportRecords={faultReportRecords}
+            faultReported={faultReported}
+            items={items}
+            morningCheckSent={morningCheckSent}
+            onDriverDocumentUpload={onDriverDocumentUpload}
+            onDriverProfileImageRemove={onDriverProfileImageRemove}
+            onDriverProfileImageUpload={onDriverProfileImageUpload}
+            onFaultReport={onFaultReport}
+            onMorningCheck={onMorningCheck}
+            onOpenDriverDocument={onOpenDriverDocument}
+            operationsStatus={operationsStatus}
+            uploadSent={uploadSent}
+            onUpload={onUpload}
+            uploadingDocumentId={uploadingDocumentId}
+            vehicleCheckRecords={vehicleCheckRecords}
+            vehicleRecords={vehicleRecords}
+          />
+        ) : (
+          <DriverEmptyPhone companyLogoUrl={companyLogoUrl} companyName={companyName} message={operationsStatus} />
+        )}
         <section className="panel driver-note-panel">
           <p className="overline">Notifiche</p>
           <h1>Qui arrivano gli avvisi in app</h1>
@@ -3774,13 +3903,63 @@ function DriverAppView({
   )
 }
 
+function DriverLoadingPhone({ companyLogoUrl, companyName }) {
+  return (
+    <section className="phone-frame" aria-label="Caricamento app autista">
+      <div className="phone-top">
+        <span>09:41</span>
+        <span>App</span>
+      </div>
+      <div className="phone-body">
+        <div className="driver-company-strip">
+          <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
+          <div>
+            <span>Azienda</span>
+            <strong>{companyName}</strong>
+          </div>
+        </div>
+        <div className="driver-loading-state">
+          <RadioTower size={24} />
+          <strong>Caricamento area autista</strong>
+          <span>Sto recuperando i dati del profilo.</span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function DriverEmptyPhone({ companyLogoUrl, companyName, message }) {
+  return (
+    <section className="phone-frame" aria-label="Area autista non disponibile">
+      <div className="phone-top">
+        <span>09:41</span>
+        <span>App</span>
+      </div>
+      <div className="phone-body">
+        <div className="driver-company-strip">
+          <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
+          <div>
+            <span>Azienda</span>
+            <strong>{companyName}</strong>
+          </div>
+        </div>
+        <div className="driver-loading-state">
+          <AlertTriangle size={24} />
+          <strong>Area autista non disponibile</strong>
+          <span>{message || 'Riprova tra qualche secondo o accedi di nuovo.'}</span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function DriverMobile({
   assetPreviewUrl = () => '',
   companyLogoUrl = '',
   companyName = 'Azienda',
   documentUploadStatus,
   documentRecords = driverDocuments,
-  driverRecords = drivers,
+  driverRecords = [],
   faultReportRecords = [],
   faultReported,
   items = [],
@@ -3802,9 +3981,8 @@ function DriverMobile({
   const [selectedPreviewDriverId, setSelectedPreviewDriverId] = useState('')
   const previewDriver =
     driverRecords.find((entry) => entry.id === selectedPreviewDriverId) ??
-    driverRecords[0] ??
-    drivers[0]
-  const driver = showDriverSelector ? previewDriver : driverRecords[0] ?? drivers[0]
+    driverRecords[0]
+  const driver = showDriverSelector ? previewDriver : driverRecords[0]
   const activeVehicles = vehicleRecords.filter((entry) => entry.status !== 'Archiviato')
   const driveableVehicles = activeVehicles.filter((entry) => entry.fleetType !== 'semirimorchio')
   const assignedVehicle = driveableVehicles.find((entry) => entry.id === driver.vehicleId)
@@ -4198,7 +4376,7 @@ function NotificationPanel({
         type: 'Check',
       })),
     ...faultReportRecords
-      .filter((report) => report.status === 'open')
+      .filter(isFaultUnread)
       .map((report) => ({
         createdAt: report.createdAt,
         detail: `${vehicleRecords.find((vehicle) => vehicle.id === report.vehicleId)?.plate ?? 'Mezzo'} · ${getFaultSeverityLabel(report.severity)}`,
@@ -4234,7 +4412,7 @@ function NotificationPanel({
             </div>
           </button>
         ))}
-        {latestOperations.length === 0 && <small>Nessuna notifica da aprire. Check visti e guasti chiusi restano in archivio.</small>}
+        {latestOperations.length === 0 && <small>Nessuna notifica da aprire. Check archiviati e guasti chiusi restano in archivio.</small>}
       </div>
     </section>
   )

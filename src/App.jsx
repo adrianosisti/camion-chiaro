@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
@@ -572,6 +572,1756 @@ const translations = {
   },
 }
 
+const workflowTranslations = {
+  it: {
+    'chat.companyTitle': 'Chat autisti',
+    'chat.companyAria': 'Chat azienda autisti',
+    'chat.conversation': 'Conversazione',
+    'chat.gallery': 'Galleria',
+    'chat.messages': 'Messaggi',
+    'chat.noDrivers': 'Nessun autista',
+    'chat.noDriversHint': 'Aggiungi un autista prima di aprire una chat.',
+    'chat.noMessages': 'Nessun messaggio',
+    'chat.noMessagesYet': 'Nessun messaggio ancora',
+    'chat.firstMessageHint': 'Scrivi il primo messaggio all autista.',
+    'chat.createdOnFirstMessage': 'La chat verra creata al primo messaggio.',
+    'chat.selectDriver': 'Seleziona autista',
+    'chat.selectDriverBody': 'Apri una chat dalla lista per leggere e rispondere.',
+    'chat.writePlaceholder': 'Scrivi un messaggio...',
+    'chat.messagePlaceholder': 'Messaggio',
+    'chat.photo': 'Foto',
+    'chat.photoAttached': 'Foto allegata',
+    'chat.photoLoading': 'Foto in caricamento...',
+    'chat.photoReady': 'Foto pronta: {name}',
+    'chat.company': 'Azienda',
+    'chat.driver': 'Autista',
+    'chat.you': 'Tu',
+    'chat.send': 'Invia',
+    'chat.sending': 'Invio...',
+    'messageStatus.delivered': 'Consegnato',
+    'messageStatus.read': 'Letto',
+    'messageStatus.sent': 'Inviato',
+    'chat.open': 'Apri chat',
+    'chat.openWithCount': 'Apri chat ({count})',
+    'chat.emptyDriverHint': 'Scrivi all azienda quando hai bisogno di comunicare velocemente.',
+    'common.add': 'Aggiungi',
+    'common.addDocument': 'Aggiungi documento',
+    'common.archive': 'Archivia',
+    'common.archived': 'Archiviato',
+    'common.back': 'Indietro',
+    'common.cancel': 'Annulla',
+    'common.change': 'Cambia',
+    'common.close': 'Chiudi',
+    'common.company': 'Azienda',
+    'common.delete': 'Elimina',
+    'common.driver': 'Autista',
+    'common.edit': 'Modifica',
+    'common.file': 'File',
+    'common.loading': 'Caricamento...',
+    'common.notAvailable': 'Non disponibile',
+    'common.notInserted': 'Non inserita',
+    'common.notes': 'Note',
+    'common.open': 'Apri',
+    'common.photo': 'Foto',
+    'common.readyPhoto': 'Foto pronta: {name}',
+    'common.remove': 'Rimuovi',
+    'common.save': 'Salva',
+    'common.saveChanges': 'Salva modifiche',
+    'common.saving': 'Salvataggio...',
+    'common.status': 'Stato',
+    'common.time': 'Ora',
+    'common.upload': 'Carica',
+    'common.vehicle': 'Mezzo',
+    'common.vehicleMissing': 'Mezzo non trovato',
+    'common.driverMissing': 'Autista non trovato',
+    'common.trailer': 'Semirimorchio',
+    'companyLogo.body': 'Appare accanto al nome nella dashboard.',
+    'companyLogo.change': 'Cambia logo',
+    'companyLogo.title': 'Logo azienda',
+    'companyLogo.upload': 'Carica logo',
+    'deadline.add': 'Nuova scadenza',
+    'deadline.addFirstHint': 'Aggiungi prima almeno un autista o un mezzo.',
+    'deadline.advancedFilters': 'Filtri avanzati',
+    'deadline.agenda': 'Agenda operativa',
+    'deadline.atLeastOneDriver': 'almeno un autista',
+    'deadline.atLeastOneVehicle': 'almeno un mezzo',
+    'deadline.boardTitle': 'Scadenze documentali',
+    'deadline.close': 'Chiudi',
+    'deadline.days': '{count} giorni',
+    'deadline.daysAgo': '{count} giorni fa',
+    'deadline.driverScope': 'Autista',
+    'deadline.dueDate': 'Scadenza',
+    'deadline.emptyText': 'Le prossime scadenze compariranno qui.',
+    'deadline.emptyTitle': 'Nessuna scadenza inserita',
+    'deadline.filterAria': 'Filtra scadenze',
+    'deadline.inApp': 'In app',
+    'deadline.owner': 'Responsabile',
+    'deadline.quickInsert': 'Inserimento rapido',
+    'deadline.renew': 'Rinnovo',
+    'deadline.scope': 'Ambito',
+    'deadline.subject': 'Soggetto',
+    'deadline.type': 'Tipo',
+    'deadline.vehicleScope': 'Mezzo',
+    'documents.createOverline': 'Nuovo documento',
+    'documents.document': 'Documento',
+    'documents.driverPoliceTitle': 'Documenti da mostrare alla polizia',
+    'documents.expiry': 'Scadenza',
+    'documents.fileReady': 'File pronto: {name}',
+    'documents.chooseFileFirst': 'Scegli una foto o un PDF prima di salvare.',
+    'documents.noVisible': 'Nessun documento visibile',
+    'documents.fileOrLink': 'File o link',
+    'documents.filePresent': 'File/link presente',
+    'documents.fileMissing': 'File da caricare',
+    'documents.noDocuments': 'Nessun documento inserito.',
+    'documents.noDriver': 'Autista non assegnato',
+    'documents.onlyCompany': 'Solo azienda',
+    'documents.historyTitle': 'Storico documenti',
+    'documents.historyOverline': 'Storico',
+    'documents.historyMovements': 'Movimenti documenti',
+    'documents.historyEmpty': 'Lo storico comparira al prossimo movimento documento.',
+    'documents.visibleApp': 'visibili in app',
+    'documents.visibleDriver': 'Visibile all autista',
+    'documents.visibleInApp': 'Visibile in app',
+    'documents.withFile': 'con file/link',
+    'documents.within30': 'entro 30 giorni',
+    'documents.number': 'Numero documento',
+    'documents.numberPlaceholder': 'Numero o riferimento',
+    'documents.openOrSave': 'Apri/salva',
+    'documents.removeFile': 'Elimina file',
+    'documents.save': 'Salva documento',
+    'documents.uploadCamera': 'Scatta foto',
+    'documents.uploadFile': 'Carica foto/PDF',
+    'documents.uploading': 'Caricamento in corso...',
+    'docStatus.uploaded': 'Caricato',
+    'docStatus.verified': 'Verificato',
+    'docStatus.expired': 'Scaduto',
+    'docStatus.missing': 'Mancante',
+    'docType.adr': 'Formazione ADR',
+    'docType.cqc': 'CQC',
+    'docType.driverCard': 'Carta tachigrafica',
+    'docType.insurance': 'Assicurazione RCA',
+    'docType.licenseC': 'Patente C',
+    'docType.licenseCE': 'Patente C+E',
+    'docType.medical': 'Visita medica',
+    'docType.roadTax': 'Bollo',
+    'docType.vehicleInspection': 'Revisione mezzo',
+    'driverApp.checkSent': 'Check inviato',
+    'driverApp.companyMessages': 'Messaggi azienda',
+    'driverApp.currentKm': 'Km attuali',
+    'driverApp.documentUploaded': 'Documento caricato',
+    'driverApp.faultReported': 'Guasto segnalato',
+    'driverApp.greeting': 'Buongiorno',
+    'driverApp.messageUnread': '{count} messaggi azienda da leggere',
+    'driverApp.messages': '{count} messaggi',
+    'driverApp.none': 'Nessuno',
+    'driverApp.notesCheck': 'Note check',
+    'driverApp.notesPlaceholder': 'Es. pressione gomme controllata',
+    'driverApp.morningCheck': 'Check mattutino',
+    'driverApp.noVehicle': 'Nessun mezzo selezionabile. L azienda deve aggiungere almeno un furgone, motrice o trattore in Flotta.',
+    'driverApp.previewDriver': 'Autista in anteprima',
+    'driverApp.uploadDocument': 'Carica documento',
+    'driverApp.usedVehicle': 'Mezzo usato',
+    'driverApp.attachedTrailer': 'Semirimorchio agganciato',
+    'driverApp.quickChecks': 'Controlli rapidi',
+    'driverApp.lightsOk': 'Luci ok',
+    'driverApp.tiresOk': 'Gomme ok',
+    'driverApp.documentsBoard': 'Documenti bordo',
+    'driverApp.sendCheck': 'Invia check',
+    'driverApp.lastCheck': 'Ultimo check: {time}',
+    'drivers.addTitle': 'Nuovo autista',
+    'drivers.archive': 'Archivia autista',
+    'drivers.authEmail': 'Email accesso autista',
+    'drivers.credentials': 'Credenziali',
+    'drivers.depot': 'Deposito',
+    'drivers.edit': 'Modifica autista',
+    'drivers.name': 'Nome e cognome',
+    'drivers.password': 'Password temporanea',
+    'drivers.phone': 'Cellulare',
+    'drivers.photo': 'Foto profilo',
+    'drivers.role': 'Ruolo',
+    'drivers.username': 'Nome utente',
+    'fault.description': 'Descrizione',
+    'fault.details': 'Dettagli',
+    'fault.detailsPlaceholder': 'Descrivi cosa succede',
+    'fault.openFaults': '{count} guasti aperti',
+    'fault.photo': 'Foto guasto',
+    'fault.photoRemove': 'Rimuovi foto',
+    'fault.photoTake': 'Scatta foto',
+    'fault.titlePlaceholder': 'Es. spia motore accesa',
+    'fault.report': 'Segnala guasto',
+    'fault.reportShort': 'Segnala',
+    'fault.send': 'Invia guasto',
+    'fault.severity': 'Gravita',
+    'fault.title': 'Titolo guasto',
+    'faultStatus.closed': 'Archiviato',
+    'faultStatus.open': 'Da leggere',
+    'faultStatus.seen': 'Da leggere',
+    'faultStatus.in_progress': 'Da leggere',
+    'faultSeverity.high': 'Alta',
+    'faultSeverity.low': 'Bassa',
+    'faultSeverity.medium': 'Media',
+    'faultSeverity.stop_vehicle': 'Fermo mezzo',
+    'fleet.empty': 'Furgoni, motrici, trattori e semirimorchi compariranno qui.',
+    'fleet.addToFleet': 'Aggiungi alla flotta',
+    'fleet.archivedHidden': '{count} mezzi archiviati nascosti dall elenco operativo.',
+    'fleet.assignedVehicles': 'Mezzi assegnati',
+    'fleet.category': 'Categoria',
+    'fleet.managementAria': 'Gestione flotta e inserimento',
+    'fleet.setup': 'Allestimento',
+    'fleet.setupMissing': 'Allestimento da completare',
+    'fleet.noFleetTitle': 'Nessun mezzo in flotta',
+    'fleet.vehicleActive': 'mezzi attivi',
+    'fleet.model': 'Modello',
+    'fleet.modelMissing': 'Modello non inserito',
+    'fleet.newVehicle': 'Nuovo mezzo',
+    'fleet.plate': 'Targa',
+    'fleet.title': 'Flotta',
+    'fleet.type': 'Tipo flotta',
+    'fleetType.furgone': 'Furgone',
+    'fleetType.furgonePlural': 'Furgoni',
+    'fleetType.motrice': 'Motrice',
+    'fleetType.motricePlural': 'Motrici',
+    'fleetType.trattore': 'Trattore',
+    'fleetType.trattorePlural': 'Trattori',
+    'fleetType.semirimorchio': 'Semirimorchio',
+    'fleetType.semirimorchioPlural': 'Semirimorchi',
+    'filter.all': 'Tutte',
+    'filter.driver': 'Autisti',
+    'filter.medical': 'Mediche',
+    'filter.month': '30 giorni',
+    'filter.urgent': 'Critiche',
+    'filter.vehicle': 'Mezzi',
+    'form.missingFields': 'Mancano: {fields}.',
+    'notifications.bellAria': 'Notifiche: {count} da leggere',
+    'notifications.companyAria': 'Notifiche azienda',
+    'notifications.empty': 'Nessuna notifica in questa sezione.',
+    'notifications.filterAria': 'Filtra notifiche',
+    'notifications.fullView': 'Vista completa',
+    'operations.archive': 'Archivia',
+    'operations.archived': 'Archivio',
+    'operations.archivedCount': 'archiviati',
+    'operations.activeFaults': 'guasti attivi',
+    'operations.bell': 'Campanella',
+    'operations.created': 'Creato',
+    'operations.updated': 'Aggiornato',
+    'operations.detail': 'Dettaglio',
+    'operations.check': 'Check',
+    'operations.checkIssues': 'Anomalie check',
+    'operations.checkCriticalOpen': 'Critico da aprire',
+    'operations.lights': 'Luci',
+    'operations.tires': 'Gomme',
+    'operations.documentsOnBoard': 'Documenti bordo',
+    'operations.present': 'Presenti',
+    'operations.missing': 'Mancanti',
+    'operations.checkCritical': 'Check critici',
+    'operations.critical': 'Critiche',
+    'operations.criticalCount': 'critiche',
+    'operations.detailEmptyTitle': 'Apri una notifica',
+    'operations.detailEmptyText': 'Seleziona un guasto o un check per vedere tutti i dettagli.',
+    'operations.empty': 'Nessuna notifica in questa vista.',
+    'operations.fault': 'Guasto',
+    'operations.faults': 'Guasti',
+    'operations.inbox': 'Da aprire',
+    'operations.markUnread': 'Segna da leggere',
+    'operations.open': 'Apri',
+    'operations.title': 'Notifiche operative',
+    'phone.enable': 'Abilita notifiche',
+    'phone.enabled': 'Attive',
+    'phone.installed': 'Installata',
+    'phone.install': 'Installa app',
+    'phone.installHow': 'Come installare',
+    'phone.installReady': 'Pronta',
+    'phone.needInstall': 'Prima installa',
+    'phone.notAvailable': 'Non disponibili',
+    'phone.notifications': 'Notifiche telefono',
+    'phone.openAsApp': 'Aperta come app',
+    'phone.panelTitle': 'App e notifiche',
+    'phone.refresh': 'Aggiorna',
+    'phone.refreshApp': 'Aggiorna app',
+    'phone.refreshBody': 'Ricarica la versione pubblicata.',
+    'phone.scope': 'Telefono',
+    'phone.toActivate': 'Da attivare',
+    'phone.toAdd': 'Da aggiungere',
+    'phone.verify': 'Verifica notifiche',
+    'reaction.add': 'Aggiungi reazione',
+    'reaction.choose': 'Scegli reazione',
+    'reaction.company': 'Reazione azienda',
+    'reaction.driver': 'Reazione autista',
+    'reaction.heart': 'Cuore',
+    'reaction.ok': 'OK',
+    'reaction.seen': 'Visto',
+    'reaction.summary': 'Reazioni al messaggio',
+    'reaction.thanks': 'Grazie',
+    'urgency.critical': 'Critica',
+    'urgency.expired': 'Scaduta',
+    'urgency.ok': 'Regolare',
+    'urgency.soon': 'In scadenza',
+    'urgency.watch': 'Da monitorare',
+    'settings.companyData': 'Dati azienda',
+    'settings.companyPreview': 'Anteprima',
+    'settings.emailAccess': 'Email accesso',
+    'settings.headquarters': 'Sede',
+    'settings.legalName': 'Ragione sociale',
+    'settings.profileOverline': 'Profilo trasportatore',
+    'settings.vatNumber': 'Partita IVA',
+    'vehicleStatus.active': 'Operativo',
+    'vehicleStatus.maintenance': 'In manutenzione',
+    'vehicleStatus.watch': 'Da controllare',
+  },
+  en: {
+    'chat.companyTitle': 'Driver chat',
+    'chat.companyAria': 'Company driver chat',
+    'chat.conversation': 'Conversation',
+    'chat.gallery': 'Gallery',
+    'chat.messages': 'Messages',
+    'chat.noDrivers': 'No drivers',
+    'chat.noDriversHint': 'Add a driver before opening a chat.',
+    'chat.noMessages': 'No messages',
+    'chat.noMessagesYet': 'No messages yet',
+    'chat.firstMessageHint': 'Write the first message to the driver.',
+    'chat.createdOnFirstMessage': 'The chat will be created with the first message.',
+    'chat.selectDriver': 'Select driver',
+    'chat.selectDriverBody': 'Open a chat from the list to read and reply.',
+    'chat.writePlaceholder': 'Write a message...',
+    'chat.messagePlaceholder': 'Message',
+    'chat.photo': 'Photo',
+    'chat.photoAttached': 'Photo attached',
+    'chat.photoLoading': 'Photo loading...',
+    'chat.photoReady': 'Photo ready: {name}',
+    'chat.company': 'Company',
+    'chat.driver': 'Driver',
+    'chat.you': 'You',
+    'chat.send': 'Send',
+    'chat.sending': 'Sending...',
+    'messageStatus.delivered': 'Delivered',
+    'messageStatus.read': 'Read',
+    'messageStatus.sent': 'Sent',
+    'chat.open': 'Open chat',
+    'chat.openWithCount': 'Open chat ({count})',
+    'chat.emptyDriverHint': 'Write to the company when you need quick communication.',
+    'common.add': 'Add',
+    'common.addDocument': 'Add document',
+    'common.archive': 'Archive',
+    'common.archived': 'Archived',
+    'common.back': 'Back',
+    'common.cancel': 'Cancel',
+    'common.change': 'Change',
+    'common.close': 'Close',
+    'common.company': 'Company',
+    'common.delete': 'Delete',
+    'common.driver': 'Driver',
+    'common.edit': 'Edit',
+    'common.file': 'File',
+    'common.loading': 'Loading...',
+    'common.notAvailable': 'Not available',
+    'common.notInserted': 'Not entered',
+    'common.notes': 'Notes',
+    'common.open': 'Open',
+    'common.photo': 'Photo',
+    'common.readyPhoto': 'Photo ready: {name}',
+    'common.remove': 'Remove',
+    'common.save': 'Save',
+    'common.saveChanges': 'Save changes',
+    'common.saving': 'Saving...',
+    'common.status': 'Status',
+    'common.time': 'Time',
+    'common.upload': 'Upload',
+    'common.vehicle': 'Vehicle',
+    'common.vehicleMissing': 'Vehicle not found',
+    'common.driverMissing': 'Driver not found',
+    'common.trailer': 'Semi-trailer',
+    'companyLogo.body': 'Shown next to the company name in the dashboard.',
+    'companyLogo.change': 'Change logo',
+    'companyLogo.title': 'Company logo',
+    'companyLogo.upload': 'Upload logo',
+    'deadline.add': 'New deadline',
+    'deadline.addFirstHint': 'Add at least one driver or vehicle first.',
+    'deadline.advancedFilters': 'Advanced filters',
+    'deadline.agenda': 'Operations agenda',
+    'deadline.atLeastOneDriver': 'at least one driver',
+    'deadline.atLeastOneVehicle': 'at least one vehicle',
+    'deadline.boardTitle': 'Document deadlines',
+    'deadline.close': 'Close',
+    'deadline.days': '{count} days',
+    'deadline.daysAgo': '{count} days ago',
+    'deadline.driverScope': 'Driver',
+    'deadline.dueDate': 'Deadline',
+    'deadline.emptyText': 'Upcoming deadlines will appear here.',
+    'deadline.emptyTitle': 'No deadlines added',
+    'deadline.filterAria': 'Filter deadlines',
+    'deadline.inApp': 'In app',
+    'deadline.owner': 'Owner',
+    'deadline.quickInsert': 'Quick entry',
+    'deadline.renew': 'Renewal',
+    'deadline.scope': 'Scope',
+    'deadline.subject': 'Subject',
+    'deadline.type': 'Type',
+    'deadline.vehicleScope': 'Vehicle',
+    'documents.createOverline': 'New document',
+    'documents.document': 'Document',
+    'documents.driverPoliceTitle': 'Documents to show to police',
+    'documents.expiry': 'Expiry',
+    'documents.fileReady': 'File ready: {name}',
+    'documents.chooseFileFirst': 'Choose a photo or PDF before saving.',
+    'documents.noVisible': 'No visible documents',
+    'documents.fileOrLink': 'File or link',
+    'documents.filePresent': 'File/link present',
+    'documents.fileMissing': 'File to upload',
+    'documents.noDocuments': 'No documents entered.',
+    'documents.noDriver': 'Driver not assigned',
+    'documents.onlyCompany': 'Company only',
+    'documents.historyTitle': 'Document history',
+    'documents.historyOverline': 'History',
+    'documents.historyMovements': 'Document movements',
+    'documents.historyEmpty': 'History will appear after the next document movement.',
+    'documents.visibleApp': 'visible in app',
+    'documents.visibleDriver': 'Visible to driver',
+    'documents.visibleInApp': 'Visible in app',
+    'documents.withFile': 'with file/link',
+    'documents.within30': 'within 30 days',
+    'documents.number': 'Document number',
+    'documents.numberPlaceholder': 'Number or reference',
+    'documents.openOrSave': 'Open/save',
+    'documents.removeFile': 'Remove file',
+    'documents.save': 'Save document',
+    'documents.uploadCamera': 'Take photo',
+    'documents.uploadFile': 'Upload photo/PDF',
+    'documents.uploading': 'Uploading...',
+    'docStatus.uploaded': 'Uploaded',
+    'docStatus.verified': 'Verified',
+    'docStatus.expired': 'Expired',
+    'docStatus.missing': 'Missing',
+    'docType.adr': 'ADR training',
+    'docType.cqc': 'CQC',
+    'docType.driverCard': 'Tachograph card',
+    'docType.insurance': 'RCA insurance',
+    'docType.licenseC': 'C licence',
+    'docType.licenseCE': 'C+E licence',
+    'docType.medical': 'Medical check',
+    'docType.roadTax': 'Road tax',
+    'docType.vehicleInspection': 'Vehicle inspection',
+    'driverApp.checkSent': 'Check sent',
+    'driverApp.companyMessages': 'Company messages',
+    'driverApp.currentKm': 'Current km',
+    'driverApp.documentUploaded': 'Document uploaded',
+    'driverApp.faultReported': 'Fault reported',
+    'driverApp.greeting': 'Good morning',
+    'driverApp.messageUnread': '{count} company messages unread',
+    'driverApp.messages': '{count} messages',
+    'driverApp.none': 'None',
+    'driverApp.notesCheck': 'Check notes',
+    'driverApp.notesPlaceholder': 'Example: tyre pressure checked',
+    'driverApp.morningCheck': 'Morning check',
+    'driverApp.noVehicle': 'No selectable vehicle. The company must add at least one van, rigid truck or tractor in Fleet.',
+    'driverApp.previewDriver': 'Preview driver',
+    'driverApp.uploadDocument': 'Upload document',
+    'driverApp.usedVehicle': 'Vehicle used',
+    'driverApp.attachedTrailer': 'Attached semi-trailer',
+    'driverApp.quickChecks': 'Quick checks',
+    'driverApp.lightsOk': 'Lights ok',
+    'driverApp.tiresOk': 'Tyres ok',
+    'driverApp.documentsBoard': 'On-board documents',
+    'driverApp.sendCheck': 'Send check',
+    'driverApp.lastCheck': 'Last check: {time}',
+    'drivers.addTitle': 'New driver',
+    'drivers.archive': 'Archive driver',
+    'drivers.authEmail': 'Driver login email',
+    'drivers.credentials': 'Credentials',
+    'drivers.depot': 'Depot',
+    'drivers.edit': 'Edit driver',
+    'drivers.name': 'Full name',
+    'drivers.password': 'Temporary password',
+    'drivers.phone': 'Mobile phone',
+    'drivers.photo': 'Profile photo',
+    'drivers.role': 'Role',
+    'drivers.username': 'Username',
+    'fault.description': 'Description',
+    'fault.details': 'Details',
+    'fault.detailsPlaceholder': 'Describe what is happening',
+    'fault.openFaults': '{count} open faults',
+    'fault.photo': 'Fault photo',
+    'fault.photoRemove': 'Remove photo',
+    'fault.photoTake': 'Take photo',
+    'fault.titlePlaceholder': 'Example: engine warning light on',
+    'fault.report': 'Report fault',
+    'fault.reportShort': 'Report',
+    'fault.send': 'Send fault',
+    'fault.severity': 'Severity',
+    'fault.title': 'Fault title',
+    'faultStatus.closed': 'Archived',
+    'faultStatus.open': 'Unread',
+    'faultStatus.seen': 'Unread',
+    'faultStatus.in_progress': 'Unread',
+    'faultSeverity.high': 'High',
+    'faultSeverity.low': 'Low',
+    'faultSeverity.medium': 'Medium',
+    'faultSeverity.stop_vehicle': 'Stop vehicle',
+    'fleet.empty': 'Vans, rigids, tractors and semi-trailers will appear here.',
+    'fleet.addToFleet': 'Add to fleet',
+    'fleet.archivedHidden': '{count} archived vehicles hidden from the operational list.',
+    'fleet.assignedVehicles': 'Assigned vehicles',
+    'fleet.category': 'Category',
+    'fleet.managementAria': 'Fleet management and entry',
+    'fleet.setup': 'Configuration',
+    'fleet.setupMissing': 'Configuration to complete',
+    'fleet.noFleetTitle': 'No vehicles in fleet',
+    'fleet.vehicleActive': 'active vehicles',
+    'fleet.model': 'Model',
+    'fleet.modelMissing': 'Model not entered',
+    'fleet.newVehicle': 'New vehicle',
+    'fleet.plate': 'Plate',
+    'fleet.title': 'Fleet',
+    'fleet.type': 'Fleet type',
+    'fleetType.furgone': 'Van',
+    'fleetType.furgonePlural': 'Vans',
+    'fleetType.motrice': 'Rigid truck',
+    'fleetType.motricePlural': 'Rigids',
+    'fleetType.trattore': 'Tractor',
+    'fleetType.trattorePlural': 'Tractors',
+    'fleetType.semirimorchio': 'Semi-trailer',
+    'fleetType.semirimorchioPlural': 'Semi-trailers',
+    'filter.all': 'All',
+    'filter.driver': 'Drivers',
+    'filter.medical': 'Medical',
+    'filter.month': '30 days',
+    'filter.urgent': 'Critical',
+    'filter.vehicle': 'Vehicles',
+    'form.missingFields': 'Missing: {fields}.',
+    'notifications.bellAria': 'Notifications: {count} unread',
+    'notifications.companyAria': 'Company notifications',
+    'notifications.empty': 'No notifications in this section.',
+    'notifications.filterAria': 'Filter notifications',
+    'notifications.fullView': 'Full view',
+    'operations.archive': 'Archive',
+    'operations.archived': 'Archive',
+    'operations.archivedCount': 'archived',
+    'operations.activeFaults': 'active faults',
+    'operations.bell': 'Notifications',
+    'operations.created': 'Created',
+    'operations.updated': 'Updated',
+    'operations.detail': 'Detail',
+    'operations.check': 'Check',
+    'operations.checkIssues': 'Check issues',
+    'operations.checkCriticalOpen': 'Critical to open',
+    'operations.lights': 'Lights',
+    'operations.tires': 'Tyres',
+    'operations.documentsOnBoard': 'On-board documents',
+    'operations.present': 'Present',
+    'operations.missing': 'Missing',
+    'operations.checkCritical': 'Critical checks',
+    'operations.critical': 'Critical',
+    'operations.criticalCount': 'critical',
+    'operations.detailEmptyTitle': 'Open a notification',
+    'operations.detailEmptyText': 'Select a fault or check to see all details.',
+    'operations.empty': 'No notifications in this view.',
+    'operations.fault': 'Fault',
+    'operations.faults': 'Faults',
+    'operations.inbox': 'To open',
+    'operations.markUnread': 'Mark unread',
+    'operations.open': 'Open',
+    'operations.title': 'Operational notifications',
+    'phone.enable': 'Enable notifications',
+    'phone.enabled': 'Active',
+    'phone.installed': 'Installed',
+    'phone.install': 'Install app',
+    'phone.installHow': 'How to install',
+    'phone.installReady': 'Ready',
+    'phone.needInstall': 'Install first',
+    'phone.notAvailable': 'Unavailable',
+    'phone.notifications': 'Phone notifications',
+    'phone.openAsApp': 'Opened as app',
+    'phone.panelTitle': 'App and notifications',
+    'phone.refresh': 'Refresh',
+    'phone.refreshApp': 'Refresh app',
+    'phone.refreshBody': 'Reload the published version.',
+    'phone.scope': 'Phone',
+    'phone.toActivate': 'To activate',
+    'phone.toAdd': 'To add',
+    'phone.verify': 'Check notifications',
+    'reaction.add': 'Add reaction',
+    'reaction.choose': 'Choose reaction',
+    'reaction.company': 'Company reaction',
+    'reaction.driver': 'Driver reaction',
+    'reaction.heart': 'Heart',
+    'reaction.ok': 'OK',
+    'reaction.seen': 'Seen',
+    'reaction.summary': 'Message reactions',
+    'reaction.thanks': 'Thanks',
+    'urgency.critical': 'Critical',
+    'urgency.expired': 'Expired',
+    'urgency.ok': 'Regular',
+    'urgency.soon': 'Expiring soon',
+    'urgency.watch': 'Watch',
+    'settings.companyData': 'Company data',
+    'settings.companyPreview': 'Preview',
+    'settings.emailAccess': 'Login email',
+    'settings.headquarters': 'Headquarters',
+    'settings.legalName': 'Legal name',
+    'settings.profileOverline': 'Carrier profile',
+    'settings.vatNumber': 'VAT number',
+    'vehicleStatus.active': 'Operational',
+    'vehicleStatus.maintenance': 'In maintenance',
+    'vehicleStatus.watch': 'To check',
+  },
+  es: {
+    'chat.companyTitle': 'Chat conductores',
+    'chat.companyAria': 'Chat empresa conductores',
+    'chat.conversation': 'Conversacion',
+    'chat.gallery': 'Galeria',
+    'chat.messages': 'Mensajes',
+    'chat.noDrivers': 'Ningun conductor',
+    'chat.noDriversHint': 'Añade un conductor antes de abrir una chat.',
+    'chat.noMessages': 'Ningun mensaje',
+    'chat.noMessagesYet': 'Ningun mensaje aun',
+    'chat.firstMessageHint': 'Escribe el primer mensaje al conductor.',
+    'chat.createdOnFirstMessage': 'La chat se creara con el primer mensaje.',
+    'chat.selectDriver': 'Selecciona conductor',
+    'chat.selectDriverBody': 'Abre una chat de la lista para leer y responder.',
+    'chat.writePlaceholder': 'Escribe un mensaje...',
+    'chat.messagePlaceholder': 'Mensaje',
+    'chat.photo': 'Foto',
+    'chat.photoAttached': 'Foto adjunta',
+    'chat.photoLoading': 'Foto cargando...',
+    'chat.photoReady': 'Foto lista: {name}',
+    'chat.company': 'Empresa',
+    'chat.driver': 'Conductor',
+    'chat.you': 'Tu',
+    'chat.send': 'Enviar',
+    'chat.sending': 'Enviando...',
+    'messageStatus.delivered': 'Entregado',
+    'messageStatus.read': 'Leido',
+    'messageStatus.sent': 'Enviado',
+    'chat.open': 'Abrir chat',
+    'chat.openWithCount': 'Abrir chat ({count})',
+    'chat.emptyDriverHint': 'Escribe a la empresa cuando necesites comunicarte rapido.',
+    'common.add': 'Añadir',
+    'common.addDocument': 'Añadir documento',
+    'common.archive': 'Archivar',
+    'common.archived': 'Archivado',
+    'common.back': 'Atras',
+    'common.cancel': 'Cancelar',
+    'common.change': 'Cambiar',
+    'common.close': 'Cerrar',
+    'common.company': 'Empresa',
+    'common.delete': 'Eliminar',
+    'common.driver': 'Conductor',
+    'common.edit': 'Modificar',
+    'common.file': 'Archivo',
+    'common.loading': 'Cargando...',
+    'common.notAvailable': 'No disponible',
+    'common.notInserted': 'No introducido',
+    'common.notes': 'Notas',
+    'common.open': 'Abrir',
+    'common.photo': 'Foto',
+    'common.readyPhoto': 'Foto lista: {name}',
+    'common.remove': 'Quitar',
+    'common.save': 'Guardar',
+    'common.saveChanges': 'Guardar cambios',
+    'common.saving': 'Guardando...',
+    'common.status': 'Estado',
+    'common.time': 'Hora',
+    'common.upload': 'Subir',
+    'common.vehicle': 'Vehiculo',
+    'common.vehicleMissing': 'Vehiculo no encontrado',
+    'common.driverMissing': 'Conductor no encontrado',
+    'common.trailer': 'Semirremolque',
+    'companyLogo.body': 'Aparece junto al nombre en el panel.',
+    'companyLogo.change': 'Cambiar logo',
+    'companyLogo.title': 'Logo empresa',
+    'companyLogo.upload': 'Subir logo',
+    'deadline.add': 'Nuevo vencimiento',
+    'deadline.addFirstHint': 'Añade primero al menos un conductor o vehiculo.',
+    'deadline.advancedFilters': 'Filtros avanzados',
+    'deadline.agenda': 'Agenda operativa',
+    'deadline.atLeastOneDriver': 'al menos un conductor',
+    'deadline.atLeastOneVehicle': 'al menos un vehiculo',
+    'deadline.boardTitle': 'Vencimientos documentales',
+    'deadline.close': 'Cerrar',
+    'deadline.days': '{count} dias',
+    'deadline.daysAgo': 'hace {count} dias',
+    'deadline.driverScope': 'Conductor',
+    'deadline.dueDate': 'Vencimiento',
+    'deadline.emptyText': 'Los proximos vencimientos apareceran aqui.',
+    'deadline.emptyTitle': 'Ningun vencimiento introducido',
+    'deadline.filterAria': 'Filtrar vencimientos',
+    'deadline.inApp': 'En app',
+    'deadline.owner': 'Responsable',
+    'deadline.quickInsert': 'Alta rapida',
+    'deadline.renew': 'Renovacion',
+    'deadline.scope': 'Ambito',
+    'deadline.subject': 'Sujeto',
+    'deadline.type': 'Tipo',
+    'deadline.vehicleScope': 'Vehiculo',
+    'documents.createOverline': 'Nuevo documento',
+    'documents.document': 'Documento',
+    'documents.driverPoliceTitle': 'Documentos para mostrar a la policia',
+    'documents.expiry': 'Vencimiento',
+    'documents.fileReady': 'Archivo listo: {name}',
+    'documents.chooseFileFirst': 'Elige una foto o PDF antes de guardar.',
+    'documents.noVisible': 'Ningun documento visible',
+    'documents.fileOrLink': 'Archivo o enlace',
+    'documents.filePresent': 'Archivo/enlace presente',
+    'documents.fileMissing': 'Archivo por subir',
+    'documents.noDocuments': 'Ningun documento introducido.',
+    'documents.noDriver': 'Conductor no asignado',
+    'documents.onlyCompany': 'Solo empresa',
+    'documents.historyTitle': 'Historial documentos',
+    'documents.historyOverline': 'Historial',
+    'documents.historyMovements': 'Movimientos documentos',
+    'documents.historyEmpty': 'El historial aparecera en el proximo movimiento de documento.',
+    'documents.visibleApp': 'visibles en app',
+    'documents.visibleDriver': 'Visible al conductor',
+    'documents.visibleInApp': 'Visible en app',
+    'documents.withFile': 'con archivo/enlace',
+    'documents.within30': 'en 30 dias',
+    'documents.number': 'Numero documento',
+    'documents.numberPlaceholder': 'Numero o referencia',
+    'documents.openOrSave': 'Abrir/guardar',
+    'documents.removeFile': 'Eliminar archivo',
+    'documents.save': 'Guardar documento',
+    'documents.uploadCamera': 'Hacer foto',
+    'documents.uploadFile': 'Subir foto/PDF',
+    'documents.uploading': 'Cargando...',
+    'docStatus.uploaded': 'Cargado',
+    'docStatus.verified': 'Verificado',
+    'docStatus.expired': 'Caducado',
+    'docStatus.missing': 'Faltante',
+    'docType.adr': 'Formacion ADR',
+    'docType.cqc': 'CQC',
+    'docType.driverCard': 'Tarjeta tacografo',
+    'docType.insurance': 'Seguro RCA',
+    'docType.licenseC': 'Permiso C',
+    'docType.licenseCE': 'Permiso C+E',
+    'docType.medical': 'Revision medica',
+    'docType.roadTax': 'Impuesto circulacion',
+    'docType.vehicleInspection': 'Inspeccion vehiculo',
+    'driverApp.checkSent': 'Check enviado',
+    'driverApp.companyMessages': 'Mensajes empresa',
+    'driverApp.currentKm': 'Km actuales',
+    'driverApp.documentUploaded': 'Documento cargado',
+    'driverApp.faultReported': 'Averia comunicada',
+    'driverApp.greeting': 'Buenos dias',
+    'driverApp.messageUnread': '{count} mensajes empresa por leer',
+    'driverApp.messages': '{count} mensajes',
+    'driverApp.none': 'Ninguno',
+    'driverApp.notesCheck': 'Notas check',
+    'driverApp.notesPlaceholder': 'Ej. presion neumaticos revisada',
+    'driverApp.morningCheck': 'Check matinal',
+    'driverApp.noVehicle': 'No hay vehiculos seleccionables. La empresa debe añadir al menos una furgoneta, rigido o tractora en Flota.',
+    'driverApp.previewDriver': 'Conductor en vista previa',
+    'driverApp.uploadDocument': 'Subir documento',
+    'driverApp.usedVehicle': 'Vehiculo usado',
+    'driverApp.attachedTrailer': 'Semirremolque enganchado',
+    'driverApp.quickChecks': 'Controles rapidos',
+    'driverApp.lightsOk': 'Luces ok',
+    'driverApp.tiresOk': 'Neumaticos ok',
+    'driverApp.documentsBoard': 'Documentos a bordo',
+    'driverApp.sendCheck': 'Enviar check',
+    'driverApp.lastCheck': 'Ultimo check: {time}',
+    'drivers.addTitle': 'Nuevo conductor',
+    'drivers.archive': 'Archivar conductor',
+    'drivers.authEmail': 'Email acceso conductor',
+    'drivers.credentials': 'Credenciales',
+    'drivers.depot': 'Base',
+    'drivers.edit': 'Modificar conductor',
+    'drivers.name': 'Nombre completo',
+    'drivers.password': 'Contraseña temporal',
+    'drivers.phone': 'Movil',
+    'drivers.photo': 'Foto perfil',
+    'drivers.role': 'Rol',
+    'drivers.username': 'Usuario',
+    'fault.description': 'Descripcion',
+    'fault.details': 'Detalles',
+    'fault.detailsPlaceholder': 'Describe lo que ocurre',
+    'fault.openFaults': '{count} averias abiertas',
+    'fault.photo': 'Foto averia',
+    'fault.photoRemove': 'Quitar foto',
+    'fault.photoTake': 'Hacer foto',
+    'fault.titlePlaceholder': 'Ej. testigo motor encendido',
+    'fault.report': 'Comunicar averia',
+    'fault.reportShort': 'Comunicar',
+    'fault.send': 'Enviar averia',
+    'fault.severity': 'Gravedad',
+    'fault.title': 'Titulo averia',
+    'faultStatus.closed': 'Archivado',
+    'faultStatus.open': 'No leido',
+    'faultStatus.seen': 'No leido',
+    'faultStatus.in_progress': 'No leido',
+    'faultSeverity.high': 'Alta',
+    'faultSeverity.low': 'Baja',
+    'faultSeverity.medium': 'Media',
+    'faultSeverity.stop_vehicle': 'Vehiculo parado',
+    'fleet.empty': 'Furgones, rigidos, tractoras y semirremolques apareceran aqui.',
+    'fleet.addToFleet': 'Añadir a la flota',
+    'fleet.archivedHidden': '{count} vehiculos archivados ocultos de la lista operativa.',
+    'fleet.assignedVehicles': 'Vehiculos asignados',
+    'fleet.category': 'Categoria',
+    'fleet.managementAria': 'Gestion flota y alta rapida',
+    'fleet.setup': 'Configuracion',
+    'fleet.setupMissing': 'Configuracion por completar',
+    'fleet.noFleetTitle': 'Ningun vehiculo en flota',
+    'fleet.vehicleActive': 'vehiculos activos',
+    'fleet.model': 'Modelo',
+    'fleet.modelMissing': 'Modelo no introducido',
+    'fleet.newVehicle': 'Nuevo vehiculo',
+    'fleet.plate': 'Matricula',
+    'fleet.title': 'Flota',
+    'fleet.type': 'Tipo flota',
+    'fleetType.furgone': 'Furgoneta',
+    'fleetType.furgonePlural': 'Furgonetas',
+    'fleetType.motrice': 'Rigido',
+    'fleetType.motricePlural': 'Rigidos',
+    'fleetType.trattore': 'Tractora',
+    'fleetType.trattorePlural': 'Tractoras',
+    'fleetType.semirimorchio': 'Semirremolque',
+    'fleetType.semirimorchioPlural': 'Semirremolques',
+    'filter.all': 'Todas',
+    'filter.driver': 'Conductores',
+    'filter.medical': 'Medicas',
+    'filter.month': '30 dias',
+    'filter.urgent': 'Criticas',
+    'filter.vehicle': 'Vehiculos',
+    'form.missingFields': 'Faltan: {fields}.',
+    'notifications.bellAria': 'Avisos: {count} por leer',
+    'notifications.companyAria': 'Avisos empresa',
+    'notifications.empty': 'Ningun aviso en esta seccion.',
+    'notifications.filterAria': 'Filtrar avisos',
+    'notifications.fullView': 'Vista completa',
+    'operations.archive': 'Archivar',
+    'operations.archived': 'Archivo',
+    'operations.archivedCount': 'archivadas',
+    'operations.activeFaults': 'averias activas',
+    'operations.bell': 'Campana',
+    'operations.created': 'Creado',
+    'operations.updated': 'Actualizado',
+    'operations.detail': 'Detalle',
+    'operations.check': 'Check',
+    'operations.checkIssues': 'Anomalias check',
+    'operations.checkCriticalOpen': 'Critico por abrir',
+    'operations.lights': 'Luces',
+    'operations.tires': 'Neumaticos',
+    'operations.documentsOnBoard': 'Documentos a bordo',
+    'operations.present': 'Presentes',
+    'operations.missing': 'Faltan',
+    'operations.checkCritical': 'Checks criticos',
+    'operations.critical': 'Criticas',
+    'operations.criticalCount': 'criticas',
+    'operations.detailEmptyTitle': 'Abre una notificacion',
+    'operations.detailEmptyText': 'Selecciona una averia o un check para ver todos los detalles.',
+    'operations.empty': 'Ninguna notificacion en esta vista.',
+    'operations.fault': 'Averia',
+    'operations.faults': 'Averias',
+    'operations.inbox': 'Por abrir',
+    'operations.markUnread': 'Marcar no leida',
+    'operations.open': 'Abrir',
+    'operations.title': 'Notificaciones operativas',
+    'phone.enable': 'Activar notificaciones',
+    'phone.enabled': 'Activas',
+    'phone.installed': 'Instalada',
+    'phone.install': 'Instalar app',
+    'phone.installHow': 'Como instalar',
+    'phone.installReady': 'Lista',
+    'phone.needInstall': 'Primero instala',
+    'phone.notAvailable': 'No disponibles',
+    'phone.notifications': 'Notificaciones telefono',
+    'phone.openAsApp': 'Abierta como app',
+    'phone.panelTitle': 'App y notificaciones',
+    'phone.refresh': 'Actualizar',
+    'phone.refreshApp': 'Actualizar app',
+    'phone.refreshBody': 'Recarga la version publicada.',
+    'phone.scope': 'Telefono',
+    'phone.toActivate': 'Por activar',
+    'phone.toAdd': 'Por añadir',
+    'phone.verify': 'Verificar notificaciones',
+    'reaction.add': 'Añadir reaccion',
+    'reaction.choose': 'Elegir reaccion',
+    'reaction.company': 'Reaccion empresa',
+    'reaction.driver': 'Reaccion conductor',
+    'reaction.heart': 'Corazon',
+    'reaction.ok': 'OK',
+    'reaction.seen': 'Visto',
+    'reaction.summary': 'Reacciones al mensaje',
+    'reaction.thanks': 'Gracias',
+    'urgency.critical': 'Critica',
+    'urgency.expired': 'Caducada',
+    'urgency.ok': 'Regular',
+    'urgency.soon': 'Por vencer',
+    'urgency.watch': 'A vigilar',
+    'settings.companyData': 'Datos empresa',
+    'settings.companyPreview': 'Vista previa',
+    'settings.emailAccess': 'Email acceso',
+    'settings.headquarters': 'Sede',
+    'settings.legalName': 'Razon social',
+    'settings.profileOverline': 'Perfil transportista',
+    'settings.vatNumber': 'NIF/CIF',
+    'vehicleStatus.active': 'Operativo',
+    'vehicleStatus.maintenance': 'En mantenimiento',
+    'vehicleStatus.watch': 'Por controlar',
+  },
+  fr: {
+    'chat.companyTitle': 'Chat chauffeurs',
+    'chat.companyAria': 'Chat entreprise chauffeurs',
+    'chat.conversation': 'Conversation',
+    'chat.gallery': 'Galerie',
+    'chat.messages': 'Messages',
+    'chat.noDrivers': 'Aucun chauffeur',
+    'chat.noDriversHint': 'Ajoute un chauffeur avant d ouvrir une chat.',
+    'chat.noMessages': 'Aucun message',
+    'chat.noMessagesYet': 'Aucun message encore',
+    'chat.firstMessageHint': 'Ecris le premier message au chauffeur.',
+    'chat.createdOnFirstMessage': 'La chat sera creee au premier message.',
+    'chat.selectDriver': 'Selectionner chauffeur',
+    'chat.selectDriverBody': 'Ouvre une chat depuis la liste pour lire et repondre.',
+    'chat.writePlaceholder': 'Ecrire un message...',
+    'chat.messagePlaceholder': 'Message',
+    'chat.photo': 'Photo',
+    'chat.photoAttached': 'Photo jointe',
+    'chat.photoLoading': 'Photo en chargement...',
+    'chat.photoReady': 'Photo prete : {name}',
+    'chat.company': 'Entreprise',
+    'chat.driver': 'Chauffeur',
+    'chat.you': 'Toi',
+    'chat.send': 'Envoyer',
+    'chat.sending': 'Envoi...',
+    'messageStatus.delivered': 'Livre',
+    'messageStatus.read': 'Lu',
+    'messageStatus.sent': 'Envoye',
+    'chat.open': 'Ouvrir chat',
+    'chat.openWithCount': 'Ouvrir chat ({count})',
+    'chat.emptyDriverHint': 'Ecris a l entreprise quand tu dois communiquer rapidement.',
+    'common.add': 'Ajouter',
+    'common.addDocument': 'Ajouter document',
+    'common.archive': 'Archiver',
+    'common.archived': 'Archive',
+    'common.back': 'Retour',
+    'common.cancel': 'Annuler',
+    'common.change': 'Changer',
+    'common.close': 'Fermer',
+    'common.company': 'Entreprise',
+    'common.delete': 'Supprimer',
+    'common.driver': 'Chauffeur',
+    'common.edit': 'Modifier',
+    'common.file': 'Fichier',
+    'common.loading': 'Chargement...',
+    'common.notAvailable': 'Non disponible',
+    'common.notInserted': 'Non renseigne',
+    'common.notes': 'Notes',
+    'common.open': 'Ouvrir',
+    'common.photo': 'Photo',
+    'common.readyPhoto': 'Photo prete : {name}',
+    'common.remove': 'Retirer',
+    'common.save': 'Enregistrer',
+    'common.saveChanges': 'Enregistrer',
+    'common.saving': 'Enregistrement...',
+    'common.status': 'Statut',
+    'common.time': 'Heure',
+    'common.upload': 'Charger',
+    'common.vehicle': 'Vehicule',
+    'common.vehicleMissing': 'Vehicule introuvable',
+    'common.driverMissing': 'Chauffeur introuvable',
+    'common.trailer': 'Semi-remorque',
+    'companyLogo.body': 'Apparait pres du nom dans le tableau.',
+    'companyLogo.change': 'Changer logo',
+    'companyLogo.title': 'Logo entreprise',
+    'companyLogo.upload': 'Charger logo',
+    'deadline.add': 'Nouvelle echeance',
+    'deadline.addFirstHint': 'Ajoute d abord au moins un chauffeur ou un vehicule.',
+    'deadline.advancedFilters': 'Filtres avances',
+    'deadline.agenda': 'Agenda operationnel',
+    'deadline.atLeastOneDriver': 'au moins un chauffeur',
+    'deadline.atLeastOneVehicle': 'au moins un vehicule',
+    'deadline.boardTitle': 'Echeances documents',
+    'deadline.close': 'Fermer',
+    'deadline.days': '{count} jours',
+    'deadline.daysAgo': 'il y a {count} jours',
+    'deadline.driverScope': 'Chauffeur',
+    'deadline.dueDate': 'Echeance',
+    'deadline.emptyText': 'Les prochaines echeances apparaitront ici.',
+    'deadline.emptyTitle': 'Aucune echeance saisie',
+    'deadline.filterAria': 'Filtrer echeances',
+    'deadline.inApp': 'Dans app',
+    'deadline.owner': 'Responsable',
+    'deadline.quickInsert': 'Saisie rapide',
+    'deadline.renew': 'Renouvellement',
+    'deadline.scope': 'Perimetre',
+    'deadline.subject': 'Sujet',
+    'deadline.type': 'Type',
+    'deadline.vehicleScope': 'Vehicule',
+    'documents.createOverline': 'Nouveau document',
+    'documents.document': 'Document',
+    'documents.driverPoliceTitle': 'Documents a montrer a la police',
+    'documents.expiry': 'Echeance',
+    'documents.fileReady': 'Fichier pret : {name}',
+    'documents.chooseFileFirst': 'Choisis une photo ou un PDF avant d enregistrer.',
+    'documents.noVisible': 'Aucun document visible',
+    'documents.fileOrLink': 'Fichier ou lien',
+    'documents.filePresent': 'Fichier/lien present',
+    'documents.fileMissing': 'Fichier a charger',
+    'documents.noDocuments': 'Aucun document saisi.',
+    'documents.noDriver': 'Chauffeur non assigne',
+    'documents.onlyCompany': 'Entreprise seulement',
+    'documents.historyTitle': 'Historique documents',
+    'documents.historyOverline': 'Historique',
+    'documents.historyMovements': 'Mouvements documents',
+    'documents.historyEmpty': 'L historique apparaitra au prochain mouvement de document.',
+    'documents.visibleApp': 'visibles dans app',
+    'documents.visibleDriver': 'Visible au chauffeur',
+    'documents.visibleInApp': 'Visible dans app',
+    'documents.withFile': 'avec fichier/lien',
+    'documents.within30': 'sous 30 jours',
+    'documents.number': 'Numero document',
+    'documents.numberPlaceholder': 'Numero ou reference',
+    'documents.openOrSave': 'Ouvrir/enregistrer',
+    'documents.removeFile': 'Supprimer fichier',
+    'documents.save': 'Enregistrer document',
+    'documents.uploadCamera': 'Prendre photo',
+    'documents.uploadFile': 'Charger photo/PDF',
+    'documents.uploading': 'Chargement...',
+    'docStatus.uploaded': 'Charge',
+    'docStatus.verified': 'Verifie',
+    'docStatus.expired': 'Expire',
+    'docStatus.missing': 'Manquant',
+    'docType.adr': 'Formation ADR',
+    'docType.cqc': 'CQC',
+    'docType.driverCard': 'Carte tachygraphe',
+    'docType.insurance': 'Assurance RCA',
+    'docType.licenseC': 'Permis C',
+    'docType.licenseCE': 'Permis C+E',
+    'docType.medical': 'Visite medicale',
+    'docType.roadTax': 'Taxe vehicule',
+    'docType.vehicleInspection': 'Controle vehicule',
+    'driverApp.checkSent': 'Check envoye',
+    'driverApp.companyMessages': 'Messages entreprise',
+    'driverApp.currentKm': 'Km actuels',
+    'driverApp.documentUploaded': 'Document charge',
+    'driverApp.faultReported': 'Panne signalee',
+    'driverApp.greeting': 'Bonjour',
+    'driverApp.messageUnread': '{count} messages entreprise a lire',
+    'driverApp.messages': '{count} messages',
+    'driverApp.none': 'Aucun',
+    'driverApp.notesCheck': 'Notes check',
+    'driverApp.notesPlaceholder': 'Ex. pression pneus controlee',
+    'driverApp.morningCheck': 'Check du matin',
+    'driverApp.noVehicle': 'Aucun vehicule selectionnable. L entreprise doit ajouter au moins un fourgon, porteur ou tracteur dans Flotte.',
+    'driverApp.previewDriver': 'Chauffeur en apercu',
+    'driverApp.uploadDocument': 'Charger document',
+    'driverApp.usedVehicle': 'Vehicule utilise',
+    'driverApp.attachedTrailer': 'Semi-remorque accrochee',
+    'driverApp.quickChecks': 'Controles rapides',
+    'driverApp.lightsOk': 'Feux ok',
+    'driverApp.tiresOk': 'Pneus ok',
+    'driverApp.documentsBoard': 'Documents de bord',
+    'driverApp.sendCheck': 'Envoyer check',
+    'driverApp.lastCheck': 'Dernier check : {time}',
+    'drivers.addTitle': 'Nouveau chauffeur',
+    'drivers.archive': 'Archiver chauffeur',
+    'drivers.authEmail': 'Email acces chauffeur',
+    'drivers.credentials': 'Identifiants',
+    'drivers.depot': 'Depot',
+    'drivers.edit': 'Modifier chauffeur',
+    'drivers.name': 'Nom complet',
+    'drivers.password': 'Mot de passe temporaire',
+    'drivers.phone': 'Telephone mobile',
+    'drivers.photo': 'Photo profil',
+    'drivers.role': 'Role',
+    'drivers.username': 'Nom utilisateur',
+    'fault.description': 'Description',
+    'fault.details': 'Details',
+    'fault.detailsPlaceholder': 'Decris ce qui se passe',
+    'fault.openFaults': '{count} pannes ouvertes',
+    'fault.photo': 'Photo panne',
+    'fault.photoRemove': 'Retirer photo',
+    'fault.photoTake': 'Prendre photo',
+    'fault.titlePlaceholder': 'Ex. voyant moteur allume',
+    'fault.report': 'Signaler panne',
+    'fault.reportShort': 'Signaler',
+    'fault.send': 'Envoyer panne',
+    'fault.severity': 'Gravite',
+    'fault.title': 'Titre panne',
+    'faultStatus.closed': 'Archive',
+    'faultStatus.open': 'Non lu',
+    'faultStatus.seen': 'Non lu',
+    'faultStatus.in_progress': 'Non lu',
+    'faultSeverity.high': 'Haute',
+    'faultSeverity.low': 'Basse',
+    'faultSeverity.medium': 'Moyenne',
+    'faultSeverity.stop_vehicle': 'Vehicule bloque',
+    'fleet.empty': 'Fourgons, porteurs, tracteurs et semi-remorques apparaitront ici.',
+    'fleet.addToFleet': 'Ajouter a la flotte',
+    'fleet.archivedHidden': '{count} vehicules archives caches de la liste operationnelle.',
+    'fleet.assignedVehicles': 'Vehicules assignes',
+    'fleet.category': 'Categorie',
+    'fleet.managementAria': 'Gestion flotte et saisie',
+    'fleet.setup': 'Configuration',
+    'fleet.setupMissing': 'Configuration a completer',
+    'fleet.noFleetTitle': 'Aucun vehicule en flotte',
+    'fleet.vehicleActive': 'vehicules actifs',
+    'fleet.model': 'Modele',
+    'fleet.modelMissing': 'Modele non renseigne',
+    'fleet.newVehicle': 'Nouveau vehicule',
+    'fleet.plate': 'Plaque',
+    'fleet.title': 'Flotte',
+    'fleet.type': 'Type flotte',
+    'fleetType.furgone': 'Fourgon',
+    'fleetType.furgonePlural': 'Fourgons',
+    'fleetType.motrice': 'Porteur',
+    'fleetType.motricePlural': 'Porteurs',
+    'fleetType.trattore': 'Tracteur',
+    'fleetType.trattorePlural': 'Tracteurs',
+    'fleetType.semirimorchio': 'Semi-remorque',
+    'fleetType.semirimorchioPlural': 'Semi-remorques',
+    'filter.all': 'Toutes',
+    'filter.driver': 'Chauffeurs',
+    'filter.medical': 'Medicales',
+    'filter.month': '30 jours',
+    'filter.urgent': 'Critiques',
+    'filter.vehicle': 'Vehicules',
+    'form.missingFields': 'Manquent : {fields}.',
+    'notifications.bellAria': 'Alertes : {count} a lire',
+    'notifications.companyAria': 'Alertes entreprise',
+    'notifications.empty': 'Aucune alerte dans cette section.',
+    'notifications.filterAria': 'Filtrer alertes',
+    'notifications.fullView': 'Vue complete',
+    'operations.archive': 'Archiver',
+    'operations.archived': 'Archive',
+    'operations.archivedCount': 'archivees',
+    'operations.activeFaults': 'pannes actives',
+    'operations.bell': 'Cloche',
+    'operations.created': 'Cree',
+    'operations.updated': 'Mis a jour',
+    'operations.detail': 'Detail',
+    'operations.check': 'Check',
+    'operations.checkIssues': 'Anomalies check',
+    'operations.checkCriticalOpen': 'Critique a ouvrir',
+    'operations.lights': 'Feux',
+    'operations.tires': 'Pneus',
+    'operations.documentsOnBoard': 'Documents de bord',
+    'operations.present': 'Presents',
+    'operations.missing': 'Manquants',
+    'operations.checkCritical': 'Checks critiques',
+    'operations.critical': 'Critiques',
+    'operations.criticalCount': 'critiques',
+    'operations.detailEmptyTitle': 'Ouvre une notification',
+    'operations.detailEmptyText': 'Selectionne une panne ou un check pour voir tous les details.',
+    'operations.empty': 'Aucune notification dans cette vue.',
+    'operations.fault': 'Panne',
+    'operations.faults': 'Pannes',
+    'operations.inbox': 'A ouvrir',
+    'operations.markUnread': 'Marquer non lu',
+    'operations.open': 'Ouvrir',
+    'operations.title': 'Notifications operationnelles',
+    'phone.enable': 'Activer notifications',
+    'phone.enabled': 'Actives',
+    'phone.installed': 'Installee',
+    'phone.install': 'Installer app',
+    'phone.installHow': 'Comment installer',
+    'phone.installReady': 'Prete',
+    'phone.needInstall': 'Installer d abord',
+    'phone.notAvailable': 'Non disponibles',
+    'phone.notifications': 'Notifications telephone',
+    'phone.openAsApp': 'Ouverte comme app',
+    'phone.panelTitle': 'App et notifications',
+    'phone.refresh': 'Actualiser',
+    'phone.refreshApp': 'Actualiser app',
+    'phone.refreshBody': 'Recharge la version publiee.',
+    'phone.scope': 'Telephone',
+    'phone.toActivate': 'A activer',
+    'phone.toAdd': 'A ajouter',
+    'phone.verify': 'Verifier notifications',
+    'reaction.add': 'Ajouter reaction',
+    'reaction.choose': 'Choisir reaction',
+    'reaction.company': 'Reaction entreprise',
+    'reaction.driver': 'Reaction chauffeur',
+    'reaction.heart': 'Coeur',
+    'reaction.ok': 'OK',
+    'reaction.seen': 'Vu',
+    'reaction.summary': 'Reactions au message',
+    'reaction.thanks': 'Merci',
+    'urgency.critical': 'Critique',
+    'urgency.expired': 'Expiree',
+    'urgency.ok': 'Reguliere',
+    'urgency.soon': 'Bientot expiree',
+    'urgency.watch': 'A surveiller',
+    'settings.companyData': 'Donnees entreprise',
+    'settings.companyPreview': 'Apercu',
+    'settings.emailAccess': 'Email acces',
+    'settings.headquarters': 'Siege',
+    'settings.legalName': 'Raison sociale',
+    'settings.profileOverline': 'Profil transporteur',
+    'settings.vatNumber': 'TVA',
+    'vehicleStatus.active': 'Operationnel',
+    'vehicleStatus.maintenance': 'En maintenance',
+    'vehicleStatus.watch': 'A controler',
+  },
+  de: {
+    'chat.companyTitle': 'Fahrerchat',
+    'chat.companyAria': 'Firmenchat mit Fahrern',
+    'chat.conversation': 'Unterhaltung',
+    'chat.gallery': 'Galerie',
+    'chat.messages': 'Nachrichten',
+    'chat.noDrivers': 'Keine Fahrer',
+    'chat.noDriversHint': 'Fahrer hinzufugen, bevor ein Chat geoffnet wird.',
+    'chat.noMessages': 'Keine Nachrichten',
+    'chat.noMessagesYet': 'Noch keine Nachrichten',
+    'chat.firstMessageHint': 'Schreibe die erste Nachricht an den Fahrer.',
+    'chat.createdOnFirstMessage': 'Der Chat wird mit der ersten Nachricht erstellt.',
+    'chat.selectDriver': 'Fahrer auswahlen',
+    'chat.selectDriverBody': 'Chat aus der Liste offnen, um zu lesen und zu antworten.',
+    'chat.writePlaceholder': 'Nachricht schreiben...',
+    'chat.messagePlaceholder': 'Nachricht',
+    'chat.photo': 'Foto',
+    'chat.photoAttached': 'Foto angehangt',
+    'chat.photoLoading': 'Foto wird geladen...',
+    'chat.photoReady': 'Foto bereit: {name}',
+    'chat.company': 'Firma',
+    'chat.driver': 'Fahrer',
+    'chat.you': 'Du',
+    'chat.send': 'Senden',
+    'chat.sending': 'Senden...',
+    'messageStatus.delivered': 'Zugestellt',
+    'messageStatus.read': 'Gelesen',
+    'messageStatus.sent': 'Gesendet',
+    'chat.open': 'Chat offnen',
+    'chat.openWithCount': 'Chat offnen ({count})',
+    'chat.emptyDriverHint': 'Schreibe der Firma, wenn du schnell kommunizieren musst.',
+    'common.add': 'Hinzufugen',
+    'common.addDocument': 'Dokument hinzufugen',
+    'common.archive': 'Archivieren',
+    'common.archived': 'Archiviert',
+    'common.back': 'Zuruck',
+    'common.cancel': 'Abbrechen',
+    'common.change': 'Andern',
+    'common.close': 'Schliessen',
+    'common.company': 'Firma',
+    'common.delete': 'Loschen',
+    'common.driver': 'Fahrer',
+    'common.edit': 'Bearbeiten',
+    'common.file': 'Datei',
+    'common.loading': 'Laden...',
+    'common.notAvailable': 'Nicht verfugbar',
+    'common.notInserted': 'Nicht eingetragen',
+    'common.notes': 'Notizen',
+    'common.open': 'Offnen',
+    'common.photo': 'Foto',
+    'common.readyPhoto': 'Foto bereit: {name}',
+    'common.remove': 'Entfernen',
+    'common.save': 'Speichern',
+    'common.saveChanges': 'Anderungen speichern',
+    'common.saving': 'Speichern...',
+    'common.status': 'Status',
+    'common.time': 'Uhrzeit',
+    'common.upload': 'Hochladen',
+    'common.vehicle': 'Fahrzeug',
+    'common.vehicleMissing': 'Fahrzeug nicht gefunden',
+    'common.driverMissing': 'Fahrer nicht gefunden',
+    'common.trailer': 'Auflieger',
+    'companyLogo.body': 'Wird neben dem Firmennamen im Dashboard angezeigt.',
+    'companyLogo.change': 'Logo andern',
+    'companyLogo.title': 'Firmenlogo',
+    'companyLogo.upload': 'Logo hochladen',
+    'deadline.add': 'Neue Frist',
+    'deadline.addFirstHint': 'Zuerst mindestens einen Fahrer oder ein Fahrzeug hinzufugen.',
+    'deadline.advancedFilters': 'Erweiterte Filter',
+    'deadline.agenda': 'Operativer Plan',
+    'deadline.atLeastOneDriver': 'mindestens ein Fahrer',
+    'deadline.atLeastOneVehicle': 'mindestens ein Fahrzeug',
+    'deadline.boardTitle': 'Dokumentenfristen',
+    'deadline.close': 'Schliessen',
+    'deadline.days': '{count} Tage',
+    'deadline.daysAgo': 'vor {count} Tagen',
+    'deadline.driverScope': 'Fahrer',
+    'deadline.dueDate': 'Frist',
+    'deadline.emptyText': 'Die nachsten Fristen erscheinen hier.',
+    'deadline.emptyTitle': 'Keine Frist eingetragen',
+    'deadline.filterAria': 'Fristen filtern',
+    'deadline.inApp': 'In App',
+    'deadline.owner': 'Verantwortlich',
+    'deadline.quickInsert': 'Schnelleingabe',
+    'deadline.renew': 'Verlangerung',
+    'deadline.scope': 'Bereich',
+    'deadline.subject': 'Betreff',
+    'deadline.type': 'Typ',
+    'deadline.vehicleScope': 'Fahrzeug',
+    'documents.createOverline': 'Neues Dokument',
+    'documents.document': 'Dokument',
+    'documents.driverPoliceTitle': 'Dokumente fur Polizeikontrolle',
+    'documents.expiry': 'Ablauf',
+    'documents.fileReady': 'Datei bereit: {name}',
+    'documents.chooseFileFirst': 'Foto oder PDF vor dem Speichern auswahlen.',
+    'documents.noVisible': 'Keine sichtbaren Dokumente',
+    'documents.fileOrLink': 'Datei oder Link',
+    'documents.filePresent': 'Datei/Link vorhanden',
+    'documents.fileMissing': 'Datei hochladen',
+    'documents.noDocuments': 'Keine Dokumente eingetragen.',
+    'documents.noDriver': 'Fahrer nicht zugewiesen',
+    'documents.onlyCompany': 'Nur Firma',
+    'documents.historyTitle': 'Dokumentenverlauf',
+    'documents.historyOverline': 'Verlauf',
+    'documents.historyMovements': 'Dokumentbewegungen',
+    'documents.historyEmpty': 'Der Verlauf erscheint bei der nachsten Dokumentbewegung.',
+    'documents.visibleApp': 'in App sichtbar',
+    'documents.visibleDriver': 'Fur Fahrer sichtbar',
+    'documents.visibleInApp': 'In App sichtbar',
+    'documents.withFile': 'mit Datei/Link',
+    'documents.within30': 'innerhalb 30 Tagen',
+    'documents.number': 'Dokumentnummer',
+    'documents.numberPlaceholder': 'Nummer oder Referenz',
+    'documents.openOrSave': 'Offnen/speichern',
+    'documents.removeFile': 'Datei entfernen',
+    'documents.save': 'Dokument speichern',
+    'documents.uploadCamera': 'Foto aufnehmen',
+    'documents.uploadFile': 'Foto/PDF hochladen',
+    'documents.uploading': 'Hochladen...',
+    'docStatus.uploaded': 'Hochgeladen',
+    'docStatus.verified': 'Gepruft',
+    'docStatus.expired': 'Abgelaufen',
+    'docStatus.missing': 'Fehlt',
+    'docType.adr': 'ADR-Schulung',
+    'docType.cqc': 'CQC',
+    'docType.driverCard': 'Fahrerkarte',
+    'docType.insurance': 'RCA-Versicherung',
+    'docType.licenseC': 'Fuhrerschein C',
+    'docType.licenseCE': 'Fuhrerschein C+E',
+    'docType.medical': 'Medizinischer Check',
+    'docType.roadTax': 'Kfz-Steuer',
+    'docType.vehicleInspection': 'Fahrzeugprufung',
+    'driverApp.checkSent': 'Check gesendet',
+    'driverApp.companyMessages': 'Firmennachrichten',
+    'driverApp.currentKm': 'Aktuelle km',
+    'driverApp.documentUploaded': 'Dokument hochgeladen',
+    'driverApp.faultReported': 'Schaden gemeldet',
+    'driverApp.greeting': 'Guten Morgen',
+    'driverApp.messageUnread': '{count} Firmennachrichten ungelesen',
+    'driverApp.messages': '{count} Nachrichten',
+    'driverApp.none': 'Keiner',
+    'driverApp.notesCheck': 'Check-Notizen',
+    'driverApp.notesPlaceholder': 'z. B. Reifendruck gepruft',
+    'driverApp.morningCheck': 'Morgencheck',
+    'driverApp.noVehicle': 'Kein Fahrzeug auswählbar. Die Firma muss in Flotte mindestens Transporter, Lkw oder Sattelzugmaschine anlegen.',
+    'driverApp.previewDriver': 'Fahrer Vorschau',
+    'driverApp.uploadDocument': 'Dokument hochladen',
+    'driverApp.usedVehicle': 'Benutztes Fahrzeug',
+    'driverApp.attachedTrailer': 'Angekoppelter Auflieger',
+    'driverApp.quickChecks': 'Schnellchecks',
+    'driverApp.lightsOk': 'Lichter ok',
+    'driverApp.tiresOk': 'Reifen ok',
+    'driverApp.documentsBoard': 'Borddokumente',
+    'driverApp.sendCheck': 'Check senden',
+    'driverApp.lastCheck': 'Letzter Check: {time}',
+    'drivers.addTitle': 'Neuer Fahrer',
+    'drivers.archive': 'Fahrer archivieren',
+    'drivers.authEmail': 'Fahrer Login-E-Mail',
+    'drivers.credentials': 'Zugangsdaten',
+    'drivers.depot': 'Depot',
+    'drivers.edit': 'Fahrer bearbeiten',
+    'drivers.name': 'Vollstandiger Name',
+    'drivers.password': 'Temporäres Passwort',
+    'drivers.phone': 'Mobiltelefon',
+    'drivers.photo': 'Profilfoto',
+    'drivers.role': 'Rolle',
+    'drivers.username': 'Benutzername',
+    'fault.description': 'Beschreibung',
+    'fault.details': 'Details',
+    'fault.detailsPlaceholder': 'Beschreibe, was passiert',
+    'fault.openFaults': '{count} offene Schaden',
+    'fault.photo': 'Schadenfoto',
+    'fault.photoRemove': 'Foto entfernen',
+    'fault.photoTake': 'Foto aufnehmen',
+    'fault.titlePlaceholder': 'z. B. Motorwarnleuchte an',
+    'fault.report': 'Schaden melden',
+    'fault.reportShort': 'Melden',
+    'fault.send': 'Schaden senden',
+    'fault.severity': 'Schweregrad',
+    'fault.title': 'Schadentitel',
+    'faultStatus.closed': 'Archiviert',
+    'faultStatus.open': 'Ungelesen',
+    'faultStatus.seen': 'Ungelesen',
+    'faultStatus.in_progress': 'Ungelesen',
+    'faultSeverity.high': 'Hoch',
+    'faultSeverity.low': 'Niedrig',
+    'faultSeverity.medium': 'Mittel',
+    'faultSeverity.stop_vehicle': 'Fahrzeug stoppen',
+    'fleet.empty': 'Transporter, Lkw, Sattelzugmaschinen und Auflieger erscheinen hier.',
+    'fleet.addToFleet': 'Zur Flotte hinzufugen',
+    'fleet.archivedHidden': '{count} archivierte Fahrzeuge in der operativen Liste ausgeblendet.',
+    'fleet.assignedVehicles': 'Zugewiesene Fahrzeuge',
+    'fleet.category': 'Kategorie',
+    'fleet.managementAria': 'Flottenverwaltung und Eingabe',
+    'fleet.setup': 'Aufbau',
+    'fleet.setupMissing': 'Aufbau zu erganzen',
+    'fleet.noFleetTitle': 'Keine Fahrzeuge in der Flotte',
+    'fleet.vehicleActive': 'aktive Fahrzeuge',
+    'fleet.model': 'Modell',
+    'fleet.modelMissing': 'Modell nicht eingetragen',
+    'fleet.newVehicle': 'Neues Fahrzeug',
+    'fleet.plate': 'Kennzeichen',
+    'fleet.title': 'Flotte',
+    'fleet.type': 'Flottentyp',
+    'fleetType.furgone': 'Transporter',
+    'fleetType.furgonePlural': 'Transporter',
+    'fleetType.motrice': 'Lkw',
+    'fleetType.motricePlural': 'Lkw',
+    'fleetType.trattore': 'Sattelzugmaschine',
+    'fleetType.trattorePlural': 'Sattelzugmaschinen',
+    'fleetType.semirimorchio': 'Auflieger',
+    'fleetType.semirimorchioPlural': 'Auflieger',
+    'filter.all': 'Alle',
+    'filter.driver': 'Fahrer',
+    'filter.medical': 'Medizinisch',
+    'filter.month': '30 Tage',
+    'filter.urgent': 'Kritisch',
+    'filter.vehicle': 'Fahrzeuge',
+    'form.missingFields': 'Fehlt: {fields}.',
+    'notifications.bellAria': 'Hinweise: {count} ungelesen',
+    'notifications.companyAria': 'Firmenhinweise',
+    'notifications.empty': 'Keine Hinweise in diesem Bereich.',
+    'notifications.filterAria': 'Hinweise filtern',
+    'notifications.fullView': 'Ganze Ansicht',
+    'operations.archive': 'Archivieren',
+    'operations.archived': 'Archiv',
+    'operations.archivedCount': 'archiviert',
+    'operations.activeFaults': 'aktive Schaden',
+    'operations.bell': 'Glocke',
+    'operations.created': 'Erstellt',
+    'operations.updated': 'Aktualisiert',
+    'operations.detail': 'Detail',
+    'operations.check': 'Check',
+    'operations.checkIssues': 'Check-Abweichungen',
+    'operations.checkCriticalOpen': 'Kritisch zu offnen',
+    'operations.lights': 'Lichter',
+    'operations.tires': 'Reifen',
+    'operations.documentsOnBoard': 'Borddokumente',
+    'operations.present': 'Vorhanden',
+    'operations.missing': 'Fehlt',
+    'operations.checkCritical': 'Kritische Checks',
+    'operations.critical': 'Kritisch',
+    'operations.criticalCount': 'kritisch',
+    'operations.detailEmptyTitle': 'Benachrichtigung offnen',
+    'operations.detailEmptyText': 'Wahle einen Schaden oder Check aus, um alle Details zu sehen.',
+    'operations.empty': 'Keine Benachrichtigungen in dieser Ansicht.',
+    'operations.fault': 'Schaden',
+    'operations.faults': 'Schaden',
+    'operations.inbox': 'Zu offnen',
+    'operations.markUnread': 'Als ungelesen markieren',
+    'operations.open': 'Offnen',
+    'operations.title': 'Operative Hinweise',
+    'phone.enable': 'Hinweise aktivieren',
+    'phone.enabled': 'Aktiv',
+    'phone.installed': 'Installiert',
+    'phone.install': 'App installieren',
+    'phone.installHow': 'Installation anzeigen',
+    'phone.installReady': 'Bereit',
+    'phone.needInstall': 'Erst installieren',
+    'phone.notAvailable': 'Nicht verfugbar',
+    'phone.notifications': 'Telefon-Hinweise',
+    'phone.openAsApp': 'Als App geoffnet',
+    'phone.panelTitle': 'App und Hinweise',
+    'phone.refresh': 'Aktualisieren',
+    'phone.refreshApp': 'App aktualisieren',
+    'phone.refreshBody': 'Veroffentlichte Version neu laden.',
+    'phone.scope': 'Telefon',
+    'phone.toActivate': 'Zu aktivieren',
+    'phone.toAdd': 'Hinzufugen',
+    'phone.verify': 'Hinweise prufen',
+    'reaction.add': 'Reaktion hinzufugen',
+    'reaction.choose': 'Reaktion wahlen',
+    'reaction.company': 'Firmenreaktion',
+    'reaction.driver': 'Fahrerreaktion',
+    'reaction.heart': 'Herz',
+    'reaction.ok': 'OK',
+    'reaction.seen': 'Gesehen',
+    'reaction.summary': 'Nachrichtenreaktionen',
+    'reaction.thanks': 'Danke',
+    'urgency.critical': 'Kritisch',
+    'urgency.expired': 'Abgelaufen',
+    'urgency.ok': 'Regelmassig',
+    'urgency.soon': 'Lauft bald ab',
+    'urgency.watch': 'Beobachten',
+    'settings.companyData': 'Firmendaten',
+    'settings.companyPreview': 'Vorschau',
+    'settings.emailAccess': 'Login-E-Mail',
+    'settings.headquarters': 'Sitz',
+    'settings.legalName': 'Firmenname',
+    'settings.profileOverline': 'Transportprofil',
+    'settings.vatNumber': 'USt-ID',
+    'vehicleStatus.active': 'Betriebsbereit',
+    'vehicleStatus.maintenance': 'In Wartung',
+    'vehicleStatus.watch': 'Zu prufen',
+  },
+}
+
+Object.entries(workflowTranslations).forEach(([translationLanguage, translationEntries]) => {
+  translations[translationLanguage] = {
+    ...translations[translationLanguage],
+    ...translationEntries,
+  }
+})
+
+const checkIssueTranslations = {
+  it: {
+    'check.issueDocuments': 'documenti bordo mancanti',
+    'check.issueLights': 'luci da controllare',
+    'check.issueTires': 'gomme da controllare',
+  },
+  en: {
+    'check.issueDocuments': 'on-board documents missing',
+    'check.issueLights': 'lights to check',
+    'check.issueTires': 'tyres to check',
+  },
+  es: {
+    'check.issueDocuments': 'documentos a bordo faltantes',
+    'check.issueLights': 'luces por revisar',
+    'check.issueTires': 'neumaticos por revisar',
+  },
+  fr: {
+    'check.issueDocuments': 'documents de bord manquants',
+    'check.issueLights': 'feux a controler',
+    'check.issueTires': 'pneus a controler',
+  },
+  de: {
+    'check.issueDocuments': 'Borddokumente fehlen',
+    'check.issueLights': 'Lichter prufen',
+    'check.issueTires': 'Reifen prufen',
+  },
+}
+
+Object.entries(checkIssueTranslations).forEach(([translationLanguage, translationEntries]) => {
+  translations[translationLanguage] = {
+    ...translations[translationLanguage],
+    ...translationEntries,
+  }
+})
+
+const microcopyTranslations = {
+  it: {
+    'common.actions': 'Azioni',
+    'common.activePlural': 'attivi',
+    'common.archiving': 'Archivio...',
+    'common.noFileSelected': 'Nessun file selezionato',
+    'common.removing': 'Rimuovo...',
+    'common.saveShort': 'Salva',
+    'common.savingShort': 'Salvo...',
+    'drivers.archivedHidden': '{count} autisti archiviati nascosti dall elenco operativo.',
+    'drivers.assignedNone': 'Non assegnato',
+    'drivers.assignVehicle': 'Da assegnare',
+    'drivers.createAccessOverline': 'Nuovo accesso',
+    'drivers.createAccount': 'Crea account autista',
+    'drivers.creatingAccount': 'Creazione account...',
+    'drivers.generatePassword': 'Genera',
+    'drivers.createTitle': 'Crea autista',
+    'drivers.noVehicle': 'Nessun mezzo',
+    'drivers.supabaseEmail': 'Email tecnica Supabase',
+    'drivers.usernameHelp': 'Compila username per generarla',
+    'drivers.vehicleAssigned': 'Mezzo assegnato',
+    'drivers.statusAvailable': 'Disponibile',
+    'drivers.statusPaused': 'Sospeso',
+    'drivers.statusService': 'In servizio',
+    'drivers.statusTravelling': 'In viaggio',
+    'phone.channels': 'Chat, guasti e documenti',
+  },
+  en: {
+    'common.actions': 'Actions',
+    'common.activePlural': 'active',
+    'common.archiving': 'Archiving...',
+    'common.noFileSelected': 'No file selected',
+    'common.removing': 'Removing...',
+    'common.saveShort': 'Save',
+    'common.savingShort': 'Saving...',
+    'drivers.archivedHidden': '{count} archived drivers hidden from the operational list.',
+    'drivers.assignedNone': 'Not assigned',
+    'drivers.assignVehicle': 'To assign',
+    'drivers.createAccessOverline': 'New access',
+    'drivers.createAccount': 'Create driver account',
+    'drivers.creatingAccount': 'Creating account...',
+    'drivers.generatePassword': 'Generate',
+    'drivers.createTitle': 'Create driver',
+    'drivers.noVehicle': 'No vehicle',
+    'drivers.supabaseEmail': 'Technical Supabase email',
+    'drivers.usernameHelp': 'Enter username to generate it',
+    'drivers.vehicleAssigned': 'Assigned vehicle',
+    'drivers.statusAvailable': 'Available',
+    'drivers.statusPaused': 'Paused',
+    'drivers.statusService': 'On duty',
+    'drivers.statusTravelling': 'Travelling',
+    'phone.channels': 'Chat, faults and documents',
+  },
+  es: {
+    'common.actions': 'Acciones',
+    'common.activePlural': 'activos',
+    'common.archiving': 'Archivando...',
+    'common.noFileSelected': 'Ningun archivo seleccionado',
+    'common.removing': 'Quitando...',
+    'common.saveShort': 'Guardar',
+    'common.savingShort': 'Guardando...',
+    'drivers.archivedHidden': '{count} conductores archivados ocultos de la lista operativa.',
+    'drivers.assignedNone': 'No asignado',
+    'drivers.assignVehicle': 'Por asignar',
+    'drivers.createAccessOverline': 'Nuevo acceso',
+    'drivers.createAccount': 'Crear cuenta conductor',
+    'drivers.creatingAccount': 'Creando cuenta...',
+    'drivers.generatePassword': 'Generar',
+    'drivers.createTitle': 'Crear conductor',
+    'drivers.noVehicle': 'Sin vehiculo',
+    'drivers.supabaseEmail': 'Email tecnico Supabase',
+    'drivers.usernameHelp': 'Introduce usuario para generarlo',
+    'drivers.vehicleAssigned': 'Vehiculo asignado',
+    'drivers.statusAvailable': 'Disponible',
+    'drivers.statusPaused': 'Suspendido',
+    'drivers.statusService': 'En servicio',
+    'drivers.statusTravelling': 'En viaje',
+    'phone.channels': 'Chat, averias y documentos',
+  },
+  fr: {
+    'common.actions': 'Actions',
+    'common.activePlural': 'actifs',
+    'common.archiving': 'Archivage...',
+    'common.noFileSelected': 'Aucun fichier selectionne',
+    'common.removing': 'Suppression...',
+    'common.saveShort': 'Enregistrer',
+    'common.savingShort': 'Enregistrement...',
+    'drivers.archivedHidden': '{count} chauffeurs archives caches de la liste operationnelle.',
+    'drivers.assignedNone': 'Non assigne',
+    'drivers.assignVehicle': 'A assigner',
+    'drivers.createAccessOverline': 'Nouvel acces',
+    'drivers.createAccount': 'Creer compte chauffeur',
+    'drivers.creatingAccount': 'Creation compte...',
+    'drivers.generatePassword': 'Generer',
+    'drivers.createTitle': 'Creer chauffeur',
+    'drivers.noVehicle': 'Aucun vehicule',
+    'drivers.supabaseEmail': 'Email technique Supabase',
+    'drivers.usernameHelp': 'Saisis le nom utilisateur pour le generer',
+    'drivers.vehicleAssigned': 'Vehicule assigne',
+    'drivers.statusAvailable': 'Disponible',
+    'drivers.statusPaused': 'Suspendu',
+    'drivers.statusService': 'En service',
+    'drivers.statusTravelling': 'En trajet',
+    'phone.channels': 'Chat, pannes et documents',
+  },
+  de: {
+    'common.actions': 'Aktionen',
+    'common.activePlural': 'aktiv',
+    'common.archiving': 'Archivieren...',
+    'common.noFileSelected': 'Keine Datei ausgewahlt',
+    'common.removing': 'Entfernen...',
+    'common.saveShort': 'Speichern',
+    'common.savingShort': 'Speichern...',
+    'drivers.archivedHidden': '{count} archivierte Fahrer in der operativen Liste ausgeblendet.',
+    'drivers.assignedNone': 'Nicht zugewiesen',
+    'drivers.assignVehicle': 'Zuweisen',
+    'drivers.createAccessOverline': 'Neuer Zugang',
+    'drivers.createAccount': 'Fahrerkonto erstellen',
+    'drivers.creatingAccount': 'Konto wird erstellt...',
+    'drivers.generatePassword': 'Generieren',
+    'drivers.createTitle': 'Fahrer erstellen',
+    'drivers.noVehicle': 'Kein Fahrzeug',
+    'drivers.supabaseEmail': 'Technische Supabase-E-Mail',
+    'drivers.usernameHelp': 'Benutzername eingeben, um sie zu erzeugen',
+    'drivers.vehicleAssigned': 'Zugewiesenes Fahrzeug',
+    'drivers.statusAvailable': 'Verfugbar',
+    'drivers.statusPaused': 'Pausiert',
+    'drivers.statusService': 'Im Einsatz',
+    'drivers.statusTravelling': 'Unterwegs',
+    'phone.channels': 'Chat, Schaden und Dokumente',
+  },
+}
+
+Object.entries(microcopyTranslations).forEach(([translationLanguage, translationEntries]) => {
+  translations[translationLanguage] = {
+    ...translations[translationLanguage],
+    ...translationEntries,
+  }
+})
+
+const documentTypeTranslationKeys = {
+  'Assicurazione RCA': 'docType.insurance',
+  Bollo: 'docType.roadTax',
+  CQC: 'docType.cqc',
+  'Carta tachigrafica': 'docType.driverCard',
+  'Formazione ADR': 'docType.adr',
+  'Patente C': 'docType.licenseC',
+  'Patente C+E': 'docType.licenseCE',
+  'Revisione mezzo': 'docType.vehicleInspection',
+  'Visita medica': 'docType.medical',
+}
+const documentStatusTranslationKeys = {
+  Caricato: 'docStatus.uploaded',
+  Verificato: 'docStatus.verified',
+  Scaduto: 'docStatus.expired',
+  Mancante: 'docStatus.missing',
+}
+const fleetTypeTranslationKeys = {
+  furgone: 'fleetType.furgone',
+  motrice: 'fleetType.motrice',
+  semirimorchio: 'fleetType.semirimorchio',
+  trattore: 'fleetType.trattore',
+}
+const faultSeverityTranslationKeys = {
+  high: 'faultSeverity.high',
+  low: 'faultSeverity.low',
+  medium: 'faultSeverity.medium',
+  stop_vehicle: 'faultSeverity.stop_vehicle',
+}
+const faultStatusTranslationKeys = {
+  closed: 'faultStatus.closed',
+  in_progress: 'faultStatus.in_progress',
+  open: 'faultStatus.open',
+  seen: 'faultStatus.seen',
+}
+const vehicleStatusTranslationKeys = {
+  'Da controllare': 'vehicleStatus.watch',
+  'In manutenzione': 'vehicleStatus.maintenance',
+  Operativo: 'vehicleStatus.active',
+}
+const driverStatusTranslationKeys = {
+  Disponibile: 'drivers.statusAvailable',
+  'In servizio': 'drivers.statusService',
+  'In viaggio': 'drivers.statusTravelling',
+  Sospeso: 'drivers.statusPaused',
+}
+const filterTranslationKeys = {
+  all: 'filter.all',
+  urgent: 'filter.urgent',
+  month: 'filter.month',
+  driver: 'filter.driver',
+  vehicle: 'filter.vehicle',
+  medical: 'filter.medical',
+}
+const urgencyTranslationKeys = {
+  critical: 'urgency.critical',
+  expired: 'urgency.expired',
+  ok: 'urgency.ok',
+  soon: 'urgency.soon',
+  watch: 'urgency.watch',
+}
+
+function translatedValue(t, keyMap, value, fallback = value) {
+  return keyMap[value] ? t(keyMap[value]) : fallback
+}
+
+function getDocumentTypeLabel(value, t) {
+  return translatedValue(t, documentTypeTranslationKeys, value)
+}
+
+function getDocumentStatusLabel(value, t) {
+  return translatedValue(t, documentStatusTranslationKeys, value)
+}
+
+function getVehicleStatusLabel(value, t) {
+  return translatedValue(t, vehicleStatusTranslationKeys, value)
+}
+
+function getDriverStatusLabel(value, t) {
+  return translatedValue(t, driverStatusTranslationKeys, value)
+}
+
+function getFilterLabel(filter, t) {
+  return t(filterTranslationKeys[filter.id] ?? filter.label)
+}
+
+function getUrgencyLabel(urgency, t) {
+  return t(urgencyTranslationKeys[urgency.key] ?? urgency.label)
+}
+
 function getInitialLanguage() {
   if (typeof window === 'undefined') return defaultLanguage
 
@@ -593,6 +2343,16 @@ function translate(language, key, values = {}) {
     (currentMessage, [valueKey, value]) => currentMessage.replaceAll(`{${valueKey}}`, String(value)),
     message,
   )
+}
+
+const I18nContext = createContext({
+  language: defaultLanguage,
+  onLanguageChange: () => {},
+  t: (key, values) => translate(defaultLanguage, key, values),
+})
+
+function useI18n() {
+  return useContext(I18nContext)
 }
 
 function getChatReactionEmoji(value) {
@@ -705,16 +2465,19 @@ function getInitialRecordsTab() {
   return viewFromUrl === 'fleet' ? 'fleet' : 'drivers'
 }
 
-function getFleetTypeLabel(value) {
-  return fleetTypeOptions.find((option) => option.value === value)?.label ?? value
+function getFleetTypeLabel(value, t) {
+  const fallback = fleetTypeOptions.find((option) => option.value === value)?.label ?? value
+  return t ? translatedValue(t, fleetTypeTranslationKeys, value, fallback) : fallback
 }
 
-function getFaultSeverityLabel(value) {
-  return faultSeverityOptions.find((option) => option.value === value)?.label ?? value
+function getFaultSeverityLabel(value, t) {
+  const fallback = faultSeverityOptions.find((option) => option.value === value)?.label ?? value
+  return t ? translatedValue(t, faultSeverityTranslationKeys, value, fallback) : fallback
 }
 
-function getFaultStatusLabel(value) {
-  return faultStatusOptions.find((option) => option.value === value)?.label ?? value
+function getFaultStatusLabel(value, t) {
+  const fallback = faultStatusOptions.find((option) => option.value === value)?.label ?? value
+  return t ? translatedValue(t, faultStatusTranslationKeys, value, fallback) : fallback
 }
 
 function isFaultArchived(report) {
@@ -796,11 +2559,11 @@ function isSameLocalDay(value, date = new Date()) {
   )
 }
 
-function getCheckIssues(check) {
+function getCheckIssues(check, t) {
   return [
-    check.lightsOk ? null : 'luci da controllare',
-    check.tiresOk ? null : 'gomme da controllare',
-    check.documentsOnBoard ? null : 'documenti bordo mancanti',
+    check.lightsOk ? null : t?.('check.issueLights') ?? 'luci da controllare',
+    check.tiresOk ? null : t?.('check.issueTires') ?? 'gomme da controllare',
+    check.documentsOnBoard ? null : t?.('check.issueDocuments') ?? 'documenti bordo mancanti',
   ].filter(Boolean)
 }
 
@@ -808,10 +2571,10 @@ function hasCheckIssues(check) {
   return getCheckIssues(check).length > 0
 }
 
-function formatMissingFields(fields) {
+function formatMissingFields(fields, t) {
   if (fields.length === 0) return ''
 
-  return `Mancano: ${fields.join(', ')}.`
+  return t ? t('form.missingFields', { fields: fields.join(', ') }) : `Mancano: ${fields.join(', ')}.`
 }
 
 function getInitials(name) {
@@ -962,6 +2725,14 @@ function App() {
   const [archivedFaultOverrideIds, setArchivedFaultOverrideIds] = useState(loadArchivedFaultOverrideIds)
 
   const t = useCallback((key, values) => translate(language, key, values), [language])
+  const i18nValue = useMemo(
+    () => ({
+      language,
+      onLanguageChange: setLanguage,
+      t,
+    }),
+    [language, t],
+  )
   const decoratedItems = useMemo(() => decorateCompliance(items, driverRecords, vehicleRecords), [driverRecords, items, vehicleRecords])
   const summary = useMemo(() => getSummary(decoratedItems), [decoratedItems])
   const hasCompanyDataConnection = Boolean(isSupabaseConfigured && activeCompanyId)
@@ -2562,59 +4333,63 @@ function App() {
 
   if (!session) {
     return (
-      <AuthScreen
-        language={language}
-        onAuthenticated={handleAuthenticated}
-        onLanguageChange={setLanguage}
-        t={t}
-      />
+      <I18nContext.Provider value={i18nValue}>
+        <AuthScreen
+          language={language}
+          onAuthenticated={handleAuthenticated}
+          onLanguageChange={setLanguage}
+          t={t}
+        />
+      </I18nContext.Provider>
     )
   }
 
   if (session.role === 'driver') {
     return (
-      <DriverAppView
-        assetPreviewUrl={getAssetPreviewUrl}
-        chatMessages={chatMessageRecords}
-        chatThreads={chatThreadRecords}
-        companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
-        companyName={getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')}
-        documentUploadStatus={driverDocumentUploadStatus}
-        items={decoratedItems}
-        documentRecords={documentRecords}
-        driverRecords={driverRecords}
-        faultReportRecords={visibleFaultReportRecords}
-        vehicleRecords={vehicleRecords}
-        onDriverDocumentCreate={addDriverDocumentRecord}
-        onDriverDocumentUpload={uploadDriverDocumentFile}
-        onDriverDocumentFileRemove={removeDriverDocumentFile}
-        onDriverProfileImageUpload={uploadDriverProfileImage}
-        onDriverProfileImageRemove={removeDriverProfileImage}
-        onFaultReport={submitFaultReport}
-        onMarkChatRead={markChatThreadRead}
-        onReactToMessage={updateChatMessageReaction}
-        onSendChatMessage={sendChatMessage}
-        onMorningCheck={submitMorningCheck}
-        onOpenDriverDocument={openDriverDocumentFile}
-        onSignOut={handleSignOut}
-        onUpload={() => setDriverUploadSent(true)}
-        operationsStatus={operationsSyncStatus}
-        faultReported={faultReported}
-        isLoading={driverSessionLoading}
-        language={language}
-        morningCheckSent={morningCheckSent}
-        uploadSent={driverUploadSent}
-        uploadingDocumentId={uploadingDriverDocumentId}
-        vehicleCheckRecords={vehicleCheckRecords}
-        installPromptAvailable={Boolean(installPromptEvent)}
-        isStandaloneMode={isStandaloneMode}
-        notificationEnabled={phoneNotificationEnabled}
-        notificationStatus={phoneNotificationStatus}
-        onEnablePhoneNotifications={enablePhoneNotifications}
-        onInstallPhoneApp={installPhoneApp}
-        onLanguageChange={setLanguage}
-        t={t}
-      />
+      <I18nContext.Provider value={i18nValue}>
+        <DriverAppView
+          assetPreviewUrl={getAssetPreviewUrl}
+          chatMessages={chatMessageRecords}
+          chatThreads={chatThreadRecords}
+          companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
+          companyName={getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')}
+          documentUploadStatus={driverDocumentUploadStatus}
+          items={decoratedItems}
+          documentRecords={documentRecords}
+          driverRecords={driverRecords}
+          faultReportRecords={visibleFaultReportRecords}
+          vehicleRecords={vehicleRecords}
+          onDriverDocumentCreate={addDriverDocumentRecord}
+          onDriverDocumentUpload={uploadDriverDocumentFile}
+          onDriverDocumentFileRemove={removeDriverDocumentFile}
+          onDriverProfileImageUpload={uploadDriverProfileImage}
+          onDriverProfileImageRemove={removeDriverProfileImage}
+          onFaultReport={submitFaultReport}
+          onMarkChatRead={markChatThreadRead}
+          onReactToMessage={updateChatMessageReaction}
+          onSendChatMessage={sendChatMessage}
+          onMorningCheck={submitMorningCheck}
+          onOpenDriverDocument={openDriverDocumentFile}
+          onSignOut={handleSignOut}
+          onUpload={() => setDriverUploadSent(true)}
+          operationsStatus={operationsSyncStatus}
+          faultReported={faultReported}
+          isLoading={driverSessionLoading}
+          language={language}
+          morningCheckSent={morningCheckSent}
+          uploadSent={driverUploadSent}
+          uploadingDocumentId={uploadingDriverDocumentId}
+          vehicleCheckRecords={vehicleCheckRecords}
+          installPromptAvailable={Boolean(installPromptEvent)}
+          isStandaloneMode={isStandaloneMode}
+          notificationEnabled={phoneNotificationEnabled}
+          notificationStatus={phoneNotificationStatus}
+          onEnablePhoneNotifications={enablePhoneNotifications}
+          onInstallPhoneApp={installPhoneApp}
+          onLanguageChange={setLanguage}
+          t={t}
+        />
+      </I18nContext.Provider>
     )
   }
 
@@ -2675,7 +4450,8 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <I18nContext.Provider value={i18nValue}>
+      <div className="app-shell">
       <Sidebar
         activeView={activeView}
         chatNotificationCount={companyUnreadChatCount}
@@ -2823,7 +4599,8 @@ function App() {
           {t('session.signOut')}
         </button>
       </footer>
-    </div>
+      </div>
+    </I18nContext.Provider>
   )
 }
 
@@ -3229,6 +5006,7 @@ function TopbarNotifications({
   vehicleCheckRecords,
   vehicleRecords,
 }) {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
   const [filter, setFilter] = useState('all')
   const [modalOperationKey, setModalOperationKey] = useState('')
@@ -3260,15 +5038,15 @@ function TopbarNotifications({
       const isCritical = ['high', 'stop_vehicle'].includes(report.severity) && !isRead
 
       return {
-        detail: `${driver?.name ?? 'Autista'} · ${vehicle?.plate ?? 'Mezzo non trovato'}${trailer ? ` · ${trailer.plate}` : ''}`,
+        detail: `${driver?.name ?? t('common.driver')} · ${vehicle?.plate ?? t('common.vehicleMissing')}${trailer ? ` · ${trailer.plate}` : ''}`,
         isCritical,
         isRead,
         key: `${operation.kind}-${operation.id}`,
         operation,
-        status: isRead ? 'Archiviata' : isCritical ? 'Critica' : 'Da leggere',
+        status: isRead ? t('common.archived') : isCritical ? t('operations.critical') : t('operations.inbox'),
         time: formatShortDateTime(report.createdAt),
         title: report.title,
-        type: 'Guasto',
+        type: t('operations.fault'),
       }
     }
 
@@ -3279,15 +5057,15 @@ function TopbarNotifications({
     const isCritical = hasCheckIssues(check) && !isRead
 
     return {
-      detail: `${driver?.name ?? 'Autista'} · ${vehicle?.plate ?? 'Mezzo non trovato'}`,
+      detail: `${driver?.name ?? t('common.driver')} · ${vehicle?.plate ?? t('common.vehicleMissing')}`,
       isCritical,
       isRead,
       key: `${operation.kind}-${operation.id}`,
       operation,
-      status: isRead ? 'Archiviata' : isCritical ? 'Critica' : 'Da leggere',
+      status: isRead ? t('common.archived') : isCritical ? t('operations.critical') : t('operations.inbox'),
       time: formatShortDateTime(check.createdAt),
-      title: 'Check mattutino',
-      type: 'Check',
+      title: t('driverApp.morningCheck'),
+      type: t('operations.check'),
     }
   })
   const unreadNotifications = notifications.filter((notification) => !notification.isRead)
@@ -3329,7 +5107,7 @@ function TopbarNotifications({
     <div className="topbar-notifications">
       <button
         aria-expanded={isOpen}
-        aria-label={`Notifiche: ${notificationCount} da leggere`}
+        aria-label={t('notifications.bellAria', { count: notificationCount })}
         className={notificationCount > 0 ? 'icon-button notification-bell-button has-alerts' : 'icon-button notification-bell-button'}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
         type="button"
@@ -3339,25 +5117,25 @@ function TopbarNotifications({
       </button>
 
       {isOpen && (
-        <div className="notifications-popover" role="dialog" aria-label="Notifiche azienda">
+        <div className="notifications-popover" role="dialog" aria-label={t('notifications.companyAria')}>
           <div className="notifications-popover-header">
             <div>
-              <p className="overline">Campanella</p>
-              <strong>Notifiche</strong>
+              <p className="overline">{t('operations.bell')}</p>
+              <strong>{t('nav.notifications')}</strong>
             </div>
             <button className="small-button" onClick={openFullNotifications} type="button">
-              Vista completa
+              {t('notifications.fullView')}
             </button>
           </div>
-          <div className="notification-filter-tabs" role="tablist" aria-label="Filtra notifiche">
+          <div className="notification-filter-tabs" role="tablist" aria-label={t('notifications.filterAria')}>
             <button className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')} type="button">
-              Tutte ({notifications.length})
+              {t('filter.all')} ({notifications.length})
             </button>
             <button className={filter === 'unread' ? 'is-active' : ''} onClick={() => setFilter('unread')} type="button">
-              Da leggere ({unreadNotifications.length})
+              {t('operations.inbox')} ({unreadNotifications.length})
             </button>
             <button className={filter === 'read' ? 'is-active' : ''} onClick={() => setFilter('read')} type="button">
-              Archiviate ({readNotifications.length})
+              {t('common.archived')} ({readNotifications.length})
             </button>
           </div>
           <div className="notifications-popover-list">
@@ -3384,20 +5162,20 @@ function TopbarNotifications({
                 </div>
                 <div className="notification-row-actions">
                   <button className="small-button" onClick={() => openNotification(notification.operation)} type="button">
-                    Apri
+                    {t('common.open')}
                   </button>
                   <button
                     className={notification.isRead ? 'small-button' : 'small-button danger-action'}
                     onClick={() => toggleNotification(notification)}
                     type="button"
                   >
-                    {notification.isRead ? 'Segna da leggere' : 'Archivia'}
+                    {notification.isRead ? t('operations.markUnread') : t('operations.archive')}
                   </button>
                 </div>
               </article>
             ))}
             {visibleNotifications.length === 0 && (
-              <p className="notifications-empty">Nessuna notifica in questa sezione.</p>
+              <p className="notifications-empty">{t('notifications.empty')}</p>
             )}
           </div>
         </div>
@@ -3486,14 +5264,16 @@ function ImageUploadControl({ label, onUpload }) {
 }
 
 function CompanyLogoUploader({ companyName, logoUrl, onUpload }) {
+  const { t } = useI18n()
+
   return (
     <div className="company-logo-uploader">
       <EntityAvatar imageUrl={logoUrl} name={companyName} variant="company" />
       <div>
-        <strong>Logo azienda</strong>
-        <span>Appare accanto al nome nella dashboard.</span>
+        <strong>{t('companyLogo.title')}</strong>
+        <span>{t('companyLogo.body')}</span>
       </div>
-      <ImageUploadControl label={logoUrl ? 'Cambia logo' : 'Carica logo'} onUpload={onUpload} />
+      <ImageUploadControl label={logoUrl ? t('companyLogo.change') : t('companyLogo.upload')} onUpload={onUpload} />
     </div>
   )
 }
@@ -3508,19 +5288,20 @@ function PhoneSetupPanel({
   onInstallApp,
   showInstallAction = true,
 }) {
+  const { t } = useI18n()
   const pushSupport = getPushSupportStatus()
-  const installStatus = isStandaloneMode ? 'Installata' : installPromptAvailable ? 'Pronta' : 'Da aggiungere'
+  const installStatus = isStandaloneMode ? t('phone.installed') : installPromptAvailable ? t('phone.installReady') : t('phone.toAdd')
   const notificationText = notificationEnabled
-    ? 'Attive'
+    ? t('phone.enabled')
     : pushSupport.requiresInstall
-      ? 'Prima installa'
+      ? t('phone.needInstall')
       : pushSupport.supported
-        ? 'Da attivare'
-        : 'Non disponibili'
-  const installButtonLabel = isAppleMobileDevice() && !installPromptAvailable ? 'Come installare' : 'Installa app'
+        ? t('phone.toActivate')
+        : t('phone.notAvailable')
+  const installButtonLabel = isAppleMobileDevice() && !installPromptAvailable ? t('phone.installHow') : t('phone.install')
   const notificationButtonDisabled = !pushSupport.supported && !pushSupport.requiresInstall
-  const notificationButtonLabel = notificationEnabled ? 'Verifica notifiche' : 'Abilita notifiche'
-  const panelTitle = showInstallAction ? 'App e notifiche' : 'Notifiche telefono'
+  const notificationButtonLabel = notificationEnabled ? t('phone.verify') : t('phone.enable')
+  const panelTitle = showInstallAction ? t('phone.panelTitle') : t('phone.notifications')
 
   function refreshApp() {
     window.location.reload()
@@ -3530,7 +5311,7 @@ function PhoneSetupPanel({
     <article className={compact ? 'phone-setup-panel is-compact' : 'panel phone-setup-panel'}>
       <div className="phone-setup-heading">
         <div>
-          <p className="overline">Telefono</p>
+          <p className="overline">{t('phone.scope')}</p>
           <h2>{panelTitle}</h2>
         </div>
         <Smartphone size={20} />
@@ -3540,7 +5321,7 @@ function PhoneSetupPanel({
           <>
             <div>
               <strong>{installStatus}</strong>
-              <span>{isStandaloneMode ? 'Aperta come app' : getDeviceInstallHint()}</span>
+              <span>{isStandaloneMode ? t('phone.openAsApp') : getDeviceInstallHint()}</span>
             </div>
             <button className="small-button" disabled={isStandaloneMode} onClick={onInstallApp} type="button">
               {installButtonLabel}
@@ -3549,17 +5330,17 @@ function PhoneSetupPanel({
         )}
         <div>
           <strong>{notificationText}</strong>
-          <span>{pushSupport.supported ? 'Chat, guasti e documenti' : pushSupport.reason}</span>
+          <span>{pushSupport.supported ? t('phone.channels') : pushSupport.reason}</span>
         </div>
         <button className="small-button" disabled={notificationButtonDisabled} onClick={onEnableNotifications} type="button">
           {notificationButtonLabel}
         </button>
         <div>
-          <strong>Aggiorna app</strong>
-          <span>Ricarica la versione pubblicata.</span>
+          <strong>{t('phone.refreshApp')}</strong>
+          <span>{t('phone.refreshBody')}</span>
         </div>
         <button className="small-button" onClick={refreshApp} type="button">
-          Aggiorna
+          {t('phone.refresh')}
         </button>
       </div>
       {notificationStatus && <p className="sync-status-line">{notificationStatus}</p>}
@@ -3568,21 +5349,23 @@ function PhoneSetupPanel({
 }
 
 function PhotoPreviewModal({ imageUrl, name, onClose }) {
+  const { t } = useI18n()
+
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <div className="photo-preview-modal" role="dialog" aria-modal="true" aria-label={`Foto profilo ${name}`} onClick={(event) => event.stopPropagation()}>
         <div className="panel-header compact">
           <div>
-            <p className="overline">Foto autista</p>
+            <p className="overline">{t('drivers.photo')}</p>
             <h2>{name}</h2>
           </div>
           <div className="photo-preview-actions">
             <a className="small-button" download href={imageUrl} rel="noreferrer" target="_blank">
               <Download size={15} />
-              Apri/salva
+              {t('documents.openOrSave')}
             </a>
             <button className="small-button" onClick={onClose} type="button">
-              Chiudi
+              {t('common.close')}
             </button>
           </div>
         </div>
@@ -3633,15 +5416,15 @@ function SettingsWorkspace({
       <form className="panel settings-panel" onSubmit={handleSubmit}>
         <div className="panel-header compact">
           <div>
-            <p className="overline">Profilo trasportatore</p>
-            <h2>Impostazioni azienda</h2>
+            <p className="overline">{t('settings.profileOverline')}</p>
+            <h2>{t('nav.settings')}</h2>
           </div>
           <SettingsIcon size={20} />
         </div>
         <CompanyLogoUploader companyName={form.name} logoUrl={companyLogoUrl} onUpload={onCompanyLogoUpload} />
         <div className="form-grid">
           <label className="wide-field">
-            Ragione sociale
+            {t('settings.legalName')}
             <input
               autoComplete="organization"
               required
@@ -3650,21 +5433,21 @@ function SettingsWorkspace({
             />
           </label>
           <label>
-            Partita IVA
+            {t('settings.vatNumber')}
             <input value={form.vatNumber} onChange={(event) => updateField('vatNumber', event.target.value)} />
           </label>
           <label>
-            Sede
+            {t('settings.headquarters')}
             <input value={form.headquarters} onChange={(event) => updateField('headquarters', event.target.value)} />
           </label>
           <label className="wide-field">
-            Email accesso
+            {t('settings.emailAccess')}
             <input disabled value={companyEmail ?? ''} />
           </label>
         </div>
         <button className="primary-button full-button" disabled={isSaving} type="submit">
           <Save size={17} />
-          {isSaving ? 'Salvataggio...' : 'Salva modifiche'}
+          {isSaving ? t('common.saving') : t('common.saveChanges')}
         </button>
         {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
       </form>
@@ -3684,16 +5467,16 @@ function SettingsWorkspace({
         <aside className="panel settings-summary-panel">
           <div className="panel-header compact">
             <div>
-              <p className="overline">Anteprima</p>
-              <h2>Dati azienda</h2>
+              <p className="overline">{t('settings.companyPreview')}</p>
+              <h2>{t('settings.companyData')}</h2>
             </div>
             <Building2 size={20} />
           </div>
           <div className="settings-summary-list">
             <DetailLine label="Dashboard" value={form.name} />
-            <DetailLine label="Partita IVA" value={form.vatNumber || 'Non inserita'} />
-            <DetailLine label="Sede" value={form.headquarters || 'Non inserita'} />
-            <DetailLine label="Email accesso" value={companyEmail || 'Non disponibile'} />
+            <DetailLine label={t('settings.vatNumber')} value={form.vatNumber || t('common.notInserted')} />
+            <DetailLine label={t('settings.headquarters')} value={form.headquarters || t('common.notInserted')} />
+            <DetailLine label={t('settings.emailAccess')} value={companyEmail || t('common.notAvailable')} />
           </div>
         </aside>
         <div className="settings-phone-setup">
@@ -3950,6 +5733,7 @@ function DriversWorkspace({
   syncStatus,
   vehicleRecords,
 }) {
+  const { t } = useI18n()
   const [editingId, setEditingId] = useState(null)
   const [draftById, setDraftById] = useState({})
   const [photoPreviewDriver, setPhotoPreviewDriver] = useState(null)
@@ -4000,26 +5784,26 @@ function DriversWorkspace({
   }
 
   return (
-    <section className="drivers-workspace" aria-label="Gestione autisti">
+    <section className="drivers-workspace" aria-label={t('records.driversLabel')}>
       <div className="drivers-main">
         <div className="panel drivers-panel">
           <div className="panel-header">
             <div>
-              <p className="overline">Anagrafica</p>
-              <h2>Autisti</h2>
+              <p className="overline">{t('records.title')}</p>
+              <h2>{t('records.driversLabel')}</h2>
             </div>
             <div className="drivers-count">
               <strong>{activeDrivers.length}</strong>
-              <span>attivi</span>
+              <span>{t('common.activePlural')}</span>
             </div>
           </div>
           <div className="drivers-table">
             <div className="drivers-table-head">
-              <span>Autista</span>
-              <span>Username</span>
-              <span>Mezzo</span>
-              <span>Stato</span>
-              <span>Azioni</span>
+              <span>{t('common.driver')}</span>
+              <span>{t('drivers.username')}</span>
+              <span>{t('common.vehicle')}</span>
+              <span>{t('common.status')}</span>
+              <span>{t('common.actions')}</span>
             </div>
             {activeDrivers.map((driver) => (
               <DriverManagementRow
@@ -4042,7 +5826,7 @@ function DriversWorkspace({
           </div>
           {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
           {archivedDrivers.length > 0 && (
-            <p className="archive-note">{archivedDrivers.length} autisti archiviati nascosti dall elenco operativo.</p>
+            <p className="archive-note">{t('drivers.archivedHidden', { count: archivedDrivers.length })}</p>
           )}
         </div>
       </div>
@@ -4073,6 +5857,7 @@ function DriverManagementRow({
   saving,
   vehicleRecords,
 }) {
+  const { t } = useI18n()
   const assignedVehicle = vehicleRecords.find((vehicle) => vehicle.id === driver.vehicleId)
   const username = driver.username ?? normalizeDriverUsername(driver.name)
   const driverPhotoUrl = assetPreviewUrl(driver.profileImagePath)
@@ -4089,7 +5874,7 @@ function DriverManagementRow({
           <span>{buildDriverAuthEmail(username)}</span>
         </div>
         <select value={draft.vehicleId} onChange={(event) => onUpdateDraft('vehicleId', event.target.value)}>
-          <option value="">Nessun mezzo</option>
+          <option value="">{t('drivers.noVehicle')}</option>
           {vehicleRecords
             .filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
             .map((vehicle) => (
@@ -4099,18 +5884,18 @@ function DriverManagementRow({
             ))}
         </select>
         <select value={draft.status} onChange={(event) => onUpdateDraft('status', event.target.value)}>
-          <option>Disponibile</option>
-          <option>In servizio</option>
-          <option>In viaggio</option>
-          <option>Sospeso</option>
+          <option value="Disponibile">{t('drivers.statusAvailable')}</option>
+          <option value="In servizio">{t('drivers.statusService')}</option>
+          <option value="In viaggio">{t('drivers.statusTravelling')}</option>
+          <option value="Sospeso">{t('drivers.statusPaused')}</option>
         </select>
         <div className="row-actions">
           <button className="small-button" disabled={saving} onClick={onSave} type="button">
             <Save size={15} />
-            {saving ? 'Salvo...' : 'Salva'}
+            {saving ? t('common.savingShort') : t('common.saveShort')}
           </button>
           <button className="small-button" disabled={saving} onClick={onCancel} type="button">
-            Annulla
+            {t('common.cancel')}
           </button>
         </div>
       </article>
@@ -4133,24 +5918,24 @@ function DriverManagementRow({
           <strong>{driver.name}</strong>
           <span>{driver.phone}</span>
         </div>
-        <ImageUploadControl label="Foto" onUpload={onPhotoUpload} />
+        <ImageUploadControl label={t('common.photo')} onUpload={onPhotoUpload} />
       </div>
       <div>
         <strong>{username}</strong>
         <span>{driver.authEmail ?? buildDriverAuthEmail(username)}</span>
       </div>
       <div>
-        <strong>{assignedVehicle?.plate ?? 'Non assegnato'}</strong>
-        <span>{assignedVehicle ? `${assignedVehicle.model} · ${assignedVehicle.type}` : 'Da assegnare'}</span>
+        <strong>{assignedVehicle?.plate ?? t('drivers.assignedNone')}</strong>
+        <span>{assignedVehicle ? `${assignedVehicle.model} · ${assignedVehicle.type}` : t('drivers.assignVehicle')}</span>
       </div>
-      <span className="status-pill tone-info">{driver.status}</span>
+      <span className="status-pill tone-info">{getDriverStatusLabel(driver.status, t)}</span>
       <div className="row-actions">
         <button className="small-button" disabled={saving} onClick={onEdit} type="button">
           <Pencil size={15} />
-          Modifica
+          {t('common.edit')}
         </button>
         <button className="small-button danger-action" disabled={saving} onClick={onArchive} type="button">
-          {saving ? 'Archivio...' : 'Archivia'}
+          {saving ? t('common.archiving') : t('common.archive')}
         </button>
       </div>
     </article>
@@ -4158,17 +5943,18 @@ function DriverManagementRow({
 }
 
 function DriverCreatePanel({ onAddDriver, onBackHome, vehicleRecords }) {
+  const { t } = useI18n()
   const [isSaving, setIsSaving] = useState(false)
   const [form, setForm] = useState(getDriverCreateDefaults)
   const [showValidation, setShowValidation] = useState(false)
 
   const authEmail = form.username ? buildDriverAuthEmail(form.username) : ''
   const missingRequiredFields = [
-    form.name.trim() ? null : 'nome e cognome',
-    form.username.trim() ? null : 'username app',
-    form.phone.trim() ? null : 'telefono',
-    form.password.trim() ? null : 'password temporanea',
-    form.password.trim() && form.password.trim().length < 8 ? 'password di almeno 8 caratteri' : null,
+    form.name.trim() ? null : t('drivers.name').toLowerCase(),
+    form.username.trim() ? null : t('drivers.username').toLowerCase(),
+    form.phone.trim() ? null : t('drivers.phone').toLowerCase(),
+    form.password.trim() ? null : t('drivers.password').toLowerCase(),
+    form.password.trim() && form.password.trim().length < 8 ? 'password min 8' : null,
   ].filter(Boolean)
   const canSubmit = missingRequiredFields.length === 0
 
@@ -4217,28 +6003,28 @@ function DriverCreatePanel({ onAddDriver, onBackHome, vehicleRecords }) {
     <form className="panel driver-create-panel" noValidate onSubmit={handleSubmit}>
       <div className="panel-header compact">
         <div>
-          <p className="overline">Nuovo accesso</p>
-          <h2>Crea autista</h2>
+          <p className="overline">{t('drivers.createAccessOverline')}</p>
+          <h2>{t('drivers.createTitle')}</h2>
         </div>
         <div className="panel-header-actions">
           <button className="small-button" onClick={onBackHome} type="button">
             <ArrowLeft size={15} />
-            Indietro
+            {t('common.back')}
           </button>
           <UserPlus size={20} />
         </div>
       </div>
       <div className="form-grid single-column">
         <label>
-          Nome e cognome
+          {t('drivers.name')}
           <input required value={form.name} onChange={(event) => updateField('name', event.target.value)} />
         </label>
         <label>
-          Username app
+          {t('drivers.username')}
           <input required value={form.username} onChange={(event) => updateField('username', event.target.value)} />
         </label>
         <label>
-          Password temporanea
+          {t('drivers.password')}
           <span className="password-field-row">
             <input
               minLength={8}
@@ -4247,26 +6033,26 @@ function DriverCreatePanel({ onAddDriver, onBackHome, vehicleRecords }) {
               onChange={(event) => updateField('password', event.target.value)}
             />
             <button className="small-button" onClick={() => updateField('password', generateTemporaryPassword())} type="button">
-              Genera
+              {t('drivers.generatePassword')}
             </button>
           </span>
         </label>
         <label>
-          Telefono
+          {t('drivers.phone')}
           <input required value={form.phone} onChange={(event) => updateField('phone', event.target.value)} />
         </label>
         <label>
-          Ruolo
+          {t('drivers.role')}
           <input value={form.role} onChange={(event) => updateField('role', event.target.value)} />
         </label>
         <label>
-          Deposito
+          {t('drivers.depot')}
           <input value={form.depot} onChange={(event) => updateField('depot', event.target.value)} />
         </label>
         <label>
-          Mezzo assegnato
+          {t('drivers.vehicleAssigned')}
           <select value={form.vehicleId} onChange={(event) => updateField('vehicleId', event.target.value)}>
-            <option value="">Nessun mezzo</option>
+            <option value="">{t('drivers.noVehicle')}</option>
             {vehicleRecords
               .filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
               .map((vehicle) => (
@@ -4278,19 +6064,20 @@ function DriverCreatePanel({ onAddDriver, onBackHome, vehicleRecords }) {
         </label>
       </div>
       <div className="auth-email-box">
-        <strong>Email tecnica Supabase</strong>
-        <span>{authEmail || 'Compila username per generarla'}</span>
+        <strong>{t('drivers.supabaseEmail')}</strong>
+        <span>{authEmail || t('drivers.usernameHelp')}</span>
       </div>
-      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields)} />}
+      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields, t)} />}
       <button className="primary-button full-button" disabled={isSaving} type="submit">
         <UserPlus size={17} />
-        {isSaving ? 'Creazione account...' : 'Crea account autista'}
+        {isSaving ? t('drivers.creatingAccount') : t('drivers.createAccount')}
       </button>
     </form>
   )
 }
 
 function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onBackHome, onUpdateVehicle, syncStatus, vehicleRecords }) {
+  const { t } = useI18n()
   const [editingId, setEditingId] = useState(null)
   const [draftById, setDraftById] = useState({})
   const [savingId, setSavingId] = useState(null)
@@ -4299,6 +6086,7 @@ function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onBackH
   const fleetGroups = fleetTypeOptions.map((option) => ({
     ...option,
     count: activeVehicles.filter((vehicle) => vehicle.fleetType === option.value).length,
+    label: getFleetTypeLabel(option.value, t),
   }))
 
   function startEditing(vehicle) {
@@ -4343,17 +6131,17 @@ function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onBackH
   }
 
   return (
-    <section className="fleet-workspace" aria-label="Gestione flotta">
+    <section className="fleet-workspace" aria-label={t('fleet.title')}>
       <div className="fleet-main">
         <div className="panel fleet-management-panel">
           <div className="panel-header">
             <div>
-              <p className="overline">Parco mezzi</p>
-              <h2>Flotta</h2>
+              <p className="overline">{t('records.fleetLabel')}</p>
+              <h2>{t('fleet.title')}</h2>
             </div>
             <div className="drivers-count">
               <strong>{activeVehicles.length}</strong>
-              <span>mezzi attivi</span>
+              <span>{t('fleet.vehicleActive')}</span>
             </div>
           </div>
           <div className="fleet-summary-grid">
@@ -4383,7 +6171,7 @@ function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onBackH
           </div>
           {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
           {archivedVehicles.length > 0 && (
-            <p className="archive-note">{archivedVehicles.length} mezzi archiviati nascosti dall elenco operativo.</p>
+            <p className="archive-note">{t('fleet.archivedHidden', { count: archivedVehicles.length })}</p>
           )}
         </div>
       </div>
@@ -4404,30 +6192,32 @@ function VehicleManagementRow({
   saving,
   vehicle,
 }) {
+  const { t } = useI18n()
+
   if (editing) {
     return (
       <article className="fleet-management-row is-editing">
         <div className="fleet-field-grid">
           <label>
-            Targa
+            {t('fleet.plate')}
             <input value={draft.plate} onChange={(event) => onUpdateDraft('plate', event.target.value)} />
           </label>
           <label>
-            Categoria
+            {t('fleet.category')}
             <select value={draft.fleetType} onChange={(event) => onUpdateDraft('fleetType', event.target.value)}>
               {fleetTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {getFleetTypeLabel(option.value, t)}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            Marca e modello
+            {t('fleet.model')}
             <input value={draft.model} onChange={(event) => onUpdateDraft('model', event.target.value)} />
           </label>
           <label>
-            Allestimento
+            {t('fleet.setup')}
             <input value={draft.type} onChange={(event) => onUpdateDraft('type', event.target.value)} />
           </label>
           <label>
@@ -4435,10 +6225,10 @@ function VehicleManagementRow({
             <input min="0" type="number" value={draft.km} onChange={(event) => onUpdateDraft('km', event.target.value)} />
           </label>
           <label>
-            Stato
+            {t('common.status')}
             <select value={draft.status} onChange={(event) => onUpdateDraft('status', event.target.value)}>
               {vehicleStatusOptions.map((status) => (
-                <option key={status}>{status}</option>
+                <option key={status} value={status}>{getVehicleStatusLabel(status, t)}</option>
               ))}
             </select>
           </label>
@@ -4446,10 +6236,10 @@ function VehicleManagementRow({
         <div className="row-actions">
           <button className="small-button" disabled={saving} onClick={onSave} type="button">
             <Save size={15} />
-            {saving ? 'Salvo...' : 'Salva'}
+            {saving ? t('common.savingShort') : t('common.saveShort')}
           </button>
           <button className="small-button" disabled={saving} onClick={onCancel} type="button">
-            Annulla
+            {t('common.cancel')}
           </button>
         </div>
       </article>
@@ -4460,24 +6250,24 @@ function VehicleManagementRow({
     <article className="fleet-management-row">
       <div className="fleet-plate-block">
         <strong>{vehicle.plate}</strong>
-        <span>{getFleetTypeLabel(vehicle.fleetType)}</span>
+        <span>{getFleetTypeLabel(vehicle.fleetType, t)}</span>
       </div>
       <div>
-        <strong>{vehicle.model || 'Modello non inserito'}</strong>
-        <span>{vehicle.type || 'Allestimento da completare'}</span>
+        <strong>{vehicle.model || t('fleet.modelMissing')}</strong>
+        <span>{vehicle.type || t('fleet.setupMissing')}</span>
       </div>
       <div>
         <strong>{vehicle.km.toLocaleString('it-IT')} km</strong>
-        <span>{assignedDriver?.name ?? 'Non assegnato'}</span>
+        <span>{assignedDriver?.name ?? t('drivers.assignedNone')}</span>
       </div>
-      <span className="status-pill tone-info">{vehicle.status}</span>
+      <span className="status-pill tone-info">{getVehicleStatusLabel(vehicle.status, t)}</span>
       <div className="row-actions">
         <button className="small-button" disabled={saving} onClick={onEdit} type="button">
           <Pencil size={15} />
-          Modifica
+          {t('common.edit')}
         </button>
         <button className="small-button danger-action" disabled={saving} onClick={onArchive} type="button">
-          {saving ? 'Archivio...' : 'Archivia'}
+          {saving ? t('common.archiving') : t('common.archive')}
         </button>
       </div>
     </article>
@@ -4485,6 +6275,7 @@ function VehicleManagementRow({
 }
 
 function VehicleCreatePanel({ onAddVehicle, onBackHome }) {
+  const { t } = useI18n()
   const [isSaving, setIsSaving] = useState(false)
   const [showValidation, setShowValidation] = useState(false)
   const [form, setForm] = useState({
@@ -4496,7 +6287,7 @@ function VehicleCreatePanel({ onAddVehicle, onBackHome }) {
     type: 'Trattore stradale',
   })
   const missingRequiredFields = [
-    form.plate.trim() ? null : 'targa',
+    form.plate.trim() ? null : t('fleet.plate').toLowerCase(),
   ].filter(Boolean)
   const canSubmit = missingRequiredFields.length === 0
 
@@ -4551,38 +6342,38 @@ function VehicleCreatePanel({ onAddVehicle, onBackHome }) {
     <form className="panel vehicle-create-panel" noValidate onSubmit={handleSubmit}>
       <div className="panel-header compact">
         <div>
-          <p className="overline">Nuovo mezzo</p>
-          <h2>Aggiungi alla flotta</h2>
+          <p className="overline">{t('fleet.newVehicle')}</p>
+          <h2>{t('fleet.addToFleet')}</h2>
         </div>
         <div className="panel-header-actions">
           <button className="small-button" onClick={onBackHome} type="button">
             <ArrowLeft size={15} />
-            Indietro
+            {t('common.back')}
           </button>
           <Truck size={20} />
         </div>
       </div>
       <div className="form-grid single-column">
         <label>
-          Targa
+          {t('fleet.plate')}
           <input required value={form.plate} onChange={(event) => updateField('plate', event.target.value)} />
         </label>
         <label>
-          Categoria
+          {t('fleet.category')}
           <select value={form.fleetType} onChange={(event) => updateField('fleetType', event.target.value)}>
             {fleetTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {getFleetTypeLabel(option.value, t)}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Marca e modello
+          {t('fleet.model')}
           <input value={form.model} onChange={(event) => updateField('model', event.target.value)} />
         </label>
         <label>
-          Allestimento
+          {t('fleet.setup')}
           <input value={form.type} onChange={(event) => updateField('type', event.target.value)} />
         </label>
         <label>
@@ -4590,18 +6381,18 @@ function VehicleCreatePanel({ onAddVehicle, onBackHome }) {
           <input min="0" type="number" value={form.km} onChange={(event) => updateField('km', event.target.value)} />
         </label>
         <label>
-          Stato
+          {t('common.status')}
           <select value={form.status} onChange={(event) => updateField('status', event.target.value)}>
             {vehicleStatusOptions.map((status) => (
-              <option key={status}>{status}</option>
+              <option key={status} value={status}>{getVehicleStatusLabel(status, t)}</option>
             ))}
           </select>
         </label>
       </div>
-      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields)} />}
+      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields, t)} />}
       <button className="primary-button full-button" disabled={isSaving} type="submit">
         <Plus size={17} />
-        {isSaving ? 'Salvataggio...' : 'Aggiungi mezzo'}
+        {isSaving ? t('common.saving') : t('fleet.newVehicle')}
       </button>
     </form>
   )
@@ -4619,6 +6410,7 @@ function DocumentsWorkspace({
   onUpdateDocument,
   syncStatus,
 }) {
+  const { t } = useI18n()
   const [editingId, setEditingId] = useState(null)
   const [draftById, setDraftById] = useState({})
   const [savingId, setSavingId] = useState(null)
@@ -4672,31 +6464,31 @@ function DocumentsWorkspace({
   }
 
   return (
-    <section className="documents-workspace" aria-label="Gestione documenti autista">
+    <section className="documents-workspace" aria-label={t('records.documentsLabel')}>
       <div className="documents-main">
         <div className="panel documents-management-panel">
           <div className="panel-header">
             <div>
-              <p className="overline">Archivio autisti</p>
-              <h2>Documenti</h2>
+              <p className="overline">{t('records.overline')}</p>
+              <h2>{t('records.documentsLabel')}</h2>
             </div>
             <div className="drivers-count">
               <strong>{documentRecords.length}</strong>
-              <span>documenti</span>
+              <span>{t('records.documentsLabel').toLowerCase()}</span>
             </div>
           </div>
           <div className="documents-summary-grid">
             <div>
               <strong>{visibleDocuments.length}</strong>
-              <span>visibili in app</span>
+              <span>{t('documents.visibleApp')}</span>
             </div>
             <div>
               <strong>{expiringDocuments.length}</strong>
-              <span>entro 30 giorni</span>
+              <span>{t('documents.within30')}</span>
             </div>
             <div>
               <strong>{documentRecords.filter((document) => document.filePath).length}</strong>
-              <span>con file/link</span>
+              <span>{t('documents.withFile')}</span>
             </div>
           </div>
           <div className="document-management-list">
@@ -4720,7 +6512,7 @@ function DocumentsWorkspace({
               />
             ))}
           </div>
-          {documentRecords.length === 0 && <p className="archive-note">Nessun documento inserito.</p>}
+          {documentRecords.length === 0 && <p className="archive-note">{t('documents.noDocuments')}</p>}
           {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
         </div>
         <DocumentHistoryPanel documentEvents={documentEvents} driverRecords={driverRecords} />
@@ -4743,12 +6535,14 @@ const documentEventLabels = {
 }
 
 function DocumentHistoryPanel({ documentEvents = [], driverRecords = [] }) {
+  const { t } = useI18n()
+
   return (
-    <section className="panel document-history-panel" aria-label="Storico documenti">
+    <section className="panel document-history-panel" aria-label={t('documents.historyTitle')}>
       <div className="panel-header compact">
         <div>
-          <p className="overline">Storico</p>
-          <h2>Movimenti documenti</h2>
+          <p className="overline">{t('documents.historyOverline')}</p>
+          <h2>{t('documents.historyMovements')}</h2>
         </div>
         <Clock3 size={20} />
       </div>
@@ -4760,16 +6554,16 @@ function DocumentHistoryPanel({ documentEvents = [], driverRecords = [] }) {
             <article className="document-history-row" key={event.id}>
               <span className="status-pill tone-info">{documentEventLabels[event.eventType] ?? event.eventType}</span>
               <div>
-                <strong>{event.documentType}</strong>
+                <strong>{getDocumentTypeLabel(event.documentType, t)}</strong>
                 <small>
-                  {driver?.name ?? 'Autista non disponibile'} · {event.actorRole === 'driver' ? 'Autista' : 'Azienda'}
+                  {driver?.name ?? t('common.driverMissing')} · {event.actorRole === 'driver' ? t('common.driver') : t('common.company')}
                 </small>
               </div>
               <small>{formatShortDateTime(event.createdAt)}</small>
             </article>
           )
         })}
-        {documentEvents.length === 0 && <p className="archive-note">Lo storico comparirà al prossimo movimento documento.</p>}
+        {documentEvents.length === 0 && <p className="archive-note">{t('documents.historyEmpty')}</p>}
       </div>
     </section>
   )
@@ -4791,6 +6585,8 @@ function DocumentManagementRow({
   onUpdateDraft,
   saving,
 }) {
+  const { t } = useI18n()
+
   function handleDocumentFile(event) {
     const file = event.target.files?.[0]
     onDocumentUpload?.(file)
@@ -4802,7 +6598,7 @@ function DocumentManagementRow({
       <article className="document-management-row is-editing">
         <div className="document-field-grid">
           <label>
-            Autista
+            {t('common.driver')}
             <select value={draft.driverId} onChange={(event) => onUpdateDraft('driverId', event.target.value)}>
               {driverRecords.map((driverRecord) => (
                 <option key={driverRecord.id} value={driverRecord.id}>
@@ -4812,19 +6608,19 @@ function DocumentManagementRow({
             </select>
           </label>
           <label>
-            Documento
+            {t('documents.document')}
             <select value={draft.type} onChange={(event) => onUpdateDraft('type', event.target.value)}>
               {documentTypes.map((type) => (
-                <option key={type}>{type}</option>
+                <option key={type} value={type}>{getDocumentTypeLabel(type, t)}</option>
               ))}
             </select>
           </label>
           <label>
-            Numero
+            {t('documents.number')}
             <input value={draft.documentNumber} onChange={(event) => onUpdateDraft('documentNumber', event.target.value)} />
           </label>
           <label>
-            Scadenza
+            {t('documents.expiry')}
             <input
               value={draft.expiresAt}
               onChange={(event) => onUpdateDraft('expiresAt', event.target.value)}
@@ -4833,15 +6629,15 @@ function DocumentManagementRow({
             />
           </label>
           <label>
-            Stato
+            {t('common.status')}
             <select value={draft.status} onChange={(event) => onUpdateDraft('status', event.target.value)}>
               {driverDocumentStatusOptions.map((status) => (
-                <option key={status}>{status}</option>
+                <option key={status} value={status}>{getDocumentStatusLabel(status, t)}</option>
               ))}
             </select>
           </label>
           <label>
-            Link esterno opzionale
+            {t('documents.fileOrLink')}
             <input value={draft.filePath} onChange={(event) => onUpdateDraft('filePath', event.target.value)} />
           </label>
           <label className="checkbox-field">
@@ -4850,19 +6646,19 @@ function DocumentManagementRow({
               onChange={(event) => onUpdateDraft('visibleToDriver', event.target.checked)}
               type="checkbox"
             />
-            Visibile all autista
+            {t('documents.visibleDriver')}
           </label>
         </div>
         <div className="row-actions">
           <button className="small-button" disabled={saving} onClick={onSave} type="button">
             <Save size={15} />
-            {saving ? 'Salvo...' : 'Salva'}
+            {saving ? t('common.savingShort') : t('common.saveShort')}
           </button>
           <button className="small-button" disabled={saving} onClick={onCancel} type="button">
-            Annulla
+            {t('common.cancel')}
           </button>
           <label className="small-button document-upload-inline">
-            Carica file
+            {t('documents.uploadFile')}
             <input accept="image/*,.pdf,application/pdf" onChange={handleDocumentFile} type="file" />
           </label>
         </div>
@@ -4873,37 +6669,37 @@ function DocumentManagementRow({
   return (
     <article className="document-management-row">
       <div>
-        <strong>{document.type}</strong>
-        <span>{driver?.name ?? 'Autista non assegnato'}</span>
+        <strong>{getDocumentTypeLabel(document.type, t)}</strong>
+        <span>{driver?.name ?? t('documents.noDriver')}</span>
       </div>
       <div>
-        <strong>{document.documentNumber || 'Numero non inserito'}</strong>
-        <span>{document.filePath ? 'File/link presente' : 'File da caricare'}</span>
+        <strong>{document.documentNumber || t('common.notInserted')}</strong>
+        <span>{document.filePath ? t('documents.filePresent') : t('documents.fileMissing')}</span>
       </div>
       <div>
         <strong>{formatOptionalDate(document.expiresAt)}</strong>
-        <span>{document.visibleToDriver ? 'Visibile in app' : 'Solo azienda'}</span>
+        <span>{document.visibleToDriver ? t('documents.visibleInApp') : t('documents.onlyCompany')}</span>
       </div>
-      <span className="status-pill tone-info">{document.status}</span>
+      <span className="status-pill tone-info">{getDocumentStatusLabel(document.status, t)}</span>
       <div className="row-actions">
         <button className="small-button" disabled={!document.filePath || saving} onClick={onOpenDocument} type="button">
-          Mostra
+          {t('common.open')}
         </button>
         <label className="small-button document-upload-inline">
-          {document.filePath ? 'Cambia file' : 'Carica file'}
+          {document.filePath ? t('common.change') : t('common.upload')}
           <input accept="image/*,.pdf,application/pdf" onChange={handleDocumentFile} type="file" />
         </label>
         {document.filePath && (
           <button className="small-button danger-action" disabled={saving} onClick={onDocumentFileRemove} type="button">
-            Elimina file
+            {t('documents.removeFile')}
           </button>
         )}
         <button className="small-button" disabled={saving} onClick={onEdit} type="button">
           <Pencil size={15} />
-          Modifica
+          {t('common.edit')}
         </button>
         <button className="small-button danger-action" disabled={saving} onClick={onRemove} type="button">
-          {saving ? 'Rimuovo...' : 'Rimuovi'}
+          {saving ? t('common.removing') : t('common.remove')}
         </button>
       </div>
     </article>
@@ -4911,6 +6707,7 @@ function DocumentManagementRow({
 }
 
 function DocumentCreatePanel({ driverRecords, onAddDocument, onDriverDocumentUpload }) {
+  const { t } = useI18n()
   const [isSaving, setIsSaving] = useState(false)
   const [documentFile, setDocumentFile] = useState(null)
   const [form, setForm] = useState({
@@ -4984,16 +6781,16 @@ function DocumentCreatePanel({ driverRecords, onAddDocument, onDriverDocumentUpl
     <form className="panel document-create-panel" onSubmit={handleSubmit}>
       <div className="panel-header compact">
         <div>
-          <p className="overline">Nuovo documento</p>
-          <h2>Aggiungi documento</h2>
+          <p className="overline">{t('documents.createOverline')}</p>
+          <h2>{t('common.addDocument')}</h2>
         </div>
         <FileText size={20} />
       </div>
       <div className="form-grid single-column">
         <label>
-          Autista
+          {t('common.driver')}
           <select value={selectedDriverId} onChange={(event) => updateField('driverId', event.target.value)}>
-            {driverRecords.length === 0 && <option value="">Nessun autista disponibile</option>}
+            {driverRecords.length === 0 && <option value="">{t('common.driverMissing')}</option>}
             {driverRecords.map((driver) => (
               <option key={driver.id} value={driver.id}>
                 {driver.name}
@@ -5002,19 +6799,19 @@ function DocumentCreatePanel({ driverRecords, onAddDocument, onDriverDocumentUpl
           </select>
         </label>
         <label>
-          Documento
+          {t('documents.document')}
           <select value={form.type} onChange={(event) => updateField('type', event.target.value)}>
             {documentTypes.map((type) => (
-              <option key={type}>{type}</option>
+              <option key={type} value={type}>{getDocumentTypeLabel(type, t)}</option>
             ))}
           </select>
         </label>
         <label>
-          Numero documento
+          {t('documents.number')}
           <input value={form.documentNumber} onChange={(event) => updateField('documentNumber', event.target.value)} />
         </label>
         <label>
-          Scadenza
+          {t('documents.expiry')}
           <input
             value={form.expiresAt}
             onChange={(event) => updateField('expiresAt', event.target.value)}
@@ -5023,15 +6820,15 @@ function DocumentCreatePanel({ driverRecords, onAddDocument, onDriverDocumentUpl
           />
         </label>
         <label>
-          Stato
+          {t('common.status')}
           <select value={form.status} onChange={(event) => updateField('status', event.target.value)}>
             {driverDocumentStatusOptions.map((status) => (
-              <option key={status}>{status}</option>
+              <option key={status} value={status}>{getDocumentStatusLabel(status, t)}</option>
             ))}
           </select>
         </label>
         <label>
-          Link esterno opzionale
+          {t('documents.fileOrLink')}
           <input
             value={form.filePath}
             onChange={(event) => updateField('filePath', event.target.value)}
@@ -5039,15 +6836,15 @@ function DocumentCreatePanel({ driverRecords, onAddDocument, onDriverDocumentUpl
           />
         </label>
         <div className="document-create-upload">
-          <span>{documentFile ? documentFile.name : 'Nessun file selezionato'}</span>
+          <span>{documentFile ? documentFile.name : t('common.noFileSelected')}</span>
           <div className="document-create-upload-actions">
             <label className="document-action-button">
-              Carica foto/PDF
+              {t('documents.uploadFile')}
               <input accept="image/*,.pdf,application/pdf" onChange={handleDocumentFile} type="file" />
             </label>
             {documentFile && (
               <button className="small-button" onClick={() => setDocumentFile(null)} type="button">
-                Rimuovi
+                {t('common.remove')}
               </button>
             )}
           </div>
@@ -5058,12 +6855,12 @@ function DocumentCreatePanel({ driverRecords, onAddDocument, onDriverDocumentUpl
             onChange={(event) => updateField('visibleToDriver', event.target.checked)}
             type="checkbox"
           />
-          Visibile all autista
+          {t('documents.visibleDriver')}
         </label>
       </div>
       <button className="primary-button full-button" disabled={isSaving || !selectedDriverId} type="submit">
         <Plus size={17} />
-        {isSaving ? 'Salvataggio...' : 'Aggiungi documento'}
+        {isSaving ? t('common.saving') : t('common.addDocument')}
       </button>
     </form>
   )
@@ -5083,6 +6880,7 @@ function OperationsWorkspace({
   vehicleCheckRecords,
   vehicleRecords,
 }) {
+  const { t } = useI18n()
   const filter = selectedFilter
   const [selectedOperationKey, setSelectedOperationKey] = useState('')
   const [modalOperationKey, setModalOperationKey] = useState('')
@@ -5151,51 +6949,51 @@ function OperationsWorkspace({
   }
 
   return (
-    <section className="operations-workspace" aria-label="Notifiche operative">
+    <section className="operations-workspace" aria-label={t('operations.title')}>
       <div className="panel operations-panel">
         <div className="panel-header">
           <div>
-            <p className="overline">Campanella</p>
-            <h2>Notifiche operative</h2>
+            <p className="overline">{t('operations.bell')}</p>
+            <h2>{t('operations.title')}</h2>
           </div>
           <Bell size={22} />
         </div>
         <div className="operations-summary-grid">
           <div>
             <strong>{newFaults.length + unreadChecks.length}</strong>
-            <span>da aprire</span>
+            <span>{t('operations.inbox').toLowerCase()}</span>
           </div>
           <div>
             <strong>{criticalFaults.length + criticalChecks.length}</strong>
-            <span>critiche</span>
+            <span>{t('operations.criticalCount')}</span>
           </div>
           <div>
             <strong>{newFaults.length}</strong>
-            <span>guasti attivi</span>
+            <span>{t('operations.activeFaults')}</span>
           </div>
           <div>
             <strong>{archivedFaults.length + archivedChecks.length}</strong>
-            <span>archiviati</span>
+            <span>{t('operations.archivedCount')}</span>
           </div>
         </div>
-        <div className="filter-tabs operations-filters" role="tablist" aria-label="Filtra notifiche">
+        <div className="filter-tabs operations-filters" role="tablist" aria-label={t('notifications.filterAria')}>
           <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('inbox')} type="button">
-            Da aprire ({newFaults.length + unreadChecks.length})
+            {t('operations.inbox')} ({newFaults.length + unreadChecks.length})
           </button>
           <button className={filter === 'critical' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical')} type="button">
-            Critiche ({criticalFaults.length + criticalChecks.length})
+            {t('operations.critical')} ({criticalFaults.length + criticalChecks.length})
           </button>
           <button className={filter === 'critical_checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical_checks')} type="button">
-            Check critici ({criticalChecks.length})
+            {t('operations.checkCritical')} ({criticalChecks.length})
           </button>
           <button className={filter === 'checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('checks')} type="button">
-            Check ({unreadChecks.length})
+            {t('operations.check')} ({unreadChecks.length})
           </button>
           <button className={filter === 'faults' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('faults')} type="button">
-            Guasti ({newFaults.length})
+            {t('operations.faults')} ({newFaults.length})
           </button>
           <button className={filter === 'archive' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('archive')} type="button">
-            Archivio ({archivedFaults.length + archivedChecks.length})
+            {t('operations.archived')} ({archivedFaults.length + archivedChecks.length})
           </button>
         </div>
         <div className="operations-list">
@@ -5226,7 +7024,7 @@ function OperationsWorkspace({
               />
             ),
           )}
-          {operations.length === 0 && <p className="archive-note">Nessuna notifica in questa vista.</p>}
+          {operations.length === 0 && <p className="archive-note">{t('operations.empty')}</p>}
         </div>
         {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
       </div>
@@ -5265,8 +7063,9 @@ function getMessageStatus(message, senderRole) {
 }
 
 function MessageStatus({ status }) {
+  const { t } = useI18n()
   const isRead = status === 'read'
-  const label = status === 'read' ? 'Letto' : status === 'delivered' ? 'Consegnato' : 'Inviato'
+  const label = status === 'read' ? t('messageStatus.read') : status === 'delivered' ? t('messageStatus.delivered') : t('messageStatus.sent')
 
   return (
     <span className={isRead ? 'message-status is-read' : 'message-status'} title={label}>
@@ -5277,6 +7076,7 @@ function MessageStatus({ status }) {
 }
 
 function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, onOpen, onReact }) {
+  const { t } = useI18n()
   const reactions = message.reactions ?? {}
   const currentReaction = reactions[actorRole] ?? ''
   const visibleReactions = Object.entries(reactions).filter(([, reaction]) => reaction)
@@ -5289,18 +7089,18 @@ function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, on
   return (
     <div className="chat-reaction-row">
       <button
-        aria-label="Aggiungi reazione"
+        aria-label={t('reaction.add')}
         className="chat-reaction-open-button"
         onClick={onOpen}
-        title="Aggiungi reazione"
+        title={t('reaction.add')}
         type="button"
       >
         <SmilePlus size={15} />
       </button>
       {visibleReactions.length > 0 && (
-        <div className="chat-reaction-summary" aria-label="Reazioni al messaggio">
+        <div className="chat-reaction-summary" aria-label={t('reaction.summary')}>
           {visibleReactions.map(([role, reaction]) => (
-            <span key={role} title={role === 'company' ? 'Reazione azienda' : 'Reazione autista'}>
+            <span key={role} title={role === 'company' ? t('reaction.company') : t('reaction.driver')}>
               {getChatReactionEmoji(reaction)}
             </span>
           ))}
@@ -5309,17 +7109,17 @@ function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, on
       {isPickerOpen && (
         <div
           className="chat-reaction-picker"
-          aria-label="Scegli reazione"
+          aria-label={t('reaction.choose')}
           onMouseDown={(event) => event.stopPropagation()}
           onTouchStart={(event) => event.stopPropagation()}
         >
           {chatReactionOptions.map((reaction) => (
             <button
-              aria-label={reaction.label}
+              aria-label={t(`reaction.${reaction.value}`)}
               className={currentReaction === reaction.value ? 'chat-reaction-button is-active' : 'chat-reaction-button'}
               key={reaction.value}
               onClick={() => handleReactionClick(reaction)}
-              title={reaction.label}
+              title={t(`reaction.${reaction.value}`)}
               type="button"
             >
               {reaction.emoji}
@@ -5340,6 +7140,7 @@ function ChatWorkspace({
   onReactToMessage,
   onSendMessage,
 }) {
+  const { t } = useI18n()
   const availableDrivers = useMemo(
     () => driverRecords.filter((driver) => driver.status !== 'Archiviato'),
     [driverRecords],
@@ -5480,13 +7281,13 @@ function ChatWorkspace({
   return (
     <section
       className={isCompanyChatOpen ? 'chat-workspace is-thread-open' : 'chat-workspace'}
-      aria-label="Chat azienda autisti"
+      aria-label={t('chat.companyAria')}
     >
       <div className="panel chat-list-panel">
         <div className="panel-header">
           <div>
-            <p className="overline">Messaggi</p>
-            <h2>Chat autisti</h2>
+            <p className="overline">{t('chat.messages')}</p>
+            <h2>{t('chat.companyTitle')}</h2>
           </div>
           <Mail size={22} />
         </div>
@@ -5513,10 +7314,10 @@ function ChatWorkspace({
                   <strong>{driver.name}</strong>
                   <small>
                     {lastMessage
-                      ? `${lastMessage.senderRole === 'driver' ? 'Autista' : 'Azienda'}: ${
-                          lastMessage.body || 'Foto allegata'
+                      ? `${lastMessage.senderRole === 'driver' ? t('chat.driver') : t('chat.company')}: ${
+                          lastMessage.body || t('chat.photoAttached')
                         }`
-                      : 'Nessun messaggio'}
+                      : t('chat.noMessages')}
                   </small>
                 </span>
                 <span className="chat-row-meta">
@@ -5530,8 +7331,8 @@ function ChatWorkspace({
             <div className="empty-state-row">
               <Users size={20} />
               <div>
-                <strong>Nessun autista</strong>
-                <span>Aggiungi un autista prima di aprire una chat.</span>
+                <strong>{t('chat.noDrivers')}</strong>
+                <span>{t('chat.noDriversHint')}</span>
               </div>
             </div>
           )}
@@ -5541,7 +7342,7 @@ function ChatWorkspace({
       <div className="panel chat-thread-panel">
         <div className="panel-header">
           <button
-            aria-label="Torna alle chat"
+            aria-label={t('common.back')}
             className="icon-button company-chat-back-button"
             onClick={() => setIsCompanyChatOpen(false)}
             type="button"
@@ -5549,8 +7350,8 @@ function ChatWorkspace({
             <ArrowLeft size={18} />
           </button>
           <div>
-            <p className="overline">Conversazione</p>
-            <h2>{selectedDriver?.name ?? 'Seleziona autista'}</h2>
+            <p className="overline">{t('chat.conversation')}</p>
+            <h2>{selectedDriver?.name ?? t('chat.selectDriver')}</h2>
           </div>
           {selectedDriver && <EntityAvatar imageUrl={assetPreviewUrl(selectedDriver.profileImagePath)} name={selectedDriver.name} />}
         </div>
@@ -5558,15 +7359,15 @@ function ChatWorkspace({
           {selectedDriver && visibleMessages.length === 0 && (
             <div className="chat-empty-state">
               <Mail size={24} />
-              <strong>Nessun messaggio ancora</strong>
-              <span>Scrivi il primo messaggio all autista.</span>
+              <strong>{t('chat.noMessagesYet')}</strong>
+              <span>{t('chat.firstMessageHint')}</span>
             </div>
           )}
           {!selectedDriver && (
             <div className="chat-empty-state">
               <Users size={24} />
-              <strong>Seleziona un autista</strong>
-              <span>La chat verra creata al primo messaggio.</span>
+              <strong>{t('chat.selectDriver')}</strong>
+              <span>{t('chat.createdOnFirstMessage')}</span>
             </div>
           )}
           {visibleMessages.map((message) => {
@@ -5585,16 +7386,16 @@ function ChatWorkspace({
                 {...reactionPicker.getReactionTriggerProps(message.id)}
               >
                 <div className="chat-message-meta">
-                  <span>{message.senderRole === 'company' ? 'Azienda' : selectedDriver?.name ?? 'Autista'}</span>
+                  <span>{message.senderRole === 'company' ? t('chat.company') : selectedDriver?.name ?? t('chat.driver')}</span>
                   <small>{formatShortDateTime(message.createdAt)}</small>
                 </div>
                 {message.body && <p>{message.body}</p>}
                 {message.attachmentPath && attachmentUrl && (
                   <a className="chat-attachment" href={attachmentUrl} rel="noreferrer" target="_blank">
-                    <img alt="Foto allegata in chat" onLoad={scrollCompanyChatToBottom} src={attachmentUrl} />
+                    <img alt={t('chat.photoAttached')} onLoad={scrollCompanyChatToBottom} src={attachmentUrl} />
                   </a>
                 )}
-                {message.attachmentPath && !attachmentUrl && <small>Foto in caricamento...</small>}
+                {message.attachmentPath && !attachmentUrl && <small>{t('chat.photoLoading')}</small>}
                 {message.senderRole === 'company' && (
                   <MessageStatus status={getMessageStatus(message, 'company')} />
                 )}
@@ -5616,29 +7417,29 @@ function ChatWorkspace({
             disabled={!selectedDriver}
             onKeyDown={handleComposeKeyDown}
             onChange={(event) => setMessageBody(event.target.value)}
-            placeholder={selectedDriver ? 'Scrivi un messaggio...' : 'Seleziona un autista'}
+            placeholder={selectedDriver ? t('chat.writePlaceholder') : t('chat.selectDriver')}
             value={messageBody}
           />
           <div className="chat-compose-actions">
             <label className="document-action-button">
-              Foto
+              {t('chat.photo')}
               <input accept="image/*" capture="environment" disabled={!selectedDriver} onChange={handlePhotoChange} type="file" />
             </label>
             <label className="document-action-button">
-              Galleria
+              {t('chat.gallery')}
               <input accept="image/*" disabled={!selectedDriver} onChange={handlePhotoChange} type="file" />
             </label>
             {photoFile && (
               <button className="small-button" onClick={() => setPhotoFile(null)} type="button">
-                Rimuovi
+                {t('common.remove')}
               </button>
             )}
             <button className="primary-button" disabled={!selectedDriver || isSending || (!messageBody.trim() && !photoFile)} type="submit">
               <Send size={16} />
-              {isSending ? 'Invio...' : 'Invia'}
+              {isSending ? t('chat.sending') : t('chat.send')}
             </button>
           </div>
-          {photoFile && <small>Foto pronta: {photoFile.name}</small>}
+          {photoFile && <small>{t('chat.photoReady', { name: photoFile.name })}</small>}
         </form>
       </div>
     </section>
@@ -5646,6 +7447,7 @@ function ChatWorkspace({
 }
 
 function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, trailer, vehicle }) {
+  const { t } = useI18n()
   const isClosed = isFaultArchived(report)
   const rowClassName = ['operation-row', selected ? 'is-selected' : '', isClosed ? 'is-muted' : '']
     .filter(Boolean)
@@ -5659,27 +7461,27 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
       <div className="operation-main">
         <div className="operation-title">
           <strong>{report.title}</strong>
-          <span className="status-pill tone-warning">{getFaultStatusLabel(report.status)}</span>
+          <span className="status-pill tone-warning">{getFaultStatusLabel(report.status, t)}</span>
         </div>
-        <p>{driver?.name ?? 'Autista'} · {vehicle?.plate ?? 'Mezzo non trovato'}</p>
+        <p>{driver?.name ?? t('common.driver')} · {vehicle?.plate ?? t('common.vehicleMissing')}</p>
         <small>
-          {getFaultSeverityLabel(report.severity)} · {formatShortDateTime(report.createdAt)}
-          {trailer ? ` · semirimorchio ${trailer.plate}` : ''}
-          {report.photoPath ? ' · foto allegata' : ''}
+          {getFaultSeverityLabel(report.severity, t)} · {formatShortDateTime(report.createdAt)}
+          {trailer ? ` · ${t('common.trailer')} ${trailer.plate}` : ''}
+          {report.photoPath ? ` · ${t('chat.photoAttached').toLowerCase()}` : ''}
         </small>
         {report.description && <em>{report.description}</em>}
       </div>
       <div className="operation-actions">
         <button className="small-button" onClick={onOpen} type="button">
-          Apri
+          {t('operations.open')}
         </button>
         {isClosed ? (
           <button className="small-button" onClick={() => onUpdateStatus(report.id, 'open')} type="button">
-            Segna da leggere
+            {t('operations.markUnread')}
           </button>
         ) : (
           <button className="small-button danger-action" onClick={() => onUpdateStatus(report.id, 'closed')} type="button">
-            Archivia
+            {t('operations.archive')}
           </button>
         )}
       </div>
@@ -5688,7 +7490,8 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
 }
 
 function CheckOperationRow({ check, driver, onMarkRead, onMarkUnread, onOpen, read, selected, trailer, vehicle }) {
-  const issueText = getCheckIssues(check)
+  const { t } = useI18n()
+  const issueText = getCheckIssues(check, t)
   const isCritical = issueText.length > 0
   const rowClassName = ['operation-row', selected ? 'is-selected' : '', read ? 'is-muted' : '']
     .filter(Boolean)
@@ -5701,30 +7504,30 @@ function CheckOperationRow({ check, driver, onMarkRead, onMarkUnread, onOpen, re
       </div>
       <div className="operation-main">
         <div className="operation-title">
-          <strong>Check mattutino</strong>
+          <strong>{t('driverApp.morningCheck')}</strong>
           <span className={isCritical ? 'status-pill tone-danger' : 'status-pill tone-success'}>
-            {read ? 'Archiviato' : isCritical ? 'Critico' : 'Da aprire'}
+            {read ? t('common.archived') : isCritical ? t('operations.critical') : t('operations.inbox')}
           </span>
         </div>
-        <p>{driver?.name ?? 'Autista'} · {vehicle?.plate ?? 'Mezzo non trovato'}</p>
+        <p>{driver?.name ?? t('common.driver')} · {vehicle?.plate ?? t('common.vehicleMissing')}</p>
         <small>
           {formatShortDateTime(check.createdAt)}
           {check.odometerKm ? ` · ${check.odometerKm.toLocaleString('it-IT')} km` : ''}
-          {trailer ? ` · semirimorchio ${trailer.plate}` : ''}
+          {trailer ? ` · ${t('common.trailer')} ${trailer.plate}` : ''}
         </small>
         {(issueText.length > 0 || check.notes) && <em>{[...issueText, check.notes].filter(Boolean).join(' · ')}</em>}
       </div>
       <div className="operation-actions">
         <button className="small-button" onClick={onOpen} type="button">
-          Apri
+          {t('operations.open')}
         </button>
         {read ? (
           <button className="small-button" onClick={onMarkUnread} type="button">
-            Segna da leggere
+            {t('operations.markUnread')}
           </button>
         ) : (
-          <button aria-label="Archivia check" className="small-button danger-action" onClick={onMarkRead} type="button">
-            Archivia
+          <button aria-label={t('operations.archive')} className="small-button danger-action" onClick={onMarkRead} type="button">
+            {t('operations.archive')}
           </button>
         )}
       </div>
@@ -5799,12 +7602,13 @@ function OperationDetailShell({
   surface = 'side',
   vehicleRecords,
 }) {
+  const { t } = useI18n()
   const Shell = surface === 'modal' ? 'section' : 'aside'
   const shellClassName = surface === 'modal' ? 'panel operation-detail-panel operation-modal' : 'panel operation-detail-panel'
   const shellProps =
     surface === 'modal'
       ? {
-          'aria-label': 'Dettaglio notifica',
+          'aria-label': t('operations.detail'),
           'aria-modal': 'true',
           onClick: (event) => event.stopPropagation(),
           role: 'dialog',
@@ -5816,12 +7620,12 @@ function OperationDetailShell({
       <Shell className={shellClassName} {...shellProps}>
         <div className="panel-header compact">
           <div>
-            <p className="overline">Dettaglio</p>
-            <h2>Apri una notifica</h2>
+            <p className="overline">{t('operations.detail')}</p>
+            <h2>{t('operations.detailEmptyTitle')}</h2>
           </div>
           <Bell size={20} />
         </div>
-        <p className="operation-detail-empty">Seleziona un guasto o un check per vedere tutti i dettagli.</p>
+        <p className="operation-detail-empty">{t('operations.detailEmptyText')}</p>
       </Shell>
     )
   }
@@ -5838,35 +7642,35 @@ function OperationDetailShell({
       <Shell className={shellClassName} {...shellProps}>
         <div className="panel-header compact">
           <div>
-            <p className="overline">Guasto</p>
+            <p className="overline">{t('operations.fault')}</p>
             <h2>{report.title}</h2>
           </div>
           <div className="operation-detail-header-actions">
             <Wrench size={20} />
             {surface === 'modal' && (
-              <button aria-label="Chiudi dettaglio" className="icon-button operation-modal-close" onClick={onClose} type="button">
+              <button aria-label={t('common.close')} className="icon-button operation-modal-close" onClick={onClose} type="button">
                 <X size={18} />
               </button>
             )}
           </div>
         </div>
         <div className="operation-detail-body">
-          <DetailLine label="Stato" value={getFaultStatusLabel(report.status)} />
-          <DetailLine label="Gravità" value={getFaultSeverityLabel(report.severity)} />
-          <DetailLine label="Autista" value={driver?.name ?? 'Autista non trovato'} />
-          <DetailLine label="Mezzo" value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : 'Mezzo non trovato'} />
-          {trailer && <DetailLine label="Semirimorchio" value={`${trailer.plate} · ${trailer.model}`} />}
-          <DetailLine label="Creato" value={formatShortDateTime(report.createdAt)} />
-          <DetailLine label="Aggiornato" value={formatShortDateTime(report.updatedAt)} />
+          <DetailLine label={t('common.status')} value={getFaultStatusLabel(report.status, t)} />
+          <DetailLine label={t('fault.severity')} value={getFaultSeverityLabel(report.severity, t)} />
+          <DetailLine label={t('common.driver')} value={driver?.name ?? t('common.driverMissing')} />
+          <DetailLine label={t('common.vehicle')} value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : t('common.vehicleMissing')} />
+          {trailer && <DetailLine label={t('common.trailer')} value={`${trailer.plate} · ${trailer.model}`} />}
+          <DetailLine label={t('operations.created')} value={formatShortDateTime(report.createdAt)} />
+          <DetailLine label={t('operations.updated')} value={formatShortDateTime(report.updatedAt)} />
           {report.description && (
             <div className="detail-note">
-              <strong>Descrizione</strong>
+              <strong>{t('fault.description')}</strong>
               <p>{report.description}</p>
             </div>
           )}
           {faultPhotoUrl && (
             <div className="fault-photo-preview">
-              <strong>Foto guasto</strong>
+              <strong>{t('fault.photo')}</strong>
               <a href={faultPhotoUrl} rel="noreferrer" target="_blank">
                 <img alt={`Foto guasto ${report.title}`} src={faultPhotoUrl} />
               </a>
@@ -5876,11 +7680,11 @@ function OperationDetailShell({
         <div className="operation-detail-actions">
           {isClosed ? (
             <button className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'open')} type="button">
-              Segna da leggere
+              {t('operations.markUnread')}
             </button>
           ) : (
             <button className="small-button danger-action" onClick={() => onUpdateFaultStatus(report.id, 'closed')} type="button">
-              Archivia
+              {t('operations.archive')}
             </button>
           )}
         </div>
@@ -5892,44 +7696,44 @@ function OperationDetailShell({
   const driver = driverRecords.find((entry) => entry.id === check.driverId)
   const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
   const trailer = vehicleRecords.find((entry) => entry.id === check.semitrailerId)
-  const issueText = getCheckIssues(check)
+  const issueText = getCheckIssues(check, t)
   const isRead = acknowledgedCheckIds.includes(check.id)
 
   return (
     <Shell className={shellClassName} {...shellProps}>
       <div className="panel-header compact">
         <div>
-          <p className="overline">Check</p>
-          <h2>Check mattutino</h2>
+          <p className="overline">{t('operations.check')}</p>
+          <h2>{t('driverApp.morningCheck')}</h2>
         </div>
         <div className="operation-detail-header-actions">
           <ClipboardCheck size={20} />
           {surface === 'modal' && (
-            <button aria-label="Chiudi dettaglio" className="icon-button operation-modal-close" onClick={onClose} type="button">
+            <button aria-label={t('common.close')} className="icon-button operation-modal-close" onClick={onClose} type="button">
               <X size={18} />
             </button>
           )}
         </div>
       </div>
       <div className="operation-detail-body">
-        <DetailLine label="Stato" value={isRead ? 'Archiviato' : issueText.length > 0 ? 'Critico da aprire' : 'Da aprire'} />
-        <DetailLine label="Autista" value={driver?.name ?? 'Autista non trovato'} />
-        <DetailLine label="Mezzo" value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : 'Mezzo non trovato'} />
-        {trailer && <DetailLine label="Semirimorchio" value={`${trailer.plate} · ${trailer.model}`} />}
-        <DetailLine label="Ora" value={formatShortDateTime(check.createdAt)} />
+        <DetailLine label={t('common.status')} value={isRead ? t('common.archived') : issueText.length > 0 ? t('operations.checkCriticalOpen') : t('operations.inbox')} />
+        <DetailLine label={t('common.driver')} value={driver?.name ?? t('common.driverMissing')} />
+        <DetailLine label={t('common.vehicle')} value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : t('common.vehicleMissing')} />
+        {trailer && <DetailLine label={t('common.trailer')} value={`${trailer.plate} · ${trailer.model}`} />}
+        <DetailLine label={t('common.time')} value={formatShortDateTime(check.createdAt)} />
         {check.odometerKm && <DetailLine label="Km" value={`${check.odometerKm.toLocaleString('it-IT')} km`} />}
-        <DetailLine label="Luci" value={check.lightsOk ? 'Ok' : 'Da controllare'} />
-        <DetailLine label="Gomme" value={check.tiresOk ? 'Ok' : 'Da controllare'} />
-        <DetailLine label="Documenti bordo" value={check.documentsOnBoard ? 'Presenti' : 'Mancanti'} />
+        <DetailLine label={t('operations.lights')} value={check.lightsOk ? 'Ok' : t('vehicleStatus.watch')} />
+        <DetailLine label={t('operations.tires')} value={check.tiresOk ? 'Ok' : t('vehicleStatus.watch')} />
+        <DetailLine label={t('operations.documentsOnBoard')} value={check.documentsOnBoard ? t('operations.present') : t('operations.missing')} />
         {issueText.length > 0 && (
           <div className="detail-note is-critical">
-            <strong>Anomalie check</strong>
+            <strong>{t('operations.checkIssues')}</strong>
             <p>{issueText.join(' · ')}</p>
           </div>
         )}
         {check.notes && (
           <div className="detail-note">
-            <strong>Note</strong>
+            <strong>{t('common.notes')}</strong>
             <p>{check.notes}</p>
           </div>
         )}
@@ -5937,11 +7741,11 @@ function OperationDetailShell({
       <div className="operation-detail-actions">
         {isRead ? (
           <button className="small-button" onClick={() => onMarkCheckUnread?.(check.id)} type="button">
-            Segna da leggere
+            {t('operations.markUnread')}
           </button>
         ) : (
           <button className="small-button danger-action" onClick={() => onAcknowledgeCheck?.(check.id)} type="button">
-            Archivia
+            {t('operations.archive')}
           </button>
         )}
       </div>
@@ -5970,19 +7774,21 @@ function FormValidationAlert({ message }) {
 }
 
 function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onReminder, onRenew }) {
+  const { t } = useI18n()
+
   return (
     <section className="panel compliance-panel" id="compliance-board-panel">
       <div className="panel-header">
         <div>
-          <p className="overline">Agenda operativa</p>
-          <h2>Scadenze documentali</h2>
+          <p className="overline">{t('deadline.agenda')}</p>
+          <h2>{t('deadline.boardTitle')}</h2>
         </div>
-        <button className="icon-button" type="button" aria-label="Filtri avanzati">
+        <button className="icon-button" type="button" aria-label={t('deadline.advancedFilters')}>
           <Filter size={18} />
         </button>
       </div>
 
-      <div className="filter-tabs" role="tablist" aria-label="Filtra scadenze">
+      <div className="filter-tabs" role="tablist" aria-label={t('deadline.filterAria')}>
         {filters.map((filter) => (
           <button
             className={activeFilter === filter.id ? 'filter-tab is-active' : 'filter-tab'}
@@ -5990,7 +7796,7 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onRem
             onClick={() => onFilter(filter.id)}
             type="button"
           >
-            {filter.label}
+            {getFilterLabel(filter, t)}
           </button>
         ))}
       </div>
@@ -6009,8 +7815,8 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onRem
           <div className="empty-state-row">
             <CalendarClock size={20} />
             <div>
-              <strong>Nessuna scadenza inserita</strong>
-              <span>Le prossime scadenze compariranno qui.</span>
+              <strong>{t('deadline.emptyTitle')}</strong>
+              <span>{t('deadline.emptyText')}</span>
             </div>
           </div>
         )}
@@ -6020,6 +7826,7 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onRem
 }
 
 function DeadlineRow({ item, onClose, onReminder, onRenew }) {
+  const { t } = useI18n()
   const isDone = item.status === 'done'
   const isRenewing = item.status === 'renewing'
 
@@ -6031,7 +7838,7 @@ function DeadlineRow({ item, onClose, onReminder, onRenew }) {
       <div className="deadline-main">
         <div className="deadline-title">
           <strong>{item.type}</strong>
-          <span className={`status-pill tone-${item.urgency.tone}`}>{item.urgency.label}</span>
+          <span className={`status-pill tone-${item.urgency.tone}`}>{getUrgencyLabel(item.urgency, t)}</span>
         </div>
         <p>{item.assignee}</p>
         <small>{item.detail}</small>
@@ -6040,18 +7847,18 @@ function DeadlineRow({ item, onClose, onReminder, onRenew }) {
         <strong>{formatDate(item.dueDate)}</strong>
         <span>
           {item.urgency.days < 0
-            ? `${Math.abs(item.urgency.days)} giorni fa`
-            : `${item.urgency.days} giorni`}
+            ? t('deadline.daysAgo', { count: Math.abs(item.urgency.days) })
+            : t('deadline.days', { count: item.urgency.days })}
         </span>
       </div>
       <div className="deadline-actions">
         <button className="small-button" onClick={onReminder} type="button">
           <Send size={15} />
-          In app
+          {t('deadline.inApp')}
         </button>
         <button className="small-button" onClick={isRenewing ? onClose : onRenew} type="button">
           {isRenewing ? <CheckCircle2 size={15} /> : <Clock3 size={15} />}
-          {isRenewing ? 'Chiudi' : 'Rinnovo'}
+          {isRenewing ? t('deadline.close') : t('deadline.renew')}
         </button>
       </div>
     </article>
@@ -6059,8 +7866,10 @@ function DeadlineRow({ item, onClose, onReminder, onRenew }) {
 }
 
 function FleetAndForms({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
+  const { t } = useI18n()
+
   return (
-    <section className="lower-grid" aria-label="Gestione flotta e inserimento">
+    <section className="lower-grid" aria-label={t('fleet.managementAria')}>
       <FleetStatus driverRecords={driverRecords} vehicleRecords={vehicleRecords} />
       <AddDeadlineForm driverRecords={driverRecords} onAdd={onAdd} onBackHome={onBackHome} vehicleRecords={vehicleRecords} />
     </section>
@@ -6068,20 +7877,21 @@ function FleetAndForms({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
 }
 
 function FleetStatus({ driverRecords, vehicleRecords }) {
+  const { t } = useI18n()
   const activeVehicleRecords = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato')
   const fleetGroups = [
-    { label: 'Furgoni', value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'furgone').length },
-    { label: 'Motrici', value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'motrice').length },
-    { label: 'Trattori', value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'trattore').length },
-    { label: 'Semirimorchi', value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'semirimorchio').length },
+    { label: t('fleetType.furgonePlural'), value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'furgone').length },
+    { label: t('fleetType.motricePlural'), value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'motrice').length },
+    { label: t('fleetType.trattorePlural'), value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'trattore').length },
+    { label: t('fleetType.semirimorchioPlural'), value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'semirimorchio').length },
   ]
 
   return (
     <article className="panel fleet-panel">
       <div className="panel-header compact">
         <div>
-          <p className="overline">Flotta</p>
-          <h2>Mezzi assegnati</h2>
+          <p className="overline">{t('fleet.title')}</p>
+          <h2>{t('fleet.assignedVehicles')}</h2>
         </div>
         <Gauge size={20} />
       </div>
@@ -6105,7 +7915,7 @@ function FleetStatus({ driverRecords, vehicleRecords }) {
                 </span>
               </div>
               <div>
-                <small>{assignedDriver?.name ?? 'Non assegnato'}</small>
+                <small>{assignedDriver?.name ?? t('drivers.assignedNone')}</small>
                 <small>{vehicle.km.toLocaleString('it-IT')} km</small>
               </div>
             </div>
@@ -6115,8 +7925,8 @@ function FleetStatus({ driverRecords, vehicleRecords }) {
           <div className="empty-state-row">
             <Truck size={20} />
             <div>
-              <strong>Nessun mezzo in flotta</strong>
-              <span>Furgoni, motrici, trattori e semirimorchi compariranno qui.</span>
+              <strong>{t('fleet.noFleetTitle')}</strong>
+              <span>{t('fleet.empty')}</span>
             </div>
           </div>
         )}
@@ -6126,6 +7936,7 @@ function FleetStatus({ driverRecords, vehicleRecords }) {
 }
 
 function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
+  const { t } = useI18n()
   const [showValidation, setShowValidation] = useState(false)
   const [form, setForm] = useState({
     type: 'Visita medica',
@@ -6138,9 +7949,9 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
   const assignees = form.scope === 'driver' ? driverRecords : vehicleRecords
   const hasAssigneeChoices = assignees.length > 0
   const missingRequiredFields = [
-    hasAssigneeChoices ? null : form.scope === 'driver' ? 'almeno un autista' : 'almeno un mezzo',
-    form.assigneeId ? null : form.scope === 'driver' ? 'autista' : 'mezzo',
-    form.dueDate ? null : 'data scadenza',
+    hasAssigneeChoices ? null : form.scope === 'driver' ? t('deadline.atLeastOneDriver') : t('deadline.atLeastOneVehicle'),
+    form.assigneeId ? null : form.scope === 'driver' ? t('common.driver') : t('common.vehicle'),
+    form.dueDate ? null : t('deadline.dueDate'),
   ].filter(Boolean)
   const canSubmit = missingRequiredFields.length === 0
 
@@ -6180,35 +7991,35 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
     <form className="panel add-panel" id="new-deadline-panel" noValidate onSubmit={handleSubmit}>
       <div className="panel-header compact">
         <div>
-          <p className="overline">Inserimento rapido</p>
-          <h2>Nuova scadenza</h2>
+          <p className="overline">{t('deadline.quickInsert')}</p>
+          <h2>{t('deadline.add')}</h2>
         </div>
         <div className="panel-header-actions">
           <button className="small-button" onClick={onBackHome} type="button">
             <ArrowLeft size={15} />
-            Indietro
+            {t('common.back')}
           </button>
           <Plus size={20} />
         </div>
       </div>
       <div className="form-grid">
         <label>
-          Tipo
+          {t('deadline.type')}
           <select value={form.type} onChange={(event) => updateField('type', event.target.value)}>
             {documentTypes.map((type) => (
-              <option key={type}>{type}</option>
+              <option key={type} value={type}>{getDocumentTypeLabel(type, t)}</option>
             ))}
           </select>
         </label>
         <label>
-          Ambito
+          {t('deadline.scope')}
           <select value={form.scope} onChange={(event) => updateField('scope', event.target.value)}>
-            <option value="driver">Autista</option>
-            <option value="vehicle">Mezzo</option>
+            <option value="driver">{t('deadline.driverScope')}</option>
+            <option value="vehicle">{t('deadline.vehicleScope')}</option>
           </select>
         </label>
         <label>
-          Soggetto
+          {t('deadline.subject')}
           <select disabled={assignees.length === 0} value={form.assigneeId} onChange={(event) => updateField('assigneeId', event.target.value)}>
             {assignees.map((assignee) => (
               <option key={assignee.id} value={assignee.id}>
@@ -6218,19 +8029,19 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
           </select>
         </label>
         <label>
-          Scadenza
+          {t('deadline.dueDate')}
           <input value={form.dueDate} onChange={(event) => updateField('dueDate', event.target.value)} type="date" />
         </label>
         <label className="wide-field">
-          Responsabile
+          {t('deadline.owner')}
           <input value={form.owner} onChange={(event) => updateField('owner', event.target.value)} />
         </label>
       </div>
-      {!hasAssigneeChoices && <p className="form-hint">Aggiungi prima almeno un autista o un mezzo.</p>}
-      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields)} />}
+      {!hasAssigneeChoices && <p className="form-hint">{t('deadline.addFirstHint')}</p>}
+      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields, t)} />}
       <button className="primary-button full-button" type="submit">
         <Plus size={17} />
-        Aggiungi
+        {t('common.add')}
       </button>
     </form>
   )
@@ -6446,6 +8257,7 @@ function DriverMobile({
   vehicleCheckRecords = [],
   vehicleRecords = vehicles,
 }) {
+  const { t } = useI18n()
   const [selectedPreviewDriverId, setSelectedPreviewDriverId] = useState('')
   const previewDriver =
     driverRecords.find((entry) => entry.id === selectedPreviewDriverId) ??
@@ -6512,8 +8324,8 @@ function DriverMobile({
   const hasUnreadCompanyMessages = unreadCompanyMessageCount > 0
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false)
   const vehicleLabel = selectedVehicle
-    ? `${selectedVehicle.plate} · ${getFleetTypeLabel(selectedVehicle.fleetType)}`
-    : 'Nessun mezzo disponibile'
+    ? `${selectedVehicle.plate} · ${getFleetTypeLabel(selectedVehicle.fleetType, t)}`
+    : t('common.vehicleMissing')
   const driverImageUrl = assetPreviewUrl(driver.profileImagePath)
 
   useEffect(() => {
@@ -6652,13 +8464,13 @@ function DriverMobile({
         <div className="driver-company-strip">
           <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
           <div>
-            <span>Azienda</span>
+            <span>{t('common.company')}</span>
             <strong>{companyName}</strong>
           </div>
         </div>
         {showDriverSelector && (
           <label className="driver-preview-selector">
-            Autista in anteprima
+            {t('driverApp.previewDriver')}
             <select
               value={driver.id}
               onChange={(event) => {
@@ -6687,13 +8499,13 @@ function DriverMobile({
             <EntityAvatar imageUrl={driverImageUrl} name={driver.name} />
           </button>
           <div>
-            <p>Buongiorno</p>
+            <p>{t('driverApp.greeting')}</p>
             <strong>{driver.name}</strong>
             <div className="driver-photo-actions">
-              <ImageUploadControl label={driverImageUrl ? 'Cambia' : 'Carica foto'} onUpload={(file) => onDriverProfileImageUpload?.(driver.id, file)} />
+              <ImageUploadControl label={driverImageUrl ? t('common.change') : t('companyLogo.upload')} onUpload={(file) => onDriverProfileImageUpload?.(driver.id, file)} />
               {driverImageUrl && (
                 <button className="small-button" onClick={() => onDriverProfileImageRemove?.(driver.id)} type="button">
-                  Elimina
+                  {t('common.delete')}
                 </button>
               )}
             </div>
@@ -6703,7 +8515,7 @@ function DriverMobile({
         {unreadCompanyMessageCount > 0 && !isDriverChatOpen && (
           <button className="driver-notification-strip" onClick={() => setIsDriverChatOpen(true)} type="button">
             <Bell size={16} />
-            <span>{unreadCompanyMessageCount} messaggi azienda da leggere</span>
+            <span>{t('driverApp.messageUnread', { count: unreadCompanyMessageCount })}</span>
           </button>
         )}
         {photoPreviewOpen && driverImageUrl && (
@@ -6726,32 +8538,32 @@ function DriverMobile({
             <p>{formatDate(nextItem.dueDate)}</p>
             <button className="upload-button" onClick={onUpload} type="button">
               <Upload size={16} />
-              {uploadSent ? 'Documento caricato' : 'Carica documento'}
+              {uploadSent ? t('driverApp.documentUploaded') : t('driverApp.uploadDocument')}
             </button>
           </article>
         )}
         {!hasSentMorningCheck && (
         <article className="check-card">
           <div>
-            <strong>Check mattutino</strong>
+            <strong>{t('driverApp.morningCheck')}</strong>
             <span>{vehicleLabel}</span>
           </div>
           <form className="check-form" onSubmit={handleCheckSubmit}>
             <label>
-              Mezzo usato
+              {t('driverApp.usedVehicle')}
               <select value={selectedVehicle?.id ?? ''} onChange={(event) => setSelectedVehicleId(event.target.value)}>
-                {driveableVehicles.length === 0 && <option value="">Nessun mezzo</option>}
+                {driveableVehicles.length === 0 && <option value="">{t('drivers.noVehicle')}</option>}
                 {driveableVehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}
+                    {vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType, t)}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              Semirimorchio agganciato
+              {t('driverApp.attachedTrailer')}
               <select value={attachedTrailer?.id ?? ''} onChange={(event) => setAttachedTrailerId(event.target.value)}>
-                <option value="">Nessuno</option>
+                <option value="">{t('driverApp.none')}</option>
                 {semitrailers.map((trailer) => (
                   <option key={trailer.id} value={trailer.id}>
                     {trailer.plate} · {trailer.model}
@@ -6760,7 +8572,7 @@ function DriverMobile({
               </select>
             </label>
             <label>
-              Km attuali
+              {t('driverApp.currentKm')}
               <input
                 min="0"
                 onChange={(event) => updateCheckField('odometerKm', event.target.value)}
@@ -6769,14 +8581,14 @@ function DriverMobile({
                 value={checkForm.odometerKm}
               />
             </label>
-            <div className="inline-checks" aria-label="Controlli rapidi">
+            <div className="inline-checks" aria-label={t('driverApp.quickChecks')}>
               <label className="check-toggle">
                 <input
                   checked={checkForm.lightsOk}
                   onChange={(event) => updateCheckField('lightsOk', event.target.checked)}
                   type="checkbox"
                 />
-                Luci ok
+                {t('driverApp.lightsOk')}
               </label>
               <label className="check-toggle">
                 <input
@@ -6784,7 +8596,7 @@ function DriverMobile({
                   onChange={(event) => updateCheckField('tiresOk', event.target.checked)}
                   type="checkbox"
                 />
-                Gomme ok
+                {t('driverApp.tiresOk')}
               </label>
               <label className="check-toggle">
                 <input
@@ -6792,45 +8604,45 @@ function DriverMobile({
                   onChange={(event) => updateCheckField('documentsOnBoard', event.target.checked)}
                   type="checkbox"
                 />
-                Documenti bordo
+                {t('driverApp.documentsBoard')}
               </label>
             </div>
             <label>
-              Note check
+              {t('driverApp.notesCheck')}
               <textarea
                 onChange={(event) => updateCheckField('notes', event.target.value)}
-                placeholder="Es. pressione gomme controllata"
+                placeholder={t('driverApp.notesPlaceholder')}
                 value={checkForm.notes}
               />
             </label>
             <button className="upload-button" disabled={!selectedVehicle || sendingOperation === 'check'} type="submit">
               <BadgeCheck size={16} />
-              {sendingOperation === 'check' ? 'Invio...' : morningCheckSent ? 'Check inviato' : 'Invia check'}
+              {sendingOperation === 'check' ? t('chat.sending') : morningCheckSent ? t('driverApp.checkSent') : t('driverApp.sendCheck')}
             </button>
           </form>
           {!selectedVehicle && (
             <small className="operation-status">
-              Nessun mezzo selezionabile. L azienda deve aggiungere almeno un furgone, motrice o trattore in Flotta.
+              {t('driverApp.noVehicle')}
             </small>
           )}
-          {lastCheck && <small>Ultimo check: {formatShortDateTime(lastCheck.createdAt)}</small>}
+          {lastCheck && <small>{t('driverApp.lastCheck', { time: formatShortDateTime(lastCheck.createdAt) })}</small>}
         </article>
         )}
         <article className="check-card driver-chat-card">
           <div>
-            <strong>Messaggi azienda</strong>
+            <strong>{t('driverApp.companyMessages')}</strong>
             <span>
               {unreadCompanyMessageCount > 0
-                ? `${unreadCompanyMessageCount} da leggere`
+                ? t('driverApp.messageUnread', { count: unreadCompanyMessageCount })
                 : driverChatMessages.length > 0
-                  ? `${driverChatMessages.length} messaggi`
-                  : 'Nessun messaggio'}
+                  ? t('driverApp.messages', { count: driverChatMessages.length })
+                  : t('chat.noMessages')}
             </span>
           </div>
           {unreadCompanyMessageCount > 0 && (
             <div className="driver-chat-alert">
               <Bell size={15} />
-              <span>{unreadCompanyMessageCount} messaggi da leggere</span>
+              <span>{t('driverApp.messageUnread', { count: unreadCompanyMessageCount })}</span>
             </div>
           )}
           <div className="driver-chat-list">
@@ -6842,11 +8654,11 @@ function DriverMobile({
                   className={message.senderRole === 'driver' ? 'driver-chat-bubble is-driver' : 'driver-chat-bubble is-company'}
                   key={message.id}
                 >
-                  <small>{message.senderRole === 'driver' ? 'Tu' : 'Azienda'} · {formatShortDateTime(message.createdAt)}</small>
+                  <small>{message.senderRole === 'driver' ? t('chat.you') : t('chat.company')} · {formatShortDateTime(message.createdAt)}</small>
                   {message.body && <p>{message.body}</p>}
                   {message.attachmentPath && attachmentUrl && (
                     <a href={attachmentUrl} rel="noreferrer" target="_blank">
-                      <img alt="Foto allegata in chat" src={attachmentUrl} />
+                      <img alt={t('chat.photoAttached')} src={attachmentUrl} />
                     </a>
                   )}
                   {message.senderRole === 'driver' && (
@@ -6855,84 +8667,84 @@ function DriverMobile({
                 </div>
               )
             })}
-            {driverChatMessages.length === 0 && <small>Scrivi all azienda quando hai bisogno di comunicare velocemente.</small>}
+            {driverChatMessages.length === 0 && <small>{t('chat.emptyDriverHint')}</small>}
           </div>
           <button className="upload-button" onClick={() => setIsDriverChatOpen(true)} type="button">
             <Mail size={16} />
             {unreadCompanyMessageCount > 0
-              ? `Apri chat (${unreadCompanyMessageCount})`
-              : 'Apri chat'}
+              ? t('chat.openWithCount', { count: unreadCompanyMessageCount })
+              : t('chat.open')}
           </button>
         </article>
         <article className={isFaultFormOpen ? 'check-card fault-card is-open' : 'check-card fault-card'}>
           <div className="fault-card-header">
             <div>
-              <strong>Segnala guasto</strong>
+              <strong>{t('fault.report')}</strong>
               <span>
                 {vehicleLabel}
-                {attachedTrailer ? ` · agganciato ${attachedTrailer.plate}` : ''}
+                {attachedTrailer ? ` · ${t('driverApp.attachedTrailer').toLowerCase()} ${attachedTrailer.plate}` : ''}
               </span>
             </div>
             <button className="fault-button" onClick={() => setIsFaultFormOpen((isOpen) => !isOpen)} type="button">
               <Wrench size={16} />
-              {isFaultFormOpen ? 'Chiudi' : 'Segnala'}
+              {isFaultFormOpen ? t('common.close') : t('fault.reportShort')}
             </button>
           </div>
           {isFaultFormOpen && (
             <form className="check-form" onSubmit={handleFaultSubmit}>
               <label>
-                Gravità
+                {t('fault.severity')}
                 <select value={faultForm.severity} onChange={(event) => updateFaultField('severity', event.target.value)}>
                   {faultSeverityOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {getFaultSeverityLabel(option.value, t)}
                     </option>
                   ))}
                 </select>
               </label>
               <label>
-                Titolo guasto
+                {t('fault.title')}
                 <input
                   onChange={(event) => updateFaultField('title', event.target.value)}
-                  placeholder="Es. spia motore accesa"
+                  placeholder={t('fault.titlePlaceholder')}
                   value={faultForm.title}
                 />
               </label>
               <label>
-                Dettagli
+                {t('fault.details')}
                 <textarea
                   onChange={(event) => updateFaultField('description', event.target.value)}
-                  placeholder="Descrivi cosa succede"
+                  placeholder={t('fault.detailsPlaceholder')}
                   value={faultForm.description}
                 />
               </label>
               <div className="fault-photo-actions">
                 <label className="document-action-button">
-                  Scatta foto
+                  {t('fault.photoTake')}
                   <input accept="image/*" capture="environment" onChange={handleFaultPhotoFile} type="file" />
                 </label>
                 <label className="document-action-button">
-                  Galleria
+                  {t('chat.gallery')}
                   <input accept="image/*" onChange={handleFaultPhotoFile} type="file" />
                 </label>
                 {faultForm.photoFile && (
                   <button className="small-button" onClick={() => updateFaultField('photoFile', null)} type="button">
-                    Rimuovi foto
+                    {t('fault.photoRemove')}
                   </button>
                 )}
               </div>
-              {faultForm.photoFile && <small>Foto pronta: {faultForm.photoFile.name}</small>}
+              {faultForm.photoFile && <small>{t('chat.photoReady', { name: faultForm.photoFile.name })}</small>}
               <button
                 className="fault-button"
                 disabled={!selectedVehicle || !faultForm.title.trim() || sendingOperation === 'fault'}
                 type="submit"
               >
                 <Wrench size={16} />
-                {sendingOperation === 'fault' ? 'Invio...' : faultReported ? 'Guasto segnalato' : 'Invia guasto'}
+                {sendingOperation === 'fault' ? t('chat.sending') : faultReported ? t('driverApp.faultReported') : t('fault.send')}
               </button>
             </form>
           )}
-          {openFaults.length > 0 && <small>{openFaults.length} guasti aperti</small>}
+          {openFaults.length > 0 && <small>{t('fault.openFaults', { count: openFaults.length })}</small>}
           {operationsStatus && <small className="operation-status">{operationsStatus}</small>}
         </article>
         {isDriverChatOpen && (
@@ -6948,7 +8760,7 @@ function DriverMobile({
         )}
         <div className="documents-card">
           <div className="documents-card-header">
-            <strong>Documenti da mostrare alla polizia</strong>
+            <strong>{t('documents.driverPoliceTitle')}</strong>
             <button
               className="document-action-button"
               onClick={() => {
@@ -6958,29 +8770,29 @@ function DriverMobile({
               type="button"
             >
               <Plus size={14} />
-              {isDocumentFormOpen ? 'Chiudi' : 'Aggiungi'}
+              {isDocumentFormOpen ? t('common.close') : t('common.add')}
             </button>
           </div>
           {isDocumentFormOpen && (
             <form className="check-form driver-document-create-form" onSubmit={handleDocumentCreate}>
               <label>
-                Documento
+                {t('documents.document')}
                 <select value={documentForm.type} onChange={(event) => updateDocumentField('type', event.target.value)}>
                   {documentTypes.map((type) => (
-                    <option key={type}>{type}</option>
+                    <option key={type} value={type}>{getDocumentTypeLabel(type, t)}</option>
                   ))}
                 </select>
               </label>
               <label>
-                Numero documento
+                {t('documents.number')}
                 <input
                   onChange={(event) => updateDocumentField('documentNumber', event.target.value)}
-                  placeholder="Numero o riferimento"
+                  placeholder={t('documents.numberPlaceholder')}
                   value={documentForm.documentNumber}
                 />
               </label>
               <label>
-                Scadenza
+                {t('documents.expiry')}
                 <input
                   onChange={(event) => updateDocumentField('expiresAt', event.target.value)}
                   onInput={(event) => updateDocumentField('expiresAt', event.target.value)}
@@ -6990,33 +8802,33 @@ function DriverMobile({
               </label>
               <div className="fault-photo-actions">
                 <label className="document-action-button">
-                  Scatta foto
+                  {t('documents.uploadCamera')}
                   <input accept="image/*" capture="environment" onChange={handleNewDocumentFile} type="file" />
                 </label>
                 <label className="document-action-button">
-                  Galleria/PDF
+                  {t('documents.uploadFile')}
                   <input accept="image/*,.pdf,application/pdf" onChange={handleNewDocumentFile} type="file" />
                 </label>
                 {documentForm.file && (
                   <button className="small-button" onClick={() => updateDocumentField('file', null)} type="button">
-                    Rimuovi
+                    {t('common.remove')}
                   </button>
                 )}
               </div>
-              {documentForm.file && <small>File pronto: {documentForm.file.name}</small>}
+              {documentForm.file && <small>{t('documents.fileReady', { name: documentForm.file.name })}</small>}
               {showDocumentValidation && (
-                <small className="operation-status">Scegli una foto o un PDF prima di salvare.</small>
+                <small className="operation-status">{t('documents.chooseFileFirst')}</small>
               )}
               <button className="upload-button" disabled={sendingOperation === 'document'} type="submit">
                 <Upload size={16} />
-                {sendingOperation === 'document' ? 'Caricamento...' : 'Salva documento'}
+                {sendingOperation === 'document' ? t('common.loading') : t('documents.save')}
               </button>
             </form>
           )}
           {docs.map((document) => (
             <div className="document-row" key={document.id}>
               <FileText size={15} />
-              <span>{document.type}</span>
+              <span>{getDocumentTypeLabel(document.type, t)}</span>
               <small>{formatOptionalDate(document.expiresAt)}</small>
               <div className="document-row-actions">
                 <button
@@ -7025,10 +8837,10 @@ function DriverMobile({
                   onClick={() => onOpenDriverDocument?.(document)}
                   type="button"
                 >
-                  Mostra
+                  {t('common.open')}
                 </button>
                 <label className="document-action-button">
-                  {document.filePath ? 'Cambia foto' : 'Foto'}
+                  {document.filePath ? t('common.change') : t('common.photo')}
                   <input
                     accept="image/*"
                     capture="environment"
@@ -7037,7 +8849,7 @@ function DriverMobile({
                   />
                 </label>
                 <label className="document-action-button">
-                  {document.filePath ? 'Cambia PDF' : 'Galleria/PDF'}
+                  {document.filePath ? t('common.change') : t('documents.uploadFile')}
                   <input
                     accept="image/*,.pdf,application/pdf"
                     onChange={(event) => handleDocumentFile(document, event)}
@@ -7046,14 +8858,14 @@ function DriverMobile({
                 </label>
                 {document.filePath && (
                   <button className="document-action-button danger-document-action" onClick={() => onDriverDocumentFileRemove?.(document)} type="button">
-                    Elimina
+                    {t('common.delete')}
                   </button>
                 )}
               </div>
-              {uploadingDocumentId === document.id && <small>Caricamento in corso...</small>}
+              {uploadingDocumentId === document.id && <small>{t('documents.uploading')}</small>}
             </div>
           ))}
-          {docs.length === 0 && <small>Nessun documento visibile</small>}
+          {docs.length === 0 && <small>{t('documents.noVisible')}</small>}
           {documentUploadStatus && <small className="document-upload-status">{documentUploadStatus}</small>}
         </div>
         <div className="phone-list">
@@ -7084,6 +8896,7 @@ function DriverChatScreen({
   onSendChatMessage,
   thread,
 }) {
+  const { t } = useI18n()
   const [chatForm, setChatForm] = useState({
     body: '',
     photoFile: null,
@@ -7127,14 +8940,14 @@ function DriverChatScreen({
   }
 
   return (
-    <div className="driver-chat-screen" role="dialog" aria-label="Chat azienda">
+    <div className="driver-chat-screen" role="dialog" aria-label={t('chat.company')}>
       <div className="driver-chat-screen-header">
-        <button aria-label="Torna all app autista" className="icon-button" onClick={onClose} type="button">
+        <button aria-label={t('common.back')} className="icon-button" onClick={onClose} type="button">
           <ArrowLeft size={18} />
         </button>
         <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
         <div>
-          <strong>Azienda</strong>
+          <strong>{t('chat.company')}</strong>
           <span>{driver.name}</span>
         </div>
       </div>
@@ -7158,7 +8971,7 @@ function DriverChatScreen({
               {message.body && <p>{message.body}</p>}
               {message.attachmentPath && attachmentUrl && (
                 <a href={attachmentUrl} rel="noreferrer" target="_blank">
-                  <img alt="Foto allegata in chat" onLoad={scrollDriverChatToBottom} src={attachmentUrl} />
+                  <img alt={t('chat.photoAttached')} onLoad={scrollDriverChatToBottom} src={attachmentUrl} />
                 </a>
               )}
               <small>
@@ -7181,8 +8994,8 @@ function DriverChatScreen({
         {chatMessages.length === 0 && (
           <div className="driver-chat-screen-empty">
             <Mail size={24} />
-            <strong>Nessun messaggio</strong>
-            <span>Scrivi all azienda quando hai bisogno.</span>
+            <strong>{t('chat.noMessages')}</strong>
+            <span>{t('chat.emptyDriverHint')}</span>
           </div>
         )}
         <span className="chat-scroll-anchor" />
@@ -7193,27 +9006,27 @@ function DriverChatScreen({
           <div className="driver-chat-file-pill">
             <span>{chatForm.photoFile.name}</span>
             <button onClick={() => setChatForm((currentForm) => ({ ...currentForm, photoFile: null }))} type="button">
-              Rimuovi
+              {t('common.remove')}
             </button>
           </div>
         )}
         <textarea
           onChange={(event) => setChatForm((currentForm) => ({ ...currentForm, body: event.target.value }))}
-          placeholder="Messaggio"
+          placeholder={t('chat.messagePlaceholder')}
           value={chatForm.body}
         />
         <div className="driver-chat-screen-actions">
           <label className="document-action-button">
-            Foto
+            {t('chat.photo')}
             <input accept="image/*" capture="environment" onChange={handlePhotoFile} type="file" />
           </label>
           <label className="document-action-button">
-            Galleria
+            {t('chat.gallery')}
             <input accept="image/*" onChange={handlePhotoFile} type="file" />
           </label>
           <button className="upload-button" disabled={isSending || (!chatForm.body.trim() && !chatForm.photoFile)} type="submit">
             <Send size={16} />
-            {isSending ? 'Invio...' : 'Invia'}
+            {isSending ? t('chat.sending') : t('chat.send')}
           </button>
         </div>
       </form>

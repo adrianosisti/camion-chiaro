@@ -1459,15 +1459,6 @@ function App() {
             title: 'Documento aggiornato',
             url: '/?view=documents',
           })
-        } else {
-          const driver = driverRecords.find((driverRecord) => driverRecord.id === result.data.driverId)
-          void notifyPhone({
-            body: `${driver?.name ?? 'Un autista'} ha caricato ${result.data.type}.`,
-            tag: `document-file-${result.data.id}`,
-            targetRole: 'company',
-            title: 'Documento autista caricato',
-            url: '/?view=documents',
-          })
         }
       }
       setDriverUploadSent(true)
@@ -1541,14 +1532,6 @@ function App() {
       setVehicleCheckRecords((currentChecks) => [result.data, ...currentChecks])
       setMorningCheckSent(true)
       setOperationsSyncStatus('Check mattutino inviato all azienda.')
-      const driver = driverRecords.find((driverRecord) => driverRecord.id === result.data.driverId)
-      void notifyPhone({
-        body: `${driver?.name ?? 'Un autista'} ha inviato il check mattutino.`,
-        tag: `check-${result.data.id}`,
-        targetRole: 'company',
-        title: hasCheckIssues(result.data) ? 'Check critico' : 'Check mattutino',
-        url: '/?view=notifications',
-      })
       return true
     }
 
@@ -1589,14 +1572,6 @@ function App() {
       setFaultReportRecords((currentReports) => [result.data, ...currentReports])
       setFaultReported(true)
       setOperationsSyncStatus('Guasto segnalato all azienda.')
-      const driver = driverRecords.find((driverRecord) => driverRecord.id === result.data.driverId)
-      void notifyPhone({
-        body: `${driver?.name ?? 'Un autista'}: ${result.data.title}`,
-        tag: `fault-${result.data.id}`,
-        targetRole: 'company',
-        title: ['high', 'stop_vehicle'].includes(result.data.severity) ? 'Guasto critico' : 'Nuovo guasto',
-        url: '/?view=notifications',
-      })
       return true
     }
 
@@ -1679,14 +1654,16 @@ function App() {
         }),
       )
       setChatSyncStatus('Messaggio inviato.')
-      void notifyPhone({
-        body: cleanBody || 'Foto allegata in chat.',
-        driverId,
-        tag: `chat-${targetThread.id}`,
-        targetRole: senderRole === 'company' ? 'driver' : 'company',
-        title: senderRole === 'company' ? 'Messaggio azienda' : 'Messaggio autista',
-        url: '/?view=chat',
-      })
+      if (senderRole === 'company') {
+        void notifyPhone({
+          body: cleanBody || 'Foto allegata in chat.',
+          driverId,
+          tag: `chat-${targetThread.id}`,
+          targetRole: 'driver',
+          title: 'Messaggio azienda',
+          url: '/?view=chat',
+        })
+      }
       return true
     }
 
@@ -1988,13 +1965,7 @@ function App() {
             companyEmail={session.email}
             companyProfile={{ ...companyProfile, name: companyName }}
             companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
-            installPromptAvailable={Boolean(installPromptEvent)}
-            isStandaloneMode={isStandaloneMode}
-            notificationEnabled={phoneNotificationEnabled}
-            notificationStatus={phoneNotificationStatus}
             onCompanyLogoUpload={uploadCompanyLogo}
-            onEnablePhoneNotifications={enablePhoneNotifications}
-            onInstallPhoneApp={installPhoneApp}
             onUpdateCompanyProfile={updateCompanyProfile}
             syncStatus={companySettingsStatus}
           />
@@ -2770,13 +2741,7 @@ function SettingsWorkspace({
   companyEmail,
   companyLogoUrl,
   companyProfile,
-  installPromptAvailable,
-  isStandaloneMode,
-  notificationEnabled,
-  notificationStatus,
   onCompanyLogoUpload,
-  onEnablePhoneNotifications,
-  onInstallPhoneApp,
   onUpdateCompanyProfile,
   syncStatus,
 }) {
@@ -2839,15 +2804,6 @@ function SettingsWorkspace({
         {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
       </form>
       <div className="settings-side-column">
-        <PhoneSetupPanel
-          installPromptAvailable={installPromptAvailable}
-          isStandaloneMode={isStandaloneMode}
-          notificationEnabled={notificationEnabled}
-        notificationStatus={notificationStatus}
-        onEnableNotifications={onEnablePhoneNotifications}
-        onInstallApp={onInstallPhoneApp}
-        showInstallAction={false}
-      />
         <aside className="panel settings-summary-panel">
           <div className="panel-header compact">
             <div>

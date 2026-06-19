@@ -1074,6 +1074,17 @@
   box-shadow: 0 24px 80px rgba(2, 6, 23, 0.28);
 }
 
+.photo-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.photo-preview-actions a {
+  text-decoration: none;
+}
+
 .photo-preview-modal img {
   display: block;
   width: 100%;

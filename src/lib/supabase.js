@@ -343,7 +343,21 @@ export async function ensureCompanyForCurrentUser(companyName) {
 
   const profile = Array.isArray(data) ? data[0] : data
 
-  return { data: profile ? mapCompanyProfile(profile) : null, error }
+  if (!profile?.id || error) {
+    return { data: profile ? mapCompanyProfile(profile) : null, error }
+  }
+
+  const fullProfileResult = await supabase
+    .from('companies')
+    .select('id, name, vat_number, headquarters, logo_path')
+    .eq('id', profile.id)
+    .maybeSingle()
+
+  if (fullProfileResult.data && !fullProfileResult.error) {
+    return { data: mapCompanyProfile(fullProfileResult.data), error: null }
+  }
+
+  return { data: mapCompanyProfile(profile), error: fullProfileResult.error }
 }
 
 export async function fetchCompanyProfile(companyId = configuredCompanyId) {
@@ -947,7 +961,7 @@ export async function createCompanyAssetSignedUrl(filePath) {
     return { data: null, error: null }
   }
 
-  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 600)
+  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 3600)
 }
 
 export async function getCurrentAuthSession() {

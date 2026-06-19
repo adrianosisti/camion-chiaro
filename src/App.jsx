@@ -9,6 +9,7 @@ import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2.mjs'
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right.mjs'
 import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check.mjs'
 import Clock3 from 'lucide-react/dist/esm/icons/clock-3.mjs'
+import Download from 'lucide-react/dist/esm/icons/download.mjs'
 import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
 import Filter from 'lucide-react/dist/esm/icons/filter.mjs'
 import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
@@ -343,6 +344,7 @@ function App() {
 
   function handleAuthenticated(nextSession) {
     setActiveCompanyId('')
+    setAssetPreviewUrls({})
 
     if (nextSession.role === 'driver') {
       resetDriverSessionData()
@@ -391,6 +393,11 @@ function App() {
   async function uploadCompanyLogo(file) {
     if (!validateImageFile(file, setCompanySettingsStatus)) return false
 
+    if (isSupabaseConfigured && session?.role === 'company' && !activeCompanyId) {
+      setCompanySettingsStatus('Aspetta il caricamento azienda, poi riprova.')
+      return false
+    }
+
     if (hasCompanyDataConnection && session?.role === 'company') {
       setCompanySettingsStatus('Caricamento logo azienda...')
       const result = await uploadSupabaseCompanyLogoFile(file, activeCompanyId)
@@ -426,6 +433,11 @@ function App() {
   async function uploadDriverProfileImage(driverId, file) {
     const setStatus = session?.role === 'driver' ? setDriverDocumentUploadStatus : setDriversSyncStatus
     if (!validateImageFile(file, setStatus)) return false
+
+    if (isSupabaseConfigured && ['company', 'driver'].includes(session?.role) && !activeCompanyId) {
+      setStatus('Aspetta il caricamento azienda, poi riprova.')
+      return false
+    }
 
     if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
       setStatus('Caricamento foto profilo...')
@@ -676,6 +688,7 @@ function App() {
     setOperationsSyncStatus('')
     setCompanySettingsStatus('')
     setActiveCompanyId('')
+    setAssetPreviewUrls({})
     setItems(complianceItems)
     setDocumentRecords(driverDocuments)
     setDriverRecords(drivers)
@@ -1710,9 +1723,15 @@ function PhotoPreviewModal({ imageUrl, name, onClose }) {
             <p className="overline">Foto autista</p>
             <h2>{name}</h2>
           </div>
-          <button className="small-button" onClick={onClose} type="button">
-            Chiudi
-          </button>
+          <div className="photo-preview-actions">
+            <a className="small-button" download href={imageUrl} rel="noreferrer" target="_blank">
+              <Download size={15} />
+              Apri/salva
+            </a>
+            <button className="small-button" onClick={onClose} type="button">
+              Chiudi
+            </button>
+          </div>
         </div>
         <img alt={`Foto profilo ${name}`} src={imageUrl} />
       </div>
@@ -3758,6 +3777,7 @@ function DriverMobile({
   const openFaults = faultReportRecords.filter(
     (report) => report.driverId === driver.id && report.status !== 'closed',
   )
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false)
   const vehicleLabel = selectedVehicle
     ? `${selectedVehicle.plate} · ${getFleetTypeLabel(selectedVehicle.fleetType)}`
     : 'Nessun mezzo disponibile'
@@ -3850,7 +3870,15 @@ function DriverMobile({
           </label>
         )}
         <div className="driver-card">
-          <EntityAvatar imageUrl={driverImageUrl} name={driver.name} />
+          <button
+            aria-label={driverImageUrl ? `Ingrandisci la tua foto profilo` : 'Foto profilo non caricata'}
+            className="avatar-preview-button"
+            disabled={!driverImageUrl}
+            onClick={() => setPhotoPreviewOpen(true)}
+            type="button"
+          >
+            <EntityAvatar imageUrl={driverImageUrl} name={driver.name} />
+          </button>
           <div>
             <p>Buongiorno</p>
             <strong>{driver.name}</strong>
@@ -3865,6 +3893,9 @@ function DriverMobile({
           </div>
           <Smartphone size={24} />
         </div>
+        {photoPreviewOpen && driverImageUrl && (
+          <PhotoPreviewModal imageUrl={driverImageUrl} name={driver.name} onClose={() => setPhotoPreviewOpen(false)} />
+        )}
         {nextItem && (
           <article className="next-card">
             <span className={`status-pill tone-${nextItem.urgency.tone}`}>{nextItem.urgency.label}</span>

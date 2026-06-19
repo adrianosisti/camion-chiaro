@@ -46,6 +46,7 @@ import {
   archiveVehicleRecord as archiveSupabaseVehicle,
   clearDriverProfileImageFile as clearSupabaseDriverProfileImageFile,
   createCompanyAssetSignedUrl,
+  createCompanyInvoiceSignedUrl,
   createChatMessageRecord as createSupabaseChatMessage,
   createChatThreadRecord as createSupabaseChatThread,
   createDriverDocumentSignedUrl,
@@ -62,6 +63,7 @@ import {
   fetchChatMessages,
   fetchChatThreads,
   fetchComplianceItems,
+  fetchCompanyInvoices,
   fetchDriverDocuments,
   fetchDriverSessionData,
   fetchDrivers,
@@ -137,6 +139,19 @@ const fleetTypeOptions = [
 ]
 
 const vehicleStatusOptions = ['Operativo', 'Da controllare', 'In manutenzione']
+const billingPlanLabels = {
+  business: 'Business',
+  enterprise: 'Enterprise',
+  pro: 'Pro',
+  starter: 'Starter',
+}
+const billingStatusLabels = {
+  active: 'Attivo',
+  cancelled: 'Disdetto',
+  past_due: 'Pagamento da verificare',
+  pending: 'In attesa di attivazione',
+  suspended: 'Sospeso',
+}
 const faultSeverityOptions = [
   { value: 'low', label: 'Bassa' },
   { value: 'medium', label: 'Media' },
@@ -3129,6 +3144,46 @@ function getDisplayCompanyName(name) {
   return trimmedName
 }
 
+function getBillingPlanLabel(plan) {
+  return billingPlanLabels[plan] ?? plan ?? 'Starter'
+}
+
+function getBillingStatusLabel(status) {
+  return billingStatusLabels[status] ?? status ?? 'Attivo'
+}
+
+function isCompanyLicenseActive(profile) {
+  if (!profile?.billingStatus) return true
+  if (profile.billingStatus !== 'active') return false
+  if (!profile.billingCurrentPeriodEnd) return true
+
+  const periodEnd = new Date(profile.billingCurrentPeriodEnd).getTime()
+  if (Number.isNaN(periodEnd)) return true
+
+  return periodEnd > Date.now()
+}
+
+function formatInvoiceAmount(invoice) {
+  const currency = (invoice.currency || 'eur').toUpperCase()
+
+  return new Intl.NumberFormat('it-IT', {
+    currency,
+    style: 'currency',
+  }).format((invoice.amountCents ?? 0) / 100)
+}
+
+function getInvoiceStatusLabel(status) {
+  const labels = {
+    cancelled: 'Annullata',
+    draft: 'Bozza',
+    open: 'Da pagare',
+    paid: 'Pagata',
+    uncollectible: 'Non incassata',
+  }
+
+  return labels[status] ?? status ?? 'Bozza'
+}
+
 function normalizePlate(value) {
   return value.trim().toUpperCase().replace(/\s+/g, '')
 }
@@ -3323,8 +3378,15 @@ function App() {
   const [chatMessageRecords, setChatMessageRecords] = useState([])
   const [chatLiveState, setChatLiveState] = useState(emptyChatLiveState)
   const [documentEventRecords, setDocumentEventRecords] = useState([])
+  const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
   const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState({
+    billingActivatedAt: '',
+    billingCurrentPeriodEnd: '',
+    billingEmail: '',
+    billingPlan: 'starter',
+    billingProvider: 'manual',
+    billingStatus: 'active',
     headquarters: company.location,
     id: '',
     logoPath: company.logoPath ?? '',
@@ -3452,6 +3514,7 @@ function App() {
   function handleAuthenticated(nextSession) {
     setActiveCompanyId('')
     setAssetPreviewUrls({})
+    setCompanyInvoiceRecords([])
 
     if (nextSession.role === 'driver') {
       if (isSupabaseConfigured) resetDriverSessionData()
@@ -3474,6 +3537,7 @@ function App() {
     setChatMessageRecords([])
     setChatLiveState(emptyChatLiveState)
     setDocumentEventRecords([])
+    setCompanyInvoiceRecords([])
     setDriverUploadSent(false)
     setMorningCheckSent(false)
     setFaultReported(false)
@@ -3814,6 +3878,7 @@ function App() {
         complianceResult,
         documentsResult,
         documentEventsResult,
+        companyInvoicesResult,
         checksResult,
         faultsResult,
         chatThreadsResult,
@@ -3824,6 +3889,7 @@ function App() {
         fetchComplianceItems(companyId),
         fetchDriverDocuments(companyId),
         fetchDriverDocumentEvents(companyId),
+        fetchCompanyInvoices(companyId),
         fetchVehicleChecks(companyId),
         fetchFaultReports(companyId),
         fetchChatThreads(companyId),
@@ -3845,6 +3911,7 @@ function App() {
       if (complianceResult.data) setItems(complianceResult.data)
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
       if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
+      if (companyInvoicesResult.data) setCompanyInvoiceRecords(companyInvoicesResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
@@ -4110,8 +4177,15 @@ function App() {
     setChatMessageRecords([])
     setChatLiveState(emptyChatLiveState)
     setDocumentEventRecords([])
+    setCompanyInvoiceRecords([])
     setChatSyncStatus('')
     setCompanyProfile({
+      billingActivatedAt: '',
+      billingCurrentPeriodEnd: '',
+      billingEmail: '',
+      billingPlan: 'starter',
+      billingProvider: 'manual',
+      billingStatus: 'active',
       headquarters: company.location,
       id: '',
       logoPath: company.logoPath ?? '',
@@ -4541,6 +4615,35 @@ function App() {
 
     window.open(result.data.signedUrl, '_blank', 'noopener,noreferrer')
     setDriverDocumentUploadStatus('Documento aperto in una nuova scheda.')
+    return true
+  }
+
+  async function openCompanyInvoiceFile(invoice) {
+    if (!invoice?.pdfPath) {
+      setCompanySettingsStatus('PDF fattura non ancora caricato.')
+      return false
+    }
+
+    if (invoice.pdfPath.startsWith('http')) {
+      window.open(invoice.pdfPath, '_blank', 'noopener,noreferrer')
+      return true
+    }
+
+    if (!isSupabaseConfigured) {
+      setCompanySettingsStatus('PDF disponibile quando Supabase Storage e collegato.')
+      return false
+    }
+
+    setCompanySettingsStatus('Apro fattura...')
+    const result = await createCompanyInvoiceSignedUrl(invoice.pdfPath)
+
+    if (result.error || !result.data?.signedUrl) {
+      setCompanySettingsStatus(`Errore apertura fattura: ${result.error?.message ?? 'link non disponibile'}`)
+      return false
+    }
+
+    window.open(result.data.signedUrl, '_blank', 'noopener,noreferrer')
+    setCompanySettingsStatus('Fattura aperta in una nuova scheda.')
     return true
   }
 
@@ -5079,6 +5182,7 @@ function App() {
   const companyUnreadChatCount = chatMessageRecords.filter(
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
   ).length
+  const companyLicenseActive = isCompanyLicenseActive(companyProfile)
 
   if (!session) {
     return (
@@ -5094,6 +5198,14 @@ function App() {
   }
 
   if (session.role === 'driver') {
+    if (!driverSessionLoading && !companyLicenseActive) {
+      return (
+        <I18nContext.Provider value={i18nValue}>
+          <DriverLicenseBlockedScreen companyName={getDisplayCompanyName(companyProfile.name || company.name)} onSignOut={handleSignOut} />
+        </I18nContext.Provider>
+      )
+    }
+
     return (
       <I18nContext.Provider value={i18nValue}>
         <DriverAppView
@@ -5148,6 +5260,14 @@ function App() {
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
+
+  if (!companyLicenseActive) {
+    return (
+      <I18nContext.Provider value={i18nValue}>
+        <CompanyLicenseGate companyName={companyName} companyProfile={companyProfile} onSignOut={handleSignOut} />
+      </I18nContext.Provider>
+    )
+  }
 
   function openNewDeadlinePanel() {
     setActiveView('dashboard')
@@ -5291,6 +5411,7 @@ function App() {
           <SettingsWorkspace
             key={`${companyProfile.name}-${companyProfile.vatNumber}-${companyProfile.headquarters}`}
             companyEmail={session.email}
+            companyInvoices={companyInvoiceRecords}
             companyProfile={{ ...companyProfile, name: companyName }}
             companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
             installPromptAvailable={Boolean(installPromptEvent)}
@@ -5302,6 +5423,7 @@ function App() {
             onEnablePhoneNotifications={enablePhoneNotifications}
             onInstallPhoneApp={installPhoneApp}
             onLanguageChange={setLanguage}
+            onOpenCompanyInvoice={openCompanyInvoiceFile}
             onUpdateCompanyProfile={updateCompanyProfile}
             showInstallAction={showCompanyInstallAction}
             syncStatus={companySettingsStatus}
@@ -5369,6 +5491,69 @@ function App() {
       </footer>
       </div>
     </I18nContext.Provider>
+  )
+}
+
+function CompanyLicenseGate({ companyName, companyProfile, onSignOut }) {
+  return (
+    <main className="license-gate">
+      <section className="license-gate-panel">
+        <div className="brand-mark">CC</div>
+        <p className="overline">Camion Chiaro</p>
+        <h1>{companyName}</h1>
+        <span className={`billing-status-pill is-${companyProfile.billingStatus || 'pending'}`}>
+          {getBillingStatusLabel(companyProfile.billingStatus)}
+        </span>
+        <p>
+          Account creato correttamente. Per usare dashboard, autisti, notifiche, chat e documenti serve
+          l attivazione della licenza aziendale.
+        </p>
+        <div className="license-gate-details">
+          <DetailLine label="Piano richiesto" value={getBillingPlanLabel(companyProfile.billingPlan)} />
+          <DetailLine label="Stato" value={getBillingStatusLabel(companyProfile.billingStatus)} />
+          <DetailLine
+            label="Fatturazione"
+            value={companyProfile.billingEmail || 'Da completare'}
+          />
+        </div>
+        <div className="license-gate-actions">
+          <button className="primary-button" onClick={() => window.location.reload()} type="button">
+            <RadioTower size={17} />
+            Aggiorna stato
+          </button>
+          <button className="secondary-button" onClick={onSignOut} type="button">
+            <LogOut size={17} />
+            Esci
+          </button>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function DriverLicenseBlockedScreen({ companyName, onSignOut }) {
+  return (
+    <main className="license-gate is-driver">
+      <section className="license-gate-panel">
+        <div className="brand-mark">CC</div>
+        <p className="overline">{companyName}</p>
+        <h1>Area autista non disponibile</h1>
+        <p>
+          L azienda deve completare l attivazione della licenza Camion Chiaro. Appena viene riattivata,
+          chat, documenti, check e guasti tornano disponibili.
+        </p>
+        <div className="license-gate-actions">
+          <button className="primary-button" onClick={() => window.location.reload()} type="button">
+            <RadioTower size={17} />
+            Riprova
+          </button>
+          <button className="secondary-button" onClick={onSignOut} type="button">
+            <LogOut size={17} />
+            Esci
+          </button>
+        </div>
+      </section>
+    </main>
   )
 }
 
@@ -6403,6 +6588,7 @@ function SupportWorkspace({ t }) {
 
 function SettingsWorkspace({
   companyEmail,
+  companyInvoices = [],
   companyLogoUrl,
   companyProfile,
   installPromptAvailable,
@@ -6414,6 +6600,7 @@ function SettingsWorkspace({
   onEnablePhoneNotifications,
   onInstallPhoneApp,
   onLanguageChange,
+  onOpenCompanyInvoice,
   onUpdateCompanyProfile,
   showInstallAction,
   syncStatus,
@@ -6503,6 +6690,54 @@ function SettingsWorkspace({
             <DetailLine label={t('settings.vatNumber')} value={form.vatNumber || t('common.notInserted')} />
             <DetailLine label={t('settings.headquarters')} value={form.headquarters || t('common.notInserted')} />
             <DetailLine label={t('settings.emailAccess')} value={companyEmail || t('common.notAvailable')} />
+          </div>
+        </aside>
+        <aside className="panel billing-panel">
+          <div className="panel-header compact">
+            <div>
+              <p className="overline">Amministrazione</p>
+              <h2>Licenza e fatture</h2>
+            </div>
+            <ShieldCheck size={20} />
+          </div>
+          <div className="billing-summary">
+            <span className={`billing-status-pill is-${companyProfile.billingStatus || 'active'}`}>
+              {getBillingStatusLabel(companyProfile.billingStatus)}
+            </span>
+            <DetailLine label="Piano" value={getBillingPlanLabel(companyProfile.billingPlan)} />
+            <DetailLine label="Email fatturazione" value={companyProfile.billingEmail || companyEmail || t('common.notInserted')} />
+            <DetailLine
+              label="Rinnovo"
+              value={companyProfile.billingCurrentPeriodEnd ? formatDate(companyProfile.billingCurrentPeriodEnd) : 'Manuale'}
+            />
+          </div>
+          <div className="invoice-list">
+            <div className="invoice-list-heading">
+              <strong>Storico fatture</strong>
+              <span>{companyInvoices.length}</span>
+            </div>
+            {companyInvoices.length > 0 ? (
+              companyInvoices.map((invoice) => (
+                <button
+                  className="invoice-row"
+                  disabled={!invoice.pdfPath}
+                  key={invoice.id}
+                  onClick={() => onOpenCompanyInvoice?.(invoice)}
+                  type="button"
+                >
+                  <span>
+                    <strong>{invoice.invoiceNumber}</strong>
+                    <small>{invoice.issuedAt ? formatDate(invoice.issuedAt) : 'Data non inserita'}</small>
+                  </span>
+                  <span>
+                    <strong>{formatInvoiceAmount(invoice)}</strong>
+                    <small>{getInvoiceStatusLabel(invoice.status)}</small>
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="invoice-empty">Le fatture emesse compariranno qui con il PDF scaricabile.</p>
+            )}
           </div>
         </aside>
         <div className="settings-phone-setup">
@@ -10110,12 +10345,18 @@ function DriverChatScreen({
     const listElement = messagesListRef.current
     if (listElement) listElement.scrollTop = listElement.scrollHeight
   }, [])
+  const companyIsOnline = isChatActorOnline(chatLiveState, 'company', companyPresenceId)
   const companyPresenceLabel = getChatPresenceLabel({
-    isOnline: isChatActorOnline(chatLiveState, 'company', companyPresenceId),
+    isOnline: companyIsOnline,
     isTyping: companyIsTyping,
     lastSeenAt: getChatActorLastSeenAt(chatLiveState, 'company', companyPresenceId),
     typingLabel: 'Azienda sta scrivendo...',
   })
+  const companyPresenceClassName = [
+    'chat-presence-text',
+    companyIsOnline ? 'is-online' : '',
+    companyIsTyping ? 'is-typing' : '',
+  ].filter(Boolean).join(' ')
   const signalDriverTyping = useChatTypingSignal({
     actorRole: 'driver',
     onTyping,
@@ -10165,7 +10406,7 @@ function DriverChatScreen({
         <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
         <div>
           <strong>{t('chat.company')}</strong>
-          <span>{companyPresenceLabel}</span>
+          <span className={companyPresenceClassName}>{companyPresenceLabel}</span>
         </div>
       </div>
 

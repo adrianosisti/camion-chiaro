@@ -6,6 +6,7 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 export const isCompanyDataConfigured = Boolean(isSupabaseConfigured && configuredCompanyId)
 export const driverDocumentsBucket = 'driver-documents'
 export const companyAssetsBucket = 'company-assets'
+export const companyInvoicesBucket = 'company-invoices'
 
 const driverStatusLabels = {
   active: 'In servizio',
@@ -160,12 +161,68 @@ function mapFaultReport(row) {
 
 function mapCompanyProfile(row) {
   return {
+    billingActivatedAt: row.billing_activated_at ?? '',
+    billingCurrentPeriodEnd: row.billing_current_period_end ?? '',
+    billingEmail: row.billing_email ?? '',
+    billingPlan: row.billing_plan ?? 'starter',
+    billingProvider: row.billing_provider ?? 'manual',
+    billingStatus: row.billing_status ?? 'active',
     headquarters: row.headquarters ?? '',
     id: row.id,
     logoPath: row.logo_path ?? '',
     name: row.name,
     vatNumber: row.vat_number ?? '',
   }
+}
+
+function mapCompanyInvoice(row) {
+  return {
+    amountCents: row.amount_cents ?? 0,
+    companyId: row.company_id,
+    createdAt: row.created_at,
+    currency: row.currency ?? 'eur',
+    dueAt: row.due_at ?? '',
+    id: row.id,
+    invoiceNumber: row.invoice_number,
+    issuedAt: row.issued_at ?? '',
+    paidAt: row.paid_at ?? '',
+    pdfPath: row.pdf_path ?? '',
+    status: row.status ?? 'draft',
+    updatedAt: row.updated_at,
+  }
+}
+
+const companyProfileBaseSelectColumns = 'id, name, vat_number, headquarters, logo_path'
+const companyProfileBillingSelectColumns = `
+  id,
+  name,
+  vat_number,
+  headquarters,
+  logo_path,
+  billing_plan,
+  billing_status,
+  billing_email,
+  billing_provider,
+  billing_current_period_end,
+  billing_activated_at
+`
+
+function isMissingBillingColumn(error) {
+  return error?.code === '42703' && String(error.message ?? '').includes('billing_')
+}
+
+async function selectCompanyProfileById(supabase, companyId) {
+  const billingResult = await supabase
+    .from('companies')
+    .select(companyProfileBillingSelectColumns)
+    .eq('id', companyId)
+    .maybeSingle()
+
+  if (!isMissingBillingColumn(billingResult.error)) {
+    return billingResult
+  }
+
+  return supabase.from('companies').select(companyProfileBaseSelectColumns).eq('id', companyId).maybeSingle()
 }
 
 function mapChatThread(row) {
@@ -434,11 +491,7 @@ export async function ensureCompanyForCurrentUser(companyName) {
   })
 
   if (error && configuredCompanyId) {
-    const fallbackResult = await supabase
-      .from('companies')
-      .select('id, name, vat_number, headquarters, logo_path')
-      .eq('id', configuredCompanyId)
-      .maybeSingle()
+    const fallbackResult = await selectCompanyProfileById(supabase, configuredCompanyId)
 
     if (fallbackResult.data && !fallbackResult.error) {
       return { data: mapCompanyProfile(fallbackResult.data), error: null }
@@ -451,11 +504,7 @@ export async function ensureCompanyForCurrentUser(companyName) {
     return { data: profile ? mapCompanyProfile(profile) : null, error }
   }
 
-  const fullProfileResult = await supabase
-    .from('companies')
-    .select('id, name, vat_number, headquarters, logo_path')
-    .eq('id', profile.id)
-    .maybeSingle()
+  const fullProfileResult = await selectCompanyProfileById(supabase, profile.id)
 
   if (fullProfileResult.data && !fullProfileResult.error) {
     return { data: mapCompanyProfile(fullProfileResult.data), error: null }
@@ -471,13 +520,29 @@ export async function fetchCompanyProfile(companyId = configuredCompanyId) {
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
-    .from('companies')
-    .select('id, name, vat_number, headquarters, logo_path')
-    .eq('id', companyId)
-    .maybeSingle()
+  const { data, error } = await selectCompanyProfileById(supabase, companyId)
 
   return { data: data ? mapCompanyProfile(data) : null, error }
+}
+
+export async function fetchCompanyInvoices(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('company_invoices')
+    .select('id, company_id, invoice_number, issued_at, due_at, paid_at, amount_cents, currency, status, pdf_path, created_at, updated_at')
+    .eq('company_id', companyId)
+    .order('issued_at', { ascending: false, nullsFirst: false })
+
+  if (error?.code === '42P01') {
+    return { data: [], error: null, missingTable: true }
+  }
+
+  return { data: data ? data.map(mapCompanyInvoice) : [], error }
 }
 
 export async function updateCompanyProfile(updates, companyId = configuredCompanyId) {
@@ -488,12 +553,21 @@ export async function updateCompanyProfile(updates, companyId = configuredCompan
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  const billingResult = await supabase
     .from('companies')
     .update(payload)
     .eq('id', companyId)
-    .select('id, name, vat_number, headquarters, logo_path')
+    .select(companyProfileBillingSelectColumns)
     .maybeSingle()
+
+  const { data, error } = isMissingBillingColumn(billingResult.error)
+    ? await supabase
+        .from('companies')
+        .update(payload)
+        .eq('id', companyId)
+        .select(companyProfileBaseSelectColumns)
+        .maybeSingle()
+    : billingResult
 
   return { data: data ? mapCompanyProfile(data) : null, error }
 }
@@ -1343,6 +1417,16 @@ export async function createCompanyAssetSignedUrl(filePath) {
   }
 
   return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 3600)
+}
+
+export async function createCompanyInvoiceSignedUrl(filePath) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !filePath) {
+    return { data: null, error: null }
+  }
+
+  return supabase.storage.from(companyInvoicesBucket).createSignedUrl(filePath, 600)
 }
 
 export async function subscribeToChatMessages(companyId, onMessage) {

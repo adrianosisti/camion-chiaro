@@ -134,12 +134,51 @@ function mapFaultReport(row) {
 
 function mapCompanyProfile(row) {
   return {
+    billingActivatedAt: row.billing_activated_at ?? '',
+    billingCurrentPeriodEnd: row.billing_current_period_end ?? '',
+    billingEmail: row.billing_email ?? '',
+    billingPlan: row.billing_plan ?? 'starter',
+    billingProvider: row.billing_provider ?? 'manual',
+    billingStatus: row.billing_status ?? 'active',
     headquarters: row.headquarters ?? '',
     id: row.id,
     logoPath: row.logo_path ?? '',
     name: row.name,
     vatNumber: row.vat_number ?? '',
   }
+}
+
+const companyProfileBaseSelectColumns = 'id, name, vat_number, headquarters, logo_path'
+const companyProfileBillingSelectColumns = `
+  id,
+  name,
+  vat_number,
+  headquarters,
+  logo_path,
+  billing_plan,
+  billing_status,
+  billing_email,
+  billing_provider,
+  billing_current_period_end,
+  billing_activated_at
+`
+
+function isMissingBillingColumn(error) {
+  return error?.code === '42703' && String(error.message ?? '').includes('billing_')
+}
+
+async function fetchCompanyProfile(serviceClient, companyId) {
+  const billingResult = await serviceClient
+    .from('companies')
+    .select(companyProfileBillingSelectColumns)
+    .eq('id', companyId)
+    .maybeSingle()
+
+  if (!isMissingBillingColumn(billingResult.error)) {
+    return billingResult
+  }
+
+  return serviceClient.from('companies').select(companyProfileBaseSelectColumns).eq('id', companyId).maybeSingle()
 }
 
 async function findDriver(serviceClient, authUser) {
@@ -180,11 +219,7 @@ async function fetchDriverContext(serviceClient, driver) {
     checksResult,
     faultsResult,
   ] = await Promise.all([
-    serviceClient
-      .from('companies')
-      .select('id, name, vat_number, headquarters, logo_path')
-      .eq('id', driver.company_id)
-      .maybeSingle(),
+    fetchCompanyProfile(serviceClient, driver.company_id),
     serviceClient
       .from('vehicles')
       .select('id, plate, model, type, fleet_type, km, status')

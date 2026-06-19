@@ -96,3 +96,11 @@ Se premendo `Verifica notifiche` compare l errore `function digest(text, unknown
 Se compare l errore `push_subscriptions_account_role_check`, esegui una sola volta il file `21_fix_push_account_role.sql`.
 
 Se l errore continua anche dopo il file 21, esegui una sola volta il file `22_fix_push_account_role_definitivo.sql`.
+
+## Licenze e fatture azienda
+
+Il file `23A_licenze_aziende.sql` aggiunge lo stato licenza alle aziende.
+Le aziende gia presenti restano attive; le nuove registrazioni azienda partiranno in attesa di attivazione.
+
+Il file `23B_fatture_aziende.sql` aggiunge lo storico fatture e il bucket privato per i PDF fattura.
+Eseguilo dopo `23A_licenze_aziende.sql`.

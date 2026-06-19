@@ -14,6 +14,16 @@ create table public.companies (
   name text not null,
   vat_number text,
   headquarters text,
+  logo_path text,
+  billing_plan text not null default 'starter' check (billing_plan in ('starter', 'pro', 'business', 'enterprise')),
+  billing_status text not null default 'pending' check (billing_status in ('pending', 'active', 'past_due', 'suspended', 'cancelled')),
+  billing_email text,
+  billing_provider text not null default 'manual' check (billing_provider in ('manual', 'stripe')),
+  billing_customer_id text,
+  billing_subscription_id text,
+  billing_current_period_end timestamptz,
+  billing_activated_at timestamptz,
+  billing_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -24,6 +34,24 @@ create table public.company_members (
   role text not null default 'operator' check (role in ('owner', 'admin', 'operator')),
   created_at timestamptz not null default now(),
   primary key (company_id, user_id)
+);
+
+create table public.company_invoices (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  invoice_number text not null,
+  issued_at date not null default current_date,
+  due_at date,
+  paid_at timestamptz,
+  amount_cents integer not null default 0 check (amount_cents >= 0),
+  currency text not null default 'eur',
+  status text not null default 'draft' check (status in ('draft', 'open', 'paid', 'uncollectible', 'cancelled')),
+  pdf_path text,
+  billing_provider text not null default 'manual' check (billing_provider in ('manual', 'stripe')),
+  external_invoice_id text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (company_id, invoice_number)
 );
 
 create table public.drivers (
@@ -408,7 +436,9 @@ $$;
 grant execute on function public.ensure_company_for_current_user(text, text, text) to authenticated;
 
 create index user_profiles_account_type_idx on public.user_profiles (account_type);
+create index companies_billing_status_idx on public.companies (billing_status, billing_current_period_end);
 create index company_members_user_id_idx on public.company_members (user_id);
+create index company_invoices_company_issued_idx on public.company_invoices (company_id, issued_at desc);
 create index drivers_company_status_idx on public.drivers (company_id, status);
 create index drivers_user_id_idx on public.drivers (user_id) where user_id is not null;
 create index drivers_username_idx on public.drivers (username);
@@ -448,6 +478,7 @@ create index reminder_logs_company_item_idx on public.reminder_logs (company_id,
 alter table public.user_profiles enable row level security;
 alter table public.companies enable row level security;
 alter table public.company_members enable row level security;
+alter table public.company_invoices enable row level security;
 alter table public.drivers enable row level security;
 alter table public.vehicles enable row level security;
 alter table public.driver_documents enable row level security;
@@ -485,6 +516,12 @@ for update
 to authenticated
 using ((select public.is_company_operator(id)))
 with check ((select public.is_company_operator(id)));
+
+create policy "Members can read company invoices"
+on public.company_invoices
+for select
+to authenticated
+using ((select public.is_company_member(company_id)));
 
 create policy "Members can read company membership"
 on public.company_members
@@ -702,6 +739,20 @@ values (
   false,
   10485760,
   array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'company-invoices',
+  'company-invoices',
+  false,
+  10485760,
+  array['application/pdf']
 )
 on conflict (id) do update
 set
@@ -1065,4 +1116,14 @@ with check (
       and d.id::text = (storage.foldername(name))[2]
       and (select public.is_driver_user(d.id))
   )
+);
+
+drop policy if exists "Members can read company invoice files" on storage.objects;
+create policy "Members can read company invoice files"
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'company-invoices'
+  and (select public.is_company_member(((storage.foldername(name))[1])::uuid))
 );

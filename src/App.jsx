@@ -2964,6 +2964,10 @@ function PhoneSetupPanel({
   const notificationButtonLabel = notificationEnabled ? 'Verifica notifiche' : 'Abilita notifiche'
   const panelTitle = showInstallAction ? 'App e notifiche' : 'Notifiche telefono'
 
+  function refreshApp() {
+    window.location.reload()
+  }
+
   return (
     <article className={compact ? 'phone-setup-panel is-compact' : 'panel phone-setup-panel'}>
       <div className="phone-setup-heading">
@@ -2991,6 +2995,13 @@ function PhoneSetupPanel({
         </div>
         <button className="small-button" disabled={notificationButtonDisabled} onClick={onEnableNotifications} type="button">
           {notificationButtonLabel}
+        </button>
+        <div>
+          <strong>Aggiorna app</strong>
+          <span>Ricarica la versione pubblicata.</span>
+        </div>
+        <button className="small-button" onClick={refreshApp} type="button">
+          Aggiorna
         </button>
       </div>
       {notificationStatus && <p className="sync-status-line">{notificationStatus}</p>}
@@ -3112,15 +3123,17 @@ function SettingsWorkspace({
             <DetailLine label="Email accesso" value={companyEmail || 'Non disponibile'} />
           </div>
         </aside>
-        <PhoneSetupPanel
-          installPromptAvailable={installPromptAvailable}
-          isStandaloneMode={isStandaloneMode}
-          notificationEnabled={notificationEnabled}
-          notificationStatus={notificationStatus}
-          onEnableNotifications={onEnablePhoneNotifications}
-          onInstallApp={onInstallPhoneApp}
-          showInstallAction={showInstallAction}
-        />
+        <div className="settings-phone-setup">
+          <PhoneSetupPanel
+            installPromptAvailable={installPromptAvailable}
+            isStandaloneMode={isStandaloneMode}
+            notificationEnabled={notificationEnabled}
+            notificationStatus={notificationStatus}
+            onEnableNotifications={onEnablePhoneNotifications}
+            onInstallApp={onInstallPhoneApp}
+            showInstallAction={showInstallAction}
+          />
+        </div>
       </div>
     </section>
   )
@@ -4691,6 +4704,7 @@ function ChatWorkspace({
   const [messageBody, setMessageBody] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [isSending, setIsSending] = useState(false)
+  const [isCompanyChatOpen, setIsCompanyChatOpen] = useState(false)
   const messagesListRef = useRef(null)
   const messagesEndRef = useRef(null)
   const reactionPicker = useReactionPicker()
@@ -4793,6 +4807,12 @@ function ChatWorkspace({
     event.target.value = ''
   }
 
+  function selectDriverChat(driverId) {
+    setSelectedDriverId(driverId)
+    setIsCompanyChatOpen(true)
+    reactionPicker.closeReactionPicker()
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
     if (!selectedDriver) return
@@ -4814,7 +4834,10 @@ function ChatWorkspace({
   }
 
   return (
-    <section className="chat-workspace" aria-label="Chat azienda autisti">
+    <section
+      className={isCompanyChatOpen ? 'chat-workspace is-thread-open' : 'chat-workspace'}
+      aria-label="Chat azienda autisti"
+    >
       <div className="panel chat-list-panel">
         <div className="panel-header">
           <div>
@@ -4838,7 +4861,7 @@ function ChatWorkspace({
               <button
                 className={isSelected ? 'chat-driver-row is-selected' : 'chat-driver-row'}
                 key={driver.id}
-                onClick={() => setSelectedDriverId(driver.id)}
+                onClick={() => selectDriverChat(driver.id)}
                 type="button"
               >
                 <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
@@ -4874,6 +4897,14 @@ function ChatWorkspace({
 
       <div className="panel chat-thread-panel">
         <div className="panel-header">
+          <button
+            aria-label="Torna alle chat"
+            className="icon-button company-chat-back-button"
+            onClick={() => setIsCompanyChatOpen(false)}
+            type="button"
+          >
+            <ArrowLeft size={18} />
+          </button>
           <div>
             <p className="overline">Conversazione</p>
             <h2>{selectedDriver?.name ?? 'Seleziona autista'}</h2>

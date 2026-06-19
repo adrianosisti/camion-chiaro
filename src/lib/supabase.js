@@ -974,6 +974,39 @@ export async function createChatMessageRecord(message, companyId = configuredCom
   return { data: data ? mapChatMessage(data) : null, error }
 }
 
+export async function markChatMessagesRead(threadId, readerRole) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !threadId || !['company', 'driver'].includes(readerRole)) {
+    return { data: null, error: null }
+  }
+
+  const timestampColumn = readerRole === 'company' ? 'read_by_company_at' : 'read_by_driver_at'
+  const senderRole = readerRole === 'company' ? 'driver' : 'company'
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .update({ [timestampColumn]: new Date().toISOString() })
+    .eq('thread_id', threadId)
+    .eq('sender_role', senderRole)
+    .is(timestampColumn, null)
+    .select(
+      `
+        id,
+        thread_id,
+        company_id,
+        sender_user_id,
+        sender_role,
+        body,
+        attachment_path,
+        read_by_company_at,
+        read_by_driver_at,
+        created_at
+      `,
+    )
+
+  return { data: data?.map(mapChatMessage) ?? null, error }
+}
+
 export async function updateFaultReportStatus(reportId, status) {
   const supabase = await getSupabaseClient()
 
@@ -1202,13 +1235,65 @@ export async function subscribeToChatMessages(companyId, onMessage) {
     .on(
       'postgres_changes',
       {
-        event: 'INSERT',
+        event: '*',
         filter: `company_id=eq.${companyId}`,
         schema: 'public',
         table: 'chat_messages',
       },
       (payload) => {
-        if (payload.new) onMessage?.(mapChatMessage(payload.new))
+        if (payload.new) onMessage?.(mapChatMessage(payload.new), payload)
+      },
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+export async function subscribeToOperationalUpdates(companyId, handlers = {}) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return () => {}
+  }
+
+  const channel = supabase
+    .channel(`operations-${companyId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'vehicle_checks',
+      },
+      (payload) => {
+        if (payload.new) handlers.onVehicleCheck?.(mapVehicleCheck(payload.new))
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'fault_reports',
+      },
+      (payload) => {
+        if (payload.new) handlers.onFaultReport?.(mapFaultReport(payload.new))
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'fault_reports',
+      },
+      (payload) => {
+        if (payload.new) handlers.onFaultReportUpdate?.(mapFaultReport(payload.new))
       },
     )
     .subscribe()

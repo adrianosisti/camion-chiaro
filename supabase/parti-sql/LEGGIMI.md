@@ -50,3 +50,8 @@ Se anche `14B_chat_policy.sql` risulta troppo lungo da copiare, usa questi file 
 4. `14B4_chat_tempo_reale.sql`
 
 Eseguili uno alla volta, sempre dopo `14A_chat_tabelle.sql`.
+
+## Aggiornamento live check e guasti
+
+Il file `15_realtime_check_guasti.sql` abilita l aggiornamento automatico di check mattutini e guasti nella dashboard azienda, senza ricaricare la pagina.
+Eseguilo una sola volta dopo i file della chat.

@@ -460,6 +460,16 @@ export async function getSupabaseClient() {
   return supabaseClientPromise
 }
 
+function clearStoredAuthSession() {
+  if (typeof window === 'undefined' || !window.localStorage) return
+
+  Object.keys(window.localStorage).forEach((key) => {
+    if ((key.startsWith('sb-') && key.endsWith('-auth-token')) || key.includes('supabase.auth.token')) {
+      window.localStorage.removeItem(key)
+    }
+  })
+}
+
 export async function fetchDrivers(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -1584,7 +1594,30 @@ export async function getCurrentAuthSession() {
     return { data: null, error: null }
   }
 
-  return supabase.auth.getSession()
+  const sessionResult = await supabase.auth.getSession()
+  const session = sessionResult.data?.session
+
+  if (sessionResult.error || !session) {
+    return sessionResult
+  }
+
+  const userResult = await supabase.auth.getUser()
+
+  if (userResult.error || !userResult.data?.user) {
+    await supabase.auth.signOut().catch(() => {})
+    clearStoredAuthSession()
+    return { data: { session: null }, error: userResult.error }
+  }
+
+  return {
+    data: {
+      session: {
+        ...session,
+        user: userResult.data.user,
+      },
+    },
+    error: null,
+  }
 }
 
 export async function savePushSubscription(subscription, companyId = configuredCompanyId) {
@@ -1719,5 +1752,7 @@ export async function signOut() {
     return { error: null, demo: true }
   }
 
-  return supabase.auth.signOut()
+  const result = await supabase.auth.signOut()
+  clearStoredAuthSession()
+  return result
 }

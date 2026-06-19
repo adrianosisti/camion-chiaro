@@ -206,7 +206,7 @@ create or replace function public.handle_new_auth_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   insert into public.user_profiles (user_id, account_type, full_name, phone)
@@ -321,7 +321,7 @@ create or replace function public.create_company_for_current_user(
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   new_company_id uuid;
@@ -884,7 +884,7 @@ begin
     current_driver_id,
     current_role,
     trim(subscription_endpoint),
-    encode(digest(trim(subscription_endpoint), 'sha256'), 'hex'),
+    encode(extensions.digest(trim(subscription_endpoint), 'sha256'), 'hex'),
     trim(subscription_p256dh),
     trim(subscription_auth),
     nullif(trim(coalesce(subscription_user_agent, '')), ''),
@@ -921,7 +921,7 @@ as $$
 begin
   update public.push_subscriptions
   set disabled_at = now(), updated_at = now()
-  where endpoint_hash = encode(digest(trim(subscription_endpoint), 'sha256'), 'hex')
+  where endpoint_hash = encode(extensions.digest(trim(subscription_endpoint), 'sha256'), 'hex')
     and user_id = (select auth.uid());
 
   return found;

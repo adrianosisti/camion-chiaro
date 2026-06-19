@@ -7,12 +7,12 @@ create or replace function public.delete_push_subscription(
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   update public.push_subscriptions
   set disabled_at = now(), updated_at = now()
-  where endpoint_hash = encode(digest(trim(subscription_endpoint), 'sha256'), 'hex')
+  where endpoint_hash = encode(extensions.digest(trim(subscription_endpoint), 'sha256'), 'hex')
     and user_id = (select auth.uid());
 
   return found;

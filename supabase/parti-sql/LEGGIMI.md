@@ -88,3 +88,7 @@ Eseguili uno alla volta, sempre in questo ordine.
 
 Il file `19_chat_reazioni.sql` abilita le reazioni rapide ai messaggi della chat.
 Eseguilo una sola volta dopo `18_storico_documenti.sql`.
+
+## Fix notifiche push
+
+Se premendo `Verifica notifiche` compare l errore `function digest(text, unknown) does not exist`, esegui una sola volta il file `20_fix_push_digest.sql`.

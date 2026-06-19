@@ -61,7 +61,7 @@ create or replace function public.upsert_push_subscription(
 returns public.push_subscriptions
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   current_user_id uuid := (select auth.uid());
@@ -129,7 +129,7 @@ begin
     current_driver_id,
     current_role,
     trim(subscription_endpoint),
-    encode(digest(trim(subscription_endpoint), 'sha256'), 'hex'),
+    encode(extensions.digest(trim(subscription_endpoint), 'sha256'), 'hex'),
     trim(subscription_p256dh),
     trim(subscription_auth),
     nullif(trim(coalesce(subscription_user_agent, '')), ''),
@@ -161,12 +161,12 @@ create or replace function public.delete_push_subscription(
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   update public.push_subscriptions
   set disabled_at = now(), updated_at = now()
-  where endpoint_hash = encode(digest(trim(subscription_endpoint), 'sha256'), 'hex')
+  where endpoint_hash = encode(extensions.digest(trim(subscription_endpoint), 'sha256'), 'hex')
     and user_id = (select auth.uid());
 
   return found;

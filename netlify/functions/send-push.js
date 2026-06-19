@@ -89,7 +89,11 @@ async function getRecipientUserIds(serviceClient, senderContext, targetRole, dri
 
     if (error) return { data: null, error }
 
-    return { data: data?.user_id ? [data.user_id] : [], error: null }
+    return {
+      data: data?.user_id ? [data.user_id] : [],
+      error: null,
+      reason: data?.user_id ? '' : 'Autista senza account collegato. Fallo entrare almeno una volta o ricrea l accesso autista.',
+    }
   }
 
   return { data: null, error: { message: 'Destinatario notifica non valido.' } }
@@ -185,7 +189,11 @@ export async function handler(event) {
   const recipientUserIds = recipientsResult.data.filter((userId) => userId !== authData.user.id)
 
   if (recipientUserIds.length === 0) {
-    return jsonResponse(200, { sent: 0, skipped: true })
+    return jsonResponse(200, {
+      reason: recipientsResult.reason || 'Nessun destinatario valido per questa notifica.',
+      sent: 0,
+      skipped: true,
+    })
   }
 
   const { data: subscriptions, error: subscriptionsError } = await serviceClient
@@ -200,7 +208,11 @@ export async function handler(event) {
   }
 
   if (!subscriptions || subscriptions.length === 0) {
-    return jsonResponse(200, { sent: 0, skipped: true })
+    return jsonResponse(200, {
+      reason: 'Nessun telefono registrato per questo autista. Apri l app autista dal telefono e premi Abilita notifiche.',
+      sent: 0,
+      skipped: true,
+    })
   }
 
   webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
@@ -244,6 +256,15 @@ export async function handler(event) {
 
   const sent = results.filter((result) => result.status === 'fulfilled').length
   const failed = results.length - sent
+
+  if (sent === 0 && failed > 0) {
+    const firstFailure = results.find((result) => result.status === 'rejected')?.reason
+    return jsonResponse(502, {
+      error: firstFailure?.body || firstFailure?.message || 'Provider push non ha accettato la notifica.',
+      failed,
+      sent,
+    })
+  }
 
   return jsonResponse(200, { failed, sent })
 }

@@ -553,14 +553,30 @@ function App() {
   }
 
   async function notifyPhone(payload) {
-    if (!hasCompanyDataConnection || !payload?.targetRole) return false
+    if (!hasCompanyDataConnection || !payload?.targetRole) {
+      return {
+        data: null,
+        error: { message: 'Notifiche telefono disponibili solo con Supabase collegato.' },
+      }
+    }
 
     const result = await sendPushNotification({
       companyId: activeCompanyId,
       ...payload,
     })
 
-    return !result.error
+    if (result.error) return result
+
+    if (result.data?.sent === 0) {
+      return {
+        data: result.data,
+        error: {
+          message: result.data.reason ?? 'Nessun telefono ha ricevuto la notifica.',
+        },
+      }
+    }
+
+    return result
   }
 
   async function recordDocumentEvent(document, eventType, details = {}) {
@@ -1655,7 +1671,7 @@ function App() {
       )
       setChatSyncStatus('Messaggio inviato.')
       if (senderRole === 'company') {
-        void notifyPhone({
+        const pushResult = await notifyPhone({
           body: cleanBody || 'Foto allegata in chat.',
           driverId,
           tag: `chat-${targetThread.id}`,
@@ -1663,6 +1679,12 @@ function App() {
           title: 'Messaggio azienda',
           url: '/?view=chat',
         })
+
+        if (pushResult.error) {
+          setChatSyncStatus(`Messaggio inviato. Notifica telefono non inviata: ${pushResult.error.message}`)
+        } else {
+          setChatSyncStatus('Messaggio inviato. Notifica telefono inviata.')
+        }
       }
       return true
     }

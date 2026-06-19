@@ -4581,6 +4581,7 @@ function ChatWorkspace({
             </button>
           </div>
           {photoFile && <small>Foto pronta: {photoFile.name}</small>}
+          {syncStatus && <p className="sync-status-line chat-compose-status">{syncStatus}</p>}
         </form>
       </div>
     </section>

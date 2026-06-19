@@ -2047,6 +2047,13 @@
   font-size: 0.78rem;
 }
 
+.chat-compose-status {
+  margin: 0;
+  border-radius: 8px;
+  background: #f0f9ff;
+  color: #075985;
+}
+
 .documents-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

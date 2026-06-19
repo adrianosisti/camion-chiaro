@@ -2163,6 +2163,28 @@
   top: 22px;
 }
 
+.document-create-upload {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed #7dd3fc;
+  border-radius: 8px;
+  background: #f0f9ff;
+}
+
+.document-create-upload > span {
+  color: #075985;
+  font-size: 0.78rem;
+  font-weight: 760;
+  overflow-wrap: anywhere;
+}
+
+.document-create-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
 .panel {
   border: 1px solid var(--line);
   border-radius: 8px;

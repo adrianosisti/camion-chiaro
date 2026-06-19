@@ -763,6 +763,7 @@ function App() {
     let unsubscribeChat = () => {}
     let unsubscribeOperations = () => {}
     let chatRefreshTimer = 0
+    let documentsRefreshTimer = 0
 
     async function refreshChatRecords() {
       const [threadsResult, messagesResult] = await Promise.all([
@@ -774,6 +775,14 @@ function App() {
 
       if (threadsResult.data) setChatThreadRecords(threadsResult.data)
       if (messagesResult.data) setChatMessageRecords(messagesResult.data)
+    }
+
+    async function refreshDriverDocuments() {
+      const documentsResult = await fetchDriverDocuments(activeCompanyId)
+
+      if (!isMounted) return
+
+      if (documentsResult.data) setDocumentRecords(documentsResult.data)
     }
 
     subscribeToChatMessages(activeCompanyId, (message, payload) => {
@@ -839,11 +848,14 @@ function App() {
     })
 
     void refreshChatRecords()
+    void refreshDriverDocuments()
     chatRefreshTimer = window.setInterval(refreshChatRecords, 4000)
+    documentsRefreshTimer = window.setInterval(refreshDriverDocuments, 8000)
 
     return () => {
       isMounted = false
       window.clearInterval(chatRefreshTimer)
+      window.clearInterval(documentsRefreshTimer)
       unsubscribeChat()
       unsubscribeOperations()
     }
@@ -1140,12 +1152,12 @@ function App() {
 
       setDocumentRecords((currentDocuments) => [result.data, ...currentDocuments])
       setDocumentsSyncStatus('Documento salvato su Supabase.')
-      return true
+      return result.data
     }
 
     setDocumentRecords((currentDocuments) => [cleanDocument, ...currentDocuments])
     setDocumentsSyncStatus('Documento aggiunto in modalità locale.')
-    return true
+    return cleanDocument
   }
 
   async function updateDriverDocumentRecord(documentId, updates) {
@@ -3451,7 +3463,11 @@ function DocumentsWorkspace({
           {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
         </div>
       </div>
-      <DocumentCreatePanel driverRecords={driverRecords} onAddDocument={onAddDocument} />
+      <DocumentCreatePanel
+        driverRecords={driverRecords}
+        onAddDocument={onAddDocument}
+        onDriverDocumentUpload={onDriverDocumentUpload}
+      />
     </section>
   )
 }
@@ -3591,8 +3607,9 @@ function DocumentManagementRow({
   )
 }
 
-function DocumentCreatePanel({ driverRecords, onAddDocument }) {
+function DocumentCreatePanel({ driverRecords, onAddDocument, onDriverDocumentUpload }) {
   const [isSaving, setIsSaving] = useState(false)
+  const [documentFile, setDocumentFile] = useState(null)
   const [form, setForm] = useState({
     documentNumber: '',
     driverId: driverRecords[0]?.id ?? '',
@@ -3610,24 +3627,43 @@ function DocumentCreatePanel({ driverRecords, onAddDocument }) {
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
+  function handleDocumentFile(event) {
+    const file = event.target.files?.[0] ?? null
+    setDocumentFile(file)
+    event.target.value = ''
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
     if (!selectedDriverId || !form.type) return
 
     setIsSaving(true)
-    const added = await onAddDocument({
+    const addedDocument = await onAddDocument({
       id: `doc-${Date.now()}`,
       documentNumber: form.documentNumber,
       driverId: selectedDriverId,
       expiresAt: form.expiresAt,
-      filePath: form.filePath,
-      status: form.status,
+      filePath: documentFile ? '' : form.filePath,
+      status: documentFile ? 'Mancante' : form.status,
       type: form.type,
       visibleToDriver: form.visibleToDriver,
     })
-    setIsSaving(false)
 
-    if (!added) return
+    if (!addedDocument) {
+      setIsSaving(false)
+      return
+    }
+
+    if (documentFile) {
+      const uploaded = await onDriverDocumentUpload?.(addedDocument, documentFile)
+
+      if (!uploaded) {
+        setIsSaving(false)
+        return
+      }
+    }
+
+    setIsSaving(false)
 
     setForm({
       documentNumber: '',
@@ -3638,6 +3674,7 @@ function DocumentCreatePanel({ driverRecords, onAddDocument }) {
       type: 'Patente C+E',
       visibleToDriver: true,
     })
+    setDocumentFile(null)
   }
 
   return (
@@ -3691,13 +3728,27 @@ function DocumentCreatePanel({ driverRecords, onAddDocument }) {
           </select>
         </label>
         <label>
-          File o link documento
+          Link esterno opzionale
           <input
             value={form.filePath}
             onChange={(event) => updateField('filePath', event.target.value)}
-            placeholder="Nome file o link"
+            placeholder="https://..."
           />
         </label>
+        <div className="document-create-upload">
+          <span>{documentFile ? documentFile.name : 'Nessun file selezionato'}</span>
+          <div className="document-create-upload-actions">
+            <label className="document-action-button">
+              Carica foto/PDF
+              <input accept="image/*,.pdf,application/pdf" onChange={handleDocumentFile} type="file" />
+            </label>
+            {documentFile && (
+              <button className="small-button" onClick={() => setDocumentFile(null)} type="button">
+                Rimuovi
+              </button>
+            )}
+          </div>
+        </div>
         <label className="checkbox-field">
           <input
             checked={form.visibleToDriver}

@@ -151,6 +151,37 @@ function mapCompanyProfile(row) {
   }
 }
 
+function mapChatThread(row) {
+  return {
+    companyId: row.company_id,
+    contextType: row.context_type,
+    createdAt: row.created_at,
+    driverId: row.driver_id,
+    faultReportId: row.fault_report_id,
+    id: row.id,
+    lastMessageAt: row.last_message_at,
+    status: row.status,
+    title: row.title ?? '',
+    updatedAt: row.updated_at,
+    vehicleCheckId: row.vehicle_check_id,
+  }
+}
+
+function mapChatMessage(row) {
+  return {
+    attachmentPath: row.attachment_path ?? '',
+    body: row.body ?? '',
+    companyId: row.company_id,
+    createdAt: row.created_at,
+    id: row.id,
+    readByCompanyAt: row.read_by_company_at,
+    readByDriverAt: row.read_by_driver_at,
+    senderRole: row.sender_role,
+    senderUserId: row.sender_user_id,
+    threadId: row.thread_id,
+  }
+}
+
 function toDriverPayload(driver, companyId = configuredCompanyId) {
   return {
     auth_email: driver.authEmail,
@@ -271,6 +302,28 @@ function toFaultReportPayload(report, companyId = configuredCompanyId) {
     severity: report.severity || 'medium',
     title: report.title.trim(),
     vehicle_id: report.vehicleId,
+  }
+}
+
+function toChatThreadPayload(thread, companyId = configuredCompanyId) {
+  return {
+    company_id: companyId,
+    context_type: thread.contextType ?? 'general',
+    driver_id: thread.driverId || null,
+    fault_report_id: thread.faultReportId || null,
+    status: thread.status ?? 'open',
+    title: thread.title?.trim() || null,
+    vehicle_check_id: thread.vehicleCheckId || null,
+  }
+}
+
+function toChatMessagePayload(message, companyId = configuredCompanyId) {
+  return {
+    attachment_path: message.attachmentPath || null,
+    body: message.body?.trim() || null,
+    company_id: companyId,
+    sender_role: message.senderRole,
+    thread_id: message.threadId,
   }
 }
 
@@ -523,6 +576,67 @@ export async function fetchFaultReports(companyId = configuredCompanyId) {
   return { data: data?.map(mapFaultReport) ?? null, error }
 }
 
+export async function fetchChatThreads(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('chat_threads')
+    .select(
+      `
+        id,
+        company_id,
+        driver_id,
+        context_type,
+        fault_report_id,
+        vehicle_check_id,
+        title,
+        status,
+        last_message_at,
+        created_at,
+        updated_at
+      `,
+    )
+    .eq('company_id', companyId)
+    .order('updated_at', { ascending: false })
+    .limit(200)
+
+  return { data: data?.map(mapChatThread) ?? null, error }
+}
+
+export async function fetchChatMessages(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select(
+      `
+        id,
+        thread_id,
+        company_id,
+        sender_user_id,
+        sender_role,
+        body,
+        attachment_path,
+        read_by_company_at,
+        read_by_driver_at,
+        created_at
+      `,
+    )
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: true })
+    .limit(500)
+
+  return { data: data?.map(mapChatMessage) ?? null, error }
+}
+
 export async function fetchDriverSessionData() {
   const supabase = await getSupabaseClient()
 
@@ -773,6 +887,93 @@ export async function createFaultReportRecord(report, companyId = configuredComp
   return { data: data ? mapFaultReport(data) : null, error }
 }
 
+export async function createChatThreadRecord(thread, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const selectColumns = `
+    id,
+    company_id,
+    driver_id,
+    context_type,
+    fault_report_id,
+    vehicle_check_id,
+    title,
+    status,
+    last_message_at,
+    created_at,
+    updated_at
+  `
+  const payload = toChatThreadPayload(thread, companyId)
+  const { data, error } = await supabase.from('chat_threads').insert(payload).select(selectColumns).single()
+
+  if (error?.code === '23505' && payload.context_type === 'general' && payload.driver_id) {
+    const existingThread = await supabase
+      .from('chat_threads')
+      .select(selectColumns)
+      .eq('company_id', companyId)
+      .eq('driver_id', payload.driver_id)
+      .eq('context_type', 'general')
+      .maybeSingle()
+
+    return { data: existingThread.data ? mapChatThread(existingThread.data) : null, error: existingThread.error }
+  }
+
+  return { data: data ? mapChatThread(data) : null, error }
+}
+
+export async function createChatMessageRecord(message, companyId = configuredCompanyId, attachmentFile = null) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !message?.threadId) {
+    return { data: null, error: null }
+  }
+
+  let attachmentPath = message.attachmentPath ?? ''
+
+  if (attachmentFile) {
+    const cleanFileName = sanitizeStorageFileName(attachmentFile.name)
+    attachmentPath = `${companyId}/chat/${message.threadId}/${Date.now()}-${cleanFileName}`
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(attachmentPath, attachmentFile, {
+      cacheControl: '3600',
+      contentType: attachmentFile.type || undefined,
+      upsert: false,
+    })
+
+    if (uploadError) {
+      return { data: null, error: uploadError }
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .insert(toChatMessagePayload({ ...message, attachmentPath }, companyId))
+    .select(
+      `
+        id,
+        thread_id,
+        company_id,
+        sender_user_id,
+        sender_role,
+        body,
+        attachment_path,
+        read_by_company_at,
+        read_by_driver_at,
+        created_at
+      `,
+    )
+    .single()
+
+  if (error && attachmentPath) {
+    await supabase.storage.from(companyAssetsBucket).remove([attachmentPath])
+  }
+
+  return { data: data ? mapChatMessage(data) : null, error }
+}
+
 export async function updateFaultReportStatus(reportId, status) {
   const supabase = await getSupabaseClient()
 
@@ -987,6 +1188,34 @@ export async function createCompanyAssetSignedUrl(filePath) {
   }
 
   return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 3600)
+}
+
+export async function subscribeToChatMessages(companyId, onMessage) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return () => {}
+  }
+
+  const channel = supabase
+    .channel(`chat-messages-${companyId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'chat_messages',
+      },
+      (payload) => {
+        if (payload.new) onMessage?.(mapChatMessage(payload.new))
+      },
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
 }
 
 export async function getCurrentAuthSession() {

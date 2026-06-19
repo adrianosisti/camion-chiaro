@@ -29,3 +29,10 @@ Eseguilo una sola volta in Supabase SQL Editor se vuoi modificare ragione social
 
 Il file `10_registrazione_azienda_multi_cliente.sql` abilita la registrazione completa di nuove aziende.
 Eseguilo una sola volta in Supabase SQL Editor: ogni nuovo account azienda verra collegato alla sua azienda e vedra solo i propri dati.
+
+## Foto, guasti e chat
+
+I file `11_foto_logo_azienda_autisti.sql`, `12_rimuovi_foto_autista.sql` e `13_foto_guasti.sql` abilitano logo azienda, foto profilo autista, rimozione foto e foto dei guasti.
+
+Il file `14_chat_interna.sql` abilita la chat interna tra azienda e autisti, con foto allegate e storico messaggi.
+Eseguilo una sola volta dopo i file precedenti.

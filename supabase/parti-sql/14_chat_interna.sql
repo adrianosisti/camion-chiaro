@@ -1,0 +1,281 @@
+-- CHAT INTERNA - CAMION CHIARO
+-- Da eseguire una sola volta in Supabase SQL Editor.
+
+create table if not exists public.chat_threads (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  driver_id uuid references public.drivers(id) on delete cascade,
+  context_type text not null default 'general' check (context_type in ('general', 'fault', 'check')),
+  fault_report_id uuid references public.fault_reports(id) on delete cascade,
+  vehicle_check_id uuid references public.vehicle_checks(id) on delete cascade,
+  title text,
+  status text not null default 'open' check (status in ('open', 'archived')),
+  last_message_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint chat_thread_context_target check (
+    (context_type = 'general' and fault_report_id is null and vehicle_check_id is null)
+    or (context_type = 'fault' and fault_report_id is not null and vehicle_check_id is null)
+    or (context_type = 'check' and vehicle_check_id is not null and fault_report_id is null)
+  )
+);
+
+create unique index if not exists chat_threads_one_general_per_driver_idx
+on public.chat_threads (company_id, driver_id, context_type)
+where context_type = 'general' and driver_id is not null;
+
+create index if not exists chat_threads_company_id_idx
+on public.chat_threads (company_id);
+
+create index if not exists chat_threads_company_last_idx
+on public.chat_threads (company_id, coalesce(last_message_at, created_at) desc);
+
+create index if not exists chat_threads_driver_idx
+on public.chat_threads (driver_id, coalesce(last_message_at, created_at) desc)
+where driver_id is not null;
+
+create table if not exists public.chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  thread_id uuid not null references public.chat_threads(id) on delete cascade,
+  company_id uuid not null references public.companies(id) on delete cascade,
+  sender_user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  sender_role text not null check (sender_role in ('company', 'driver')),
+  body text,
+  attachment_path text,
+  read_by_company_at timestamptz,
+  read_by_driver_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint chat_message_has_content check (
+    nullif(trim(coalesce(body, '')), '') is not null
+    or nullif(trim(coalesce(attachment_path, '')), '') is not null
+  )
+);
+
+create index if not exists chat_messages_thread_created_idx
+on public.chat_messages (thread_id, created_at asc);
+
+create index if not exists chat_messages_company_created_idx
+on public.chat_messages (company_id, created_at desc);
+
+create index if not exists chat_messages_company_thread_idx
+on public.chat_messages (company_id, thread_id);
+
+create or replace function public.touch_chat_thread_last_message()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.chat_threads
+  set last_message_at = new.created_at,
+      updated_at = now()
+  where id = new.thread_id;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists chat_messages_touch_thread on public.chat_messages;
+create trigger chat_messages_touch_thread
+after insert on public.chat_messages
+for each row execute function public.touch_chat_thread_last_message();
+
+alter table public.chat_threads enable row level security;
+alter table public.chat_messages enable row level security;
+
+drop policy if exists "Members and drivers can read chat threads" on public.chat_threads;
+create policy "Members and drivers can read chat threads"
+on public.chat_threads
+for select
+to authenticated
+using (
+  (select public.is_company_member(company_id))
+  or (
+    driver_id is not null
+    and (select public.is_driver_user(driver_id))
+  )
+);
+
+drop policy if exists "Members and drivers can create chat threads" on public.chat_threads;
+create policy "Members and drivers can create chat threads"
+on public.chat_threads
+for insert
+to authenticated
+with check (
+  (
+    driver_id is null
+    or exists (
+      select 1
+      from public.drivers d
+      where d.id = chat_threads.driver_id
+        and d.company_id = chat_threads.company_id
+    )
+  )
+  and (
+    (select public.is_company_operator(company_id))
+    or (
+      driver_id is not null
+      and (select public.is_driver_user(driver_id))
+    )
+  )
+);
+
+drop policy if exists "Operators can update chat threads" on public.chat_threads;
+create policy "Operators can update chat threads"
+on public.chat_threads
+for update
+to authenticated
+using ((select public.is_company_operator(company_id)))
+with check ((select public.is_company_operator(company_id)));
+
+drop policy if exists "Members and drivers can read chat messages" on public.chat_messages;
+create policy "Members and drivers can read chat messages"
+on public.chat_messages
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.chat_threads t
+    where t.id = chat_messages.thread_id
+      and t.company_id = chat_messages.company_id
+      and (
+        (select public.is_company_member(t.company_id))
+        or (
+          t.driver_id is not null
+          and (select public.is_driver_user(t.driver_id))
+        )
+      )
+  )
+);
+
+drop policy if exists "Members and drivers can create chat messages" on public.chat_messages;
+create policy "Members and drivers can create chat messages"
+on public.chat_messages
+for insert
+to authenticated
+with check (
+  sender_user_id = (select auth.uid())
+  and exists (
+    select 1
+    from public.chat_threads t
+    where t.id = chat_messages.thread_id
+      and t.company_id = chat_messages.company_id
+      and (
+        (
+          chat_messages.sender_role = 'company'
+          and (select public.is_company_operator(t.company_id))
+        )
+        or (
+          chat_messages.sender_role = 'driver'
+          and t.driver_id is not null
+          and (select public.is_driver_user(t.driver_id))
+        )
+      )
+  )
+);
+
+drop policy if exists "Members and drivers can update own chat read state" on public.chat_messages;
+create policy "Members and drivers can update own chat read state"
+on public.chat_messages
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.chat_threads t
+    where t.id = chat_messages.thread_id
+      and t.company_id = chat_messages.company_id
+      and (
+        (select public.is_company_member(t.company_id))
+        or (
+          t.driver_id is not null
+          and (select public.is_driver_user(t.driver_id))
+        )
+      )
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.chat_threads t
+    where t.id = chat_messages.thread_id
+      and t.company_id = chat_messages.company_id
+      and (
+        (select public.is_company_member(t.company_id))
+        or (
+          t.driver_id is not null
+          and (select public.is_driver_user(t.driver_id))
+        )
+      )
+  )
+);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'company-assets',
+  'company-assets',
+  false,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Members and drivers can manage chat image files" on storage.objects;
+create policy "Members and drivers can manage chat image files"
+on storage.objects
+for all
+to authenticated
+using (
+  bucket_id = 'company-assets'
+  and (storage.foldername(name))[2] = 'chat'
+  and (
+    (
+      (select public.is_company_operator(((storage.foldername(name))[1])::uuid))
+    )
+    or exists (
+      select 1
+      from public.chat_threads t
+      where t.company_id::text = (storage.foldername(name))[1]
+        and t.id::text = (storage.foldername(name))[3]
+        and t.driver_id is not null
+        and (select public.is_driver_user(t.driver_id))
+    )
+  )
+)
+with check (
+  bucket_id = 'company-assets'
+  and (storage.foldername(name))[2] = 'chat'
+  and (
+    (
+      (select public.is_company_operator(((storage.foldername(name))[1])::uuid))
+    )
+    or exists (
+      select 1
+      from public.chat_threads t
+      where t.company_id::text = (storage.foldername(name))[1]
+        and t.id::text = (storage.foldername(name))[3]
+        and t.driver_id is not null
+        and (select public.is_driver_user(t.driver_id))
+    )
+  )
+);
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'chat_messages'
+  ) then
+    alter publication supabase_realtime add table public.chat_messages;
+  end if;
+end;
+$$;

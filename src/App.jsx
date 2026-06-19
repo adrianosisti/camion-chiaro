@@ -42,6 +42,8 @@ import {
   archiveVehicleRecord as archiveSupabaseVehicle,
   clearDriverProfileImageFile as clearSupabaseDriverProfileImageFile,
   createCompanyAssetSignedUrl,
+  createChatMessageRecord as createSupabaseChatMessage,
+  createChatThreadRecord as createSupabaseChatThread,
   createDriverDocumentSignedUrl,
   createDriverAccount as createSupabaseDriverAccount,
   createFaultReportRecord as createSupabaseFaultReport,
@@ -51,6 +53,8 @@ import {
   createVehicleCheckRecord as createSupabaseVehicleCheck,
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
   ensureCompanyForCurrentUser,
+  fetchChatMessages,
+  fetchChatThreads,
   fetchComplianceItems,
   fetchDriverDocuments,
   fetchDriverSessionData,
@@ -64,6 +68,7 @@ import {
   signInCompany,
   signOut,
   signUpCompany,
+  subscribeToChatMessages,
   uploadCompanyLogoFile as uploadSupabaseCompanyLogoFile,
   uploadDriverDocumentFile as uploadSupabaseDriverDocumentFile,
   uploadDriverProfileImageFile as uploadSupabaseDriverProfileImageFile,
@@ -270,6 +275,15 @@ function buildAppSessionFromAuthUser(user) {
   }
 }
 
+function upsertRecordById(records, nextRecord) {
+  if (!nextRecord?.id) return records
+  if (records.some((record) => record.id === nextRecord.id)) {
+    return records.map((record) => (record.id === nextRecord.id ? nextRecord : record))
+  }
+
+  return [...records, nextRecord]
+}
+
 function App() {
   const [session, setSession] = useState(null)
   const [items, setItems] = useState(complianceItems)
@@ -278,6 +292,8 @@ function App() {
   const [vehicleRecords, setVehicleRecords] = useState(vehicles)
   const [vehicleCheckRecords, setVehicleCheckRecords] = useState([])
   const [faultReportRecords, setFaultReportRecords] = useState([])
+  const [chatThreadRecords, setChatThreadRecords] = useState([])
+  const [chatMessageRecords, setChatMessageRecords] = useState([])
   const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState({
     headquarters: company.location,
@@ -296,6 +312,7 @@ function App() {
   const [fleetSyncStatus, setFleetSyncStatus] = useState('')
   const [operationsSyncStatus, setOperationsSyncStatus] = useState('')
   const [companySettingsStatus, setCompanySettingsStatus] = useState('')
+  const [chatSyncStatus, setChatSyncStatus] = useState('')
   const [driverDocumentUploadStatus, setDriverDocumentUploadStatus] = useState('')
   const [driverSessionLoading, setDriverSessionLoading] = useState(false)
   const [uploadingDriverDocumentId, setUploadingDriverDocumentId] = useState('')
@@ -321,9 +338,10 @@ function App() {
         companyProfile.logoPath,
         ...driverRecords.map((driver) => driver.profileImagePath),
         ...faultReportRecords.map((report) => report.photoPath),
+        ...chatMessageRecords.map((message) => message.attachmentPath),
       ]
         .filter(isPreviewableAssetPath),
-    [companyProfile.logoPath, driverRecords, faultReportRecords],
+    [chatMessageRecords, companyProfile.logoPath, driverRecords, faultReportRecords],
   )
 
   useEffect(() => {
@@ -362,7 +380,7 @@ function App() {
     setAssetPreviewUrls({})
 
     if (nextSession.role === 'driver') {
-      resetDriverSessionData()
+      if (isSupabaseConfigured) resetDriverSessionData()
       setDriverSessionLoading(isSupabaseConfigured)
     } else {
       setDriverSessionLoading(false)
@@ -378,11 +396,14 @@ function App() {
     setVehicleRecords([])
     setVehicleCheckRecords([])
     setFaultReportRecords([])
+    setChatThreadRecords([])
+    setChatMessageRecords([])
     setDriverUploadSent(false)
     setMorningCheckSent(false)
     setFaultReported(false)
     setDriverDocumentUploadStatus('')
     setUploadingDriverDocumentId('')
+    setChatSyncStatus('')
   }
 
   function getAssetPreviewUrl(path) {
@@ -535,7 +556,7 @@ function App() {
         const nextSession = buildAppSessionFromAuthUser(authUser)
 
         if (nextSession.role === 'driver') {
-          resetDriverSessionData()
+          if (isSupabaseConfigured) resetDriverSessionData()
           setDriverSessionLoading(isSupabaseConfigured)
         } else {
           setDriverSessionLoading(false)
@@ -563,6 +584,7 @@ function App() {
       setDocumentsSyncStatus('Caricamento documenti Supabase...')
       setOperationsSyncStatus('Caricamento check e guasti...')
       setFleetSyncStatus('Caricamento flotta Supabase...')
+      setChatSyncStatus('Caricamento chat...')
       const companyResult = await ensureCompanyForCurrentUser(companyName)
 
       if (!isMounted) return
@@ -572,19 +594,31 @@ function App() {
         setDocumentsSyncStatus('Documenti non caricati.')
         setFleetSyncStatus('Flotta non caricata.')
         setOperationsSyncStatus('Check e guasti non caricati.')
+        setChatSyncStatus('Chat non caricata.')
         return
       }
 
       const companyId = companyResult.data.id
       setActiveCompanyId(companyId)
       setCompanyProfile(companyResult.data)
-      const [driversResult, vehiclesResult, complianceResult, documentsResult, checksResult, faultsResult] = await Promise.all([
+      const [
+        driversResult,
+        vehiclesResult,
+        complianceResult,
+        documentsResult,
+        checksResult,
+        faultsResult,
+        chatThreadsResult,
+        chatMessagesResult,
+      ] = await Promise.all([
         fetchDrivers(companyId),
         fetchVehicles(companyId),
         fetchComplianceItems(companyId),
         fetchDriverDocuments(companyId),
         fetchVehicleChecks(companyId),
         fetchFaultReports(companyId),
+        fetchChatThreads(companyId),
+        fetchChatMessages(companyId),
       ])
 
       if (!isMounted) return
@@ -603,11 +637,18 @@ function App() {
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
+      if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
+      if (chatMessagesResult.data) setChatMessageRecords(chatMessagesResult.data)
       setDriversSyncStatus('Dati Supabase caricati.')
       setDocumentsSyncStatus('Documenti Supabase caricati.')
       setFleetSyncStatus('Dati Supabase caricati.')
       setOperationsSyncStatus(
         checksResult.error || faultsResult.error ? 'Check e guasti non caricati.' : 'Check e guasti caricati.',
+      )
+      setChatSyncStatus(
+        chatThreadsResult.error || chatMessagesResult.error
+          ? 'Chat non attiva. Esegui SQL parte 14 e poi riprova.'
+          : 'Chat caricata.',
       )
     }
 
@@ -626,6 +667,7 @@ function App() {
     async function loadDriverData() {
       setDriverSessionLoading(true)
       setOperationsSyncStatus('Caricamento area autista...')
+      setChatSyncStatus('Caricamento chat...')
       const driverSessionResult = await fetchDriverSessionData()
 
       if (!isMounted) return
@@ -639,6 +681,23 @@ function App() {
         setDocumentRecords(driverSessionResult.data.documents ?? [])
         setVehicleCheckRecords(driverSessionResult.data.vehicleChecks ?? [])
         setFaultReportRecords(driverSessionResult.data.faultReports ?? [])
+        const companyId = driverSessionResult.data.companyId
+        if (companyId) {
+          const [chatThreadsResult, chatMessagesResult] = await Promise.all([
+            fetchChatThreads(companyId),
+            fetchChatMessages(companyId),
+          ])
+
+          if (!isMounted) return
+
+          if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
+          if (chatMessagesResult.data) setChatMessageRecords(chatMessagesResult.data)
+          setChatSyncStatus(
+            chatThreadsResult.error || chatMessagesResult.error
+              ? 'Chat non attiva. L azienda deve eseguire SQL parte 14.'
+              : 'Chat caricata.',
+          )
+        }
         setOperationsSyncStatus(
           (driverSessionResult.data.vehicles ?? []).some((vehicle) => vehicle.fleetType !== 'semirimorchio')
             ? 'Area autista caricata.'
@@ -665,6 +724,7 @@ function App() {
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
+      setChatSyncStatus('Chat locale disponibile dopo il primo messaggio.')
       setOperationsSyncStatus(
         vehiclesResult.data?.some((vehicle) => vehicle.fleetType !== 'semirimorchio')
           ? 'Area autista caricata.'
@@ -679,6 +739,40 @@ function App() {
       isMounted = false
     }
   }, [session])
+
+  useEffect(() => {
+    if (!activeCompanyId || !isSupabaseConfigured) return
+
+    let isMounted = true
+    let unsubscribe = () => {}
+
+    subscribeToChatMessages(activeCompanyId, (message) => {
+      if (!isMounted) return
+
+      setChatMessageRecords((currentMessages) => upsertRecordById(currentMessages, message))
+      setChatThreadRecords((currentThreads) => {
+        if (!currentThreads.some((thread) => thread.id === message.threadId)) {
+          fetchChatThreads(activeCompanyId).then((result) => {
+            if (isMounted && result.data) setChatThreadRecords(result.data)
+          })
+          return currentThreads
+        }
+
+        return currentThreads.map((thread) =>
+          thread.id === message.threadId
+            ? { ...thread, lastMessageAt: message.createdAt, updatedAt: message.createdAt }
+            : thread,
+        )
+      })
+    }).then((cleanup) => {
+      unsubscribe = cleanup
+    })
+
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
+  }, [activeCompanyId])
 
   useEffect(() => {
     localStorage.setItem('camionChiaroAcknowledgedChecks', JSON.stringify(acknowledgedCheckIds))
@@ -727,6 +821,9 @@ function App() {
     setVehicleRecords(vehicles)
     setVehicleCheckRecords([])
     setFaultReportRecords([])
+    setChatThreadRecords([])
+    setChatMessageRecords([])
+    setChatSyncStatus('')
     setCompanyProfile({
       headquarters: company.location,
       id: '',
@@ -1169,6 +1266,115 @@ function App() {
     return true
   }
 
+  async function sendChatMessage({ attachmentFile = null, body = '', driverId, senderRole, threadId }) {
+    const cleanBody = body.trim()
+
+    if (!driverId) {
+      setChatSyncStatus('Seleziona un autista prima di inviare.')
+      return false
+    }
+
+    if (!cleanBody && !attachmentFile) {
+      setChatSyncStatus('Scrivi un messaggio o allega una foto.')
+      return false
+    }
+
+    if (attachmentFile && !validateImageFile(attachmentFile, setChatSyncStatus)) return false
+
+    const selectedDriver = driverRecords.find((driver) => driver.id === driverId)
+    const existingThread = chatThreadRecords.find(
+      (thread) => thread.id === threadId || (thread.driverId === driverId && thread.contextType === 'general'),
+    )
+
+    setChatSyncStatus('Invio messaggio...')
+
+    if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
+      let targetThread = existingThread
+
+      if (!targetThread) {
+        const threadResult = await createSupabaseChatThread(
+          {
+            contextType: 'general',
+            driverId,
+            title: selectedDriver?.name ? `Chat ${selectedDriver.name}` : 'Chat autista',
+          },
+          activeCompanyId,
+        )
+
+        if (threadResult.error || !threadResult.data) {
+          setChatSyncStatus(`Errore chat: ${threadResult.error?.message ?? 'conversazione non creata'}`)
+          return false
+        }
+
+        targetThread = threadResult.data
+        setChatThreadRecords((currentThreads) => upsertRecordById(currentThreads, targetThread))
+      }
+
+      const messageResult = await createSupabaseChatMessage(
+        {
+          attachmentPath: '',
+          body: cleanBody,
+          senderRole,
+          threadId: targetThread.id,
+        },
+        activeCompanyId,
+        attachmentFile,
+      )
+
+      if (messageResult.error || !messageResult.data) {
+        setChatSyncStatus(`Errore messaggio: ${messageResult.error?.message ?? 'messaggio non salvato'}`)
+        return false
+      }
+
+      setChatMessageRecords((currentMessages) => upsertRecordById(currentMessages, messageResult.data))
+      setChatThreadRecords((currentThreads) =>
+        upsertRecordById(currentThreads, {
+          ...targetThread,
+          lastMessageAt: messageResult.data.createdAt,
+          updatedAt: messageResult.data.createdAt,
+        }),
+      )
+      setChatSyncStatus('Messaggio inviato.')
+      return true
+    }
+
+    const now = new Date().toISOString()
+    const localThread =
+      existingThread ??
+      {
+        companyId: activeCompanyId || companyProfile.id || 'local-company',
+        contextType: 'general',
+        createdAt: now,
+        driverId,
+        faultReportId: null,
+        id: `chat-thread-${driverId}-${Date.now()}`,
+        lastMessageAt: now,
+        status: 'open',
+        title: selectedDriver?.name ? `Chat ${selectedDriver.name}` : 'Chat autista',
+        updatedAt: now,
+        vehicleCheckId: null,
+      }
+    const localMessage = {
+      attachmentPath: attachmentFile ? URL.createObjectURL(attachmentFile) : '',
+      body: cleanBody,
+      companyId: localThread.companyId,
+      createdAt: now,
+      id: `chat-message-${Date.now()}`,
+      readByCompanyAt: null,
+      readByDriverAt: null,
+      senderRole,
+      senderUserId: '',
+      threadId: localThread.id,
+    }
+
+    setChatThreadRecords((currentThreads) =>
+      upsertRecordById(currentThreads, { ...localThread, lastMessageAt: now, updatedAt: now }),
+    )
+    setChatMessageRecords((currentMessages) => [...currentMessages, localMessage])
+    setChatSyncStatus('Messaggio aggiunto in modalità locale.')
+    return true
+  }
+
   async function updateFaultReportStatus(reportId, status) {
     setOperationsSyncStatus(status === 'closed' ? 'Archiviazione guasto...' : 'Segno il guasto da leggere...')
     setFaultReportRecords((currentReports) =>
@@ -1220,6 +1426,9 @@ function App() {
     return (
       <DriverAppView
         assetPreviewUrl={getAssetPreviewUrl}
+        chatMessages={chatMessageRecords}
+        chatSyncStatus={chatSyncStatus}
+        chatThreads={chatThreadRecords}
         companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
         companyName={getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')}
         documentUploadStatus={driverDocumentUploadStatus}
@@ -1232,6 +1441,7 @@ function App() {
         onDriverProfileImageUpload={uploadDriverProfileImage}
         onDriverProfileImageRemove={removeDriverProfileImage}
         onFaultReport={submitFaultReport}
+        onSendChatMessage={sendChatMessage}
         onMorningCheck={submitMorningCheck}
         onOpenDriverDocument={openDriverDocumentFile}
         onSignOut={handleSignOut}
@@ -1359,6 +1569,15 @@ function App() {
             syncStatus={operationsSyncStatus}
             vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
+          />
+        ) : activeView === 'chat' ? (
+          <ChatWorkspace
+            assetPreviewUrl={getAssetPreviewUrl}
+            chatMessages={chatMessageRecords}
+            chatThreads={chatThreadRecords}
+            driverRecords={driverRecords}
+            onSendMessage={sendChatMessage}
+            syncStatus={chatSyncStatus}
           />
         ) : activeView === 'settings' ? (
           <SettingsWorkspace
@@ -1720,6 +1939,7 @@ function Sidebar({ activeView, notificationCount, onHome, onNavigate, onSignOut,
     { id: 'fleet', label: 'Flotta', icon: Truck },
     { id: 'documents', label: 'Documenti', icon: FileText },
     { id: 'notifications', label: 'Notifiche', icon: Bell },
+    { id: 'chat', label: 'Chat', icon: Mail },
     { id: 'settings', label: 'Impostazioni', icon: SettingsIcon },
   ]
 
@@ -3517,6 +3737,208 @@ function OperationsWorkspace({
   )
 }
 
+function ChatWorkspace({
+  assetPreviewUrl = () => '',
+  chatMessages = [],
+  chatThreads = [],
+  driverRecords = [],
+  onSendMessage,
+  syncStatus,
+}) {
+  const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
+  const [selectedDriverId, setSelectedDriverId] = useState('')
+  const [messageBody, setMessageBody] = useState('')
+  const [photoFile, setPhotoFile] = useState(null)
+  const [isSending, setIsSending] = useState(false)
+  const selectedDriver =
+    activeDrivers.find((driver) => driver.id === selectedDriverId) ??
+    activeDrivers[0] ??
+    null
+  const selectedThread = selectedDriver
+    ? chatThreads.find((thread) => thread.driverId === selectedDriver.id && thread.contextType === 'general')
+    : null
+  const messagesByThread = useMemo(() => {
+    const groupedMessages = new Map()
+
+    chatMessages.forEach((message) => {
+      const messages = groupedMessages.get(message.threadId) ?? []
+      messages.push(message)
+      groupedMessages.set(message.threadId, messages)
+    })
+
+    return groupedMessages
+  }, [chatMessages])
+  const visibleMessages = selectedThread
+    ? [...(messagesByThread.get(selectedThread.id) ?? [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    : []
+
+  function getDriverThread(driverId) {
+    return chatThreads.find((thread) => thread.driverId === driverId && thread.contextType === 'general')
+  }
+
+  function getLastDriverMessage(driverId) {
+    const thread = getDriverThread(driverId)
+    if (!thread) return null
+
+    const messages = messagesByThread.get(thread.id) ?? []
+    return messages[messages.length - 1] ?? null
+  }
+
+  function handlePhotoChange(event) {
+    const file = event.target.files?.[0] ?? null
+    setPhotoFile(file)
+    event.target.value = ''
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    if (!selectedDriver) return
+
+    setIsSending(true)
+    const sent = await onSendMessage?.({
+      attachmentFile: photoFile,
+      body: messageBody,
+      driverId: selectedDriver.id,
+      senderRole: 'company',
+      threadId: selectedThread?.id,
+    })
+    setIsSending(false)
+
+    if (sent) {
+      setMessageBody('')
+      setPhotoFile(null)
+    }
+  }
+
+  return (
+    <section className="chat-workspace" aria-label="Chat azienda autisti">
+      <div className="panel chat-list-panel">
+        <div className="panel-header">
+          <div>
+            <p className="overline">Messaggi</p>
+            <h2>Chat autisti</h2>
+          </div>
+          <Mail size={22} />
+        </div>
+        <div className="chat-driver-list">
+          {activeDrivers.map((driver) => {
+            const lastMessage = getLastDriverMessage(driver.id)
+            const isSelected = selectedDriver?.id === driver.id
+
+            return (
+              <button
+                className={isSelected ? 'chat-driver-row is-selected' : 'chat-driver-row'}
+                key={driver.id}
+                onClick={() => setSelectedDriverId(driver.id)}
+                type="button"
+              >
+                <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
+                <span>
+                  <strong>{driver.name}</strong>
+                  <small>
+                    {lastMessage
+                      ? `${lastMessage.senderRole === 'driver' ? 'Autista' : 'Azienda'}: ${
+                          lastMessage.body || 'Foto allegata'
+                        }`
+                      : 'Nessun messaggio'}
+                  </small>
+                </span>
+                {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
+              </button>
+            )
+          })}
+          {activeDrivers.length === 0 && (
+            <div className="empty-state-row">
+              <Users size={20} />
+              <div>
+                <strong>Nessun autista</strong>
+                <span>Aggiungi un autista prima di aprire una chat.</span>
+              </div>
+            </div>
+          )}
+        </div>
+        {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
+      </div>
+
+      <div className="panel chat-thread-panel">
+        <div className="panel-header">
+          <div>
+            <p className="overline">Conversazione</p>
+            <h2>{selectedDriver?.name ?? 'Seleziona autista'}</h2>
+          </div>
+          {selectedDriver && <EntityAvatar imageUrl={assetPreviewUrl(selectedDriver.profileImagePath)} name={selectedDriver.name} />}
+        </div>
+        <div className="chat-message-list">
+          {selectedDriver && visibleMessages.length === 0 && (
+            <div className="chat-empty-state">
+              <Mail size={24} />
+              <strong>Nessun messaggio ancora</strong>
+              <span>Scrivi il primo messaggio all autista.</span>
+            </div>
+          )}
+          {!selectedDriver && (
+            <div className="chat-empty-state">
+              <Users size={24} />
+              <strong>Seleziona un autista</strong>
+              <span>La chat verra creata al primo messaggio.</span>
+            </div>
+          )}
+          {visibleMessages.map((message) => {
+            const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
+
+            return (
+              <article
+                className={message.senderRole === 'company' ? 'chat-message is-company' : 'chat-message is-driver'}
+                key={message.id}
+              >
+                <div>
+                  <span>{message.senderRole === 'company' ? 'Azienda' : selectedDriver?.name ?? 'Autista'}</span>
+                  <small>{formatShortDateTime(message.createdAt)}</small>
+                </div>
+                {message.body && <p>{message.body}</p>}
+                {message.attachmentPath && attachmentUrl && (
+                  <a className="chat-attachment" href={attachmentUrl} rel="noreferrer" target="_blank">
+                    <img alt="Foto allegata in chat" src={attachmentUrl} />
+                  </a>
+                )}
+                {message.attachmentPath && !attachmentUrl && <small>Foto in caricamento...</small>}
+              </article>
+            )
+          })}
+        </div>
+        <form className="chat-compose" onSubmit={handleSubmit}>
+          <textarea
+            disabled={!selectedDriver}
+            onChange={(event) => setMessageBody(event.target.value)}
+            placeholder={selectedDriver ? 'Scrivi un messaggio...' : 'Seleziona un autista'}
+            value={messageBody}
+          />
+          <div className="chat-compose-actions">
+            <label className="document-action-button">
+              Foto
+              <input accept="image/*" capture="environment" disabled={!selectedDriver} onChange={handlePhotoChange} type="file" />
+            </label>
+            <label className="document-action-button">
+              Galleria
+              <input accept="image/*" disabled={!selectedDriver} onChange={handlePhotoChange} type="file" />
+            </label>
+            {photoFile && (
+              <button className="small-button" onClick={() => setPhotoFile(null)} type="button">
+                Rimuovi
+              </button>
+            )}
+            <button className="primary-button" disabled={!selectedDriver || isSending || (!messageBody.trim() && !photoFile)} type="submit">
+              <Send size={16} />
+              {isSending ? 'Invio...' : 'Invia'}
+            </button>
+          </div>
+          {photoFile && <small>Foto pronta: {photoFile.name}</small>}
+        </form>
+      </div>
+    </section>
+  )
+}
+
 function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, trailer, vehicle }) {
   const isClosed = isFaultArchived(report)
   const rowClassName = ['operation-row', selected ? 'is-selected' : '', isClosed ? 'is-muted' : '']
@@ -4110,6 +4532,9 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
 
 function DriverAppView({
   assetPreviewUrl,
+  chatMessages,
+  chatSyncStatus,
+  chatThreads,
   companyLogoUrl,
   companyName,
   documentUploadStatus,
@@ -4126,6 +4551,7 @@ function DriverAppView({
   onFaultReport,
   onMorningCheck,
   onOpenDriverDocument,
+  onSendChatMessage,
   onSignOut,
   onUpload,
   operationsStatus,
@@ -4155,6 +4581,9 @@ function DriverAppView({
         ) : driverRecords.length > 0 ? (
           <DriverMobile
             assetPreviewUrl={assetPreviewUrl}
+            chatMessages={chatMessages}
+            chatSyncStatus={chatSyncStatus}
+            chatThreads={chatThreads}
             companyLogoUrl={companyLogoUrl}
             companyName={companyName}
             documentUploadStatus={documentUploadStatus}
@@ -4168,6 +4597,7 @@ function DriverAppView({
             onDriverProfileImageRemove={onDriverProfileImageRemove}
             onDriverProfileImageUpload={onDriverProfileImageUpload}
             onFaultReport={onFaultReport}
+            onSendChatMessage={onSendChatMessage}
             onMorningCheck={onMorningCheck}
             onOpenDriverDocument={onOpenDriverDocument}
             operationsStatus={operationsStatus}
@@ -4245,6 +4675,9 @@ function DriverEmptyPhone({ companyLogoUrl, companyName, message }) {
 
 function DriverMobile({
   assetPreviewUrl = () => '',
+  chatMessages = [],
+  chatSyncStatus = '',
+  chatThreads = [],
   companyLogoUrl = '',
   companyName = 'Azienda',
   documentUploadStatus,
@@ -4260,6 +4693,7 @@ function DriverMobile({
   onFaultReport,
   onMorningCheck,
   onOpenDriverDocument,
+  onSendChatMessage,
   onUpload,
   operationsStatus,
   showDriverSelector = false,
@@ -4292,6 +4726,10 @@ function DriverMobile({
     severity: 'medium',
     title: '',
   })
+  const [chatForm, setChatForm] = useState({
+    body: '',
+    photoFile: null,
+  })
   const [sendingOperation, setSendingOperation] = useState('')
   const selectedVehicle = driveableVehicles.find((entry) => entry.id === selectedVehicleId) ?? assignedVehicle ?? driveableVehicles[0] ?? null
   const attachedTrailer = semitrailers.find((entry) => entry.id === attachedTrailerId) ?? null
@@ -4304,6 +4742,12 @@ function DriverMobile({
   const openFaults = faultReportRecords.filter(
     (report) => report.driverId === driver.id && report.status !== 'closed',
   )
+  const driverChatThread = chatThreads.find((thread) => thread.driverId === driver.id && thread.contextType === 'general')
+  const driverChatMessages = driverChatThread
+    ? chatMessages
+        .filter((message) => message.threadId === driverChatThread.id)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    : []
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false)
   const vehicleLabel = selectedVehicle
     ? `${selectedVehicle.plate} · ${getFleetTypeLabel(selectedVehicle.fleetType)}`
@@ -4327,6 +4771,12 @@ function DriverMobile({
   function handleFaultPhotoFile(event) {
     const file = event.target.files?.[0] ?? null
     setFaultForm((currentForm) => ({ ...currentForm, photoFile: file }))
+    event.target.value = ''
+  }
+
+  function handleChatPhotoFile(event) {
+    const file = event.target.files?.[0] ?? null
+    setChatForm((currentForm) => ({ ...currentForm, photoFile: file }))
     event.target.value = ''
   }
 
@@ -4370,6 +4820,25 @@ function DriverMobile({
 
     if (sent) {
       setFaultForm({ description: '', photoFile: null, severity: 'medium', title: '' })
+    }
+  }
+
+  async function handleChatSubmit(event) {
+    event.preventDefault()
+    if (!driver || (!chatForm.body.trim() && !chatForm.photoFile)) return
+
+    setSendingOperation('chat')
+    const sent = await onSendChatMessage?.({
+      attachmentFile: chatForm.photoFile,
+      body: chatForm.body,
+      driverId: driver.id,
+      senderRole: 'driver',
+      threadId: driverChatThread?.id,
+    })
+    setSendingOperation('')
+
+    if (sent) {
+      setChatForm({ body: '', photoFile: null })
     }
   }
 
@@ -4587,6 +5056,68 @@ function DriverMobile({
           </form>
           {openFaults.length > 0 && <small>{openFaults.length} guasti aperti</small>}
           {operationsStatus && <small className="operation-status">{operationsStatus}</small>}
+        </article>
+        <article className="check-card driver-chat-card">
+          <div>
+            <strong>Messaggi azienda</strong>
+            <span>{driverChatMessages.length > 0 ? `${driverChatMessages.length} messaggi` : 'Nessun messaggio'}</span>
+          </div>
+          <div className="driver-chat-list">
+            {driverChatMessages.slice(-4).map((message) => {
+              const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
+
+              return (
+                <div
+                  className={message.senderRole === 'driver' ? 'driver-chat-bubble is-driver' : 'driver-chat-bubble is-company'}
+                  key={message.id}
+                >
+                  <small>{message.senderRole === 'driver' ? 'Tu' : 'Azienda'} · {formatShortDateTime(message.createdAt)}</small>
+                  {message.body && <p>{message.body}</p>}
+                  {message.attachmentPath && attachmentUrl && (
+                    <a href={attachmentUrl} rel="noreferrer" target="_blank">
+                      <img alt="Foto allegata in chat" src={attachmentUrl} />
+                    </a>
+                  )}
+                </div>
+              )
+            })}
+            {driverChatMessages.length === 0 && <small>Scrivi all azienda quando hai bisogno di comunicare velocemente.</small>}
+          </div>
+          <form className="check-form" onSubmit={handleChatSubmit}>
+            <label>
+              Messaggio
+              <textarea
+                onChange={(event) => setChatForm((currentForm) => ({ ...currentForm, body: event.target.value }))}
+                placeholder="Scrivi all azienda"
+                value={chatForm.body}
+              />
+            </label>
+            <div className="fault-photo-actions">
+              <label className="document-action-button">
+                Scatta foto
+                <input accept="image/*" capture="environment" onChange={handleChatPhotoFile} type="file" />
+              </label>
+              <label className="document-action-button">
+                Galleria
+                <input accept="image/*" onChange={handleChatPhotoFile} type="file" />
+              </label>
+              {chatForm.photoFile && (
+                <button
+                  className="small-button"
+                  onClick={() => setChatForm((currentForm) => ({ ...currentForm, photoFile: null }))}
+                  type="button"
+                >
+                  Rimuovi
+                </button>
+              )}
+            </div>
+            {chatForm.photoFile && <small>Foto pronta: {chatForm.photoFile.name}</small>}
+            <button className="upload-button" disabled={sendingOperation === 'chat' || (!chatForm.body.trim() && !chatForm.photoFile)} type="submit">
+              <Send size={16} />
+              {sendingOperation === 'chat' ? 'Invio...' : 'Invia messaggio'}
+            </button>
+          </form>
+          {chatSyncStatus && <small className="operation-status">{chatSyncStatus}</small>}
         </article>
         <div className="documents-card">
           <strong>Documenti da mostrare</strong>

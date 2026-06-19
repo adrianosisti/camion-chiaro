@@ -4812,7 +4812,7 @@ function ChatWorkspace({
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (!selectedDriver) return
+    if (!selectedDriver || isSending || (!messageBody.trim() && !photoFile)) return
 
     setIsSending(true)
     const sent = await onSendMessage?.({
@@ -4828,6 +4828,22 @@ function ChatWorkspace({
       setMessageBody('')
       setPhotoFile(null)
     }
+  }
+
+  function handleComposeKeyDown(event) {
+    if (
+      event.key !== 'Enter' ||
+      event.shiftKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.nativeEvent.isComposing
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    event.currentTarget.form?.requestSubmit()
   }
 
   return (
@@ -4967,6 +4983,7 @@ function ChatWorkspace({
         <form className="chat-compose" onSubmit={handleSubmit}>
           <textarea
             disabled={!selectedDriver}
+            onKeyDown={handleComposeKeyDown}
             onChange={(event) => setMessageBody(event.target.value)}
             placeholder={selectedDriver ? 'Scrivi un messaggio...' : 'Seleziona un autista'}
             value={messageBody}

@@ -166,6 +166,17 @@ function getChatReactionEmoji(value) {
   return chatReactionOptions.find((reaction) => reaction.value === value)?.emoji ?? legacyReactionMap[value] ?? value
 }
 
+function getChatReactionLabel(value) {
+  const legacyReactionMap = {
+    Cuore: 'cuore',
+    Grazie: 'grazie',
+    OK: 'ok',
+    Visto: 'visto',
+  }
+
+  return chatReactionOptions.find((reaction) => reaction.value === value)?.label.toLowerCase() ?? legacyReactionMap[value] ?? 'reaction'
+}
+
 function hasChatReactions(message) {
   return Object.values(message?.reactions ?? {}).some(Boolean)
 }
@@ -1945,10 +1956,11 @@ function App() {
     )
 
     if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
+      const savedReaction = nextReactions[actorRole] ?? ''
       const result = await updateSupabaseChatMessageReaction(
         { ...message, reactions: message.reactions ?? {} },
         actorRole,
-        nextReactions[actorRole] ?? '',
+        savedReaction,
       )
 
       if (result.error) {
@@ -1958,6 +1970,42 @@ function App() {
 
       if (result.data) {
         setChatMessageRecords((currentMessages) => upsertRecordById(currentMessages, result.data))
+      }
+
+      if (savedReaction && actorRole !== message.senderRole) {
+        const reactionThread = chatThreadRecords.find((thread) => thread.id === message.threadId)
+        const reactionLabel = getChatReactionLabel(savedReaction)
+
+        if (actorRole === 'company' && reactionThread?.driverId) {
+          const pushResult = await notifyPhone({
+            body: `L azienda ha reagito con ${reactionLabel} al tuo messaggio.`,
+            driverId: reactionThread.driverId,
+            tag: `reaction-driver-${message.id}-${actorRole}`,
+            targetRole: 'driver',
+            title: 'Nuova reaction',
+            url: '/?view=chat',
+          })
+
+          setChatSyncStatus(
+            pushResult.error
+              ? `Reazione salvata. Notifica telefono non inviata: ${pushResult.error.message}`
+              : 'Reazione salvata. Notifica telefono inviata.',
+          )
+        } else if (actorRole === 'driver') {
+          const pushResult = await notifyPhone({
+            body: `${getDriverDisplayName(reactionThread?.driverId)} ha reagito con ${reactionLabel} al messaggio.`,
+            tag: `reaction-company-${message.id}-${actorRole}`,
+            targetRole: 'company',
+            title: 'Reaction autista',
+            url: '/?view=chat',
+          })
+
+          setChatSyncStatus(
+            pushResult.error
+              ? `Reazione salvata. Notifica titolare non inviata: ${pushResult.error.message}`
+              : 'Reazione salvata. Notifica titolare inviata.',
+          )
+        }
       }
     }
 
@@ -2195,8 +2243,15 @@ function App() {
             companyEmail={session.email}
             companyProfile={{ ...companyProfile, name: companyName }}
             companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
+            installPromptAvailable={Boolean(installPromptEvent)}
+            isStandaloneMode={isStandaloneMode}
+            notificationEnabled={phoneNotificationEnabled}
+            notificationStatus={phoneNotificationStatus}
             onCompanyLogoUpload={uploadCompanyLogo}
+            onEnablePhoneNotifications={enablePhoneNotifications}
+            onInstallPhoneApp={installPhoneApp}
             onUpdateCompanyProfile={updateCompanyProfile}
+            showInstallAction={showCompanyInstallAction}
             syncStatus={companySettingsStatus}
           />
         ) : (
@@ -2216,17 +2271,6 @@ function App() {
                 onOpenNotifications={() => openNotifications('inbox')}
                 openFaultCount={openFaultCount}
                 summary={summary}
-              />
-            </section>
-            <section className="company-phone-setup-section" aria-label="Notifiche telefono azienda">
-              <PhoneSetupPanel
-                installPromptAvailable={Boolean(installPromptEvent)}
-                isStandaloneMode={isStandaloneMode}
-                notificationEnabled={phoneNotificationEnabled}
-                notificationStatus={phoneNotificationStatus}
-                onEnableNotifications={enablePhoneNotifications}
-                onInstallApp={installPhoneApp}
-                showInstallAction={showCompanyInstallAction}
               />
             </section>
             {isEmptyCompanyDashboard && (
@@ -2983,8 +3027,15 @@ function SettingsWorkspace({
   companyEmail,
   companyLogoUrl,
   companyProfile,
+  installPromptAvailable,
+  isStandaloneMode,
+  notificationEnabled,
+  notificationStatus,
   onCompanyLogoUpload,
+  onEnablePhoneNotifications,
+  onInstallPhoneApp,
   onUpdateCompanyProfile,
+  showInstallAction,
   syncStatus,
 }) {
   const [form, setForm] = useState({
@@ -3061,6 +3112,15 @@ function SettingsWorkspace({
             <DetailLine label="Email accesso" value={companyEmail || 'Non disponibile'} />
           </div>
         </aside>
+        <PhoneSetupPanel
+          installPromptAvailable={installPromptAvailable}
+          isStandaloneMode={isStandaloneMode}
+          notificationEnabled={notificationEnabled}
+          notificationStatus={notificationStatus}
+          onEnableNotifications={onEnablePhoneNotifications}
+          onInstallApp={onInstallPhoneApp}
+          showInstallAction={showInstallAction}
+        />
       </div>
     </section>
   )
@@ -5573,14 +5633,20 @@ function DriverAppView({
             driverRecords={driverRecords}
             faultReportRecords={faultReportRecords}
             faultReported={faultReported}
+            installPromptAvailable={installPromptAvailable}
+            isStandaloneMode={isStandaloneMode}
             items={items}
             morningCheckSent={morningCheckSent}
+            notificationEnabled={notificationEnabled}
+            notificationStatus={notificationStatus}
             onDriverDocumentCreate={onDriverDocumentCreate}
             onDriverDocumentFileRemove={onDriverDocumentFileRemove}
             onDriverDocumentUpload={onDriverDocumentUpload}
             onDriverProfileImageRemove={onDriverProfileImageRemove}
             onDriverProfileImageUpload={onDriverProfileImageUpload}
+            onEnablePhoneNotifications={onEnablePhoneNotifications}
             onFaultReport={onFaultReport}
+            onInstallPhoneApp={onInstallPhoneApp}
             onMarkChatRead={onMarkChatRead}
             onReactToMessage={onReactToMessage}
             onSendChatMessage={onSendChatMessage}
@@ -5605,14 +5671,6 @@ function DriverAppView({
               mostrerà avvisi personali, documenti caricati, check mattutini e segnalazioni guasto.
             </p>
           </section>
-          <PhoneSetupPanel
-            installPromptAvailable={installPromptAvailable}
-            isStandaloneMode={isStandaloneMode}
-            notificationEnabled={notificationEnabled}
-            notificationStatus={notificationStatus}
-            onEnableNotifications={onEnablePhoneNotifications}
-            onInstallApp={onInstallPhoneApp}
-          />
         </div>
       </div>
       <footer className="driver-logout-footer">
@@ -5687,14 +5745,20 @@ function DriverMobile({
   driverRecords = [],
   faultReportRecords = [],
   faultReported,
+  installPromptAvailable = false,
+  isStandaloneMode = false,
   items = [],
   morningCheckSent,
+  notificationEnabled = false,
+  notificationStatus = '',
   onDriverDocumentCreate,
   onDriverDocumentFileRemove,
   onDriverDocumentUpload,
   onDriverProfileImageRemove,
   onDriverProfileImageUpload,
+  onEnablePhoneNotifications,
   onFaultReport,
+  onInstallPhoneApp,
   onMarkChatRead,
   onMorningCheck,
   onOpenDriverDocument,
@@ -5971,6 +6035,16 @@ function DriverMobile({
         {photoPreviewOpen && driverImageUrl && (
           <PhotoPreviewModal imageUrl={driverImageUrl} name={driver.name} onClose={() => setPhotoPreviewOpen(false)} />
         )}
+        <PhoneSetupPanel
+          compact
+          installPromptAvailable={installPromptAvailable}
+          isStandaloneMode={isStandaloneMode}
+          notificationEnabled={notificationEnabled}
+          notificationStatus={notificationStatus}
+          onEnableNotifications={onEnablePhoneNotifications}
+          onInstallApp={onInstallPhoneApp}
+          showInstallAction={false}
+        />
         {nextItem && (
           <article className="next-card">
             <span className={`status-pill tone-${nextItem.urgency.tone}`}>{nextItem.urgency.label}</span>

@@ -27,16 +27,20 @@
 }
 
 html {
+  width: 100%;
   min-width: 320px;
+  overflow-x: hidden;
   background: var(--bg);
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
 }
 
 body {
+  width: 100%;
   min-width: 320px;
   min-height: 100svh;
   margin: 0;
+  overflow-x: hidden;
 }
 
 button,
@@ -57,5 +61,7 @@ button {
 }
 
 #root {
+  width: 100%;
   min-height: 100svh;
+  overflow-x: hidden;
 }

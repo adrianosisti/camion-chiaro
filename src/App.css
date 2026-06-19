@@ -2677,6 +2677,10 @@
   overflow: hidden;
 }
 
+.company-phone-setup-section {
+  margin-top: 18px;
+}
+
 .phone-setup-panel.is-compact {
   border: 1px solid var(--line);
   border-radius: 8px;

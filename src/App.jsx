@@ -2063,6 +2063,7 @@ function App() {
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
   const isEmptyCompanyDashboard = activeDriverCount === 0 && activeVehicleCount === 0 && decoratedItems.length === 0
+  const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
   function openNewDeadlinePanel() {
     setActiveView('dashboard')
@@ -2215,6 +2216,17 @@ function App() {
                 onOpenNotifications={() => openNotifications('inbox')}
                 openFaultCount={openFaultCount}
                 summary={summary}
+              />
+            </section>
+            <section className="company-phone-setup-section" aria-label="Notifiche telefono azienda">
+              <PhoneSetupPanel
+                installPromptAvailable={Boolean(installPromptEvent)}
+                isStandaloneMode={isStandaloneMode}
+                notificationEnabled={phoneNotificationEnabled}
+                notificationStatus={phoneNotificationStatus}
+                onEnableNotifications={enablePhoneNotifications}
+                onInstallApp={installPhoneApp}
+                showInstallAction={showCompanyInstallAction}
               />
             </section>
             {isEmptyCompanyDashboard && (

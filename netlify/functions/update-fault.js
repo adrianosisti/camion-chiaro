@@ -21,6 +21,7 @@ function mapFaultReport(row) {
     description: row.description ?? '',
     driverId: row.driver_id,
     id: row.id,
+    photoPath: row.photo_path ?? '',
     semitrailerId: row.semitrailer_id,
     severity: row.severity,
     status: row.status,
@@ -134,6 +135,7 @@ export async function handler(event) {
         severity,
         title,
         description,
+        photo_path,
         status,
         created_at,
         updated_at

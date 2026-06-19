@@ -32,6 +32,7 @@ create table public.fault_reports (
   severity text not null default 'medium' check (severity in ('low', 'medium', 'high', 'stop_vehicle')),
   title text not null,
   description text,
+  photo_path text,
   status text not null default 'open' check (status in ('open', 'seen', 'in_progress', 'closed')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

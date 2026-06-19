@@ -131,6 +131,7 @@ function mapFaultReport(row) {
     description: row.description ?? '',
     driverId: row.driver_id,
     id: row.id,
+    photoPath: row.photo_path ?? '',
     semitrailerId: row.semitrailer_id,
     severity: row.severity,
     status: row.status,
@@ -265,6 +266,7 @@ function toFaultReportPayload(report, companyId = configuredCompanyId) {
     company_id: companyId,
     description: report.description?.trim() || null,
     driver_id: report.driverId,
+    photo_path: report.photoPath || null,
     semitrailer_id: report.semitrailerId || null,
     severity: report.severity || 'medium',
     title: report.title.trim(),
@@ -508,6 +510,7 @@ export async function fetchFaultReports(companyId = configuredCompanyId) {
         severity,
         title,
         description,
+        photo_path,
         status,
         created_at,
         updated_at
@@ -719,16 +722,32 @@ export async function createVehicleCheckRecord(check, companyId = configuredComp
   return { data: data ? mapVehicleCheck(data) : null, error }
 }
 
-export async function createFaultReportRecord(report, companyId = configuredCompanyId) {
+export async function createFaultReportRecord(report, companyId = configuredCompanyId, photoFile = null) {
   const supabase = await getSupabaseClient()
 
   if (!supabase || !companyId) {
     return { data: null, error: null }
   }
 
+  let photoPath = report.photoPath ?? ''
+
+  if (photoFile) {
+    const cleanFileName = sanitizeStorageFileName(photoFile.name)
+    photoPath = `${companyId}/faults/${report.driverId}/${Date.now()}-${cleanFileName}`
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(photoPath, photoFile, {
+      cacheControl: '3600',
+      contentType: photoFile.type || undefined,
+      upsert: false,
+    })
+
+    if (uploadError) {
+      return { data: null, error: uploadError }
+    }
+  }
+
   const { data, error } = await supabase
     .from('fault_reports')
-    .insert(toFaultReportPayload(report, companyId))
+    .insert(toFaultReportPayload({ ...report, photoPath }, companyId))
     .select(
       `
         id,
@@ -739,12 +758,17 @@ export async function createFaultReportRecord(report, companyId = configuredComp
         severity,
         title,
         description,
+        photo_path,
         status,
         created_at,
         updated_at
       `,
     )
     .single()
+
+  if (error && photoPath) {
+    await supabase.storage.from(companyAssetsBucket).remove([photoPath])
+  }
 
   return { data: data ? mapFaultReport(data) : null, error }
 }
@@ -797,6 +821,7 @@ export async function updateFaultReportStatus(reportId, status) {
         severity,
         title,
         description,
+        photo_path,
         status,
         created_at,
         updated_at

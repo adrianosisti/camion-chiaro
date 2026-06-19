@@ -306,9 +306,13 @@ function App() {
   )
   const assetPaths = useMemo(
     () =>
-      [companyProfile.logoPath, ...driverRecords.map((driver) => driver.profileImagePath)]
+      [
+        companyProfile.logoPath,
+        ...driverRecords.map((driver) => driver.profileImagePath),
+        ...faultReportRecords.map((report) => report.photoPath),
+      ]
         .filter(isPreviewableAssetPath),
-    [companyProfile.logoPath, driverRecords],
+    [companyProfile.logoPath, driverRecords, faultReportRecords],
   )
 
   useEffect(() => {
@@ -1098,10 +1102,15 @@ function App() {
   }
 
   async function submitFaultReport(report) {
+    const { photoFile, ...reportData } = report
+
+    if (photoFile && !validateImageFile(photoFile, setOperationsSyncStatus)) return false
+
     const localReport = {
-      ...report,
+      ...reportData,
       createdAt: new Date().toISOString(),
       id: `fault-${Date.now()}`,
+      photoPath: photoFile ? URL.createObjectURL(photoFile) : reportData.photoPath ?? '',
       status: 'open',
       updatedAt: new Date().toISOString(),
     }
@@ -1109,7 +1118,7 @@ function App() {
     setOperationsSyncStatus('Invio segnalazione guasto...')
 
     if (hasCompanyDataConnection && session?.role === 'driver') {
-      const result = await createSupabaseFaultReport(report, activeCompanyId)
+      const result = await createSupabaseFaultReport(reportData, activeCompanyId, photoFile)
 
       if (result.error) {
         setOperationsSyncStatus(`Errore guasto: ${result.error.message}`)
@@ -1270,6 +1279,7 @@ function App() {
         ) : activeView === 'notifications' ? (
           <OperationsWorkspace
             acknowledgedCheckIds={acknowledgedCheckIds}
+            assetPreviewUrl={getAssetPreviewUrl}
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
             onAcknowledgeCheck={acknowledgeCheck}
@@ -1350,9 +1360,9 @@ function AuthScreen({ onAuthenticated }) {
   const [mode, setMode] = useState('company')
   const [companyMode, setCompanyMode] = useState('signin')
   const [companyForm, setCompanyForm] = useState({
-    companyName: demoCompanyName,
-    email: 'azienda@camionchiaro.it',
-    password: 'password-demo',
+    companyName: '',
+    email: '',
+    password: '',
   })
   const [driverForm, setDriverForm] = useState({
     username: '',
@@ -1370,6 +1380,12 @@ function AuthScreen({ onAuthenticated }) {
       ...companyForm,
       companyName: companyForm.companyName.trim(),
       email: companyForm.email.trim(),
+    }
+
+    if (!cleanCompanyForm.email || !cleanCompanyForm.password) {
+      setIsSubmitting(false)
+      setStatus('Inserisci email aziendale e password.')
+      return
     }
 
     if (companyMode === 'signup' && !cleanCompanyForm.companyName) {
@@ -1417,17 +1433,15 @@ function AuthScreen({ onAuthenticated }) {
       setCompanyForm((currentForm) => ({
         ...currentForm,
         companyName: '',
-        email: currentForm.email === 'azienda@camionchiaro.it' ? '' : currentForm.email,
-        password: currentForm.password === 'password-demo' ? '' : currentForm.password,
+        email: currentForm.email,
+        password: currentForm.password,
       }))
       return
     }
 
     setCompanyForm((currentForm) => ({
       ...currentForm,
-      companyName: currentForm.companyName || demoCompanyName,
-      email: currentForm.email || 'azienda@camionchiaro.it',
-      password: currentForm.password || 'password-demo',
+      companyName: '',
     }))
   }
 
@@ -1536,6 +1550,9 @@ function AuthScreen({ onAuthenticated }) {
                 <Mail size={17} />
                 <input
                   autoComplete="email"
+                  name="email"
+                  placeholder="azienda@esempio.it"
+                  required
                   value={companyForm.email}
                   onChange={(event) => setCompanyForm({ ...companyForm, email: event.target.value })}
                   type="email"
@@ -1548,6 +1565,9 @@ function AuthScreen({ onAuthenticated }) {
                 <LockKeyhole size={17} />
                 <input
                   autoComplete={companyMode === 'signup' ? 'new-password' : 'current-password'}
+                  name="password"
+                  placeholder="Password"
+                  required
                   value={companyForm.password}
                   onChange={(event) => setCompanyForm({ ...companyForm, password: event.target.value })}
                   type="password"
@@ -1578,8 +1598,9 @@ function AuthScreen({ onAuthenticated }) {
                 <UserRound size={17} />
                 <input
                   autoCapitalize="none"
-                  autoComplete="off"
+                  autoComplete="username"
                   autoCorrect="off"
+                  name="username"
                   placeholder="Es. mario.rossi"
                   required
                   spellCheck={false}
@@ -1593,7 +1614,8 @@ function AuthScreen({ onAuthenticated }) {
               <span>
                 <LockKeyhole size={17} />
                 <input
-                  autoComplete="off"
+                  autoComplete="current-password"
+                  name="password"
                   placeholder="Password"
                   required
                   value={driverForm.password}
@@ -1851,6 +1873,7 @@ function HeroPanel({
     {
       detail: 'check con anomalie da aprire',
       icon: AlertTriangle,
+      isActive: criticalCheckCount > 0,
       label: 'Check critici',
       tone: 'danger',
       value: criticalCheckCount,
@@ -1858,6 +1881,7 @@ function HeroPanel({
     {
       detail: 'segnalazioni ancora aperte',
       icon: Wrench,
+      isActive: openFaultCount > 0,
       label: 'Guasti aperti',
       tone: 'warning',
       value: openFaultCount,
@@ -1865,6 +1889,7 @@ function HeroPanel({
     {
       detail: `${summary.critical} critiche o scadute`,
       icon: CalendarClock,
+      isActive: summary.critical > 0,
       label: 'Scadenze 30 giorni',
       tone: 'info',
       value: summary.next30,
@@ -1908,9 +1933,11 @@ function HeroPanel({
       </div>
       <div className="priority-grid" aria-label="Priorita di oggi">
         {priorityCards.map((card) => (
-          <article className={`priority-card tone-${card.tone}`} key={card.label}>
+          <article className={`priority-card tone-${card.tone}${card.isActive ? ' is-active' : ''}`} key={card.label}>
             <div>
-              <card.icon size={20} />
+              <span className="priority-icon">
+                <card.icon size={20} />
+              </span>
               <span>{card.label}</span>
             </div>
             <strong>{card.value}</strong>
@@ -2992,6 +3019,7 @@ function DocumentCreatePanel({ driverRecords, onAddDocument }) {
 
 function OperationsWorkspace({
   acknowledgedCheckIds,
+  assetPreviewUrl,
   driverRecords,
   faultReportRecords,
   onAcknowledgeCheck,
@@ -3152,6 +3180,7 @@ function OperationsWorkspace({
       </div>
       <OperationDetailPanel
         acknowledgedCheckIds={acknowledgedCheckIds}
+        assetPreviewUrl={assetPreviewUrl}
         driverRecords={driverRecords}
         operation={detailOperation}
         onAcknowledgeCheck={onAcknowledgeCheck}
@@ -3184,6 +3213,7 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
         <small>
           {getFaultSeverityLabel(report.severity)} · {formatShortDateTime(report.createdAt)}
           {trailer ? ` · semirimorchio ${trailer.plate}` : ''}
+          {report.photoPath ? ' · foto allegata' : ''}
         </small>
         {report.description && <em>{report.description}</em>}
       </div>
@@ -3252,6 +3282,7 @@ function CheckOperationRow({ check, driver, onMarkRead, onOpen, read, selected, 
 
 function OperationDetailPanel({
   acknowledgedCheckIds,
+  assetPreviewUrl = () => '',
   driverRecords,
   operation,
   onAcknowledgeCheck,
@@ -3281,6 +3312,7 @@ function OperationDetailPanel({
     const isClosed = report.status === 'closed'
     const isSeen = report.status !== 'open'
     const isWorking = report.status === 'in_progress'
+    const faultPhotoUrl = assetPreviewUrl(report.photoPath)
 
     return (
       <aside className="panel operation-detail-panel">
@@ -3303,6 +3335,14 @@ function OperationDetailPanel({
             <div className="detail-note">
               <strong>Descrizione</strong>
               <p>{report.description}</p>
+            </div>
+          )}
+          {faultPhotoUrl && (
+            <div className="fault-photo-preview">
+              <strong>Foto guasto</strong>
+              <a href={faultPhotoUrl} rel="noreferrer" target="_blank">
+                <img alt={`Foto guasto ${report.title}`} src={faultPhotoUrl} />
+              </a>
             </div>
           )}
         </div>
@@ -3780,6 +3820,7 @@ function DriverMobile({
   })
   const [faultForm, setFaultForm] = useState({
     description: '',
+    photoFile: null,
     severity: 'medium',
     title: '',
   })
@@ -3815,6 +3856,12 @@ function DriverMobile({
     setFaultForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
+  function handleFaultPhotoFile(event) {
+    const file = event.target.files?.[0] ?? null
+    setFaultForm((currentForm) => ({ ...currentForm, photoFile: file }))
+    event.target.value = ''
+  }
+
   async function handleCheckSubmit(event) {
     event.preventDefault()
     if (!selectedVehicle) return
@@ -3845,6 +3892,7 @@ function DriverMobile({
     const sent = await onFaultReport?.({
       description: faultForm.description,
       driverId: driver.id,
+      photoFile: faultForm.photoFile,
       semitrailerId: attachedTrailer?.id ?? null,
       severity: faultForm.severity,
       title: faultForm.title,
@@ -3853,7 +3901,7 @@ function DriverMobile({
     setSendingOperation('')
 
     if (sent) {
-      setFaultForm({ description: '', severity: 'medium', title: '' })
+      setFaultForm({ description: '', photoFile: null, severity: 'medium', title: '' })
     }
   }
 
@@ -4044,6 +4092,22 @@ function DriverMobile({
                 value={faultForm.description}
               />
             </label>
+            <div className="fault-photo-actions">
+              <label className="document-action-button">
+                Scatta foto
+                <input accept="image/*" capture="environment" onChange={handleFaultPhotoFile} type="file" />
+              </label>
+              <label className="document-action-button">
+                Galleria
+                <input accept="image/*" onChange={handleFaultPhotoFile} type="file" />
+              </label>
+              {faultForm.photoFile && (
+                <button className="small-button" onClick={() => updateFaultField('photoFile', null)} type="button">
+                  Rimuovi foto
+                </button>
+              )}
+            </div>
+            {faultForm.photoFile && <small>Foto pronta: {faultForm.photoFile.name}</small>}
             <button
               className="fault-button"
               disabled={!selectedVehicle || !faultForm.title.trim() || sendingOperation === 'fault'}

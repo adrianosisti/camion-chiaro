@@ -121,6 +121,7 @@ function mapFaultReport(row) {
     description: row.description ?? '',
     driverId: row.driver_id,
     id: row.id,
+    photoPath: row.photo_path ?? '',
     semitrailerId: row.semitrailer_id,
     severity: row.severity,
     status: row.status,
@@ -212,7 +213,7 @@ async function fetchDriverContext(serviceClient, driver) {
       .limit(50),
     serviceClient
       .from('fault_reports')
-      .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, status, created_at, updated_at')
+      .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
       .eq('company_id', driver.company_id)
       .eq('driver_id', driver.id)
       .order('created_at', { ascending: false })

@@ -3151,7 +3151,21 @@
   opacity: 0.52;
 }
 
+.danger-document-action {
+  border-color: #fecaca;
+  color: #b42318;
+  background: #fff1f2;
+}
+
 .document-action-button input {
+  display: none;
+}
+
+.document-upload-inline {
+  cursor: pointer;
+}
+
+.document-upload-inline input {
   display: none;
 }
 

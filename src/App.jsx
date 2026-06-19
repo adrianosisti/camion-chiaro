@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
@@ -1155,7 +1155,7 @@ function App() {
       filePath: updates.filePath?.trim() ?? '',
     }
 
-    if (hasCompanyDataConnection && session?.role === 'company') {
+    if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
       setDocumentsSyncStatus('Aggiornamento documento su Supabase...')
       const result = await updateSupabaseDriverDocument(documentId, cleanUpdates)
 
@@ -1176,6 +1176,22 @@ function App() {
     )
     setDocumentsSyncStatus('Documento aggiornato in modalità locale.')
     return true
+  }
+
+  async function removeDriverDocumentFile(document) {
+    const nextDocument = {
+      ...document,
+      filePath: '',
+      status: 'Mancante',
+    }
+
+    const removed = await updateDriverDocumentRecord(document.id, nextDocument)
+
+    if (removed) {
+      setDriverDocumentUploadStatus('File documento eliminato. La scheda resta disponibile.')
+    }
+
+    return removed
   }
 
   async function removeDriverDocumentRecord(documentId) {
@@ -1549,6 +1565,7 @@ function App() {
         faultReportRecords={visibleFaultReportRecords}
         vehicleRecords={vehicleRecords}
         onDriverDocumentUpload={uploadDriverDocumentFile}
+        onDriverDocumentFileRemove={removeDriverDocumentFile}
         onDriverProfileImageUpload={uploadDriverProfileImage}
         onDriverProfileImageRemove={removeDriverProfileImage}
         onFaultReport={submitFaultReport}
@@ -1654,7 +1671,10 @@ function App() {
             documentRecords={documentRecords}
             driverRecords={driverRecords}
             onAddDocument={addDriverDocumentRecord}
+            onDriverDocumentUpload={uploadDriverDocumentFile}
+            onOpenDriverDocument={openDriverDocumentFile}
             onRemoveDocument={removeDriverDocumentRecord}
+            onRemoveDocumentFile={removeDriverDocumentFile}
             onUpdateDocument={updateDriverDocumentRecord}
             syncStatus={documentsSyncStatus}
           />
@@ -3319,7 +3339,10 @@ function DocumentsWorkspace({
   documentRecords,
   driverRecords,
   onAddDocument,
+  onDriverDocumentUpload,
+  onOpenDriverDocument,
   onRemoveDocument,
+  onRemoveDocumentFile,
   onUpdateDocument,
   syncStatus,
 }) {
@@ -3413,7 +3436,10 @@ function DocumentsWorkspace({
                 editing={editingId === document.id}
                 key={document.id}
                 onCancel={() => setEditingId(null)}
+                onDocumentFileRemove={() => onRemoveDocumentFile?.(document)}
+                onDocumentUpload={(file) => onDriverDocumentUpload?.(document, file)}
                 onEdit={() => startEditing(document)}
+                onOpenDocument={() => onOpenDriverDocument?.(document)}
                 onRemove={() => removeDocument(document.id)}
                 onSave={() => saveDraft(document.id)}
                 onUpdateDraft={(field, value) => updateDraft(document.id, field, value)}
@@ -3437,12 +3463,21 @@ function DocumentManagementRow({
   driverRecords,
   editing,
   onCancel,
+  onDocumentFileRemove,
+  onDocumentUpload,
   onEdit,
+  onOpenDocument,
   onRemove,
   onSave,
   onUpdateDraft,
   saving,
 }) {
+  function handleDocumentFile(event) {
+    const file = event.target.files?.[0]
+    onDocumentUpload?.(file)
+    event.target.value = ''
+  }
+
   if (editing) {
     return (
       <article className="document-management-row is-editing">
@@ -3487,7 +3522,7 @@ function DocumentManagementRow({
             </select>
           </label>
           <label>
-            File o link
+            Link esterno opzionale
             <input value={draft.filePath} onChange={(event) => onUpdateDraft('filePath', event.target.value)} />
           </label>
           <label className="checkbox-field">
@@ -3507,6 +3542,10 @@ function DocumentManagementRow({
           <button className="small-button" disabled={saving} onClick={onCancel} type="button">
             Annulla
           </button>
+          <label className="small-button document-upload-inline">
+            Carica file
+            <input accept="image/*,.pdf,application/pdf" onChange={handleDocumentFile} type="file" />
+          </label>
         </div>
       </article>
     )
@@ -3528,6 +3567,18 @@ function DocumentManagementRow({
       </div>
       <span className="status-pill tone-info">{document.status}</span>
       <div className="row-actions">
+        <button className="small-button" disabled={!document.filePath || saving} onClick={onOpenDocument} type="button">
+          Mostra
+        </button>
+        <label className="small-button document-upload-inline">
+          {document.filePath ? 'Cambia file' : 'Carica file'}
+          <input accept="image/*,.pdf,application/pdf" onChange={handleDocumentFile} type="file" />
+        </label>
+        {document.filePath && (
+          <button className="small-button danger-action" disabled={saving} onClick={onDocumentFileRemove} type="button">
+            Elimina file
+          </button>
+        )}
         <button className="small-button" disabled={saving} onClick={onEdit} type="button">
           <Pencil size={15} />
           Modifica
@@ -3912,13 +3963,27 @@ function ChatWorkspace({
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!selectedThread?.id) return
 
-    window.requestAnimationFrame(() => {
+    function scrollToBottom() {
       const listElement = messagesListRef.current
       if (listElement) listElement.scrollTop = listElement.scrollHeight
+    }
+
+    scrollToBottom()
+    const firstFrame = window.requestAnimationFrame(() => {
+      scrollToBottom()
+      window.requestAnimationFrame(scrollToBottom)
     })
+    const shortDelay = window.setTimeout(scrollToBottom, 80)
+    const longDelay = window.setTimeout(scrollToBottom, 300)
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame)
+      window.clearTimeout(shortDelay)
+      window.clearTimeout(longDelay)
+    }
   }, [lastVisibleMessageId, selectedThread?.id, visibleMessages.length])
 
   useEffect(() => {
@@ -4712,6 +4777,7 @@ function DriverAppView({
   isLoading,
   items,
   morningCheckSent,
+  onDriverDocumentFileRemove,
   onDriverDocumentUpload,
   onDriverProfileImageRemove,
   onDriverProfileImageUpload,
@@ -4761,6 +4827,7 @@ function DriverAppView({
             faultReported={faultReported}
             items={items}
             morningCheckSent={morningCheckSent}
+            onDriverDocumentFileRemove={onDriverDocumentFileRemove}
             onDriverDocumentUpload={onDriverDocumentUpload}
             onDriverProfileImageRemove={onDriverProfileImageRemove}
             onDriverProfileImageUpload={onDriverProfileImageUpload}
@@ -4856,6 +4923,7 @@ function DriverMobile({
   faultReported,
   items = [],
   morningCheckSent,
+  onDriverDocumentFileRemove,
   onDriverDocumentUpload,
   onDriverProfileImageRemove,
   onDriverProfileImageUpload,
@@ -5321,10 +5389,10 @@ function DriverMobile({
                   onClick={() => onOpenDriverDocument?.(document)}
                   type="button"
                 >
-                  Apri
+                  Mostra
                 </button>
                 <label className="document-action-button">
-                  Foto
+                  {document.filePath ? 'Cambia foto' : 'Foto'}
                   <input
                     accept="image/*"
                     capture="environment"
@@ -5333,13 +5401,18 @@ function DriverMobile({
                   />
                 </label>
                 <label className="document-action-button">
-                  Galleria/PDF
+                  {document.filePath ? 'Cambia PDF' : 'Galleria/PDF'}
                   <input
                     accept="image/*,.pdf,application/pdf"
                     onChange={(event) => handleDocumentFile(document, event)}
                     type="file"
                   />
                 </label>
+                {document.filePath && (
+                  <button className="document-action-button danger-document-action" onClick={() => onDriverDocumentFileRemove?.(document)} type="button">
+                    Elimina
+                  </button>
+                )}
               </div>
               {uploadingDocumentId === document.id && <small>Caricamento in corso...</small>}
             </div>

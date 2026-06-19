@@ -5255,10 +5255,21 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
     })
   }
 
+  function openAccess(nextMode = 'company', nextCompanyMode = 'signup') {
+    setMode(nextMode)
+    if (nextMode === 'company') {
+      setCompanyMode(nextCompanyMode)
+    }
+    setStatus('')
+    window.setTimeout(() => {
+      document.getElementById('accesso')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
+
   return (
-    <main className="auth-shell">
-      <section className="auth-brand-panel">
-        <div className="brand auth-brand">
+    <main className="public-site">
+      <header className="public-header">
+        <button className="brand brand-button public-brand" onClick={() => openAccess('company', 'signin')} type="button">
           <div className="brand-mark">
             <CamionChiaroMark />
           </div>
@@ -5266,29 +5277,46 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
             <strong>Camion Chiaro</strong>
             <span>{t('brand.tagline')}</span>
           </div>
-        </div>
-        <h1>{t('auth.heroTitle')}</h1>
-        <p>{t('auth.heroText')}</p>
-        <div className="auth-proof-grid">
-          <div>
-            <ShieldCheck size={18} />
-            {t('auth.proofSecurity')}
-          </div>
-          <div>
-            <Smartphone size={18} />
-            {t('auth.proofDriver')}
-          </div>
-          <div>
-            <Wrench size={18} />
-            {t('auth.proofOperations')}
-          </div>
-        </div>
-      </section>
-
-      <section className="auth-card" aria-label="Accesso Camion Chiaro">
-        <div className="auth-language-row">
+        </button>
+        <nav className="public-nav" aria-label="Navigazione sito">
+          <a href="#prodotto">Prodotto</a>
+          <a href="#prezzi">Prezzi</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <div className="public-header-actions">
           <LanguageSelector language={language} onLanguageChange={onLanguageChange} t={t} />
+          <button className="secondary-button compact-button" onClick={() => openAccess('company', 'signin')} type="button">
+            <KeyRound size={16} />
+            {t('auth.signinButton')}
+          </button>
         </div>
+      </header>
+
+      <section className="public-hero" id="prodotto">
+        <div className="public-hero-copy">
+          <p className="overline">Gestionale flotta e autisti</p>
+          <h1>Camion Chiaro</h1>
+          <p>
+            Scadenze, documenti, check mattutini, guasti, chat e notifiche in una sola app per aziende di logistica e trasporto.
+          </p>
+          <div className="public-hero-actions">
+            <button className="primary-button" onClick={() => openAccess('company', 'signup')} type="button">
+              <BadgeCheck size={18} />
+              Acquista e attiva azienda
+            </button>
+            <button className="secondary-button" onClick={() => openAccess('driver', 'signin')} type="button">
+              <Smartphone size={18} />
+              Accesso autista
+            </button>
+          </div>
+          <div className="public-proof-grid">
+            <span><ShieldCheck size={17} /> Scadenze sotto controllo</span>
+            <span><Wrench size={17} /> Guasti tracciati</span>
+            <span><FileText size={17} /> Documenti sempre disponibili</span>
+          </div>
+        </div>
+
+        <section className="auth-card public-access-card" id="accesso" aria-label="Accesso Camion Chiaro">
         <div className="auth-tabs">
           <button className={mode === 'company' ? 'is-active' : ''} onClick={() => setMode('company')} type="button">
             <Building2 size={17} />
@@ -5414,6 +5442,174 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
             {t('auth.demoNote')}
           </p>
         )}
+        </section>
+      </section>
+
+      <section className="public-product-preview" aria-label="Anteprima Camion Chiaro">
+        <div className="public-dashboard-mock">
+          <div className="public-mock-topbar">
+            <div>
+              <span>Dashboard azienda</span>
+              <strong>Spedifast SRL</strong>
+            </div>
+            <Bell size={19} />
+          </div>
+          <div className="public-mock-kpis">
+            <div>
+              <strong>3</strong>
+              <span>Scadenze 30 giorni</span>
+            </div>
+            <div className="is-warning">
+              <strong>1</strong>
+              <span>Check critico</span>
+            </div>
+            <div className="is-danger">
+              <strong>2</strong>
+              <span>Guasti aperti</span>
+            </div>
+          </div>
+          <div className="public-mock-list">
+            <div>
+              <CalendarClock size={18} />
+              <span>Revisione trattore AB123CD</span>
+              <strong>12 giorni</strong>
+            </div>
+            <div>
+              <Wrench size={18} />
+              <span>Spia avaria motrice EF456GH</span>
+              <strong>Da aprire</strong>
+            </div>
+            <div>
+              <FileText size={18} />
+              <span>Patente Mario Rossi</span>
+              <strong>45 giorni</strong>
+            </div>
+          </div>
+        </div>
+        <div className="public-phone-mock">
+          <div className="public-phone-speaker" />
+          <strong>Area autista</strong>
+          <span>Check mattutino</span>
+          <div className="public-phone-checks">
+            <p><CheckCircle2 size={16} /> Luci</p>
+            <p><CheckCircle2 size={16} /> Pneumatici</p>
+            <p><AlertTriangle size={16} /> Foto guasto caricata</p>
+          </div>
+          <button className="primary-button" type="button">
+            <Send size={16} />
+            Invia report
+          </button>
+        </div>
+      </section>
+
+      <section className="public-section">
+        <div className="public-section-heading">
+          <p className="overline">Perche serve</p>
+          <h2>Il problema non e guidare. E ricordarsi tutto.</h2>
+          <p>
+            Patenti, revisioni, assicurazioni, visite mediche, documenti autista, guasti e messaggi finiscono spesso in posti diversi.
+            Camion Chiaro li porta in un unico flusso leggibile.
+          </p>
+        </div>
+        <div className="public-feature-grid">
+          <article>
+            <CalendarClock size={22} />
+            <h3>Scadenze automatiche</h3>
+            <p>Promemoria per mezzi, autisti e azienda prima che diventino un problema.</p>
+          </article>
+          <article>
+            <ClipboardCheck size={22} />
+            <h3>Check e guasti</h3>
+            <p>L autista invia check mattutini e segnalazioni con foto, semirimorchio agganciato e storico.</p>
+          </article>
+          <article>
+            <Mail size={22} />
+            <h3>Chat e notifiche</h3>
+            <p>Messaggi live, spunte di lettura, reaction e notifiche telefono per azienda e autisti.</p>
+          </article>
+          <article>
+            <FileText size={22} />
+            <h3>Documenti sempre pronti</h3>
+            <p>L autista conserva i documenti nell app e puo mostrarli quando servono.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="public-section public-workflow">
+        <div className="public-section-heading">
+          <p className="overline">Come lavora</p>
+          <h2>Una giornata normale, con meno telefonate.</h2>
+        </div>
+        <div className="public-steps">
+          <div><strong>1</strong><span>L azienda inserisce autisti, mezzi, semirimorchi e scadenze.</span></div>
+          <div><strong>2</strong><span>L autista entra con il suo nome utente e fa check o segnala guasti.</span></div>
+          <div><strong>3</strong><span>La dashboard mostra solo cio che richiede attenzione.</span></div>
+          <div><strong>4</strong><span>Ogni segnalazione resta archiviata e ricercabile.</span></div>
+        </div>
+      </section>
+
+      <section className="public-section" id="prezzi">
+        <div className="public-section-heading">
+          <p className="overline">Piani</p>
+          <h2>Prezzi semplici per aziende vere.</h2>
+          <p>Il pagamento online arrivera nella fase commerciale; la pagina e gia pronta per portare il cliente all attivazione.</p>
+        </div>
+        <div className="public-price-grid">
+          <article>
+            <span>Starter</span>
+            <strong>39 euro/mese</strong>
+            <p>Per piccole flotte che vogliono mettere ordine subito.</p>
+            <ul>
+              <li>Fino a 5 autisti</li>
+              <li>Scadenze e documenti</li>
+              <li>Check e guasti</li>
+            </ul>
+            <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Starter</button>
+          </article>
+          <article className="is-featured">
+            <span>Pro</span>
+            <strong>89 euro/mese</strong>
+            <p>Il piano giusto per la maggior parte delle aziende.</p>
+            <ul>
+              <li>Fino a 25 autisti</li>
+              <li>Chat e notifiche telefono</li>
+              <li>Archivio operativo completo</li>
+            </ul>
+            <button className="primary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Pro</button>
+          </article>
+          <article>
+            <span>Business</span>
+            <strong>189 euro/mese</strong>
+            <p>Per flotte piu grandi, sedi multiple e processi piu strutturati.</p>
+            <ul>
+              <li>Autisti e mezzi estesi</li>
+              <li>Supporto prioritario</li>
+              <li>Preparazione integrazioni</li>
+            </ul>
+            <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Business</button>
+          </article>
+        </div>
+      </section>
+
+      <section className="public-section public-faq" id="faq">
+        <div className="public-section-heading">
+          <p className="overline">FAQ</p>
+          <h2>Domande veloci prima di iniziare.</h2>
+        </div>
+        <div className="public-faq-list">
+          <article>
+            <h3>L autista deve scaricare un app dallo store?</h3>
+            <p>No: usa la web app dal telefono e puo aggiungerla alla schermata Home. Funziona su iPhone e Android.</p>
+          </article>
+          <article>
+            <h3>Arrivano notifiche sul telefono?</h3>
+            <p>Si, dopo l attivazione sul dispositivo. Chat, guasti e check critici possono avvisare anche con app chiusa.</p>
+          </article>
+          <article>
+            <h3>Posso usarlo dall ufficio e dal telefono?</h3>
+            <p>Si. L azienda lavora da PC, ma il titolare puo entrare anche da telefono e vedere notifiche e chat.</p>
+          </article>
+        </div>
       </section>
     </main>
   )

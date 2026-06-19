@@ -153,7 +153,7 @@ const chatReactionOptions = [
   { emoji: '🙏', label: 'Grazie', value: 'thanks' },
   { emoji: '👀', label: 'Visto', value: 'seen' },
 ]
-const deepLinkViews = new Set(['chat', 'documents', 'notifications', 'settings'])
+const deepLinkViews = new Set(['chat', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings'])
 
 function getChatReactionEmoji(value) {
   const legacyReactionMap = {
@@ -252,7 +252,17 @@ function getInitialActiveView() {
   if (typeof window === 'undefined') return 'dashboard'
 
   const viewFromUrl = new URLSearchParams(window.location.search).get('view')
+  if (viewFromUrl === 'documents' || viewFromUrl === 'drivers' || viewFromUrl === 'fleet') return 'records'
+
   return deepLinkViews.has(viewFromUrl) ? viewFromUrl : 'dashboard'
+}
+
+function getInitialRecordsTab() {
+  if (typeof window === 'undefined') return 'drivers'
+
+  const viewFromUrl = new URLSearchParams(window.location.search).get('view')
+  if (viewFromUrl === 'documents') return 'documents'
+  return viewFromUrl === 'fleet' ? 'fleet' : 'drivers'
 }
 
 function getFleetTypeLabel(value) {
@@ -491,6 +501,7 @@ function App() {
   const [phoneNotificationEnabled, setPhoneNotificationEnabled] = useState(false)
   const [phoneNotificationStatus, setPhoneNotificationStatus] = useState('')
   const [activeView, setActiveView] = useState(getInitialActiveView)
+  const [recordsTab, setRecordsTab] = useState(getInitialRecordsTab)
   const [activeFilter, setActiveFilter] = useState('all')
   const [operationsFilter, setOperationsFilter] = useState('inbox')
   const [query, setQuery] = useState('')
@@ -2153,7 +2164,6 @@ function App() {
   const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
-  const isEmptyCompanyDashboard = activeDriverCount === 0 && activeVehicleCount === 0 && decoratedItems.length === 0
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
   function openNewDeadlinePanel() {
@@ -2175,6 +2185,11 @@ function App() {
     setActiveView('notifications')
   }
 
+  function openRecords(tab = recordsTab) {
+    setRecordsTab(tab)
+    setActiveView('records')
+  }
+
   function openComplianceFilter(filter) {
     setActiveFilter(filter)
     setActiveView('dashboard')
@@ -2186,6 +2201,16 @@ function App() {
   function navigateCompanyView(viewId) {
     if (viewId === 'notifications') {
       openNotifications('inbox')
+      return
+    }
+
+    if (viewId === 'records') {
+      openRecords()
+      return
+    }
+
+    if (viewId === 'documents' || viewId === 'drivers' || viewId === 'fleet') {
+      openRecords(viewId)
       return
     }
 
@@ -2219,39 +2244,31 @@ function App() {
           vehicleCheckRecords={vehicleCheckRecords}
           vehicleRecords={vehicleRecords}
         />
-        {activeView === 'drivers' ? (
-          <DriversWorkspace
+        {activeView === 'records' ? (
+          <RecordsWorkspace
             assetPreviewUrl={getAssetPreviewUrl}
-            driverRecords={driverRecords}
-            onAddDriver={addDriverRecord}
-            onArchiveDriver={archiveDriverRecord}
-            onBackHome={openDashboardHome}
-            onDriverProfileImageUpload={uploadDriverProfileImage}
-            onUpdateDriver={updateDriverRecord}
-            syncStatus={driversSyncStatus}
-            vehicleRecords={vehicleRecords}
-          />
-        ) : activeView === 'documents' ? (
-          <DocumentsWorkspace
+            activeTab={recordsTab}
             documentEvents={documentEventRecords}
             documentRecords={documentRecords}
             driverRecords={driverRecords}
+            documentsSyncStatus={documentsSyncStatus}
+            onAddDriver={addDriverRecord}
             onAddDocument={addDriverDocumentRecord}
+            onArchiveDriver={archiveDriverRecord}
+            onBackHome={openDashboardHome}
             onDriverDocumentUpload={uploadDriverDocumentFile}
+            onDriverProfileImageUpload={uploadDriverProfileImage}
             onOpenDriverDocument={openDriverDocumentFile}
             onRemoveDocument={removeDriverDocumentRecord}
             onRemoveDocumentFile={removeDriverDocumentFile}
-            onUpdateDocument={updateDriverDocumentRecord}
-            syncStatus={documentsSyncStatus}
-          />
-        ) : activeView === 'fleet' ? (
-          <FleetWorkspace
-            driverRecords={driverRecords}
             onAddVehicle={addVehicleRecord}
             onArchiveVehicle={archiveVehicleRecord}
-            onBackHome={openDashboardHome}
+            onTabChange={setRecordsTab}
+            onUpdateDocument={updateDriverDocumentRecord}
+            onUpdateDriver={updateDriverRecord}
             onUpdateVehicle={updateVehicleRecord}
-            syncStatus={fleetSyncStatus}
+            driversSyncStatus={driversSyncStatus}
+            fleetSyncStatus={fleetSyncStatus}
             vehicleRecords={vehicleRecords}
           />
         ) : activeView === 'notifications' ? (
@@ -2315,13 +2332,6 @@ function App() {
                 summary={summary}
               />
             </section>
-            {isEmptyCompanyDashboard && (
-              <CompanyOnboardingPanel
-                onNewDeadline={openNewDeadlinePanel}
-                onOpenDrivers={() => setActiveView('drivers')}
-                onOpenFleet={() => setActiveView('fleet')}
-              />
-            )}
             <section className="content-grid content-grid-full">
               <div className="main-column">
                 <ComplianceBoard
@@ -2642,9 +2652,7 @@ function AuthScreen({ onAuthenticated }) {
 function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onHome, onNavigate, onSignOut, session }) {
   const navItems = [
     { id: 'dashboard', label: 'Scadenze', icon: CalendarClock },
-    { id: 'drivers', label: 'Autisti', icon: Users },
-    { id: 'fleet', label: 'Flotta', icon: Truck },
-    { id: 'documents', label: 'Documenti', icon: FileText },
+    { id: 'records', label: 'Anagrafiche', icon: Users },
     { id: 'notifications', label: 'Notifiche', icon: Bell },
     { id: 'chat', label: 'Chat', icon: Mail },
     { id: 'settings', label: 'Impostazioni', icon: SettingsIcon },
@@ -3285,53 +3293,125 @@ function HeroPanel({
   )
 }
 
-function CompanyOnboardingPanel({ onNewDeadline, onOpenDrivers, onOpenFleet }) {
-  const steps = [
+function RecordsWorkspace({
+  activeTab,
+  assetPreviewUrl,
+  documentEvents,
+  documentRecords,
+  driverRecords,
+  documentsSyncStatus,
+  driversSyncStatus,
+  fleetSyncStatus,
+  onAddDriver,
+  onAddDocument,
+  onAddVehicle,
+  onArchiveDriver,
+  onArchiveVehicle,
+  onBackHome,
+  onDriverDocumentUpload,
+  onDriverProfileImageUpload,
+  onOpenDriverDocument,
+  onRemoveDocument,
+  onRemoveDocumentFile,
+  onTabChange,
+  onUpdateDocument,
+  onUpdateDriver,
+  onUpdateVehicle,
+  vehicleRecords,
+}) {
+  const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
+  const activeVehicles = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato')
+  const tabs = [
     {
-      action: onOpenDrivers,
-      button: 'Aggiungi autista',
-      detail: 'Nome utente e accesso app',
-      icon: UserPlus,
-      label: 'Primo autista',
+      count: activeDrivers.length,
+      icon: Users,
+      id: 'drivers',
+      label: 'Autisti',
+      text: 'Credenziali, telefono e profilo autista',
     },
     {
-      action: onOpenFleet,
-      button: 'Aggiungi mezzo',
-      detail: 'Furgone, motrice, trattore o semirimorchio',
+      count: activeVehicles.length,
       icon: Truck,
-      label: 'Primo mezzo',
+      id: 'fleet',
+      label: 'Flotta',
+      text: 'Furgoni, motrici, trattori e semirimorchi',
     },
     {
-      action: onNewDeadline,
-      button: 'Prima scadenza',
-      detail: 'Patente, revisione, assicurazione o visita',
-      icon: CalendarClock,
-      label: 'Prima scadenza',
+      count: documentRecords.length,
+      icon: FileText,
+      id: 'documents',
+      label: 'Documenti',
+      text: 'Scadenze documentali e file autisti',
     },
   ]
 
   return (
-    <section className="panel setup-panel" aria-label="Primi passi azienda">
-      <div className="panel-header compact">
-        <div>
-          <p className="overline">Azienda nuova</p>
-          <h2>Primi passi</h2>
+    <section className="records-workspace" aria-label="Anagrafiche azienda">
+      <div className="panel records-switch-panel">
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">Archivio azienda</p>
+            <h2>Anagrafiche</h2>
+          </div>
+          <Users size={20} />
         </div>
-        <BadgeCheck size={20} />
+        <div className="records-tabs" role="tablist" aria-label="Scegli anagrafica">
+          {tabs.map((tab) => (
+            <button
+              aria-selected={activeTab === tab.id}
+              className={activeTab === tab.id ? 'records-tab is-active' : 'records-tab'}
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              role="tab"
+              type="button"
+            >
+              <tab.icon size={18} />
+              <span>
+                <strong>{tab.label}</strong>
+                <small>{tab.text}</small>
+              </span>
+              <b>{tab.count}</b>
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="setup-list">
-        {steps.map((step, index) => (
-          <button className="setup-row" key={step.label} onClick={step.action} type="button">
-            <span className="setup-index">{index + 1}</span>
-            <step.icon size={19} />
-            <span>
-              <strong>{step.label}</strong>
-              <small>{step.detail}</small>
-            </span>
-            <b>{step.button}</b>
-          </button>
-        ))}
-      </div>
+
+      {activeTab === 'documents' ? (
+        <DocumentsWorkspace
+          documentEvents={documentEvents}
+          documentRecords={documentRecords}
+          driverRecords={driverRecords}
+          onAddDocument={onAddDocument}
+          onDriverDocumentUpload={onDriverDocumentUpload}
+          onOpenDriverDocument={onOpenDriverDocument}
+          onRemoveDocument={onRemoveDocument}
+          onRemoveDocumentFile={onRemoveDocumentFile}
+          onUpdateDocument={onUpdateDocument}
+          syncStatus={documentsSyncStatus}
+        />
+      ) : activeTab === 'fleet' ? (
+        <FleetWorkspace
+          driverRecords={driverRecords}
+          onAddVehicle={onAddVehicle}
+          onArchiveVehicle={onArchiveVehicle}
+          onBackHome={onBackHome}
+          onUpdateVehicle={onUpdateVehicle}
+          syncStatus={fleetSyncStatus}
+          vehicleRecords={vehicleRecords}
+        />
+      ) : (
+        <DriversWorkspace
+          assetPreviewUrl={assetPreviewUrl}
+          driverRecords={driverRecords}
+          onAddDriver={onAddDriver}
+          onArchiveDriver={onArchiveDriver}
+          onBackHome={onBackHome}
+          onDriverProfileImageUpload={onDriverProfileImageUpload}
+          onUpdateDriver={onUpdateDriver}
+          syncStatus={driversSyncStatus}
+          vehicleRecords={vehicleRecords}
+        />
+      )}
     </section>
   )
 }

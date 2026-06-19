@@ -1114,6 +1114,86 @@
   min-width: 0;
 }
 
+.records-workspace {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.records-switch-panel {
+  overflow: hidden;
+}
+
+.records-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+
+.records-tab {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #475569;
+  background: #ffffff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.records-tab svg {
+  color: #0284c7;
+}
+
+.records-tab span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.records-tab strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.records-tab small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-tab b {
+  display: inline-grid;
+  min-width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  color: #075985;
+  background: #e0f2fe;
+  font-size: 0.9rem;
+}
+
+.records-tab.is-active {
+  border-color: #12c6df;
+  color: #020617;
+  background: #ecfeff;
+  box-shadow: 0 12px 28px rgba(18, 198, 223, 0.14);
+}
+
+.records-tab.is-active b {
+  color: #020617;
+  background: var(--brand-bright);
+}
+
 .drivers-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(330px, 380px);
@@ -3918,7 +3998,25 @@
   }
 
   .hero-panel {
+    gap: 16px;
     padding: 20px;
+  }
+
+  .hero-copy {
+    gap: 12px;
+  }
+
+  .hero-panel p {
+    margin-top: 0;
+  }
+
+  .hero-actions {
+    margin-top: 8px;
+  }
+
+  .hero-actions .primary-button,
+  .hero-actions .ghost-button {
+    flex: 1 1 150px;
   }
 
   .hero-panel h2 {
@@ -3944,12 +4042,26 @@
   }
 
   .priority-grid {
+    order: -1;
     grid-template-columns: 1fr 1fr;
   }
 
   .priority-card {
-    min-height: 118px;
+    min-height: 112px;
     padding: 14px;
+  }
+
+  .priority-card:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .records-tabs {
+    grid-template-columns: 1fr;
+    padding-inline: 14px;
+  }
+
+  .records-tab small {
+    white-space: normal;
   }
 
   .deadline-row {

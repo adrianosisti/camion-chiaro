@@ -1213,11 +1213,13 @@ export default function App() {
               }}
               style={[styles.tabButton, isActive && styles.tabButtonActive]}
             >
-              <Ionicons
-                color={isActive ? colors.ink : '#cbd5e1'}
-                name={tab.icon}
-                size={20}
-              />
+              <View style={[styles.tabIconShell, isActive && styles.tabIconShellActive]}>
+                <Ionicons
+                  color={isActive ? colors.ink : colors.cyan}
+                  name={tab.icon}
+                  size={19}
+                />
+              </View>
               <Text numberOfLines={1} style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
               {hasBadge ? <Text style={styles.tabBadge}>{chatBadgeCount}</Text> : null}
             </Pressable>
@@ -1320,6 +1322,8 @@ const styles = StyleSheet.create({
   },
   tabBadge: {
     backgroundColor: colors.danger,
+    borderColor: colors.white,
+    borderWidth: 1,
     borderRadius: 999,
     color: colors.white,
     fontSize: 10,
@@ -1334,25 +1338,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tabBar: {
-    backgroundColor: '#07111f',
-    borderTopColor: 'rgba(18, 198, 223, 0.32)',
+    backgroundColor: '#020617',
+    borderTopColor: 'rgba(18, 198, 223, 0.55)',
     borderTopWidth: 1,
     flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 10,
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 12,
+    shadowColor: '#000',
+    shadowOffset: { height: -8, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 14,
   },
   tabButton: {
     alignItems: 'center',
-    backgroundColor: '#101b2d',
-    borderColor: 'rgba(148, 163, 184, 0.2)',
+    backgroundColor: '#0b1220',
+    borderColor: 'rgba(148, 163, 184, 0.26)',
     borderWidth: 1,
-    borderRadius: 15,
+    borderRadius: 18,
     flex: 1,
-    gap: 3,
+    gap: 4,
     justifyContent: 'center',
-    minHeight: 56,
+    minHeight: 64,
     paddingHorizontal: 2,
     position: 'relative',
   },
@@ -1360,8 +1369,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cyan,
     borderColor: '#a7f3ff',
   },
+  tabIconShell: {
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    borderColor: 'rgba(18, 198, 223, 0.35)',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
+  },
+  tabIconShellActive: {
+    backgroundColor: '#ecfeff',
+    borderColor: colors.white,
+  },
   tabLabel: {
-    color: '#cbd5e1',
+    color: '#e2e8f0',
     fontSize: 10,
     fontWeight: '900',
     lineHeight: 12,

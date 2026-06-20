@@ -7,6 +7,16 @@ import { PrimaryButton } from '../components/PrimaryButton'
 import { createDriverDocumentSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
+const documentPresets = [
+  'Patente',
+  'CQC',
+  'ADR',
+  'Tessera tachigrafica',
+  'Visita medica',
+  'Carta identita',
+  'Permesso di soggiorno',
+]
+
 function formatDocumentDate(value) {
   if (!value) return 'Scadenza non indicata'
   return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
@@ -156,6 +166,17 @@ export function DocumentsScreen({ documents = [], onCreateDocument, onUploadDocu
       </Panel>
 
       <Panel kicker="Nuovo" title="Aggiungi documento">
+        <View style={styles.presetGrid}>
+          {documentPresets.map((preset) => (
+            <Pressable
+              key={preset}
+              onPress={() => setDocumentType(preset)}
+              style={[styles.presetChip, documentType === preset && styles.presetChipActive]}
+            >
+              <Text style={[styles.presetText, documentType === preset && styles.presetTextActive]}>{preset}</Text>
+            </Pressable>
+          ))}
+        </View>
         <TextInput
           onChangeText={setDocumentType}
           placeholder="Tipo documento"
@@ -298,6 +319,34 @@ const styles = StyleSheet.create({
   },
   missingText: {
     color: colors.warning,
+  },
+  presetChip: {
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderColor: colors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 11,
+  },
+  presetChipActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  presetGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  presetText: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  presetTextActive: {
+    color: colors.white,
   },
   readyIcon: {
     backgroundColor: '#dcfce7',

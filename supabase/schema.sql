@@ -164,6 +164,8 @@ create table public.compliance_items (
   reminder_days integer[] not null default array[60, 30, 15, 7],
   owner text,
   status text not null default 'open' check (status in ('open', 'renewing', 'done', 'archived')),
+  file_bucket text not null default 'company-assets',
+  file_path text,
   last_reminder_at timestamptz,
   notes text,
   created_at timestamptz not null default now(),

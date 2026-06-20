@@ -53,12 +53,47 @@ function mapComplianceItem(row = {}) {
     documentNumber: row.document_number ?? '',
     driverId: row.driver_id ?? '',
     dueDate: row.due_date ?? '',
+    fileBucket: row.file_bucket ?? row.fileBucket ?? '',
+    filePath: row.file_path ?? row.filePath ?? '',
     id: row.id,
     scope: row.scope ?? '',
     status: row.status ?? 'open',
     type: row.type ?? 'Scadenza',
     vehicleId: row.vehicle_id ?? '',
   }
+}
+
+function toCompanyVehiclePayload(vehicle, companyId) {
+  return {
+    company_id: companyId,
+    fleet_type: vehicle.fleetType || 'trattore',
+    km: Number(vehicle.km) || 0,
+    model: vehicle.model || null,
+    plate: String(vehicle.plate ?? '').trim().toUpperCase(),
+    status: vehicle.status || 'active',
+    type: vehicle.type || null,
+  }
+}
+
+function toComplianceItemPayload(item, companyId) {
+  const payload = {
+    company_id: companyId,
+    document_number: item.documentNumber || null,
+    driver_id: item.scope === 'driver' ? item.assigneeId : null,
+    due_date: item.dueDate,
+    owner: item.owner || null,
+    scope: item.scope,
+    status: 'open',
+    type: item.type,
+    vehicle_id: item.scope === 'vehicle' ? item.assigneeId : null,
+  }
+
+  if (item.filePath) {
+    payload.file_bucket = companyAssetsBucket
+    payload.file_path = item.filePath
+  }
+
+  return payload
 }
 
 function sanitizeFileName(value = 'file') {
@@ -77,6 +112,26 @@ async function getFileBodyFromUri(uri) {
   }
 
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+}
+
+async function registerCompanyStorageFile({
+  bucket,
+  category = 'other',
+  companyId,
+  filePath,
+  sizeBytes = 0,
+}) {
+  if (!companyId || !filePath) return
+
+  await supabase.rpc('register_company_storage_file', {
+    file_size_bytes: sizeBytes,
+    storage_bucket: bucket,
+    storage_category: category,
+    storage_path: filePath,
+    target_company_id: companyId,
+    target_document_id: null,
+    target_driver_id: null,
+  })
 }
 
 export async function getCurrentSession() {
@@ -710,6 +765,122 @@ export async function createDriverDocument({ documentNumber = '', expiresAt = nu
   })
 
   return { data, error }
+}
+
+export async function createCompanyDriverAccount({ companyId, driver, password }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!apiBaseUrl) {
+    return {
+      data: null,
+      error: { message: 'Configura EXPO_PUBLIC_API_BASE_URL con il sito Netlify.' },
+    }
+  }
+
+  const accessToken = await getAccessToken()
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione azienda scaduta. Fai login.' } }
+  }
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/.netlify/functions/create-driver`, {
+      body: JSON.stringify({ companyId, driver, password }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload.error ?? 'Creazione autista non riuscita.' } }
+    }
+
+    return { data: payload.driver ? mapDriver(payload.driver) : null, error: null }
+  } catch {
+    return {
+      data: null,
+      error: { message: 'Server Camion Chiaro non raggiungibile. Controlla il deploy Netlify.' },
+    }
+  }
+}
+
+export async function createCompanyVehicle({ companyId, vehicle }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .insert(toCompanyVehiclePayload(vehicle, companyId))
+    .select('id, plate, model, type, fleet_type, km, status')
+    .single()
+
+  return { data: data ? mapVehicle(data) : null, error }
+}
+
+export async function createCompanyComplianceItem({ companyId, file = null, item }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
+
+  let filePath = ''
+  let fileBody = null
+
+  if (file?.uri) {
+    const cleanFileName = sanitizeFileName(file.name ?? `scadenza-${Date.now()}`)
+    const subjectId = item.assigneeId || 'azienda'
+    filePath = `${companyId}/compliance/${item.scope}/${subjectId}/${Date.now()}-${cleanFileName}`
+    fileBody = await getFileBodyFromUri(file.uri)
+
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
+      cacheControl: '3600',
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    })
+
+    if (uploadError) return { data: null, error: uploadError }
+  }
+
+  let { data, error } = await supabase
+    .from('compliance_items')
+    .insert(toComplianceItemPayload({ ...item, filePath }, companyId))
+    .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status, file_bucket, file_path')
+    .single()
+
+  if (error?.code === '42703') {
+    if (filePath) {
+      await supabase.storage.from(companyAssetsBucket).remove([filePath])
+      return {
+        data: null,
+        error: { message: 'Manca SQL allegati scadenze. Esegui il file 27_scadenze_file_allegati.sql in Supabase.' },
+      }
+    }
+
+    const fallbackResult = await supabase
+      .from('compliance_items')
+      .insert(toComplianceItemPayload(item, companyId))
+      .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status')
+      .single()
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
+
+  if (error && filePath) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+  }
+
+  if (!error && filePath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'document',
+      companyId,
+      filePath,
+      sizeBytes: fileBody?.byteLength ?? 0,
+    })
+  }
+
+  return { data: data ? mapComplianceItem(data) : null, error }
 }
 
 export async function uploadDriverDocumentFile({ companyId, documentId, driverId, file }) {

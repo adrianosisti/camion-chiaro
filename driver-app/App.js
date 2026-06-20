@@ -19,12 +19,16 @@ import { AuthScreen } from './src/screens/AuthScreen'
 import { ChatScreen } from './src/screens/ChatScreen'
 import { CompanyChatScreen } from './src/screens/CompanyChatScreen'
 import { CompanyHomeScreen } from './src/screens/CompanyHomeScreen'
+import { CompanyManagementScreen } from './src/screens/CompanyManagementScreen'
 import { DocumentsScreen } from './src/screens/DocumentsScreen'
 import { HomeScreen } from './src/screens/HomeScreen'
 import { OperationsScreen } from './src/screens/OperationsScreen'
 import { SettingsScreen } from './src/screens/SettingsScreen'
 import {
   createCompanyAssetSignedUrl,
+  createCompanyComplianceItem,
+  createCompanyDriverAccount,
+  createCompanyVehicle,
   createDriverDocument,
   createFaultReport,
   createVehicleCheck,
@@ -58,6 +62,7 @@ const driverTabs = [
 
 const companyTabs = [
   { id: 'home', icon: 'business-outline', label: 'Home' },
+  { id: 'manage', icon: 'albums-outline', label: 'Anagraf.' },
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat' },
   { id: 'settings', icon: 'settings-outline', label: 'Menu' },
 ]
@@ -702,6 +707,62 @@ export default function App() {
     return true
   }
 
+  async function handleCreateCompanyDriver(payload, password) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+
+    const result = await createCompanyDriverAccount({
+      companyId,
+      driver: payload,
+      password,
+    })
+
+    if (result.error) {
+      Alert.alert('Autista non creato', result.error.message)
+      return null
+    }
+
+    await loadCompanyData({ silent: true })
+    return result.data
+  }
+
+  async function handleCreateCompanyVehicle(payload) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+
+    const result = await createCompanyVehicle({
+      companyId,
+      vehicle: payload,
+    })
+
+    if (result.error) {
+      Alert.alert('Mezzo non creato', result.error.message)
+      return null
+    }
+
+    await loadCompanyData({ silent: true })
+    return result.data
+  }
+
+  async function handleCreateCompanyDeadline(payload, file = null) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+
+    const result = await createCompanyComplianceItem({
+      companyId,
+      file,
+      item: payload,
+    })
+
+    if (result.error) {
+      Alert.alert('Scadenza non creata', result.error.message)
+      return null
+    }
+
+    await loadCompanyData({ silent: true })
+    return result.data
+  }
+
   const activeScreen = useMemo(() => {
     if (accountType === 'company') {
       if (activeTab === 'chat') {
@@ -743,11 +804,23 @@ export default function App() {
         )
       }
 
+      if (activeTab === 'manage') {
+        return (
+          <CompanyManagementScreen
+            context={companyContext}
+            onCreateDeadline={handleCreateCompanyDeadline}
+            onCreateDriver={handleCreateCompanyDriver}
+            onCreateVehicle={handleCreateCompanyVehicle}
+          />
+        )
+      }
+
       return (
         <CompanyHomeScreen
           context={companyContext}
           isRefreshing={isRefreshing}
           logoUrl={logoUrl}
+          onOpenManagement={() => setActiveTab('manage')}
           onOpenSettings={() => setActiveTab('settings')}
           onRefresh={() => loadCompanyData()}
         />

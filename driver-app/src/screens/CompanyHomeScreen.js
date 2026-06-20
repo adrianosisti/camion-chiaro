@@ -38,6 +38,7 @@ export function CompanyHomeScreen({
   context,
   isRefreshing = false,
   logoUrl,
+  onOpenManagement,
   onOpenSettings,
   onRefresh,
 }) {
@@ -79,13 +80,15 @@ export function CompanyHomeScreen({
       <Panel
         kicker="Flotta"
         right={
-          <Pressable onPress={onRefresh} style={styles.smallButton}>
-            <Text style={styles.smallButtonText}>{isRefreshing ? '...' : 'Aggiorna'}</Text>
+          <Pressable onPress={onOpenManagement} style={styles.smallButton}>
+            <Text style={styles.smallButtonText}>Gestisci</Text>
           </Pressable>
         }
         title={`${drivers.length} autisti · ${vehicles.length} mezzi`}
       >
-        <Text style={styles.helper}>Vista rapida per il titolare quando apre Camion Chiaro da telefono.</Text>
+        <Text style={styles.helper}>
+          {isRefreshing ? 'Aggiornamento dati...' : 'Crea autisti, mezzi e scadenze anche da telefono.'}
+        </Text>
       </Panel>
 
       <Panel kicker="Guasti aperti" title={openFaults.length ? 'Da gestire' : 'Nessun guasto aperto'}>

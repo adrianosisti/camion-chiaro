@@ -146,6 +146,8 @@ export async function handler(event) {
   const messageBody = String(body.body ?? 'Nuovo aggiornamento disponibile.').slice(0, 240)
   const url = String(body.url ?? '/')
   const tag = String(body.tag ?? `camion-chiaro-${Date.now()}`)
+  const notificationType = String(body.notificationType ?? '').slice(0, 40)
+  const threadId = String(body.threadId ?? '').slice(0, 120)
 
   if (!companyId || !['company', 'driver'].includes(targetRole)) {
     return jsonResponse(400, { error: 'Azienda o destinatario non valido.' })
@@ -222,7 +224,9 @@ export async function handler(event) {
 
   const payload = JSON.stringify({
     body: messageBody,
+    notificationType,
     tag,
+    threadId,
     title,
     url,
   })

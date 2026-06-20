@@ -1,5 +1,36 @@
 const CACHE_NAME = 'camion-chiaro-v2'
 const CORE_ASSETS = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest']
+const activeChatClients = new Map()
+
+async function shouldSuppressNotification(payload) {
+  if (payload.notificationType !== 'chat' || !payload.threadId) return false
+
+  const clientList = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' })
+
+  return clientList.some((client) => {
+    const activeChat = activeChatClients.get(client.id)
+    const isVisible = client.visibilityState === 'visible'
+
+    return isVisible && activeChat?.threadId === payload.threadId
+  })
+}
+
+async function showPushNotification(payload) {
+  if (await shouldSuppressNotification(payload)) return
+
+  const title = payload.title || 'Camion Chiaro'
+  const options = {
+    badge: '/favicon.svg',
+    body: payload.body || 'Nuova notifica disponibile.',
+    data: {
+      url: payload.url || '/',
+    },
+    icon: '/favicon.svg',
+    tag: payload.tag || `camion-chiaro-${Date.now()}`,
+  }
+
+  await self.registration.showNotification(title, options)
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -54,6 +85,22 @@ self.addEventListener('fetch', (event) => {
   )
 })
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'camion-chiaro-active-chat' || !event.source?.id) return
+
+  const threadId = event.data.threadId || ''
+
+  if (!threadId) {
+    activeChatClients.delete(event.source.id)
+    return
+  }
+
+  activeChatClients.set(event.source.id, {
+    threadId,
+    updatedAt: Date.now(),
+  })
+})
+
 self.addEventListener('push', (event) => {
   const payload = (() => {
     try {
@@ -65,18 +112,7 @@ self.addEventListener('push', (event) => {
     }
   })()
 
-  const title = payload.title || 'Camion Chiaro'
-  const options = {
-    badge: '/favicon.svg',
-    body: payload.body || 'Nuova notifica disponibile.',
-    data: {
-      url: payload.url || '/',
-    },
-    icon: '/favicon.svg',
-    tag: payload.tag || `camion-chiaro-${Date.now()}`,
-  }
-
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(showPushNotification(payload))
 })
 
 self.addEventListener('notificationclick', (event) => {

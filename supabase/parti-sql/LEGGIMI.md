@@ -116,3 +116,19 @@ Eseguilo dopo `24_dati_fatturazione_stripe.sql`.
 
 Il file `26_fix_conteggio_storage_reale.sql` aggiorna il riepilogo spazio leggendo anche i file reali nello Storage Supabase.
 Eseguilo dopo `25_storage_file_e_limiti.sql` se il pannello "Spazio file" resta a zero.
+
+## App nativa e struttura aziendale avanzata
+
+Il file `30_native_push_tokens.sql` abilita le notifiche push dell'app nativa iOS/Android.
+Eseguilo dopo aver attivato le notifiche native nella nuova app.
+
+Il file `31_personale_reparti_gruppi.sql` prepara la piattaforma per:
+
+- autisti, carrellisti/magazzino, ufficio e responsabili;
+- muletti e attrezzature di magazzino;
+- check carrellisti su batteria/carica, acqua, forche, gomme, freni, clacson, perdite e danni;
+- documenti collegati ai mezzi della flotta;
+- chat di gruppo per autisti, magazzino, ufficio e tutta l'azienda;
+- dettaglio preciso di chi ha letto e chi non ha letto ogni messaggio di gruppo.
+
+Eseguilo dopo `30_native_push_tokens.sql`, quando vuoi attivare la nuova struttura reparti/gruppi.

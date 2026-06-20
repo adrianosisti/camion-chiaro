@@ -24,6 +24,17 @@ function getVehiclePlate(vehicles, vehicleId) {
   return vehicles.find((vehicle) => vehicle.id === vehicleId)?.plate ?? 'Mezzo'
 }
 
+function getVehicleFleetLabel(value = '') {
+  const labels = {
+    furgone: 'Furgone',
+    motrice: 'Motrice',
+    semirimorchio: 'Semirimorchio',
+    trattore: 'Trattore',
+  }
+
+  return labels[value] ?? 'Mezzo'
+}
+
 function getVehicleName(vehicles, vehicleId) {
   const vehicle = vehicles.find((currentVehicle) => currentVehicle.id === vehicleId)
   if (!vehicle) return 'Mezzo non indicato'
@@ -72,15 +83,43 @@ function getDeadlineTone(item) {
 }
 
 function getDeadlineMeta(item, drivers, vehicles, language) {
-  const subject = item.scope === 'driver'
-    ? getDriverName(drivers, item.driverId)
-    : item.scope === 'vehicle'
-      ? getVehiclePlate(vehicles, item.vehicleId)
-      : 'Azienda'
+  const subject = getDeadlineSubject(item, drivers, vehicles)
   const days = getDeadlineDays(item.dueDate)
   const when = days < 0 ? `${Math.abs(days)} gg fa` : days === 0 ? 'oggi' : `tra ${days} gg`
 
   return `${subject} · ${formatDate(item.dueDate, language)} · ${when}`
+}
+
+function getDeadlineSubject(item, drivers, vehicles) {
+  if (item.scope === 'driver') {
+    const driver = drivers.find((currentDriver) => currentDriver.id === item.driverId)
+    return `Persona · ${driver?.name ?? 'Autista'}`
+  }
+
+  if (item.scope === 'vehicle') {
+    const vehicle = vehicles.find((currentVehicle) => currentVehicle.id === item.vehicleId)
+    return `${getVehicleFleetLabel(vehicle?.fleetType)} · ${vehicle?.plate ?? 'Mezzo'}`
+  }
+
+  if (item.scope === 'person') return 'Persona aziendale'
+  if (item.scope === 'asset') return 'Attrezzatura'
+  return 'Azienda'
+}
+
+function getDeadlineDetail(item, drivers, vehicles) {
+  if (item.scope === 'driver') {
+    const driver = drivers.find((currentDriver) => currentDriver.id === item.driverId)
+    return driver?.role ?? 'Autista'
+  }
+
+  if (item.scope === 'vehicle') {
+    const vehicle = vehicles.find((currentVehicle) => currentVehicle.id === item.vehicleId)
+    return [vehicle?.model, vehicle?.type].filter(Boolean).join(' · ') || 'Dettaglio mezzo non indicato'
+  }
+
+  if (item.scope === 'person') return item.owner || 'Persona aziendale'
+  if (item.scope === 'asset') return item.owner || 'Attrezzatura aziendale'
+  return item.owner || 'Documento aziendale'
 }
 
 const dailyPhrases = [
@@ -102,6 +141,45 @@ function DetailRow({ label, value }) {
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value || '-'}</Text>
     </View>
+  )
+}
+
+function DeadlineDetailPanel({ detail, drivers, language = 'it', onClose, onOpenArchive, vehicles }) {
+  if (!detail) return null
+
+  const days = getDeadlineDays(detail.dueDate)
+  const status = days < 0 ? `Scaduta da ${Math.abs(days)} giorni` : days === 0 ? 'Scade oggi' : `Scade tra ${days} giorni`
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} visible>
+      <View style={styles.detailScreen}>
+        <View style={styles.detailHeader}>
+          <Pressable onPress={onClose} style={styles.detailCloseButton}>
+            <Text style={styles.detailCloseText}>‹</Text>
+          </Pressable>
+          <View style={styles.listCopy}>
+            <Text style={styles.detailKicker}>Scadenza</Text>
+            <Text numberOfLines={1} style={styles.detailHeaderTitle}>{detail.type}</Text>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.detailContent}>
+          <Text style={styles.detailTitle}>{detail.type}</Text>
+          <DetailRow label="Soggetto" value={getDeadlineSubject(detail, drivers, vehicles)} />
+          <DetailRow label="Dettaglio" value={getDeadlineDetail(detail, drivers, vehicles)} />
+          <DetailRow label="Data scadenza" value={formatDate(detail.dueDate, language)} />
+          <DetailRow label="Stato" value={status} />
+          <DetailRow label="Numero documento" value={detail.documentNumber} />
+          <DetailRow label="Responsabile" value={detail.owner} />
+          <DetailRow label="Ambito" value={detail.scope === 'driver' ? 'Persona/autista' : detail.scope === 'vehicle' ? 'Mezzo' : detail.scope === 'company' ? 'Azienda' : detail.scope} />
+          {detail.filePath ? <DetailRow label="Allegato" value="Presente" /> : null}
+
+          <Pressable onPress={onOpenArchive} style={styles.resolveButton}>
+            <Text style={styles.resolveButtonText}>Apri archivio scadenze</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    </Modal>
   )
 }
 
@@ -200,12 +278,12 @@ export function CompanyHomeScreen({
   language = 'it',
   logoUrl,
   onOpenManagement,
-  onOpenSettings,
   onRefresh,
   onResolveCheck,
   onResolveFault,
 }) {
   const [selectedDetail, setSelectedDetail] = useState(null)
+  const [selectedDeadline, setSelectedDeadline] = useState(null)
   const [isResolvingDetail, setIsResolvingDetail] = useState(false)
   const company = context?.companyProfile ?? {}
   const drivers = context?.drivers ?? []
@@ -253,9 +331,6 @@ export function CompanyHomeScreen({
             <Text numberOfLines={1} style={styles.companyName}>{company.name ?? 'Azienda'}</Text>
             <Text style={styles.companyMeta}>{t(language, 'companyDashboard')}</Text>
           </View>
-          <Pressable onPress={onOpenSettings} style={styles.settingsButton}>
-            <Text style={styles.settingsText}>{t(language, 'companySettings')}</Text>
-          </Pressable>
         </View>
         <View style={styles.metricRow}>
           <MetricPill
@@ -379,7 +454,7 @@ export function CompanyHomeScreen({
         title={nextDeadlines.length ? 'Prossime pratiche' : 'Nessuna pratica'}
       >
         {nextDeadlines.map((item) => (
-          <Pressable key={item.id} onPress={() => onOpenManagement?.('deadlines')} style={styles.deadlineRow}>
+          <Pressable key={item.id} onPress={() => setSelectedDeadline(item)} style={styles.deadlineRow}>
             <View style={[styles.deadlineDot, styles[`${getDeadlineTone(item)}Dot`]]} />
             <View style={styles.deadlineCopy}>
               <Text style={styles.deadlineTitle}>{item.type}</Text>
@@ -398,6 +473,17 @@ export function CompanyHomeScreen({
         language={language}
         onClose={() => setSelectedDetail(null)}
         onResolve={resolveSelectedDetail}
+        vehicles={vehicles}
+      />
+      <DeadlineDetailPanel
+        detail={selectedDeadline}
+        drivers={drivers}
+        language={language}
+        onClose={() => setSelectedDeadline(null)}
+        onOpenArchive={() => {
+          setSelectedDeadline(null)
+          onOpenManagement?.('deadlines')
+        }}
         vehicles={vehicles}
       />
 

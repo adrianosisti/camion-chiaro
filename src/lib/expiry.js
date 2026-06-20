@@ -36,19 +36,36 @@ export function formatDate(date) {
   }).format(new Date(`${date}T00:00:00`))
 }
 
+function getVehicleFleetLabel(value = '') {
+  const labels = {
+    furgone: 'Furgone',
+    motrice: 'Motrice',
+    semirimorchio: 'Semirimorchio',
+    trattore: 'Trattore',
+  }
+
+  return labels[value] ?? 'Mezzo'
+}
+
 export function decorateCompliance(items, drivers, vehicles, now = new Date()) {
   return items
     .map((item) => {
       const driver = drivers.find((entry) => entry.id === item.driverId)
       const vehicle = vehicles.find((entry) => entry.id === item.vehicleId)
       const urgency = getUrgency(item, now)
+      const vehicleLabel = getVehicleFleetLabel(vehicle?.fleetType)
 
       return {
         ...item,
         driver,
         vehicle,
-        assignee: driver?.name ?? vehicle?.plate ?? 'Azienda',
-        detail: driver ? driver.role : vehicle ? `${vehicle.model} · ${vehicle.type}` : 'Documento aziendale',
+        assignee: driver ? `Persona · ${driver.name}` : vehicle ? `${vehicleLabel} · ${vehicle.plate}` : 'Azienda',
+        detail: driver
+          ? driver.role || 'Autista'
+          : vehicle
+            ? [vehicle.model, vehicle.type].filter(Boolean).join(' · ') || 'Dettaglio mezzo non indicato'
+            : 'Documento aziendale',
+        subjectKind: driver ? 'Persona' : vehicle ? vehicleLabel : 'Azienda',
         urgency,
       }
     })

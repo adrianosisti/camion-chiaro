@@ -15,6 +15,7 @@ import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check.mjs'
 import Copy from 'lucide-react/dist/esm/icons/copy.mjs'
 import Clock3 from 'lucide-react/dist/esm/icons/clock-3.mjs'
 import Download from 'lucide-react/dist/esm/icons/download.mjs'
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link.mjs'
 import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
 import Filter from 'lucide-react/dist/esm/icons/filter.mjs'
 import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
@@ -4121,6 +4122,7 @@ function App() {
   const [activeView, setActiveView] = useState(getInitialActiveView)
   const [recordsTab, setRecordsTab] = useState(getInitialRecordsTab)
   const [activeFilter, setActiveFilter] = useState('all')
+  const [selectedDeadline, setSelectedDeadline] = useState(null)
   const [operationsFilter, setOperationsFilter] = useState('inbox')
   const [query, setQuery] = useState('')
   const [driversSyncStatus, setDriversSyncStatus] = useState('')
@@ -6478,8 +6480,21 @@ function App() {
                   filteredItems={filteredItems}
                   onClose={closeItem}
                   onFilter={setActiveFilter}
+                  onOpenDetail={setSelectedDeadline}
                   onReminder={sendReminder}
                   onRenew={markRenewing}
+                />
+                <DeadlineDetailModal
+                  item={selectedDeadline}
+                  onClose={() => setSelectedDeadline(null)}
+                  onMarkDone={(itemId) => {
+                    closeItem(itemId)
+                    setSelectedDeadline(null)
+                  }}
+                  onRenew={(itemId) => {
+                    markRenewing(itemId)
+                    setSelectedDeadline(null)
+                  }}
                 />
                 <FleetAndForms
                   driverRecords={driverRecords}
@@ -11048,7 +11063,7 @@ function FormValidationAlert({ message }) {
   )
 }
 
-function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onReminder, onRenew }) {
+function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onOpenDetail, onReminder, onRenew }) {
   const { t } = useI18n()
 
   return (
@@ -11082,6 +11097,7 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onRem
             item={item}
             key={item.id}
             onClose={() => onClose(item.id)}
+            onOpen={() => onOpenDetail?.(item)}
             onReminder={() => onReminder(item.id)}
             onRenew={() => onRenew(item.id)}
           />
@@ -11100,7 +11116,7 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onRem
   )
 }
 
-function DeadlineRow({ item, onClose, onReminder, onRenew }) {
+function DeadlineRow({ item, onClose, onOpen, onReminder, onRenew }) {
   const { t } = useI18n()
   const isDone = item.status === 'done'
   const isRenewing = item.status === 'renewing'
@@ -11127,6 +11143,10 @@ function DeadlineRow({ item, onClose, onReminder, onRenew }) {
         </span>
       </div>
       <div className="deadline-actions">
+        <button className="small-button" onClick={onOpen} type="button">
+          <ExternalLink size={15} />
+          Apri
+        </button>
         <button className="small-button" onClick={onReminder} type="button">
           <Send size={15} />
           {t('deadline.inApp')}
@@ -11137,6 +11157,74 @@ function DeadlineRow({ item, onClose, onReminder, onRenew }) {
         </button>
       </div>
     </article>
+  )
+}
+
+function DeadlineDetailModal({ item, onClose, onMarkDone, onRenew }) {
+  const { t } = useI18n()
+
+  if (!item) return null
+
+  const isDone = item.status === 'done'
+  const subjectType = item.subjectKind ?? (item.scope === 'driver' ? 'Persona' : item.scope === 'vehicle' ? 'Mezzo' : 'Azienda')
+  const daysLabel =
+    item.urgency.days < 0
+      ? t('deadline.daysAgo', { count: Math.abs(item.urgency.days) })
+      : item.urgency.days === 0
+        ? 'Oggi'
+        : t('deadline.days', { count: item.urgency.days })
+
+  return (
+    <div className="operation-modal-backdrop" onClick={onClose} role="presentation">
+      <section
+        aria-label="Dettaglio scadenza"
+        aria-modal="true"
+        className="panel operation-detail-panel operation-modal deadline-detail-panel"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">Scadenza</p>
+            <h2>{item.type}</h2>
+          </div>
+          <button aria-label={t('common.close')} className="icon-button operation-modal-close" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="operation-detail-body">
+          <DetailLine label="Ambito" value={subjectType} />
+          <DetailLine label={t('deadline.subject')} value={item.assignee} />
+          <DetailLine label="Dettaglio" value={item.detail} />
+          <DetailLine label={t('deadline.dueDate')} value={formatDate(item.dueDate)} />
+          <DetailLine label={t('common.status')} value={`${getUrgencyLabel(item.urgency, t)} · ${daysLabel}`} />
+          <DetailLine label="Numero documento" value={item.documentNumber} />
+          <DetailLine label={t('deadline.owner')} value={item.owner} />
+          <DetailLine label="File" value={item.filePath ? 'Allegato presente' : 'Nessun allegato'} />
+        </div>
+
+        <div className="operation-detail-actions">
+          {isDone ? (
+            <button className="small-button" onClick={() => onRenew?.(item.id)} type="button">
+              <Clock3 size={15} />
+              {t('deadline.renew')}
+            </button>
+          ) : (
+            <>
+              <button className="small-button" onClick={() => onRenew?.(item.id)} type="button">
+                <Clock3 size={15} />
+                {t('deadline.renew')}
+              </button>
+              <button className="small-button danger-action" onClick={() => onMarkDone?.(item.id)} type="button">
+                <CheckCircle2 size={15} />
+                {t('deadline.close')}
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+    </div>
   )
 }
 

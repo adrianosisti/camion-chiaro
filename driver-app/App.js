@@ -187,8 +187,11 @@ export default function App() {
     ? unreadDriverMessages
     : activeTab === 'chat' ? 0 : unreadCompanyMessages
 
-  function clearDriverUnreadMessages() {
-    const readWatermark = Date.now()
+  function clearDriverUnreadMessages(messages = chatMessages) {
+    const latestCompanyMessageTime = messages
+      .filter((message) => message.senderRole === 'company')
+      .reduce((latestTime, message) => Math.max(latestTime, getMessageTime(message)), 0)
+    const readWatermark = Math.max(Date.now(), latestCompanyMessageTime + 1)
     driverChatReadVersionRef.current += 1
     setDriverChatReadWatermark(readWatermark)
 
@@ -239,7 +242,7 @@ export default function App() {
         const unreadCount = countUnreadMessagesForRole(nextMessages, 'driver')
         if (unreadCount) {
           nextMessages = markMessagesReadLocally(nextMessages, 'driver')
-          clearDriverUnreadMessages()
+          clearDriverUnreadMessages(nextMessages)
         }
 
         const readResult = await markChatMessagesRead(chatResult.data.thread.id, 'driver')
@@ -251,7 +254,7 @@ export default function App() {
       setChatMessages(nextMessages)
       setChatThread(chatResult.data.thread)
       if (driverChatReadVersionRef.current !== requestReadVersion || activeTabRef.current === 'chat') {
-        clearDriverUnreadMessages()
+        clearDriverUnreadMessages(nextMessages)
       }
       return true
     }
@@ -513,8 +516,9 @@ export default function App() {
     const unreadCount = countUnreadMessagesForRole(chatMessages, 'driver')
     if (!unreadCount) return
 
-    clearDriverUnreadMessages()
-    setChatMessages((currentMessages) => markMessagesReadLocally(currentMessages, 'driver'))
+    const nextMessages = markMessagesReadLocally(chatMessages, 'driver')
+    clearDriverUnreadMessages(nextMessages)
+    setChatMessages(nextMessages)
     void markChatMessagesRead(chatThread.id, 'driver').then((readResult) => {
       if (!readResult?.error && readResult?.data?.length) {
         setChatMessages((currentMessages) => mergeChatMessageUpdates(currentMessages, readResult.data))

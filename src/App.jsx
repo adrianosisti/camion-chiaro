@@ -9846,7 +9846,7 @@ function ChatQuickCameraButton({ disabled = false, onFile, t }) {
   )
 }
 
-function ChatAudioRecorder({ disabled = false, onRecord, t }) {
+function ChatAudioRecorder({ disabled = false, onRecord, onRecordingChange, t }) {
   const cancelThreshold = -56
   const [isRecording, setIsRecording] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
@@ -9888,6 +9888,13 @@ function ChatAudioRecorder({ disabled = false, onRecord, t }) {
       cleanupRecorder()
     }
   }, [cleanupRecorder])
+
+  useEffect(() => {
+    onRecordingChange?.(isRecording)
+    return () => {
+      if (isRecording) onRecordingChange?.(false)
+    }
+  }, [isRecording, onRecordingChange])
 
   async function startRecording() {
     if (disabled || isRecording) return
@@ -10182,6 +10189,7 @@ function ChatWorkspace({
   const [selectedDriverId, setSelectedDriverId] = useState('')
   const [messageBody, setMessageBody] = useState('')
   const [attachmentFile, setAttachmentFile] = useState(null)
+  const [isCompanyRecordingAudio, setIsCompanyRecordingAudio] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [isCompanyChatOpen, setIsCompanyChatOpen] = useState(false)
   const [replyToMessage, setReplyToMessage] = useState(null)
@@ -10355,23 +10363,31 @@ function ChatWorkspace({
     event.preventDefault()
     if (!selectedDriver || isSending || (!messageBody.trim() && !attachmentFile)) return
 
+    const sentBody = messageBody
+    const sentAttachmentFile = attachmentFile
+    const sentReplyToMessage = replyToMessage
+
+    setMessageBody('')
+    setAttachmentFile(null)
+    setReplyToMessage(null)
+    signalCompanyTyping('')
     setIsSending(true)
     const sent = await onSendMessage?.({
-      attachmentFile,
-      body: messageBody,
+      attachmentFile: sentAttachmentFile,
+      body: sentBody,
       driverId: selectedDriver.id,
       senderRole: 'company',
       threadId: selectedThread?.id,
-      replyToMessage,
+      replyToMessage: sentReplyToMessage,
     })
     setIsSending(false)
 
     if (sent) {
       chatSound.playSound('outgoing')
-      signalCompanyTyping('')
-      setMessageBody('')
-      setAttachmentFile(null)
-      setReplyToMessage(null)
+    } else {
+      setMessageBody(sentBody)
+      setAttachmentFile(sentAttachmentFile)
+      setReplyToMessage(sentReplyToMessage)
     }
   }
 
@@ -10599,23 +10615,27 @@ function ChatWorkspace({
         <form className="chat-compose" onSubmit={handleSubmit}>
           <ChatReplyPreview onCancel={() => setReplyToMessage(null)} reply={replyToMessage} t={t} />
           <ChatAttachmentDraft file={attachmentFile} onRemove={() => setAttachmentFile(null)} t={t} />
-          <div className="chat-compose-bar">
-            <ChatAttachmentMenu disabled={!selectedDriver} onFile={handleAttachmentChange} t={t} />
-            <textarea
-              ref={composeTextareaRef}
-              className="chat-compose-input"
-              disabled={!selectedDriver}
-              onKeyDown={handleComposeKeyDown}
-              onChange={(event) => {
-                setMessageBody(event.target.value)
-                signalCompanyTyping(event.target.value)
-              }}
-              placeholder={selectedDriver ? t('chat.writePlaceholder') : t('chat.selectDriver')}
-              rows={1}
-              value={messageBody}
-            />
+          <div className={isCompanyRecordingAudio ? 'chat-compose-bar is-recording-audio' : 'chat-compose-bar'}>
+            {!isCompanyRecordingAudio && (
+              <ChatAttachmentMenu disabled={!selectedDriver} onFile={handleAttachmentChange} t={t} />
+            )}
+            {!isCompanyRecordingAudio && (
+              <textarea
+                ref={composeTextareaRef}
+                className="chat-compose-input"
+                disabled={!selectedDriver}
+                onKeyDown={handleComposeKeyDown}
+                onChange={(event) => {
+                  setMessageBody(event.target.value)
+                  signalCompanyTyping(event.target.value)
+                }}
+                placeholder={selectedDriver ? t('chat.writePlaceholder') : t('chat.selectDriver')}
+                rows={1}
+                value={messageBody}
+              />
+            )}
             <span className="chat-compose-tail">
-              {!hasCompanyComposerPayload && (
+              {!hasCompanyComposerPayload && !isCompanyRecordingAudio && (
                 <ChatQuickCameraButton disabled={!selectedDriver || isSending} onFile={handleAttachmentChange} t={t} />
               )}
               {hasCompanyComposerPayload ? (
@@ -10629,7 +10649,12 @@ function ChatWorkspace({
                   <span className="sr-only">{isSending ? t('chat.sending') : t('chat.send')}</span>
                 </button>
               ) : (
-                <ChatAudioRecorder disabled={!selectedDriver || isSending} onRecord={setAttachmentFile} t={t} />
+                <ChatAudioRecorder
+                  disabled={!selectedDriver || isSending}
+                  onRecord={setAttachmentFile}
+                  onRecordingChange={setIsCompanyRecordingAudio}
+                  t={t}
+                />
               )}
             </span>
           </div>
@@ -12139,6 +12164,7 @@ function DriverChatScreen({
     attachmentFile: null,
     body: '',
   })
+  const [isDriverRecordingAudio, setIsDriverRecordingAudio] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [replyToMessage, setReplyToMessage] = useState(null)
   const [copiedMessageId, setCopiedMessageId] = useState('')
@@ -12233,12 +12259,18 @@ function DriverChatScreen({
     event.preventDefault()
     if (!driver || (!chatForm.body.trim() && !chatForm.attachmentFile)) return
 
+    const sentChatForm = chatForm
+    const sentReplyToMessage = replyToMessage
+
+    setChatForm({ attachmentFile: null, body: '' })
+    setReplyToMessage(null)
+    signalDriverTyping('')
     setIsSending(true)
     const sent = await onSendChatMessage?.({
-      attachmentFile: chatForm.attachmentFile,
-      body: chatForm.body,
+      attachmentFile: sentChatForm.attachmentFile,
+      body: sentChatForm.body,
       driverId: driver.id,
-      replyToMessage,
+      replyToMessage: sentReplyToMessage,
       senderRole: 'driver',
       threadId: thread?.id,
     })
@@ -12246,9 +12278,9 @@ function DriverChatScreen({
 
     if (sent) {
       chatSound.playSound('outgoing')
-      signalDriverTyping('')
-      setReplyToMessage(null)
-      setChatForm({ attachmentFile: null, body: '' })
+    } else {
+      setChatForm(sentChatForm)
+      setReplyToMessage(sentReplyToMessage)
     }
   }
 
@@ -12390,21 +12422,23 @@ function DriverChatScreen({
           onRemove={() => setChatForm((currentForm) => ({ ...currentForm, attachmentFile: null }))}
           t={t}
         />
-        <div className="chat-compose-bar driver-chat-screen-actions">
-          <ChatAttachmentMenu onFile={handleAttachmentFile} t={t} />
-          <textarea
-            ref={composeTextareaRef}
-            className="chat-compose-input"
-            onChange={(event) => {
-              setChatForm((currentForm) => ({ ...currentForm, body: event.target.value }))
-              signalDriverTyping(event.target.value)
-            }}
-            placeholder={t('chat.messagePlaceholder')}
-            rows={1}
-            value={chatForm.body}
-          />
+        <div className={isDriverRecordingAudio ? 'chat-compose-bar driver-chat-screen-actions is-recording-audio' : 'chat-compose-bar driver-chat-screen-actions'}>
+          {!isDriverRecordingAudio && <ChatAttachmentMenu onFile={handleAttachmentFile} t={t} />}
+          {!isDriverRecordingAudio && (
+            <textarea
+              ref={composeTextareaRef}
+              className="chat-compose-input"
+              onChange={(event) => {
+                setChatForm((currentForm) => ({ ...currentForm, body: event.target.value }))
+                signalDriverTyping(event.target.value)
+              }}
+              placeholder={t('chat.messagePlaceholder')}
+              rows={1}
+              value={chatForm.body}
+            />
+          )}
           <span className="chat-compose-tail">
-            {!hasDriverComposerPayload && (
+            {!hasDriverComposerPayload && !isDriverRecordingAudio && (
               <ChatQuickCameraButton disabled={isSending} onFile={handleAttachmentFile} t={t} />
             )}
             {hasDriverComposerPayload ? (
@@ -12418,7 +12452,12 @@ function DriverChatScreen({
                 <span className="sr-only">{isSending ? t('chat.sending') : t('chat.send')}</span>
               </button>
             ) : (
-              <ChatAudioRecorder disabled={isSending} onRecord={(file) => setChatForm((currentForm) => ({ ...currentForm, attachmentFile: file }))} t={t} />
+              <ChatAudioRecorder
+                disabled={isSending}
+                onRecord={(file) => setChatForm((currentForm) => ({ ...currentForm, attachmentFile: file }))}
+                onRecordingChange={setIsDriverRecordingAudio}
+                t={t}
+              />
             )}
           </span>
         </div>

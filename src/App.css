@@ -3415,6 +3415,10 @@
   min-width: 0;
 }
 
+.chat-compose-bar.is-recording-audio {
+  align-items: center;
+}
+
 .chat-compose-input {
   width: 100%;
   min-width: 0;
@@ -3442,6 +3446,10 @@
   align-items: flex-end;
   gap: 7px;
   flex: 0 0 auto;
+}
+
+.chat-compose-bar.is-recording-audio .chat-compose-tail {
+  flex: 1 1 auto;
 }
 
 .chat-send-button {

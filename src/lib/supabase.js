@@ -1235,6 +1235,33 @@ export async function markChatMessagesRead(threadId, readerRole) {
     return { data: null, error: null }
   }
 
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (accessToken) {
+    try {
+      const response = await fetch('/.netlify/functions/mark-chat-read', {
+        body: JSON.stringify({ readerRole, threadId }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      })
+      const payload = await response.json().catch(() => ({}))
+
+      if (response.ok) {
+        return { data: payload.messages ?? [], error: null }
+      }
+
+      if (response.status !== 404) {
+        return { data: null, error: { message: payload.error ?? 'Lettura chat non aggiornata.' } }
+      }
+    } catch {
+      // Fall back to the direct client update below for local/offline development.
+    }
+  }
+
   const timestampColumn = readerRole === 'company' ? 'read_by_company_at' : 'read_by_driver_at'
   const senderRole = readerRole === 'company' ? 'driver' : 'company'
   let { data, error } = await supabase

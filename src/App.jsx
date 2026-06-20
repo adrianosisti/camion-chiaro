@@ -4009,6 +4009,35 @@ function upsertRecordById(records, nextRecord) {
   return [...records, nextRecord]
 }
 
+function preserveChatReadState(currentMessages, nextMessages) {
+  const currentById = new Map(currentMessages.map((message) => [message.id, message]))
+
+  return nextMessages.map((message) => {
+    const currentMessage = currentById.get(message.id)
+    if (!currentMessage) return message
+
+    return {
+      ...message,
+      readByCompanyAt: message.readByCompanyAt ?? currentMessage.readByCompanyAt,
+      readByDriverAt: message.readByDriverAt ?? currentMessage.readByDriverAt,
+    }
+  })
+}
+
+function upsertChatMessageRecord(messages, nextMessage) {
+  if (!nextMessage?.id) return messages
+  const currentMessage = messages.find((message) => message.id === nextMessage.id)
+  const safeNextMessage = currentMessage
+    ? {
+        ...nextMessage,
+        readByCompanyAt: nextMessage.readByCompanyAt ?? currentMessage.readByCompanyAt,
+        readByDriverAt: nextMessage.readByDriverAt ?? currentMessage.readByDriverAt,
+      }
+    : nextMessage
+
+  return upsertRecordById(messages, safeNextMessage)
+}
+
 function startChatBottomScroll(scrollToBottom, listElement) {
   if (typeof window === 'undefined') return () => {}
 
@@ -4786,7 +4815,9 @@ function App() {
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
-      if (chatMessagesResult.data) setChatMessageRecords(chatMessagesResult.data)
+      if (chatMessagesResult.data) {
+        setChatMessageRecords((currentMessages) => preserveChatReadState(currentMessages, chatMessagesResult.data))
+      }
       if (storageSummaryResult.data) setCompanyStorageSummary(storageSummaryResult.data)
       setDriversSyncStatus('Dati Supabase caricati.')
       setDocumentsSyncStatus('Documenti Supabase caricati.')
@@ -4841,7 +4872,9 @@ function App() {
           if (!isMounted) return
 
           if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
-          if (chatMessagesResult.data) setChatMessageRecords(chatMessagesResult.data)
+          if (chatMessagesResult.data) {
+            setChatMessageRecords((currentMessages) => preserveChatReadState(currentMessages, chatMessagesResult.data))
+          }
           if (storageSummaryResult.data) setCompanyStorageSummary(storageSummaryResult.data)
           setChatSyncStatus(
             chatThreadsResult.error || chatMessagesResult.error
@@ -4910,7 +4943,9 @@ function App() {
       if (!isMounted) return
 
       if (threadsResult.data) setChatThreadRecords(threadsResult.data)
-      if (messagesResult.data) setChatMessageRecords(messagesResult.data)
+      if (messagesResult.data) {
+        setChatMessageRecords((currentMessages) => preserveChatReadState(currentMessages, messagesResult.data))
+      }
     }
 
     async function refreshDriverDocuments() {
@@ -4935,7 +4970,7 @@ function App() {
     subscribeToChatMessages(activeCompanyId, (message, payload) => {
       if (!isMounted) return
 
-      setChatMessageRecords((currentMessages) => upsertRecordById(currentMessages, message))
+      setChatMessageRecords((currentMessages) => upsertChatMessageRecord(currentMessages, message))
       if (payload?.eventType === 'INSERT') {
         if (session?.role === 'company' && message.senderRole === 'driver') {
           setChatSyncStatus('Nuovo messaggio autista.')
@@ -5788,7 +5823,7 @@ function App() {
         return false
       }
 
-      setChatMessageRecords((currentMessages) => upsertRecordById(currentMessages, messageResult.data))
+      setChatMessageRecords((currentMessages) => upsertChatMessageRecord(currentMessages, messageResult.data))
       void refreshStorageSummary(messageCompanyId)
       setChatThreadRecords((currentThreads) =>
         upsertRecordById(currentThreads, {
@@ -5900,7 +5935,7 @@ function App() {
 
       if (result.data) {
         setChatMessageRecords((currentMessages) =>
-          result.data.reduce((messages, message) => upsertRecordById(messages, message), currentMessages),
+          result.data.reduce((messages, message) => upsertChatMessageRecord(messages, message), currentMessages),
         )
       }
     }
@@ -5939,7 +5974,7 @@ function App() {
       }
 
       if (result.data) {
-        setChatMessageRecords((currentMessages) => upsertRecordById(currentMessages, result.data))
+      setChatMessageRecords((currentMessages) => upsertChatMessageRecord(currentMessages, result.data))
       }
 
       if (savedReaction && actorRole !== message.senderRole) {

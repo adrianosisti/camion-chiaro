@@ -13,8 +13,8 @@ import {
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import {
-  AudioModule,
   RecordingPresets,
+  requestRecordingPermissionsAsync,
   setAudioModeAsync,
   useAudioPlayer,
   useAudioRecorder,
@@ -259,7 +259,7 @@ export function ChatScreen({
 
     pendingStopRef.current = ''
 
-    const permission = await AudioModule.requestRecordingPermissionsAsync()
+    const permission = await requestRecordingPermissionsAsync()
     if (!permission.granted) {
       isPressingMicRef.current = false
       resetMicGesture()
@@ -345,6 +345,7 @@ export function ChatScreen({
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: () => isPressingMicRef.current,
+        onMoveShouldSetPanResponderCapture: () => isPressingMicRef.current,
         onPanResponderGrant: () => {
           if (isSendingRef.current || body.trim()) return
 
@@ -374,6 +375,9 @@ export function ChatScreen({
           void stopRecording(true)
         },
         onStartShouldSetPanResponder: () => !isSendingRef.current && !body.trim(),
+        onStartShouldSetPanResponderCapture: () => !isSendingRef.current && !body.trim(),
+        onPanResponderTerminationRequest: () => false,
+        onShouldBlockNativeResponder: () => true,
       }),
     [body],
   )
@@ -436,18 +440,20 @@ export function ChatScreen({
             <Text style={styles.sendText}>Invia</Text>
           </Pressable>
         ) : (
-          <Pressable
-            disabled={isSending}
-            hitSlop={8}
+          <View
+            accessibilityLabel="Tieni premuto per registrare un vocale"
+            accessibilityRole="button"
+            collapsable={false}
             style={[
               styles.micButton,
+              isSending && styles.micButtonDisabled,
               isRecording && styles.micButtonActive,
               { transform: [{ translateX: dragOffset }, { scale: isRecording ? 1.08 : 1 }] },
             ]}
             {...micPanResponder.panHandlers}
           >
             <MicGlyph active={isRecording} />
-          </Pressable>
+          </View>
         )}
       </View>
     </View>
@@ -678,6 +684,9 @@ const styles = StyleSheet.create({
   },
   micButtonActive: {
     backgroundColor: colors.danger,
+  },
+  micButtonDisabled: {
+    opacity: 0.45,
   },
   micBase: {
     backgroundColor: colors.white,

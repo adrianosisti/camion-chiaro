@@ -25,14 +25,36 @@ function formatDocumentDate(value, language) {
   return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
 }
 
+function getDocumentDaysLeft(document) {
+  if (!document?.expiresAt) return 9999
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const expiresAt = new Date(document.expiresAt)
+  expiresAt.setHours(0, 0, 0, 0)
+
+  return Math.ceil((expiresAt - today) / 86400000)
+}
+
 function getDocumentTone(document) {
-  if (!document.filePath) return 'missing'
   if (!document.expiresAt) return 'ready'
 
-  const daysLeft = Math.ceil((new Date(document.expiresAt) - new Date()) / 86400000)
+  const daysLeft = getDocumentDaysLeft(document)
   if (daysLeft < 0) return 'expired'
   if (daysLeft <= 30) return 'warning'
+  if (!document.filePath) return 'missing'
   return 'ready'
+}
+
+function getDocumentStatusLabel(document) {
+  const tone = getDocumentTone(document)
+  const daysLeft = getDocumentDaysLeft(document)
+
+  if (tone === 'expired') return `Scaduto da ${Math.abs(daysLeft)} gg`
+  if (tone === 'warning' && daysLeft === 0) return 'Scade oggi'
+  if (tone === 'warning') return `Scade tra ${daysLeft} gg`
+  if (tone === 'missing') return 'File da caricare'
+  return document.filePath ? 'File disponibile' : 'File da caricare'
 }
 
 function isImageDocument(path = '') {
@@ -164,7 +186,7 @@ function DocumentRow({ document, language = 'it', onUploadDocument }) {
   }
 
   return (
-    <View style={styles.documentRow}>
+    <View style={[styles.documentRow, tone === 'expired' && styles.documentRowExpired, tone === 'warning' && styles.documentRowWarning]}>
       <View style={[styles.documentIcon, styles[`${tone}Icon`]]}>
         <Text style={styles.documentIconText}>DOC</Text>
       </View>
@@ -172,7 +194,7 @@ function DocumentRow({ document, language = 'it', onUploadDocument }) {
         <Text style={styles.documentTitle}>{document.type}</Text>
         <Text style={styles.documentMeta}>{formatDocumentDate(document.expiresAt, language)}</Text>
         <Text style={[styles.documentStatus, styles[`${tone}Text`]]}>
-          {document.filePath ? 'File disponibile' : 'File da caricare'}
+          {getDocumentStatusLabel(document)}
         </Text>
       </View>
       <View style={styles.documentActions}>
@@ -193,6 +215,11 @@ export function DocumentsScreen({ documents = [], language = 'it', onCreateDocum
   const [documentType, setDocumentType] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const sortedDocuments = documents
+    .slice()
+    .sort((first, second) => getDocumentDaysLeft(first) - getDocumentDaysLeft(second))
+  const criticalDocuments = sortedDocuments.filter((document) => ['expired', 'warning'].includes(getDocumentTone(document)))
+  const expiredDocuments = criticalDocuments.filter((document) => getDocumentTone(document) === 'expired')
 
   async function createDocument() {
     if (!documentType.trim()) {
@@ -223,6 +250,25 @@ export function DocumentsScreen({ documents = [], language = 'it', onCreateDocum
           Tieni patente, CQC, visita medica e altri documenti sempre pronti sul telefono.
         </Text>
       </Panel>
+
+      {criticalDocuments.length ? (
+        <Panel
+          kicker="Criticita"
+          title={expiredDocuments.length ? `${expiredDocuments.length} documenti scaduti` : `${criticalDocuments.length} in scadenza`}
+        >
+          {criticalDocuments.slice(0, 4).map((document) => (
+            <View key={document.id} style={styles.criticalRow}>
+              <View style={[styles.criticalDot, getDocumentTone(document) === 'expired' ? styles.expiredDot : styles.warningDot]} />
+              <View style={styles.criticalCopy}>
+                <Text style={styles.criticalTitle}>{document.type}</Text>
+                <Text style={styles.criticalMeta}>
+                  {getDocumentStatusLabel(document)} · {formatDocumentDate(document.expiresAt, language)}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </Panel>
+      ) : null}
 
       <Panel kicker="Nuovo" title={t(language, 'newDocument')}>
         <View style={styles.presetGrid}>
@@ -260,7 +306,7 @@ export function DocumentsScreen({ documents = [], language = 'it', onCreateDocum
         <PrimaryButton loading={isCreating} onPress={createDocument} title={t(language, 'createDocument')} />
       </Panel>
 
-      {documents.map((document) => (
+      {sortedDocuments.map((document) => (
         <DocumentRow document={document} key={document.id} language={language} onUploadDocument={onUploadDocument} />
       ))}
 
@@ -296,6 +342,33 @@ const styles = StyleSheet.create({
   content: {
     padding: layout.screenPadding,
     paddingBottom: 28,
+  },
+  criticalCopy: {
+    flex: 1,
+  },
+  criticalDot: {
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
+  criticalMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  criticalRow: {
+    alignItems: 'center',
+    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 10,
+  },
+  criticalTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
   },
   documentActions: {
     gap: 7,
@@ -333,6 +406,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 12,
   },
+  documentRowExpired: {
+    backgroundColor: '#fff7f7',
+    borderColor: colors.danger,
+  },
+  documentRowWarning: {
+    backgroundColor: '#fffbeb',
+    borderColor: colors.warning,
+  },
   documentStatus: {
     fontSize: 12,
     fontWeight: '900',
@@ -351,6 +432,9 @@ const styles = StyleSheet.create({
   },
   expiredIcon: {
     backgroundColor: '#fee2e2',
+  },
+  expiredDot: {
+    backgroundColor: colors.danger,
   },
   expiredText: {
     color: colors.danger,
@@ -462,5 +546,8 @@ const styles = StyleSheet.create({
   },
   warningText: {
     color: colors.warning,
+  },
+  warningDot: {
+    backgroundColor: colors.warning,
   },
 })

@@ -212,6 +212,55 @@ export async function signOutDriver() {
   await supabase.auth.signOut()
 }
 
+export async function saveNativePushToken({ companyId = '', deviceName = '', platform = '', token = '' }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!token) return { data: null, error: { message: 'Token notifiche mancante.' } }
+
+  const { data, error } = await supabase.rpc('upsert_native_push_token', {
+    token_device_name: deviceName || null,
+    token_platform: platform || null,
+    token_target_company_id: companyId || null,
+    token_value: token,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL notifiche app native. Esegui il file 30_native_push_tokens.sql in Supabase.' },
+    }
+  }
+
+  return { data, error }
+}
+
+export async function sendPushNotification(payload) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!apiBaseUrl) return { data: null, error: { message: 'Configura EXPO_PUBLIC_API_BASE_URL con il sito Netlify.' } }
+
+  const token = await getAccessToken()
+  if (!token) return { data: null, error: { message: 'Sessione mancante per inviare notifica telefono.' } }
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/.netlify/functions/send-push`, {
+      body: JSON.stringify(payload),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: data.error ?? 'Notifica telefono non inviata.' } }
+    }
+
+    return { data, error: null }
+  } catch {
+    return { data: null, error: { message: 'Server notifiche non raggiungibile.' } }
+  }
+}
+
 export async function getSessionAccountType() {
   if (!isSupabaseConfigured) return { data: 'driver', error: null }
 
@@ -1225,10 +1274,10 @@ export async function createVehicleCheck(payload) {
       tires_ok: Boolean(payload.tiresOk),
       tractor_id: payload.tractorId,
     })
-    .select('id')
+    .select(vehicleCheckSelect)
     .single()
 
-  return { data, error }
+  return { data: data ? mapVehicleCheck(data) : null, error }
 }
 
 export async function createFaultReport(payload) {
@@ -1261,12 +1310,12 @@ export async function createFaultReport(payload) {
       title: payload.title,
       vehicle_id: payload.vehicleId,
     })
-    .select('id')
+    .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
     .single()
 
   if (error && photoPath) {
     await supabase.storage.from(companyAssetsBucket).remove([photoPath])
   }
 
-  return { data, error }
+  return { data: data ? mapFaultReport(data) : null, error }
 }

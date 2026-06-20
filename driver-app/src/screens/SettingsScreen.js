@@ -19,7 +19,9 @@ export function SettingsScreen({
   chatSoundEnabled = true,
   chatDiagnostics = null,
   language = 'it',
+  nativePushStatus = '',
   onChatSoundChange,
+  onEnableNativeNotifications,
   onLanguageChange,
   onRefresh,
   onResetChatBadge,
@@ -50,6 +52,15 @@ export function SettingsScreen({
             )
           })}
         </View>
+      </Panel>
+
+      <Panel kicker="Telefono" title="Notifiche app">
+        <Text style={styles.helper}>
+          Attiva questo telefono per ricevere chat, guasti e check anche quando Camion Chiaro non e aperta.
+        </Text>
+        <View style={styles.buttonGap} />
+        <PrimaryButton onPress={onEnableNativeNotifications} title="Abilita notifiche app" tone="light" />
+        {nativePushStatus ? <Text style={styles.diagnosticLine}>{nativePushStatus}</Text> : null}
       </Panel>
 
       <Panel kicker="Chat" title={t(language, 'chatSettings')}>

@@ -11,6 +11,32 @@ function formatDate(value, language) {
   return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
 }
 
+function getDocumentDaysLeft(document) {
+  if (!document?.expiresAt) return 9999
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const expiresAt = new Date(document.expiresAt)
+  expiresAt.setHours(0, 0, 0, 0)
+
+  return Math.ceil((expiresAt - today) / 86400000)
+}
+
+function getDocumentCriticalTone(document) {
+  const daysLeft = getDocumentDaysLeft(document)
+  if (daysLeft < 0) return 'danger'
+  if (daysLeft <= 30) return 'warning'
+  return 'success'
+}
+
+function getDocumentCriticalText(document) {
+  const daysLeft = getDocumentDaysLeft(document)
+  if (daysLeft < 0) return `Scaduto da ${Math.abs(daysLeft)} gg`
+  if (daysLeft === 0) return 'Scade oggi'
+  if (daysLeft <= 30) return `Scade tra ${daysLeft} gg`
+  return 'Valido'
+}
+
 const dailyPhrases = {
   de: ['Klare Strecke, klarer Tag.', 'Sicherheit beginnt vor dem Start.', 'Ein guter Check spart morgen Zeit.'],
   en: ['Clear road, clear day.', 'Safety starts before the engine.', 'A good check today saves time tomorrow.'],
@@ -78,9 +104,14 @@ export function HomeScreen({
   const checks = context?.vehicleChecks ?? []
   const faults = context?.faultReports ?? []
   const vehicles = context?.vehicles ?? []
-  const nextDocument = documents
+  const sortedDocuments = documents
     .filter((document) => document.expiresAt)
-    .sort((first, second) => new Date(first.expiresAt) - new Date(second.expiresAt))[0]
+    .slice()
+    .sort((first, second) => new Date(first.expiresAt) - new Date(second.expiresAt))
+  const nextDocument = sortedDocuments[0]
+  const criticalDocuments = sortedDocuments.filter((document) => getDocumentDaysLeft(document) <= 30)
+  const expiredDocuments = criticalDocuments.filter((document) => getDocumentDaysLeft(document) < 0)
+  const documentAlertTone = expiredDocuments.length ? 'danger' : criticalDocuments.length ? 'warning' : 'success'
   const openFaults = faults.filter((fault) => fault.status !== 'closed')
   const driveableVehicles = vehicles.filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
   const selectedDailyVehicle = driveableVehicles.find((vehicle) => vehicle.id === selectedDailyVehicleId) ?? null
@@ -141,11 +172,36 @@ export function HomeScreen({
         </View>
         <View style={styles.metricRow}>
           <MetricPill label="Messaggi" tone={unreadCompanyMessages ? 'warning' : 'info'} value={unreadCompanyMessages} />
+          <MetricPill label="Documenti" onPress={onOpenDocuments} tone={documentAlertTone} value={criticalDocuments.length} />
           <MetricPill label={t(language, 'faultsOpen')} tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
+        </View>
+        <View style={styles.metricRowSecondary}>
           <MetricPill label={t(language, 'checkCritical')} tone={criticalChecks.length ? 'danger' : 'success'} value={criticalChecks.length} />
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>
+
+      {criticalDocuments.length ? (
+        <Pressable
+          onPress={onOpenDocuments}
+          style={[styles.documentAlert, expiredDocuments.length && styles.documentAlertDanger]}
+        >
+          <View style={styles.documentAlertIcon}>
+            <Ionicons color={expiredDocuments.length ? colors.danger : colors.warning} name="alert-circle" size={24} />
+          </View>
+          <View style={styles.documentAlertCopy}>
+            <Text style={styles.documentAlertTitle}>
+              {expiredDocuments.length ? 'Documenti scaduti' : 'Documenti in scadenza'}
+            </Text>
+            {criticalDocuments.slice(0, 3).map((document) => (
+              <Text key={document.id} numberOfLines={1} style={styles.documentAlertMeta}>
+                {document.type} · {getDocumentCriticalText(document)} · {formatDate(document.expiresAt, language)}
+              </Text>
+            ))}
+          </View>
+          <Ionicons color={colors.ink} name="chevron-forward" size={18} />
+        </Pressable>
+      ) : null}
 
       <View style={styles.actionGrid}>
         <ActionTile
@@ -272,7 +328,15 @@ export function HomeScreen({
         {documents.slice(0, 4).map((document) => (
           <View key={document.id} style={styles.documentRow}>
             <Text style={styles.documentTitle}>{document.type}</Text>
-            <Text style={styles.documentDate}>{formatDate(document.expiresAt, language)}</Text>
+            <Text
+              style={[
+                styles.documentDate,
+                getDocumentCriticalTone(document) === 'danger' && styles.documentDateDanger,
+                getDocumentCriticalTone(document) === 'warning' && styles.documentDateWarning,
+              ]}
+            >
+              {formatDate(document.expiresAt, language)}
+            </Text>
           </View>
         ))}
         {!documents.length ? <Text style={styles.bodyText}>Non risultano documenti visibili.</Text> : null}
@@ -381,6 +445,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  documentDateDanger: {
+    color: colors.danger,
+  },
+  documentDateWarning: {
+    color: colors.warning,
+  },
+  documentAlert: {
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    borderColor: colors.warning,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+    padding: 12,
+  },
+  documentAlertCopy: {
+    flex: 1,
+  },
+  documentAlertDanger: {
+    backgroundColor: '#fee2e2',
+    borderColor: colors.danger,
+  },
+  documentAlertIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  documentAlertMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  documentAlertTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
   documentRow: {
     alignItems: 'center',
     borderBottomColor: colors.line,
@@ -429,6 +536,12 @@ const styles = StyleSheet.create({
   metricRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  metricRowSecondary: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    maxWidth: '33%',
   },
   listCopy: {
     flex: 1,

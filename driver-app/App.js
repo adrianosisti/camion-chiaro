@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
+import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { AuthScreen } from './src/screens/AuthScreen'
 import { ChatScreen } from './src/screens/ChatScreen'
@@ -39,8 +40,10 @@ import {
   getCurrentSession,
   getSessionAccountType,
   markChatMessagesRead,
+  saveNativePushToken,
   sendChatMessage,
   sendCompanyChatMessage,
+  sendPushNotification,
   signOutDriver,
   subscribeToDriverChatMessages,
   subscribeToOperationalUpdates,
@@ -51,10 +54,15 @@ import {
   uploadDriverDocumentFile,
   uploadDriverProfileImage,
 } from './src/services/driverApi'
+import { registerNativePushDevice } from './src/services/nativePush'
 import { t } from './src/i18n/native'
 import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
+
+function getNativePushPromptStorageKey(accountType, companyId, driverId = '') {
+  return `camion-chiaro-native-push-prompt:${accountType}:${companyId}:${driverId || 'company'}`
+}
 
 function getLocalDateKey(date = new Date()) {
   const year = date.getFullYear()
@@ -92,6 +100,34 @@ function getDriverName(context) {
 
 function getCompanyName(context) {
   return context?.companyProfile?.name || 'Azienda'
+}
+
+function getVehicleDisplayName(vehicles = [], vehicleId = '') {
+  const vehicle = vehicles.find((entry) => entry.id === vehicleId)
+  if (!vehicle) return 'mezzo'
+  return [vehicle.plate, vehicle.model].filter(Boolean).join(' - ') || 'mezzo'
+}
+
+function getCheckIssues(check = {}) {
+  return [
+    check.lightsOk === false ? 'luci' : null,
+    check.tiresOk === false ? 'pneumatici' : null,
+    check.documentsOnBoard === false ? 'documenti a bordo' : null,
+  ].filter(Boolean)
+}
+
+function triggerHaptic(kind = 'light') {
+  if (kind === 'critical') {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {})
+    return
+  }
+
+  if (kind === 'success') {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+    return
+  }
+
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
 }
 
 function mergeChatMessage(messages, message) {
@@ -165,6 +201,7 @@ export default function App() {
   const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
+  const [nativePushStatus, setNativePushStatus] = useState('')
   const [onlineDriverIds, setOnlineDriverIds] = useState([])
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
@@ -176,6 +213,7 @@ export default function App() {
   const typingTimeoutRef = useRef(null)
   const activeTabRef = useRef(activeTab)
   const driverChatReadVersionRef = useRef(0)
+  const nativePushPromptRef = useRef('')
 
   const driver = context?.drivers?.[0] ?? null
   const visibleTabs = accountType === 'company' ? companyTabs : driverTabs
@@ -459,6 +497,69 @@ export default function App() {
   }, [accountType, activeTab])
 
   useEffect(() => {
+    if (isBooting || !settingsReady || !session) return undefined
+
+    const companyId = accountType === 'company'
+      ? companyContext?.companyProfile?.id
+      : driver?.companyId
+    const driverId = accountType === 'driver' ? driver?.id : ''
+
+    if (!companyId || (accountType === 'driver' && !driverId)) return undefined
+
+    const promptKey = getNativePushPromptStorageKey(accountType, companyId, driverId)
+    if (nativePushPromptRef.current === promptKey) return undefined
+
+    let isActive = true
+    let timerId = null
+
+    async function maybePromptNativeNotifications() {
+      const hasAlreadyPrompted = await AsyncStorage.getItem(promptKey)
+      if (!isActive || hasAlreadyPrompted) return
+
+      nativePushPromptRef.current = promptKey
+      timerId = setTimeout(() => {
+        if (!isActive) return
+
+        Alert.alert(
+          'Attiva notifiche',
+          'Vuoi ricevere messaggi, guasti, check e documenti importanti anche quando l app e chiusa?',
+          [
+            {
+              text: 'Dopo',
+              style: 'cancel',
+              onPress: () => {
+                void AsyncStorage.setItem(promptKey, 'dismissed')
+              },
+            },
+            {
+              text: 'Attiva ora',
+              onPress: () => {
+                void AsyncStorage.setItem(promptKey, 'accepted')
+                void handleEnableNativeNotifications()
+              },
+            },
+          ],
+        )
+      }, 900)
+    }
+
+    void maybePromptNativeNotifications()
+
+    return () => {
+      isActive = false
+      if (timerId) clearTimeout(timerId)
+    }
+  }, [
+    accountType,
+    companyContext?.companyProfile?.id,
+    driver?.companyId,
+    driver?.id,
+    isBooting,
+    session,
+    settingsReady,
+  ])
+
+  useEffect(() => {
     if (accountType !== 'driver' || !driver?.id) {
       setDriverChatReadWatermark(0)
       return undefined
@@ -554,6 +655,7 @@ export default function App() {
         }
 
         if (message.senderRole === 'driver') {
+          triggerHaptic('light')
           await loadCompanyData({ silent: true })
         }
       },
@@ -580,6 +682,16 @@ export default function App() {
     const unsubscribe = subscribeToOperationalUpdates({
       companyId,
       handlers: {
+        onFaultReport: (fault, payload) => {
+          if (payload?.eventType === 'INSERT') {
+            triggerHaptic(['high', 'stop_vehicle'].includes(fault.severity) ? 'critical' : 'light')
+          }
+        },
+        onVehicleCheck: (check, payload) => {
+          if (payload?.eventType === 'INSERT') {
+            triggerHaptic(getCheckIssues(check).length ? 'critical' : 'success')
+          }
+        },
         onChange: scheduleRefresh,
       },
     })
@@ -761,6 +873,61 @@ export default function App() {
     setSession(null)
   }
 
+  async function handleEnableNativeNotifications() {
+    const companyId = accountType === 'company'
+      ? companyContext?.companyProfile?.id
+      : driver?.companyId
+
+    if (!companyId) {
+      const message = 'Apri l account e attendi il caricamento dati, poi riprova.'
+      setNativePushStatus(message)
+      Alert.alert('Notifiche non pronte', message)
+      return false
+    }
+
+    setNativePushStatus('Attivo notifiche su questo telefono...')
+    const registration = await registerNativePushDevice()
+
+    if (registration.error) {
+      setNativePushStatus(registration.error.message)
+      Alert.alert('Notifiche non attivate', registration.error.message)
+      return false
+    }
+
+    const result = await saveNativePushToken({
+      companyId,
+      deviceName: registration.data.deviceName,
+      platform: registration.data.platform,
+      token: registration.data.token,
+    })
+
+    if (result.error) {
+      setNativePushStatus(result.error.message)
+      Alert.alert('Notifiche non salvate', result.error.message)
+      return false
+    }
+
+    setNativePushStatus('Notifiche app abilitate su questo telefono.')
+    triggerHaptic('success')
+    Alert.alert('Notifiche attive', 'Questo telefono ricevera le notifiche Camion Chiaro.')
+    return true
+  }
+
+  async function notifyPhone(payload) {
+    const companyId = accountType === 'company'
+      ? companyContext?.companyProfile?.id
+      : driver?.companyId
+
+    if (!companyId || !payload?.targetRole) {
+      return { data: null, error: { message: 'Azienda o destinatario notifica mancante.' } }
+    }
+
+    return sendPushNotification({
+      companyId,
+      ...payload,
+    })
+  }
+
   async function handleSelectDailyVehicle(vehicleId) {
     if (!driver?.id || !vehicleId) return false
 
@@ -810,6 +977,16 @@ export default function App() {
     if (result.data?.message) {
       setChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
       clearDriverUnreadMessages()
+      triggerHaptic('light')
+      void notifyPhone({
+        body: body.trim() || (attachment?.uri ? 'Allegato in chat.' : 'Nuovo messaggio.'),
+        notificationType: 'chat',
+        tag: `chat-company-${result.data.thread?.id ?? chatThread?.id ?? driver.id}`,
+        targetRole: 'company',
+        threadId: result.data.thread?.id ?? chatThread?.id ?? '',
+        title: driver.name,
+        url: '/?view=chat',
+      })
     }
 
     return true
@@ -841,6 +1018,17 @@ export default function App() {
     if (result.data?.thread && !companyChatThread) setCompanyChatThread(result.data.thread)
     if (result.data?.message) {
       setCompanyChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
+      triggerHaptic('light')
+      void notifyPhone({
+        body: body.trim() || (attachment?.uri ? 'Allegato in chat.' : 'Nuovo messaggio.'),
+        driverId: selectedCompanyDriver.id,
+        notificationType: 'chat',
+        tag: `chat-${result.data.thread?.id ?? companyChatThread?.id ?? selectedCompanyDriver.id}`,
+        targetRole: 'driver',
+        threadId: result.data.thread?.id ?? companyChatThread?.id ?? '',
+        title: companyName,
+        url: '/?view=chat',
+      })
       setCompanyContext((currentContext) => {
         if (!currentContext || !result.data?.thread) return currentContext
 
@@ -1009,6 +1197,18 @@ export default function App() {
       return false
     }
 
+    const checkIssues = getCheckIssues(payload)
+    triggerHaptic(checkIssues.length ? 'critical' : 'success')
+    void notifyPhone({
+      body: checkIssues.length
+        ? `Check critico: ${checkIssues.join(', ')} su ${getVehicleDisplayName(context?.vehicles ?? [], payload.tractorId)}.`
+        : `Check completato su ${getVehicleDisplayName(context?.vehicles ?? [], payload.tractorId)}.`,
+      notificationType: checkIssues.length ? 'check_critical' : 'check',
+      tag: `vehicle-check-${result.data?.id ?? Date.now()}`,
+      targetRole: 'company',
+      title: driver.name,
+      url: '/?view=notifications',
+    })
     await loadDriverData({ silent: true })
     return true
   }
@@ -1027,6 +1227,15 @@ export default function App() {
       return false
     }
 
+    triggerHaptic(['high', 'stop_vehicle'].includes(payload.severity) ? 'critical' : 'success')
+    void notifyPhone({
+      body: `${payload.title || 'Guasto segnalato'} su ${getVehicleDisplayName(context?.vehicles ?? [], payload.vehicleId)}.`,
+      notificationType: 'fault',
+      tag: `fault-report-${result.data?.id ?? Date.now()}`,
+      targetRole: 'company',
+      title: driver.name,
+      url: '/?view=notifications',
+    })
     await loadDriverData({ silent: true })
     return true
   }
@@ -1180,7 +1389,9 @@ export default function App() {
             accountType="company"
             chatSoundEnabled={chatSoundEnabled}
             language={language}
+            nativePushStatus={nativePushStatus}
             onChatSoundChange={setChatSoundEnabled}
+            onEnableNativeNotifications={handleEnableNativeNotifications}
             onLanguageChange={setLanguage}
             onRefresh={() => loadCompanyData()}
             onSignOut={handleSignOut}
@@ -1269,7 +1480,9 @@ export default function App() {
           chatSoundEnabled={chatSoundEnabled}
           chatDiagnostics={driverChatDiagnostics}
           language={language}
+          nativePushStatus={nativePushStatus}
           onChatSoundChange={setChatSoundEnabled}
+          onEnableNativeNotifications={handleEnableNativeNotifications}
           onLanguageChange={setLanguage}
           onRefresh={() => loadDriverData()}
           onResetChatBadge={resetDriverChatBadge}
@@ -1319,6 +1532,7 @@ export default function App() {
     language,
     logoUrl,
     managementInitialSection,
+    nativePushStatus,
     onlineDriverIds,
     selectedCompanyDriver,
     selectedCompanyDriverId,

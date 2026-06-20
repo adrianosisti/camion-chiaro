@@ -17,6 +17,7 @@ import {
 } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 import * as FileSystem from 'expo-file-system/legacy'
+import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import * as MediaLibrary from 'expo-media-library'
 import { Ionicons } from '@expo/vector-icons'
@@ -25,6 +26,7 @@ import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
   useAudioPlayer,
+  useAudioPlayerStatus,
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio'
@@ -45,8 +47,21 @@ const reactionOptions = [
   { emoji: '⚠️', value: 'warning' },
 ]
 
+const audioWaveHeights = [9, 16, 22, 13, 27, 19, 11, 24, 15, 29, 20, 12, 25, 18]
+
 function getMessageText(message) {
   return String(message.body ?? '').trim()
+}
+
+function triggerChatHaptic() {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+}
+
+function formatAudioTime(value = 0) {
+  const safeValue = Math.max(0, Math.floor(Number(value) || 0))
+  const minutes = Math.floor(safeValue / 60)
+  const seconds = String(safeValue % 60).padStart(2, '0')
+  return `${minutes}:${seconds}`
 }
 
 function formatMessageTime(value) {
@@ -217,6 +232,24 @@ function getAttachmentKind(path = '') {
   return path ? 'file' : ''
 }
 
+function createPendingAttachment(asset, index = 0) {
+  const kind = asset.type === 'video' ? 'video' : 'image'
+  const extension = kind === 'video' ? 'mp4' : 'jpg'
+  const timestamp = Date.now()
+
+  return {
+    id: `${asset.assetId || asset.uri || timestamp}-${index}`,
+    kind,
+    name: asset.fileName || `allegato-${timestamp}-${index + 1}.${extension}`,
+    type: asset.mimeType || (kind === 'video' ? 'video/mp4' : 'image/jpeg'),
+    uri: asset.uri,
+  }
+}
+
+function getAttachmentDefaultText(attachment) {
+  return attachment?.kind === 'video' ? 'Video allegato' : 'Foto allegata'
+}
+
 function getMediaFileExtension(path = '') {
   const cleanPath = String(path ?? '').split('?')[0]
   const match = cleanPath.match(/\.([a-z0-9]+)$/i)
@@ -272,25 +305,54 @@ function MicGlyph({ active = false }) {
 }
 
 function AudioAttachment({ signedUrl }) {
-  const player = useAudioPlayer(signedUrl || null)
+  const player = useAudioPlayer(signedUrl || null, { updateInterval: 120 })
+  const status = useAudioPlayerStatus(player)
+  const duration = Number(status.duration) || 0
+  const currentTime = Math.min(Number(status.currentTime) || 0, duration || Number(status.currentTime) || 0)
+  const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0
 
-  function playAudio() {
+  async function playAudio() {
     if (!signedUrl) return
-    player.seekTo(0)
+
+    if (status.playing) {
+      player.pause()
+      return
+    }
+
+    if (duration > 0 && currentTime >= duration - 0.25) {
+      await player.seekTo(0)
+    }
+
     player.play()
   }
 
   return (
     <Pressable onPress={playAudio} style={styles.audioAttachment}>
       <View style={styles.audioIcon}>
-        <Text style={styles.audioIconText}>▶</Text>
+        <Ionicons color={colors.white} name={status.playing ? 'pause' : 'play'} size={14} />
       </View>
       <View style={styles.audioWave}>
-        {[...Array(12)].map((_, index) => (
-          <View key={index} style={[styles.waveBar, { height: 8 + ((index * 7) % 18) }]} />
-        ))}
+        {audioWaveHeights.map((height, index) => {
+          const isActive = duration > 0 && index / Math.max(1, audioWaveHeights.length - 1) <= progress
+
+          return (
+            <View
+              key={index}
+              style={[
+                styles.waveBar,
+                isActive && styles.waveBarActive,
+                { height },
+              ]}
+            />
+          )
+        })}
       </View>
-      <Text style={styles.audioText}>Vocale</Text>
+      <View style={styles.audioCopy}>
+        <Text style={styles.audioText}>Vocale</Text>
+        <Text style={styles.audioTime}>
+          {duration > 0 ? `${formatAudioTime(currentTime)} / ${formatAudioTime(duration)}` : '0:00'}
+        </Text>
+      </View>
     </Pressable>
   )
 }
@@ -484,6 +546,37 @@ function MessageBubble({ currentUserRole, message, onAvatarPress, onLongPress, o
   )
 }
 
+function PendingAttachmentStrip({ attachments = [], onRemove }) {
+  if (!attachments.length) return null
+
+  return (
+    <View style={styles.pendingAttachmentWrap}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.pendingAttachmentRow}>
+          {attachments.map((attachment, index) => (
+            <View key={attachment.id} style={styles.pendingAttachmentItem}>
+              {attachment.kind === 'image' ? (
+                <Image source={{ uri: attachment.uri }} style={styles.pendingAttachmentImage} />
+              ) : (
+                <View style={styles.pendingAttachmentVideo}>
+                  <Ionicons color={colors.white} name="play" size={26} />
+                </View>
+              )}
+              <Text style={styles.pendingAttachmentCount}>{index + 1}</Text>
+              <Pressable onPress={() => onRemove?.(attachment.id)} style={styles.pendingAttachmentRemove}>
+                <Text style={styles.pendingAttachmentRemoveText}>x</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+      <Text style={styles.pendingAttachmentHint}>
+        {attachments.length === 1 ? '1 allegato pronto' : `${attachments.length} allegati pronti`}
+      </Text>
+    </View>
+  )
+}
+
 export function ChatScreen({
   companyLogoUrl,
   companyName,
@@ -512,6 +605,7 @@ export function ChatScreen({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [pendingAttachments, setPendingAttachments] = useState([])
   const cancelRecordingRef = useRef(false)
   const isPressingMicRef = useRef(false)
   const isRecordingRef = useRef(false)
@@ -561,6 +655,7 @@ export function ChatScreen({
 
     if (latestMessage.senderRole !== currentUserRole) {
       playChatSound(receiveSoundPlayer)
+      triggerChatHaptic()
     }
   }, [currentUserRole, messages, receiveSoundPlayer])
 
@@ -614,23 +709,55 @@ export function ChatScreen({
     }
   }
 
-  async function handleSendText() {
+  async function handleSendComposer() {
     const cleanBody = body.trim()
-    if (!cleanBody || isSending) return
+    const attachmentsToSend = pendingAttachments
+    if ((!cleanBody && !attachmentsToSend.length) || isSending) return
 
-    const outgoingBody = composeChatMessageBody(cleanBody, replyToMessage)
+    const currentReply = replyToMessage
     setBody('')
+    setPendingAttachments([])
     setReplyToMessage(null)
     onTyping?.(false)
     setIsSending(true)
-    const sent = await onSend?.(outgoingBody)
+
+    let failedIndex = -1
+
+    if (attachmentsToSend.length) {
+      for (let index = 0; index < attachmentsToSend.length; index += 1) {
+        const attachment = attachmentsToSend[index]
+        const attachmentText = index === 0 ? cleanBody : ''
+        const attachmentReply = index === 0 ? currentReply : null
+        const outgoingBody = composeChatMessageBody(attachmentText || getAttachmentDefaultText(attachment), attachmentReply)
+        const sent = await onSend?.(outgoingBody, attachment)
+
+        if (!sent) {
+          failedIndex = index
+          break
+        }
+      }
+    } else {
+      const outgoingBody = composeChatMessageBody(cleanBody, currentReply)
+      const sent = await onSend?.(outgoingBody)
+      if (!sent) failedIndex = 0
+    }
+
     setIsSending(false)
 
-    if (!sent) {
-      setBody(cleanBody)
-      setReplyToMessage(replyToMessage)
+    if (failedIndex >= 0) {
+      if (attachmentsToSend.length) {
+        setPendingAttachments(attachmentsToSend.slice(failedIndex))
+      }
+      if (!attachmentsToSend.length || failedIndex === 0) {
+        setBody(cleanBody)
+        setReplyToMessage(currentReply)
+      }
+      Alert.alert('Messaggio non inviato', 'Riprova tra qualche secondo.')
+      return
     }
-    if (sent) playChatSound(sendSoundPlayer)
+
+    playChatSound(sendSoundPlayer)
+    triggerChatHaptic()
     setTimeout(() => listRef.current?.scrollToOffset?.({ animated: false, offset: 0 }), 80)
   }
 
@@ -639,26 +766,28 @@ export function ChatScreen({
 
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: false,
+      allowsMultipleSelection: true,
       mediaTypes: ['images', 'videos'],
+      orderedSelection: true,
       quality: 0.72,
+      selectionLimit: 10,
     })
 
     if (result.canceled || !result.assets?.[0]) return
 
-    const asset = result.assets[0]
-    setIsSending(true)
-    const cleanBody = composeChatMessageBody(asset.type === 'video' ? 'Video allegato' : 'Foto allegata', replyToMessage)
-    setReplyToMessage(null)
-    const sent = await onSend?.(cleanBody, {
-      name: asset.fileName || `allegato-${Date.now()}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
-      type: asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg'),
-      uri: asset.uri,
-    })
-    setIsSending(false)
+    const selectedAttachments = result.assets
+      .filter((asset) => asset?.uri)
+      .map(createPendingAttachment)
 
-    if (!sent) setReplyToMessage(replyToMessage)
-    if (sent) playChatSound(sendSoundPlayer)
-    if (!sent) Alert.alert('Allegato non inviato', 'Riprova tra qualche secondo.')
+    setPendingAttachments((currentAttachments) => (
+      [...currentAttachments, ...selectedAttachments].slice(0, 10)
+    ))
+  }
+
+  function removePendingAttachment(attachmentId) {
+    setPendingAttachments((currentAttachments) => (
+      currentAttachments.filter((attachment) => attachment.id !== attachmentId)
+    ))
   }
 
   function resetMicGesture() {
@@ -752,12 +881,15 @@ export function ChatScreen({
     setIsSending(false)
 
     if (!sent) setReplyToMessage(replyToMessage)
-    if (sent) playChatSound(sendSoundPlayer)
+    if (sent) {
+      playChatSound(sendSoundPlayer)
+      triggerChatHaptic()
+    }
     if (!sent) Alert.alert('Vocale non inviato', 'Riprova tra qualche secondo.')
   }
 
   const statusText = companyTyping ? 'sta scrivendo...' : companyOnline ? 'online' : offlineLabel
-  const canSendText = Boolean(body.trim()) && !isSending
+  const canSendText = (Boolean(body.trim()) || pendingAttachments.length > 0) && !isSending
   const micPanResponder = useMemo(
     () =>
       PanResponder.create({
@@ -889,6 +1021,8 @@ export function ChatScreen({
         }
       />
 
+      <PendingAttachmentStrip attachments={pendingAttachments} onRemove={removePendingAttachment} />
+
       {replyToMessage ? (
         <View style={styles.replyComposer}>
           <View style={styles.replyComposerCopy}>
@@ -924,7 +1058,7 @@ export function ChatScreen({
           </View>
         ) : null}
         {canSendText ? (
-          <Pressable onPress={handleSendText} style={styles.sendButton}>
+          <Pressable onPress={handleSendComposer} style={styles.sendButton}>
             <Text style={styles.sendText}>Invia</Text>
           </Pressable>
         ) : (
@@ -1048,15 +1182,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 30,
   },
-  audioIconText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '900',
+  audioCopy: {
+    minWidth: 56,
   },
   audioText: {
     color: colors.cyanDark,
     fontSize: 12,
     fontWeight: '900',
+  },
+  audioTime: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 2,
   },
   audioWave: {
     alignItems: 'center',
@@ -1469,6 +1607,75 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 14,
   },
+  pendingAttachmentCount: {
+    backgroundColor: colors.cyan,
+    borderRadius: 999,
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '900',
+    height: 22,
+    left: 6,
+    lineHeight: 22,
+    overflow: 'hidden',
+    position: 'absolute',
+    textAlign: 'center',
+    top: 6,
+    width: 22,
+  },
+  pendingAttachmentHint: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 7,
+  },
+  pendingAttachmentImage: {
+    height: '100%',
+    width: '100%',
+  },
+  pendingAttachmentItem: {
+    backgroundColor: '#07111f',
+    borderColor: 'rgba(18, 198, 223, 0.45)',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 86,
+    overflow: 'hidden',
+    width: 86,
+  },
+  pendingAttachmentRemove: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 6, 23, 0.84)',
+    borderRadius: 999,
+    height: 24,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 24,
+  },
+  pendingAttachmentRemoveText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '900',
+    lineHeight: 16,
+  },
+  pendingAttachmentRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  pendingAttachmentVideo: {
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  pendingAttachmentWrap: {
+    backgroundColor: colors.white,
+    borderTopColor: colors.line,
+    borderTopWidth: 1,
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: 10,
+  },
   reactionButton: {
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
@@ -1694,9 +1901,13 @@ const styles = StyleSheet.create({
     color: colors.success,
   },
   waveBar: {
-    backgroundColor: colors.cyanDark,
+    backgroundColor: '#94a3b8',
     borderRadius: 999,
-    opacity: 0.8,
+    opacity: 0.55,
     width: 3,
+  },
+  waveBarActive: {
+    backgroundColor: colors.cyanDark,
+    opacity: 1,
   },
 })

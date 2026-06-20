@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { MetricPill } from '../components/MetricPill'
 import { Panel } from '../components/Panel'
 import { getLocale, t } from '../i18n/native'
@@ -111,6 +111,8 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
   const isFault = detail?.type === 'fault'
   const isCheck = detail?.type === 'check'
   const checkIssues = isCheck ? getCheckIssues(item) : []
+  const isArchived = isFault ? ['closed', 'archived'].includes(item?.status) : isCheckResolved(item)
+  const resolveLabel = isCheck && checkIssues.length === 0 ? 'Archivia check' : t(language, 'resolved')
 
   useEffect(() => {
     let isActive = true
@@ -135,50 +137,60 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
   if (!detail || !item) return null
 
   return (
-    <View style={styles.inlineDetail}>
-      <View style={styles.inlineDetailHeader}>
-        <View style={styles.listCopy}>
-          <Text style={styles.detailKicker}>{isFault ? 'Segnalazione autista' : 'Check mattutino'}</Text>
+    <Modal animationType="slide" onRequestClose={onClose} visible>
+      <View style={styles.detailScreen}>
+        <View style={styles.detailHeader}>
+          <Pressable onPress={onClose} style={styles.detailCloseButton}>
+            <Text style={styles.detailCloseText}>‹</Text>
+          </Pressable>
+          <View style={styles.listCopy}>
+            <Text style={styles.detailKicker}>{isFault ? 'Segnalazione autista' : 'Check mattutino'}</Text>
+            <Text numberOfLines={1} style={styles.detailHeaderTitle}>
+              {isFault ? item.title : checkIssues.length ? 'Criticita rilevate' : 'Check senza anomalie'}
+            </Text>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.detailContent}>
           <Text style={styles.detailTitle}>
             {isFault ? item.title : checkIssues.length ? 'Criticita rilevate' : 'Check senza anomalie'}
           </Text>
-        </View>
-        <Pressable onPress={onClose} style={styles.smallButton}>
-          <Text style={styles.smallButtonText}>{t(language, 'close')}</Text>
-        </Pressable>
+
+          <DetailRow label="Autista" value={getDriverName(drivers, item.driverId)} />
+          <DetailRow label="Mezzo" value={getVehicleName(vehicles, isFault ? item.vehicleId : item.tractorId)} />
+          <DetailRow label="Semirimorchio" value={item.semitrailerId ? getVehicleName(vehicles, item.semitrailerId) : 'Non indicato'} />
+          <DetailRow label="Ora" value={formatDateTime(item.createdAt, language)} />
+          <DetailRow label="Stato" value={isArchived ? 'Archiviato' : 'Da gestire'} />
+
+          {isCheck ? (
+            <>
+              <DetailRow label="Km" value={String(item.odometerKm || '-')} />
+              <View style={styles.issueBox}>
+                <Text style={styles.issueTitle}>{checkIssues.length ? 'Anomalie' : 'Esito'}</Text>
+                {checkIssues.length ? checkIssues.map((issue) => (
+                  <Text key={issue} style={styles.issueText}>- {issue}</Text>
+                )) : <Text style={styles.issueText}>Tutto ok.</Text>}
+              </View>
+              {item.notes ? <DetailRow label="Note" value={item.notes} /> : null}
+            </>
+          ) : null}
+
+          {isFault ? (
+            <>
+              <DetailRow label="Gravita" value={formatSeverity(item.severity)} />
+              <DetailRow label="Descrizione" value={item.description || 'Nessuna descrizione'} />
+              {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.detailPhoto} /> : null}
+            </>
+          ) : null}
+
+          {!isArchived ? (
+            <Pressable disabled={isResolving} onPress={() => onResolve?.(detail)} style={[styles.resolveButton, isResolving && styles.resolveButtonDisabled]}>
+              <Text style={styles.resolveButtonText}>{resolveLabel}</Text>
+            </Pressable>
+          ) : null}
+        </ScrollView>
       </View>
-
-      <DetailRow label="Autista" value={getDriverName(drivers, item.driverId)} />
-      <DetailRow label="Mezzo" value={getVehicleName(vehicles, isFault ? item.vehicleId : item.tractorId)} />
-      <DetailRow label="Semirimorchio" value={item.semitrailerId ? getVehicleName(vehicles, item.semitrailerId) : 'Non indicato'} />
-      <DetailRow label="Ora" value={formatDateTime(item.createdAt, language)} />
-
-      {isCheck ? (
-        <>
-          <DetailRow label="Km" value={String(item.odometerKm || '-')} />
-          <View style={styles.issueBox}>
-            <Text style={styles.issueTitle}>{checkIssues.length ? 'Anomalie' : 'Esito'}</Text>
-            {checkIssues.length ? checkIssues.map((issue) => (
-              <Text key={issue} style={styles.issueText}>- {issue}</Text>
-            )) : <Text style={styles.issueText}>Tutto ok.</Text>}
-          </View>
-          {item.notes ? <DetailRow label="Note" value={item.notes} /> : null}
-        </>
-      ) : null}
-
-      {isFault ? (
-        <>
-          <DetailRow label="Gravita" value={formatSeverity(item.severity)} />
-          <DetailRow label="Stato" value={item.status || 'open'} />
-          <DetailRow label="Descrizione" value={item.description || 'Nessuna descrizione'} />
-          {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.detailPhoto} /> : null}
-        </>
-      ) : null}
-
-      <Pressable disabled={isResolving} onPress={() => onResolve?.(detail)} style={[styles.resolveButton, isResolving && styles.resolveButtonDisabled]}>
-        <Text style={styles.resolveButtonText}>{t(language, 'resolved')}</Text>
-      </Pressable>
-    </View>
+    </Modal>
   )
 }
 
@@ -203,7 +215,11 @@ export function CompanyHomeScreen({
   const complianceItems = context?.complianceItems ?? []
   const unreadMessages = context?.unreadDriverMessages ?? 0
   const openFaults = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
+  const archivedFaults = faults.filter((fault) => ['closed', 'archived'].includes(fault.status))
+  const activeChecks = checks.filter((check) => !isCheckResolved(check))
+  const archivedChecks = checks.filter(isCheckResolved)
   const criticalChecks = checks.filter(isCheckCritical)
+  const recentChecks = activeChecks.slice(0, 4)
   const activeDeadlines = complianceItems
     .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
     .slice()
@@ -249,10 +265,10 @@ export function CompanyHomeScreen({
             value={openFaults.length}
           />
           <MetricPill
-            label={t(language, 'checkCritical')}
-            onPress={() => criticalChecks[0] && setSelectedDetail({ item: criticalChecks[0], type: 'check' })}
-            tone={criticalChecks.length ? 'danger' : 'success'}
-            value={criticalChecks.length}
+            label="Check"
+            onPress={() => recentChecks[0] && setSelectedDetail({ item: recentChecks[0], type: 'check' })}
+            tone={criticalChecks.length ? 'danger' : activeChecks.length ? 'success' : 'info'}
+            value={activeChecks.length}
           />
         </View>
         <View style={styles.metricRow}>
@@ -289,45 +305,68 @@ export function CompanyHomeScreen({
             <Text style={styles.openText}>Apri</Text>
           </Pressable>
         ))}
-        {selectedDetail?.type === 'fault' ? (
-          <OperationsDetailPanel
-            detail={selectedDetail}
-            drivers={drivers}
-            isResolving={isResolvingDetail}
-            language={language}
-            onClose={() => setSelectedDetail(null)}
-            onResolve={resolveSelectedDetail}
-            vehicles={vehicles}
-          />
-        ) : null}
         {!openFaults.length ? <Text style={styles.emptyText}>Tutto pulito al momento.</Text> : null}
       </Panel>
 
-      <Panel kicker="Check mattutini" title={criticalChecks.length ? 'Criticita rilevate' : 'Check ok'}>
-        {criticalChecks.slice(0, 4).map((check) => (
-          <Pressable key={check.id} onPress={() => setSelectedDetail({ item: check, type: 'check' })} style={styles.listRow}>
-            <View style={styles.statusDotDanger} />
+      <Panel kicker="Check ricevuti" title={recentChecks.length ? `${recentChecks.length} da aprire` : 'Nessun check nuovo'}>
+        {recentChecks.map((check) => {
+          const checkIssues = getCheckIssues(check)
+          const hasIssues = checkIssues.length > 0
+
+          return (
+            <Pressable key={check.id} onPress={() => setSelectedDetail({ item: check, type: 'check' })} style={styles.listRow}>
+              <View style={hasIssues ? styles.statusDotDanger : styles.statusDotSuccess} />
+              <View style={styles.listCopy}>
+                <Text style={styles.listTitle}>
+                  {hasIssues ? 'Criticita check' : 'Check completato'} · {getVehiclePlate(vehicles, check.tractorId)}
+                </Text>
+                <Text style={styles.listMeta}>
+                  {getDriverName(drivers, check.driverId)} · {formatDateTime(check.createdAt, language)}
+                </Text>
+              </View>
+              <Text style={hasIssues ? styles.openText : styles.okOpenText}>{hasIssues ? 'Apri' : 'Vedi'}</Text>
+            </Pressable>
+          )
+        })}
+        {!recentChecks.length ? <Text style={styles.emptyText}>I check archiviati restano nello storico, qui arrivano quelli nuovi da vedere.</Text> : null}
+      </Panel>
+
+      <Panel kicker="Archivio guasti" title={archivedFaults.length ? `${archivedFaults.length} risolti` : 'Nessun guasto archiviato'}>
+        {archivedFaults.slice(0, 3).map((fault) => (
+          <Pressable key={fault.id} onPress={() => setSelectedDetail({ item: fault, type: 'fault' })} style={styles.listRow}>
+            <View style={styles.statusDotArchive} />
             <View style={styles.listCopy}>
-              <Text style={styles.listTitle}>{getVehiclePlate(vehicles, check.tractorId)}</Text>
+              <Text style={styles.listTitle}>{fault.title}</Text>
               <Text style={styles.listMeta}>
-                {getDriverName(drivers, check.driverId)} · {formatDateTime(check.createdAt, language)}
+                {getDriverName(drivers, fault.driverId)} · {getVehiclePlate(vehicles, fault.vehicleId)} · {formatDateTime(fault.createdAt, language)}
               </Text>
             </View>
-            <Text style={styles.openText}>Apri</Text>
+            <Text style={styles.archiveOpenText}>Vedi</Text>
           </Pressable>
         ))}
-        {selectedDetail?.type === 'check' ? (
-          <OperationsDetailPanel
-            detail={selectedDetail}
-            drivers={drivers}
-            isResolving={isResolvingDetail}
-            language={language}
-            onClose={() => setSelectedDetail(null)}
-            onResolve={resolveSelectedDetail}
-            vehicles={vehicles}
-          />
-        ) : null}
-        {!criticalChecks.length ? <Text style={styles.emptyText}>Nessuna criticita nei check recenti.</Text> : null}
+        {!archivedFaults.length ? <Text style={styles.emptyText}>Quando chiudi un guasto, lo ritrovi qui.</Text> : null}
+      </Panel>
+
+      <Panel kicker="Archivio check" title={archivedChecks.length ? `${archivedChecks.length} archiviati` : 'Nessun check archiviato'}>
+        {archivedChecks.slice(0, 3).map((check) => {
+          const checkIssues = getCheckIssues(check)
+
+          return (
+            <Pressable key={check.id} onPress={() => setSelectedDetail({ item: check, type: 'check' })} style={styles.listRow}>
+              <View style={checkIssues.length ? styles.statusDotDangerMuted : styles.statusDotArchive} />
+              <View style={styles.listCopy}>
+                <Text style={styles.listTitle}>
+                  {checkIssues.length ? 'Check risolto' : 'Check ok'} · {getVehiclePlate(vehicles, check.tractorId)}
+                </Text>
+                <Text style={styles.listMeta}>
+                  {getDriverName(drivers, check.driverId)} · {formatDateTime(check.createdAt, language)}
+                </Text>
+              </View>
+              <Text style={styles.archiveOpenText}>Vedi</Text>
+            </Pressable>
+          )
+        })}
+        {!archivedChecks.length ? <Text style={styles.emptyText}>Quando archivi o risolvi un check, lo ritrovi qui.</Text> : null}
       </Panel>
 
       <Panel
@@ -351,6 +390,16 @@ export function CompanyHomeScreen({
         ))}
         {!nextDeadlines.length ? <Text style={styles.emptyText}>Nessuna scadenza imminente caricata.</Text> : null}
       </Panel>
+
+      <OperationsDetailPanel
+        detail={selectedDetail}
+        drivers={drivers}
+        isResolving={isResolvingDetail}
+        language={language}
+        onClose={() => setSelectedDetail(null)}
+        onResolve={resolveSelectedDetail}
+        vehicles={vehicles}
+      />
 
     </ScrollView>
   )
@@ -384,6 +433,11 @@ const styles = StyleSheet.create({
   companyName: {
     color: colors.white,
     fontSize: 22,
+    fontWeight: '900',
+  },
+  archiveOpenText: {
+    color: colors.muted,
+    fontSize: 12,
     fontWeight: '900',
   },
   content: {
@@ -597,6 +651,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  okOpenText: {
+    color: colors.success,
+    fontSize: 12,
+    fontWeight: '900',
+  },
   resolveButton: {
     alignItems: 'center',
     backgroundColor: colors.success,
@@ -642,8 +701,26 @@ const styles = StyleSheet.create({
     height: 10,
     width: 10,
   },
+  statusDotArchive: {
+    backgroundColor: '#94a3b8',
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
   statusDotDanger: {
     backgroundColor: colors.danger,
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
+  statusDotDangerMuted: {
+    backgroundColor: '#fca5a5',
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
+  statusDotSuccess: {
+    backgroundColor: colors.success,
     borderRadius: 999,
     height: 10,
     width: 10,

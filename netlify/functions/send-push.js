@@ -99,6 +99,77 @@ async function getRecipientUserIds(serviceClient, senderContext, targetRole, dri
   return { data: null, error: { message: 'Destinatario notifica non valido.' } }
 }
 
+async function fetchNativePushTokens(serviceClient, companyId, recipientUserIds) {
+  if (!recipientUserIds.length) return { data: [], error: null }
+
+  const { data, error } = await serviceClient
+    .from('native_push_tokens')
+    .select('id, expo_push_token')
+    .eq('company_id', companyId)
+    .in('user_id', recipientUserIds)
+    .is('disabled_at', null)
+
+  if (error?.code === '42P01' || error?.code === '42703') {
+    return { data: [], error: null }
+  }
+
+  return { data: data ?? [], error }
+}
+
+async function sendExpoPushNotifications(tokens, notificationPayload) {
+  if (!tokens.length) return { failed: 0, invalidTokenIds: [], sent: 0 }
+
+  const messages = tokens.map((token) => ({
+    body: notificationPayload.body,
+    data: {
+      notificationType: notificationPayload.notificationType,
+      tag: notificationPayload.tag,
+      threadId: notificationPayload.threadId,
+      url: notificationPayload.url,
+    },
+    sound: 'default',
+    title: notificationPayload.title,
+    to: token.expo_push_token,
+  }))
+
+  const response = await fetch('https://exp.host/--/api/v2/push/send', {
+    body: JSON.stringify(messages),
+    headers: {
+      Accept: 'application/json',
+      'Accept-encoding': 'gzip, deflate',
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    return { failed: tokens.length, invalidTokenIds: [], sent: 0 }
+  }
+
+  const results = Array.isArray(payload.data) ? payload.data : [payload.data]
+  const invalidTokenIds = []
+  let sent = 0
+
+  results.forEach((result, index) => {
+    if (result?.status === 'ok') {
+      sent += 1
+      return
+    }
+
+    if (result?.details?.error === 'DeviceNotRegistered' && tokens[index]?.id) {
+      invalidTokenIds.push(tokens[index].id)
+    }
+  })
+
+  return {
+    failed: Math.max(0, tokens.length - sent),
+    invalidTokenIds,
+    sent,
+  }
+}
+
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return jsonResponse(204, {})
@@ -119,11 +190,7 @@ export async function handler(event) {
     return jsonResponse(500, { error: 'Configurazione Supabase Netlify mancante.' })
   }
 
-  if (!vapidPublicKey || !vapidPrivateKey) {
-    return jsonResponse(500, {
-      error: 'Configurazione push mancante. Aggiungi WEB_PUSH_PUBLIC_KEY e WEB_PUSH_PRIVATE_KEY su Netlify.',
-    })
-  }
+  const webPushConfigured = Boolean(vapidPublicKey && vapidPrivateKey)
 
   const authorization = event.headers.authorization ?? event.headers.Authorization ?? ''
   const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : ''
@@ -198,18 +265,34 @@ export async function handler(event) {
     })
   }
 
-  const { data: subscriptions, error: subscriptionsError } = await serviceClient
-    .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
-    .eq('company_id', companyId)
-    .in('user_id', recipientUserIds)
-    .is('disabled_at', null)
+  let subscriptions = []
+  let subscriptionsError = null
+
+  if (webPushConfigured) {
+    const subscriptionsResult = await serviceClient
+      .from('push_subscriptions')
+      .select('id, endpoint, p256dh, auth')
+      .eq('company_id', companyId)
+      .in('user_id', recipientUserIds)
+      .is('disabled_at', null)
+
+    subscriptions = subscriptionsResult.data ?? []
+    subscriptionsError = subscriptionsResult.error
+  }
 
   if (subscriptionsError) {
     return jsonResponse(500, { error: subscriptionsError.message })
   }
 
-  if (!subscriptions || subscriptions.length === 0) {
+  const nativeTokensResult = await fetchNativePushTokens(serviceClient, companyId, recipientUserIds)
+
+  if (nativeTokensResult.error) {
+    return jsonResponse(500, { error: nativeTokensResult.error.message })
+  }
+
+  const nativeTokens = nativeTokensResult.data ?? []
+
+  if ((!subscriptions || subscriptions.length === 0) && nativeTokens.length === 0) {
     return jsonResponse(200, {
       reason:
         targetRole === 'company'
@@ -220,8 +303,6 @@ export async function handler(event) {
     })
   }
 
-  webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
-
   const payload = JSON.stringify({
     body: messageBody,
     notificationType,
@@ -231,20 +312,34 @@ export async function handler(event) {
     url,
   })
 
-  const results = await Promise.allSettled(
-    subscriptions.map((subscription) =>
-      webPush.sendNotification(
-        {
-          endpoint: subscription.endpoint,
-          keys: {
-            auth: subscription.auth,
-            p256dh: subscription.p256dh,
+  let results = []
+
+  if (webPushConfigured && subscriptions.length) {
+    webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+    results = await Promise.allSettled(
+      subscriptions.map((subscription) =>
+        webPush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: {
+              auth: subscription.auth,
+              p256dh: subscription.p256dh,
+            },
           },
-        },
-        payload,
+          payload,
+        ),
       ),
-    ),
-  )
+    )
+  }
+
+  const nativeResult = await sendExpoPushNotifications(nativeTokens, {
+    body: messageBody,
+    notificationType,
+    tag,
+    threadId,
+    title,
+    url,
+  })
 
   const expiredSubscriptionIds = results
     .map((result, index) => ({ result, subscription: subscriptions[index] }))
@@ -261,8 +356,17 @@ export async function handler(event) {
       .in('id', expiredSubscriptionIds)
   }
 
-  const sent = results.filter((result) => result.status === 'fulfilled').length
-  const failed = results.length - sent
+  if (nativeResult.invalidTokenIds.length > 0) {
+    await serviceClient
+      .from('native_push_tokens')
+      .update({ disabled_at: new Date().toISOString() })
+      .in('id', nativeResult.invalidTokenIds)
+  }
+
+  const webSent = results.filter((result) => result.status === 'fulfilled').length
+  const webFailed = results.length - webSent
+  const sent = webSent + nativeResult.sent
+  const failed = webFailed + nativeResult.failed
 
   if (sent === 0 && failed > 0) {
     const firstFailure = results.find((result) => result.status === 'rejected')?.reason
@@ -273,5 +377,10 @@ export async function handler(event) {
     })
   }
 
-  return jsonResponse(200, { failed, sent })
+  return jsonResponse(200, {
+    failed,
+    nativeSent: nativeResult.sent,
+    sent,
+    webSent,
+  })
 }

@@ -761,7 +761,19 @@ export function ChatScreen({
     setTimeout(() => listRef.current?.scrollToOffset?.({ animated: false, offset: 0 }), 80)
   }
 
-  async function handlePickImage() {
+  function addPendingAttachments(assets = []) {
+    const selectedAttachments = assets
+      .filter((asset) => asset?.uri)
+      .map(createPendingAttachment)
+
+    if (!selectedAttachments.length) return
+
+    setPendingAttachments((currentAttachments) => (
+      [...currentAttachments, ...selectedAttachments].slice(0, 10)
+    ))
+  }
+
+  async function pickImageFromLibrary() {
     if (isSending) return
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -775,13 +787,42 @@ export function ChatScreen({
 
     if (result.canceled || !result.assets?.[0]) return
 
-    const selectedAttachments = result.assets
-      .filter((asset) => asset?.uri)
-      .map(createPendingAttachment)
+    addPendingAttachments(result.assets)
+  }
 
-    setPendingAttachments((currentAttachments) => (
-      [...currentAttachments, ...selectedAttachments].slice(0, 10)
-    ))
+  async function takePhotoFromCamera() {
+    if (isSending) return
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per scattare foto o video dalla chat.')
+      return
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      mediaTypes: ['images', 'videos'],
+      quality: 0.72,
+      videoMaxDuration: 60,
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    addPendingAttachments(result.assets)
+  }
+
+  function handleOpenAttachmentMenu() {
+    if (isSending || isRecording) return
+
+    Alert.alert(
+      'Allega alla chat',
+      'Scegli cosa vuoi inviare.',
+      [
+        { text: 'Scatta foto/video', onPress: takePhotoFromCamera },
+        { text: 'Galleria', onPress: pickImageFromLibrary },
+        { text: 'Annulla', style: 'cancel' },
+      ],
+    )
   }
 
   function removePendingAttachment(attachmentId) {
@@ -1036,15 +1077,18 @@ export function ChatScreen({
       ) : null}
 
       <View style={styles.composer}>
-        <Pressable disabled={isSending || isRecording} onPress={handlePickImage} style={[styles.roundButton, isRecording && styles.hiddenComposerItem]}>
+        <Pressable disabled={isSending || isRecording} onPress={handleOpenAttachmentMenu} style={[styles.roundButton, isRecording && styles.hiddenComposerItem]}>
           <Text style={styles.roundButtonText}>+</Text>
         </Pressable>
         <TextInput
+          autoCapitalize="sentences"
+          autoCorrect
           editable={!isRecording && !isSending}
           multiline
           onChangeText={handleBodyChange}
           placeholder="Scrivi un messaggio"
           placeholderTextColor="#94a3b8"
+          spellCheck
           style={[styles.input, isRecording && styles.hiddenComposerItem]}
           value={body}
         />

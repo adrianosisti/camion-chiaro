@@ -12,6 +12,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Camion Chiaro usa la fotocamera per caricare documenti, guasti e allegati chat.",
         "NSMicrophoneUsageDescription": "Camion Chiaro usa il microfono per inviare messaggi vocali in chat.",
+        "NSPhotoLibraryAddUsageDescription": "Camion Chiaro salva nella galleria le foto ricevute in chat quando lo chiedi.",
         "NSPhotoLibraryUsageDescription": "Camion Chiaro usa la galleria per allegare foto, video e documenti."
       }
     },
@@ -20,14 +21,17 @@
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VIDEO",
+        "WRITE_EXTERNAL_STORAGE",
         "POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
       "expo-document-picker",
       "expo-image-picker",
+      "expo-media-library",
       "expo-notifications",
       "expo-audio"
     ],

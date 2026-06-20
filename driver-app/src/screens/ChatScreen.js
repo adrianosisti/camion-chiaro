@@ -6,6 +6,7 @@ import {
   Linking,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,7 +16,9 @@ import {
   View,
 } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
+import * as FileSystem from 'expo-file-system/legacy'
 import * as ImagePicker from 'expo-image-picker'
+import * as MediaLibrary from 'expo-media-library'
 import { Ionicons } from '@expo/vector-icons'
 import {
   RecordingPresets,
@@ -214,6 +217,37 @@ function getAttachmentKind(path = '') {
   return path ? 'file' : ''
 }
 
+function getMediaFileExtension(path = '') {
+  const cleanPath = String(path ?? '').split('?')[0]
+  const match = cleanPath.match(/\.([a-z0-9]+)$/i)
+  const extension = match?.[1]?.toLowerCase()
+
+  if (extension && ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(extension)) return extension
+  return 'jpg'
+}
+
+async function saveImageToGallery(signedUrl, path = '') {
+  if (!signedUrl) return false
+
+  try {
+    const permission = await MediaLibrary.requestPermissionsAsync(true, ['photo'])
+    if (!permission.granted) {
+      Alert.alert('Permesso necessario', 'Consenti l accesso alla galleria per salvare la foto.')
+      return false
+    }
+
+    const extension = getMediaFileExtension(path)
+    const localUri = `${FileSystem.cacheDirectory}camion-chiaro-${Date.now()}.${extension}`
+    const download = await FileSystem.downloadAsync(signedUrl, localUri)
+    await MediaLibrary.saveToLibraryAsync(download.uri)
+    Alert.alert('Foto salvata', 'La foto è stata salvata nella galleria del telefono.')
+    return true
+  } catch {
+    Alert.alert('Foto non salvata', 'Non sono riuscito a salvare questa foto. Riprova tra poco.')
+    return false
+  }
+}
+
 function Avatar({ initials, isDriver, onPress, uri }) {
   const safeUri = isPreviewableImageUri(uri) ? uri : ''
   const content = (
@@ -326,26 +360,32 @@ function MediaPreviewItem({ message, onOpenImage }) {
   async function openMedia() {
     if (!signedUrl) return
     if (kind === 'image') {
-      onOpenImage?.(signedUrl, getAttachmentTitle(message.attachmentPath))
+      onOpenImage?.(signedUrl, getAttachmentTitle(message.attachmentPath), message.attachmentPath)
       return
     }
     await Linking.openURL(signedUrl)
   }
 
+  async function handleLongPress() {
+    if (kind !== 'image' || !signedUrl) return
+    await saveImageToGallery(signedUrl, message.attachmentPath)
+  }
+
   return (
-    <Pressable onPress={openMedia} style={styles.mediaItem}>
+    <Pressable onLongPress={handleLongPress} onPress={openMedia} style={styles.mediaItem}>
       <View style={styles.mediaThumb}>
         {kind === 'image' && signedUrl ? (
           <Image source={{ uri: signedUrl }} style={styles.mediaThumbImage} />
         ) : (
-          <Text style={styles.mediaThumbText}>{kind === 'audio' ? '♪' : kind === 'video' ? '▶' : 'DOC'}</Text>
+          <View style={styles.mediaVideoPreview}>
+            <Ionicons color={colors.white} name={kind === 'video' ? 'play' : 'document-text-outline'} size={24} />
+          </View>
         )}
       </View>
       <View style={styles.mediaCopy}>
         <Text style={styles.mediaTitle}>{getAttachmentTitle(message.attachmentPath)}</Text>
         <Text style={styles.mediaMeta}>{formatMessageTime(message.createdAt)}</Text>
       </View>
-      <Text style={styles.mediaOpenText}>Apri</Text>
     </Pressable>
   )
 }
@@ -386,9 +426,11 @@ function ChatInfoModal({
             </View>
 
             {mediaMessages.length ? (
-              mediaMessages.map((message) => (
-                <MediaPreviewItem key={`${message.id}-${message.attachmentPath}`} message={message} onOpenImage={onOpenImage} />
-              ))
+              <View style={styles.mediaGrid}>
+                {mediaMessages.map((message) => (
+                  <MediaPreviewItem key={`${message.id}-${message.attachmentPath}`} message={message} onOpenImage={onOpenImage} />
+                ))}
+              </View>
             ) : (
               <Text style={styles.infoEmptyText}>Nessuna foto o video condivisi ancora.</Text>
             )}
@@ -766,9 +808,9 @@ export function ChatScreen({
     setPhotoPreview({ name, uri: String(uri).trim() })
   }
 
-  function openMediaPreview(uri, name) {
+  function openMediaPreview(uri, name, path = '') {
     if (!isPreviewableImageUri(uri)) return
-    setPhotoPreview({ name, uri: String(uri).trim() })
+    setPhotoPreview({ name, path, uri: String(uri).trim() })
   }
 
   async function copyMessage(message) {
@@ -795,7 +837,7 @@ export function ChatScreen({
   return (
     <View style={styles.screen}>
       <View style={styles.chatHeader}>
-        <Avatar initials={getInitials(chatPartnerName)} uri={chatPartnerAvatarUrl} />
+        <Avatar initials={getInitials(chatPartnerName)} onPress={() => openAvatarPreview(chatPartnerAvatarUrl, chatPartnerName)} uri={chatPartnerAvatarUrl} />
         <View style={styles.headerCopy}>
           <Text numberOfLines={1} style={styles.chatTitle}>{chatPartnerName}</Text>
           <View style={styles.statusRow}>
@@ -931,13 +973,16 @@ export function ChatScreen({
         <Pressable onPress={() => setPhotoPreview(null)} style={styles.photoModalBackdrop}>
           <View style={styles.photoModalCard}>
             {isPreviewableImageUri(photoPreview?.uri) ? (
-              <Image
-                onError={() => setPhotoPreview(null)}
-                source={{ uri: photoPreview.uri }}
-                style={styles.photoModalImage}
-              />
+              <Pressable onLongPress={() => saveImageToGallery(photoPreview.uri, photoPreview.path)} style={styles.photoModalImageWrap}>
+                <Image
+                  onError={() => setPhotoPreview(null)}
+                  source={{ uri: photoPreview.uri }}
+                  style={styles.photoModalImage}
+                />
+              </Pressable>
             ) : null}
             <Text style={styles.photoModalTitle}>{photoPreview?.name}</Text>
+            <Text style={styles.photoModalHint}>Tieni premuto per salvare</Text>
           </View>
         </Pressable>
       </Modal>
@@ -1203,7 +1248,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: layout.screenPadding,
-    paddingVertical: 12,
+    paddingBottom: 12,
+    paddingTop: Platform.OS === 'ios' ? 54 : 16,
   },
   infoHeaderTitle: {
     color: colors.ink,
@@ -1286,14 +1332,22 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   mediaCopy: {
-    flex: 1,
+    paddingHorizontal: 4,
+    paddingTop: 7,
+  },
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    padding: 10,
   },
   mediaItem: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    width: '48%',
   },
   mediaMeta: {
     color: colors.muted,
@@ -1301,33 +1355,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
   },
-  mediaOpenText: {
-    color: colors.cyanDark,
-    fontSize: 12,
-    fontWeight: '900',
-  },
   mediaThumb: {
     alignItems: 'center',
-    backgroundColor: '#e0f2fe',
-    borderRadius: 12,
-    height: 52,
+    aspectRatio: 1,
+    backgroundColor: '#07111f',
     justifyContent: 'center',
     overflow: 'hidden',
-    width: 52,
+    width: '100%',
   },
   mediaThumbImage: {
     height: '100%',
     width: '100%',
   },
-  mediaThumbText: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '900',
-  },
   mediaTitle: {
     color: colors.ink,
     fontSize: 14,
     fontWeight: '900',
+  },
+  mediaVideoPreview: {
+    alignItems: 'center',
+    backgroundColor: '#07111f',
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%',
   },
   hiddenComposerItem: {
     display: 'none',
@@ -1391,12 +1441,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   photoModalImage: {
+    height: '100%',
+    width: '100%',
+  },
+  photoModalImageWrap: {
     aspectRatio: 1,
     borderColor: colors.cyan,
     borderRadius: 24,
     borderWidth: 2,
     maxWidth: 320,
+    overflow: 'hidden',
     width: '90%',
+  },
+  photoModalHint: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 6,
   },
   photoModalTitle: {
     color: colors.white,

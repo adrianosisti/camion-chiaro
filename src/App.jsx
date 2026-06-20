@@ -11595,7 +11595,14 @@ function DriverMobile({
     if (isDriverChatOpen && driverChatThread?.id && hasUnreadCompanyMessages) {
       void onMarkChatRead?.(driverChatThread.id, 'driver')
     }
-  }, [driverChatThread?.id, hasUnreadCompanyMessages, isDriverChatOpen, onMarkChatRead])
+  }, [driverChatThread?.id, unreadCompanyMessageCount, isDriverChatOpen, onMarkChatRead])
+
+  function openDriverChat() {
+    setIsDriverChatOpen(true)
+    if (driverChatThread?.id) {
+      void onMarkChatRead?.(driverChatThread.id, 'driver')
+    }
+  }
 
   function handleDocumentFile(document, event) {
     const file = event.target.files?.[0]
@@ -11769,7 +11776,7 @@ function DriverMobile({
           <Smartphone size={24} />
         </div>
         {unreadCompanyMessageCount > 0 && !isDriverChatOpen && (
-          <button className="driver-notification-strip" onClick={() => setIsDriverChatOpen(true)} type="button">
+          <button className="driver-notification-strip" onClick={openDriverChat} type="button">
             <Bell size={16} />
             <span>{t('driverApp.messageUnread', { count: unreadCompanyMessageCount })}</span>
           </button>
@@ -11938,7 +11945,7 @@ function DriverMobile({
             })}
             {driverChatMessages.length === 0 && <small>{t('chat.emptyDriverHint')}</small>}
           </div>
-          <button className="upload-button" onClick={() => setIsDriverChatOpen(true)} type="button">
+          <button className="upload-button" onClick={openDriverChat} type="button">
             <Mail size={16} />
             {unreadCompanyMessageCount > 0
               ? t('chat.openWithCount', { count: unreadCompanyMessageCount })
@@ -12187,6 +12194,7 @@ function DriverChatScreen({
     body: '',
   })
   const [isDriverRecordingAudio, setIsDriverRecordingAudio] = useState(false)
+  const [isMediaPanelOpen, setIsMediaPanelOpen] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [replyToMessage, setReplyToMessage] = useState(null)
   const [copiedMessageId, setCopiedMessageId] = useState('')
@@ -12222,6 +12230,10 @@ function DriverChatScreen({
     threadId: thread?.id,
   })
   const hasDriverComposerPayload = Boolean(chatForm.body.trim() || chatForm.attachmentFile)
+  const mediaMessages = useMemo(
+    () => chatMessages.filter((message) => ['image', 'video'].includes(getChatAttachmentKind(message.attachmentPath))),
+    [chatMessages],
+  )
 
   function getDriverMessageSenderLabel(message) {
     return message.senderRole === 'driver' ? t('chat.you') : t('chat.company')
@@ -12353,8 +12365,73 @@ function DriverChatScreen({
           <strong>{t('chat.company')}</strong>
           <span className={companyPresenceClassName}>{companyPresenceLabel}</span>
         </div>
+        <button
+          aria-label="Apri foto e media"
+          className="driver-chat-media-button"
+          onClick={() => setIsMediaPanelOpen(true)}
+          type="button"
+        >
+          <ImageIcon size={17} />
+          {mediaMessages.length > 0 && <span>{mediaMessages.length}</span>}
+        </button>
         <ChatSoundButton enabled={chatSound.isEnabled} onToggle={chatSound.toggleSound} t={t} />
       </div>
+      {isMediaPanelOpen && (
+        <div className="driver-chat-media-panel" role="dialog" aria-label="Foto e media">
+          <div className="driver-chat-media-header">
+            <button aria-label={t('common.back')} className="icon-button" onClick={() => setIsMediaPanelOpen(false)} type="button">
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <strong>Foto e media</strong>
+              <span>{mediaMessages.length} condivisi in questa chat</span>
+            </div>
+          </div>
+          <div className="driver-chat-media-grid">
+            {mediaMessages.map((message) => {
+              const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
+              const kind = getChatAttachmentKind(message.attachmentPath)
+
+              return (
+                <button
+                  className="driver-chat-media-item"
+                  key={`${message.id}-${message.attachmentPath}`}
+                  onClick={() => {
+                    if (kind === 'image') {
+                      setChatPhotoPreview({
+                        imageUrl: attachmentUrl,
+                        name: getChatAttachmentFileName(message.attachmentPath, 'Foto'),
+                      })
+                    } else {
+                      window.open(attachmentUrl, '_blank', 'noopener,noreferrer')
+                    }
+                  }}
+                  type="button"
+                >
+                  <span className="driver-chat-media-thumb">
+                    {kind === 'image' ? (
+                      <img alt="" src={attachmentUrl} />
+                    ) : (
+                      <span className="driver-chat-media-video">
+                        <ImageIcon size={24} />
+                      </span>
+                    )}
+                  </span>
+                  <strong>{kind === 'image' ? 'Foto' : 'Video'}</strong>
+                  <small>{formatShortDateTime(message.createdAt)}</small>
+                </button>
+              )
+            })}
+            {mediaMessages.length === 0 && (
+              <div className="driver-chat-media-empty">
+                <ImageIcon size={24} />
+                <strong>Nessuna foto o video</strong>
+                <span>Quando scambi media in chat li troverai qui.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {chatPhotoPreview && (
         <PhotoPreviewModal
           imageUrl={chatPhotoPreview.imageUrl}

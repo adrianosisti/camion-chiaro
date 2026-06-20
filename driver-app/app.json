@@ -58,6 +58,12 @@
         "projectId": "6905bb3c-6a8d-469f-b2a7-284ab2a91c1b"
       }
     },
-    "owner": "adrianosisti31"
+    "owner": "adrianosisti31",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6905bb3c-6a8d-469f-b2a7-284ab2a91c1b"
+    }
   }
 }

@@ -50,7 +50,9 @@ export function HomeScreen({
   onOpenDocuments,
   onOpenOperations,
   onOpenSettings,
+  onSelectDailyVehicle,
   onUpdateProfilePhoto,
+  selectedDailyVehicleId = '',
   unreadCompanyMessages = 0,
 }) {
   const documents = context?.documents ?? []
@@ -61,7 +63,8 @@ export function HomeScreen({
     .filter((document) => document.expiresAt)
     .sort((first, second) => new Date(first.expiresAt) - new Date(second.expiresAt))[0]
   const openFaults = faults.filter((fault) => fault.status !== 'closed')
-  const driveableVehicle = vehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')
+  const driveableVehicles = vehicles.filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
+  const selectedDailyVehicle = driveableVehicles.find((vehicle) => vehicle.id === selectedDailyVehicleId) ?? null
   const criticalChecks = checks.filter((check) => !check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
   const latestChecks = checks.slice(0, 3)
   const dailyPhrase = getDailyPhrase()
@@ -142,7 +145,7 @@ export function HomeScreen({
         <ActionTile
           icon="checkbox-outline"
           label="Check"
-          meta={criticalChecks.length ? `${criticalChecks.length} critici` : 'Pronto'}
+          meta={selectedDailyVehicle ? selectedDailyVehicle.plate : 'Scegli mezzo'}
           onPress={onOpenOperations}
         />
       </View>
@@ -163,12 +166,37 @@ export function HomeScreen({
         </Text>
       </Panel>
 
-      <Panel kicker="Mezzo" title={driveableVehicle?.plate || 'Nessun mezzo assegnato'}>
+      <Panel kicker="Mezzo del turno" title={selectedDailyVehicle?.plate || 'Scegli il mezzo che prendi'}>
         <Text style={styles.bodyText}>
-          {driveableVehicle
-            ? `${driveableVehicle.model || 'Mezzo flotta'} - ${formatVehicleType(driveableVehicle.fleetType || driveableVehicle.type)}`
-            : 'Quando l azienda aggiunge la flotta, qui vedi il mezzo da selezionare per il check.'}
+          {selectedDailyVehicle
+            ? `${selectedDailyVehicle.model || 'Mezzo flotta'} - ${formatVehicleType(selectedDailyVehicle.fleetType || selectedDailyVehicle.type)}`
+            : 'Ogni giorno seleziona il mezzo che stai usando. Se cambi mezzo durante il turno, puoi cambiarlo qui e i prossimi check o guasti useranno quello nuovo.'}
         </Text>
+        {driveableVehicles.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.vehicleSelectorScroll}>
+            <View style={styles.vehicleSelectorRow}>
+              {driveableVehicles.map((vehicle) => {
+                const isSelected = selectedDailyVehicle?.id === vehicle.id
+                return (
+                  <Pressable
+                    key={vehicle.id}
+                    onPress={() => onSelectDailyVehicle?.(vehicle.id)}
+                    style={[styles.vehicleChip, isSelected && styles.vehicleChipActive]}
+                  >
+                    <Text numberOfLines={1} style={[styles.vehiclePlate, isSelected && styles.vehiclePlateActive]}>
+                      {vehicle.plate}
+                    </Text>
+                    <Text numberOfLines={1} style={[styles.vehicleType, isSelected && styles.vehicleTypeActive]}>
+                      {formatVehicleType(vehicle.fleetType || vehicle.type)}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </ScrollView>
+        ) : (
+          <Text style={styles.selectorEmpty}>L azienda deve prima aggiungere furgoni, motrici o trattori.</Text>
+        )}
       </Panel>
 
       <Panel
@@ -450,5 +478,51 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 10,
     width: 10,
+  },
+  selectorEmpty: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginTop: 10,
+  },
+  vehicleChip: {
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    minWidth: 104,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+  },
+  vehicleChipActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.cyan,
+  },
+  vehiclePlate: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  vehiclePlateActive: {
+    color: colors.white,
+  },
+  vehicleSelectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 3,
+    paddingTop: 10,
+  },
+  vehicleSelectorScroll: {
+    marginTop: 2,
+  },
+  vehicleType: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  vehicleTypeActive: {
+    color: '#a7f3ff',
   },
 })

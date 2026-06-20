@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Image,
@@ -65,13 +65,15 @@ function VehicleSelector({ emptyLabel, onSelect, selectedId, vehicles }) {
 export function OperationsScreen({
   checks = [],
   faults = [],
+  onOpenHome,
   onSubmitCheck,
   onSubmitFault,
+  selectedVehicleId = '',
   vehicles = [],
 }) {
   const driveableVehicles = vehicles.filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
   const trailers = vehicles.filter((vehicle) => vehicle.fleetType === 'semirimorchio')
-  const firstVehicle = driveableVehicles[0] ?? null
+  const selectedVehicle = driveableVehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? null
   const [checkForm, setCheckForm] = useState({
     documentsOnBoard: true,
     lightsOk: true,
@@ -79,7 +81,7 @@ export function OperationsScreen({
     odometerKm: '',
     semitrailerId: '',
     tiresOk: true,
-    tractorId: firstVehicle?.id ?? '',
+    tractorId: selectedVehicle?.id ?? '',
   })
   const [faultForm, setFaultForm] = useState({
     description: '',
@@ -87,42 +89,32 @@ export function OperationsScreen({
     semitrailerId: '',
     severity: 'medium',
     title: '',
-    vehicleId: firstVehicle?.id ?? '',
+    vehicleId: selectedVehicle?.id ?? '',
   })
   const [isSendingCheck, setIsSendingCheck] = useState(false)
   const [isSendingFault, setIsSendingFault] = useState(false)
 
-  const currentVehicle = useMemo(
-    () => driveableVehicles.find((vehicle) => vehicle.id === checkForm.tractorId) ?? firstVehicle,
-    [checkForm.tractorId, driveableVehicles, firstVehicle],
-  )
-  const faultVehicle = useMemo(
-    () => driveableVehicles.find((vehicle) => vehicle.id === faultForm.vehicleId) ?? firstVehicle,
-    [faultForm.vehicleId, driveableVehicles, firstVehicle],
-  )
-
   useEffect(() => {
-    if (!firstVehicle?.id) return
     setCheckForm((currentForm) => ({
       ...currentForm,
-      tractorId: currentForm.tractorId || firstVehicle.id,
+      tractorId: selectedVehicle?.id ?? '',
     }))
     setFaultForm((currentForm) => ({
       ...currentForm,
-      vehicleId: currentForm.vehicleId || firstVehicle.id,
+      vehicleId: selectedVehicle?.id ?? '',
     }))
-  }, [firstVehicle?.id])
+  }, [selectedVehicle?.id])
 
   async function submitCheck() {
-    if (!currentVehicle) {
-      Alert.alert('Mezzo mancante', 'L azienda deve inserire almeno un mezzo.')
+    if (!selectedVehicle) {
+      Alert.alert('Mezzo del turno mancante', 'Vai in Home e seleziona il mezzo che stai prendendo.')
       return
     }
 
     setIsSendingCheck(true)
     const sent = await onSubmitCheck?.({
       ...checkForm,
-      tractorId: currentVehicle.id,
+      tractorId: selectedVehicle.id,
     })
     setIsSendingCheck(false)
 
@@ -162,15 +154,15 @@ export function OperationsScreen({
   }
 
   async function submitFault() {
-    if (!faultVehicle || !faultForm.title.trim()) {
-      Alert.alert('Dati mancanti', 'Inserisci titolo guasto e mezzo.')
+    if (!selectedVehicle || !faultForm.title.trim()) {
+      Alert.alert('Dati mancanti', 'Inserisci titolo guasto e scegli il mezzo del turno dalla Home.')
       return
     }
 
     setIsSendingFault(true)
     const sent = await onSubmitFault?.({
       ...faultForm,
-      vehicleId: faultVehicle.id,
+      vehicleId: selectedVehicle.id,
     })
     setIsSendingFault(false)
 
@@ -182,14 +174,21 @@ export function OperationsScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Panel kicker="Check mattutino" title={getVehicleLabel(currentVehicle)}>
-        <Text style={styles.sectionLabel}>Mezzo</Text>
-        <VehicleSelector
-          emptyLabel="L azienda deve aggiungere furgoni, motrici o trattori."
-          onSelect={(tractorId) => setCheckForm((currentForm) => ({ ...currentForm, tractorId }))}
-          selectedId={checkForm.tractorId}
-          vehicles={driveableVehicles}
-        />
+      {!selectedVehicle ? (
+        <Panel kicker="Mezzo del turno" title="Seleziona prima il mezzo">
+          <Text style={styles.helper}>
+            L autista non deve scegliere tutta la flotta ogni volta. Prima seleziona in Home il mezzo che sta prendendo oggi; se cambia mezzo durante il giorno, lo cambia da li.
+          </Text>
+          <PrimaryButton onPress={onOpenHome} title="Vai alla Home" />
+        </Panel>
+      ) : null}
+
+      <Panel kicker="Check mattutino" title={getVehicleLabel(selectedVehicle)}>
+        <Text style={styles.sectionLabel}>Mezzo del turno</Text>
+        <View style={styles.selectedVehicleCard}>
+          <Text style={styles.selectedVehiclePlate}>{selectedVehicle?.plate ?? 'Non selezionato'}</Text>
+          <Text style={styles.selectedVehicleMeta}>{selectedVehicle?.model || selectedVehicle?.fleetType || 'Mezzo flotta'}</Text>
+        </View>
         <Text style={styles.sectionLabel}>Semirimorchio opzionale</Text>
         <VehicleSelector
           emptyLabel="Nessun semirimorchio in flotta."
@@ -233,12 +232,10 @@ export function OperationsScreen({
 
       <Panel kicker="Guasto" title="Segnala all azienda">
         <Text style={styles.sectionLabel}>Mezzo guasto</Text>
-        <VehicleSelector
-          emptyLabel="L azienda deve aggiungere almeno un mezzo."
-          onSelect={(vehicleId) => setFaultForm((currentForm) => ({ ...currentForm, vehicleId }))}
-          selectedId={faultForm.vehicleId}
-          vehicles={driveableVehicles}
-        />
+        <View style={styles.selectedVehicleCard}>
+          <Text style={styles.selectedVehiclePlate}>{selectedVehicle?.plate ?? 'Non selezionato'}</Text>
+          <Text style={styles.selectedVehicleMeta}>{selectedVehicle?.model || selectedVehicle?.fleetType || 'Mezzo flotta'}</Text>
+        </View>
         <Text style={styles.sectionLabel}>Semirimorchio agganciato</Text>
         <VehicleSelector
           emptyLabel="Nessun semirimorchio in flotta."
@@ -363,6 +360,26 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 7,
     marginTop: 4,
+  },
+  selectedVehicleCard: {
+    backgroundColor: colors.ink,
+    borderColor: colors.cyan,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+  },
+  selectedVehicleMeta: {
+    color: '#a7f3ff',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  selectedVehiclePlate: {
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: '900',
   },
   selectorRow: {
     flexDirection: 'row',

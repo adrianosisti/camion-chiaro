@@ -52,10 +52,21 @@ import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
 
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getDailyVehicleStorageKey(driverId) {
+  return `camion-chiaro-daily-vehicle:${driverId}:${getLocalDateKey()}`
+}
+
 const driverTabs = [
   { id: 'home', icon: 'home-outline', label: 'Home' },
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat' },
-  { id: 'documents', icon: 'document-text-outline', label: 'Documenti' },
+  { id: 'documents', icon: 'document-text-outline', label: 'Doc' },
   { id: 'operations', icon: 'checkbox-outline', label: 'Check' },
   { id: 'settings', icon: 'settings-outline', label: 'Menu' },
 ]
@@ -133,6 +144,7 @@ export default function App() {
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
+  const [selectedDailyVehicleId, setSelectedDailyVehicleId] = useState('')
   const [settingsReady, setSettingsReady] = useState(false)
   const presenceRef = useRef(null)
   const typingTimeoutRef = useRef(null)
@@ -150,7 +162,9 @@ export default function App() {
     (message) => message.senderRole === 'company' && !message.readByDriverAt,
   ).length
   const unreadDriverMessages = companyContext?.unreadDriverMessages ?? 0
-  const chatBadgeCount = accountType === 'company' ? unreadDriverMessages : unreadCompanyMessages
+  const chatBadgeCount = accountType === 'company'
+    ? unreadDriverMessages
+    : activeTab === 'chat' ? 0 : unreadCompanyMessages
 
   async function loadAssetUrls(nextContext) {
     const loadedDriver = nextContext?.drivers?.[0]
@@ -424,6 +438,49 @@ export default function App() {
   }, [accountType, activeTab, driver?.companyId, driver?.id])
 
   useEffect(() => {
+    if (accountType !== 'driver' || activeTab !== 'chat' || !chatThread?.id) return
+
+    const unreadCount = countUnreadMessagesForRole(chatMessages, 'driver')
+    if (!unreadCount) return
+
+    setChatMessages((currentMessages) => markMessagesReadLocally(currentMessages, 'driver'))
+    void markChatMessagesRead(chatThread.id, 'driver').then((readResult) => {
+      if (!readResult?.error && readResult?.data?.length) {
+        setChatMessages((currentMessages) => mergeChatMessageUpdates(currentMessages, readResult.data))
+      }
+    })
+  }, [accountType, activeTab, chatMessages, chatThread?.id])
+
+  useEffect(() => {
+    if (accountType !== 'driver' || !driver?.id) {
+      setSelectedDailyVehicleId('')
+      return undefined
+    }
+
+    let isActive = true
+
+    async function loadDailyVehicle() {
+      const storedVehicleId = await AsyncStorage.getItem(getDailyVehicleStorageKey(driver.id))
+      if (isActive) setSelectedDailyVehicleId(storedVehicleId ?? '')
+    }
+
+    void loadDailyVehicle()
+
+    return () => {
+      isActive = false
+    }
+  }, [accountType, driver?.id])
+
+  useEffect(() => {
+    if (!selectedDailyVehicleId) return
+    const selectedVehicleExists = (context?.vehicles ?? []).some((vehicle) => (
+      vehicle.id === selectedDailyVehicleId && vehicle.fleetType !== 'semirimorchio'
+    ))
+
+    if (!selectedVehicleExists) setSelectedDailyVehicleId('')
+  }, [context?.vehicles, selectedDailyVehicleId])
+
+  useEffect(() => {
     if (accountType !== 'company' || activeTab !== 'chat' || !selectedCompanyDriver?.id) return
     void loadCompanyChatData(selectedCompanyDriver, { markAsRead: true })
   }, [accountType, activeTab, selectedCompanyDriver?.id])
@@ -490,7 +547,16 @@ export default function App() {
     setIsCompanyTyping(false)
     setLogoUrl('')
     setSelectedCompanyDriverId('')
+    setSelectedDailyVehicleId('')
     setSession(null)
+  }
+
+  async function handleSelectDailyVehicle(vehicleId) {
+    if (!driver?.id || !vehicleId) return false
+
+    setSelectedDailyVehicleId(vehicleId)
+    await AsyncStorage.setItem(getDailyVehicleStorageKey(driver.id), vehicleId)
+    return true
   }
 
   async function handleSendChatMessage(body, attachment = null) {
@@ -887,8 +953,10 @@ export default function App() {
         <OperationsScreen
           checks={context?.vehicleChecks ?? []}
           faults={context?.faultReports ?? []}
+          onOpenHome={() => setActiveTab('home')}
           onSubmitCheck={handleSubmitCheck}
           onSubmitFault={handleSubmitFault}
+          selectedVehicleId={selectedDailyVehicleId}
           vehicles={context?.vehicles ?? []}
         />
       )
@@ -919,7 +987,9 @@ export default function App() {
         onOpenDocuments={() => setActiveTab('documents')}
         onOpenOperations={() => setActiveTab('operations')}
         onOpenSettings={() => setActiveTab('settings')}
+        onSelectDailyVehicle={handleSelectDailyVehicle}
         onUpdateProfilePhoto={handleUpdateProfilePhoto}
+        selectedDailyVehicleId={selectedDailyVehicleId}
         unreadCompanyMessages={unreadCompanyMessages}
       />
     )
@@ -946,6 +1016,7 @@ export default function App() {
     managementInitialSection,
     selectedCompanyDriver,
     selectedCompanyDriverId,
+    selectedDailyVehicleId,
   ])
 
   if (isBooting) {
@@ -1009,8 +1080,9 @@ export default function App() {
               <Ionicons
                 color={isActive ? colors.ink : '#cbd5e1'}
                 name={tab.icon}
-                size={22}
+                size={20}
               />
+              <Text numberOfLines={1} style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
               {hasBadge ? <Text style={styles.tabBadge}>{chatBadgeCount}</Text> : null}
             </Pressable>
           )
@@ -1120,6 +1192,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 5,
     paddingVertical: 2,
+    position: 'absolute',
+    right: 7,
+    top: 5,
     textAlign: 'center',
   },
   tabBar: {
@@ -1127,23 +1202,36 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(18, 198, 223, 0.32)',
     borderTopWidth: 1,
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     paddingHorizontal: 10,
     paddingTop: 10,
-    paddingBottom: 12,
+    paddingBottom: Platform.OS === 'ios' ? 16 : 10,
   },
   tabButton: {
     alignItems: 'center',
     backgroundColor: '#101b2d',
     borderColor: 'rgba(148, 163, 184, 0.2)',
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 15,
     flex: 1,
+    gap: 3,
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 56,
+    paddingHorizontal: 2,
+    position: 'relative',
   },
   tabButtonActive: {
     backgroundColor: colors.cyan,
     borderColor: '#a7f3ff',
+  },
+  tabLabel: {
+    color: '#cbd5e1',
+    fontSize: 10,
+    fontWeight: '900',
+    lineHeight: 12,
+    textAlign: 'center',
+  },
+  tabLabelActive: {
+    color: colors.ink,
   },
 })

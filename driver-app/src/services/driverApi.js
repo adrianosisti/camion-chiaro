@@ -21,7 +21,7 @@ function notConfiguredError() {
 
 const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_message_at'
 const chatMessageSelect =
-  'id, company_id, driver_id, thread_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
+  'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
 
 export async function getCurrentSession() {
   if (!isSupabaseConfigured) return { data: { session: null }, error: null }
@@ -174,7 +174,6 @@ export async function sendChatMessage({ body, companyId, driverId, threadId }) {
     .insert({
       body,
       company_id: companyId,
-      driver_id: driverId,
       sender_role: 'driver',
       thread_id: threadResult.data.id,
     })

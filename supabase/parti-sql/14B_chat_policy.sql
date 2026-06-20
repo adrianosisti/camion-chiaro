@@ -132,8 +132,28 @@ values (
   'company-assets',
   'company-assets',
   false,
-  5242880,
-  array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+  67108864,
+  array[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+    'video/mp4',
+    'video/quicktime',
+    'video/webm',
+    'video/x-m4v',
+    'audio/aac',
+    'audio/mp3',
+    'audio/mp4',
+    'audio/mpeg',
+    'audio/ogg',
+    'audio/opus',
+    'audio/wav',
+    'audio/webm',
+    'audio/x-m4a',
+    'audio/x-wav'
+  ]
 )
 on conflict (id) do update
 set

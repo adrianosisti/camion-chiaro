@@ -89,6 +89,9 @@ Eseguili uno alla volta, sempre in questo ordine.
 Il file `19_chat_reazioni.sql` abilita le reazioni rapide ai messaggi della chat.
 Eseguilo una sola volta dopo `18_storico_documenti.sql`.
 
+Il file `27_chat_audio_video.sql` abilita audio e video nella chat e aumenta il limite del bucket media.
+Eseguilo una sola volta dopo il deploy della versione chat con allegati.
+
 ## Fix notifiche push
 
 Se premendo `Verifica notifiche` compare l errore `function digest(text, unknown) does not exist`, esegui una sola volta il file `20_fix_push_digest.sql`.

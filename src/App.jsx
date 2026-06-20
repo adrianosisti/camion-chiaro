@@ -6,24 +6,30 @@ import BadgeCheck from 'lucide-react/dist/esm/icons/badge-check.mjs'
 import BookOpen from 'lucide-react/dist/esm/icons/book-open.mjs'
 import Building2 from 'lucide-react/dist/esm/icons/building-2.mjs'
 import CalendarClock from 'lucide-react/dist/esm/icons/calendar-clock.mjs'
+import Camera from 'lucide-react/dist/esm/icons/camera.mjs'
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2.mjs'
 import Check from 'lucide-react/dist/esm/icons/check.mjs'
 import CheckCheck from 'lucide-react/dist/esm/icons/check-check.mjs'
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right.mjs'
 import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check.mjs'
+import Copy from 'lucide-react/dist/esm/icons/copy.mjs'
 import Clock3 from 'lucide-react/dist/esm/icons/clock-3.mjs'
 import Download from 'lucide-react/dist/esm/icons/download.mjs'
 import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
 import Filter from 'lucide-react/dist/esm/icons/filter.mjs'
 import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
 import Globe2 from 'lucide-react/dist/esm/icons/globe-2.mjs'
+import ImageIcon from 'lucide-react/dist/esm/icons/image.mjs'
 import KeyRound from 'lucide-react/dist/esm/icons/key-round.mjs'
 import LockKeyhole from 'lucide-react/dist/esm/icons/lock-keyhole.mjs'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.mjs'
 import Mail from 'lucide-react/dist/esm/icons/mail.mjs'
+import Mic from 'lucide-react/dist/esm/icons/mic.mjs'
+import Paperclip from 'lucide-react/dist/esm/icons/paperclip.mjs'
 import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
 import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
 import RadioTower from 'lucide-react/dist/esm/icons/radio-tower.mjs'
+import Reply from 'lucide-react/dist/esm/icons/reply.mjs'
 import Save from 'lucide-react/dist/esm/icons/save.mjs'
 import Search from 'lucide-react/dist/esm/icons/search.mjs'
 import Send from 'lucide-react/dist/esm/icons/send.mjs'
@@ -32,11 +38,14 @@ import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check.mjs'
 import SmilePlus from 'lucide-react/dist/esm/icons/smile-plus.mjs'
 import Smartphone from 'lucide-react/dist/esm/icons/smartphone.mjs'
 import Stethoscope from 'lucide-react/dist/esm/icons/stethoscope.mjs'
+import Square from 'lucide-react/dist/esm/icons/square.mjs'
 import Truck from 'lucide-react/dist/esm/icons/truck.mjs'
 import Upload from 'lucide-react/dist/esm/icons/upload.mjs'
 import UserPlus from 'lucide-react/dist/esm/icons/user-plus.mjs'
 import UserRound from 'lucide-react/dist/esm/icons/user-round.mjs'
 import Users from 'lucide-react/dist/esm/icons/users.mjs'
+import Volume2 from 'lucide-react/dist/esm/icons/volume-2.mjs'
+import VolumeX from 'lucide-react/dist/esm/icons/volume-x.mjs'
 import Wrench from 'lucide-react/dist/esm/icons/wrench.mjs'
 import X from 'lucide-react/dist/esm/icons/x.mjs'
 import { company, complianceItems, driverDocuments, drivers, vehicles } from './data/sampleData'
@@ -133,6 +142,9 @@ const driverDocumentStatusOptions = ['Caricato', 'Verificato', 'Scaduto', 'Manca
 const maxDriverDocumentFileSize = 10 * 1024 * 1024
 const maxOperationalImageFileSize = 8 * 1024 * 1024
 const maxProfileImageFileSize = 5 * 1024 * 1024
+const maxChatImageFileSize = 8 * 1024 * 1024
+const maxChatAudioFileSize = 16 * 1024 * 1024
+const maxChatVideoFileSize = 64 * 1024 * 1024
 const imageCompressionMaxSide = 1600
 const imageCompressionQuality = 0.76
 const storagePlanLimitsBytes = {
@@ -215,6 +227,8 @@ const chatReactionOptions = [
   { emoji: '❤️', label: 'Cuore', value: 'heart' },
   { emoji: '🙏', label: 'Grazie', value: 'thanks' },
   { emoji: '👀', label: 'Visto', value: 'seen' },
+  { emoji: '✅', label: 'Fatto', value: 'done' },
+  { emoji: '⚠️', label: 'Attenzione', value: 'warning' },
 ]
 const chatTypingExpiryMs = 3500
 const emptyChatLiveState = {
@@ -224,6 +238,17 @@ const emptyChatLiveState = {
 }
 const deepLinkViews = new Set(['chat', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
+const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
+const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
+const chatMediaAccept = 'image/*,video/*,audio/*'
+const chatGalleryMediaAccept = 'image/*,video/*'
+const chatReplyPrefix = '[[cc-reply:'
+const chatReplySuffix = ']]'
+const driverMediaSaveOptions = [
+  { value: 'never', labelKey: 'chat.autoSaveNever' },
+  { value: 'photos', labelKey: 'chat.autoSavePhotos' },
+  { value: 'all', labelKey: 'chat.autoSaveAll' },
+]
 const defaultLanguage = 'it'
 const languageOptions = [
   { code: 'it', label: 'Italiano', shortLabel: 'IT' },
@@ -2318,6 +2343,36 @@ const microcopyTranslations = {
     'drivers.statusService': 'In servizio',
     'drivers.statusTravelling': 'In viaggio',
     'phone.channels': 'Chat, guasti e documenti',
+    'chat.actions': 'Azioni messaggio',
+    'chat.attach': 'Allega',
+    'chat.audioAttached': 'Audio allegato',
+    'chat.audioMessage': 'Messaggio audio',
+    'chat.autoSaveAll': 'Tutti i media',
+    'chat.autoSaveHint': 'Prova a scaricare automaticamente i media sul telefono quando arrivano in chat. Il telefono puo comunque chiedere conferma.',
+    'chat.autoSaveNever': 'Mai',
+    'chat.autoSavePhotos': 'Foto e video',
+    'chat.cancelReply': 'Annulla risposta',
+    'chat.copied': 'Copiato',
+    'chat.copy': 'Copia',
+    'chat.downloadMedia': 'Scarica',
+    'chat.fileAttached': 'File allegato',
+    'chat.mediaReady': 'Allegato pronto: {name}',
+    'chat.mediaSaveTitle': 'Salvataggio media',
+    'chat.photoVideo': 'Foto/video',
+    'chat.recordAudio': 'Audio',
+    'chat.recording': 'Registrazione',
+    'chat.recordingFailed': 'Microfono non disponibile',
+    'chat.reply': 'Rispondi',
+    'chat.replyPreview': 'Risposta',
+    'chat.replyTo': 'Risposta a {name}',
+    'chat.soundOff': 'Suono chat spento',
+    'chat.soundOn': 'Suono chat attivo',
+    'chat.stopRecording': 'Stop',
+    'chat.swipeToReply': 'Scorri per rispondere',
+    'chat.unsupportedRecorder': 'Registrazione audio non supportata',
+    'chat.videoAttached': 'Video allegato',
+    'reaction.done': 'Fatto',
+    'reaction.warning': 'Attenzione',
   },
   en: {
     'common.actions': 'Actions',
@@ -2344,6 +2399,36 @@ const microcopyTranslations = {
     'drivers.statusService': 'On duty',
     'drivers.statusTravelling': 'Travelling',
     'phone.channels': 'Chat, faults and documents',
+    'chat.actions': 'Message actions',
+    'chat.attach': 'Attach',
+    'chat.audioAttached': 'Audio attached',
+    'chat.audioMessage': 'Audio message',
+    'chat.autoSaveAll': 'All media',
+    'chat.autoSaveHint': 'Tries to automatically download incoming chat media to the phone. The phone may still ask for confirmation.',
+    'chat.autoSaveNever': 'Never',
+    'chat.autoSavePhotos': 'Photos and videos',
+    'chat.cancelReply': 'Cancel reply',
+    'chat.copied': 'Copied',
+    'chat.copy': 'Copy',
+    'chat.downloadMedia': 'Download',
+    'chat.fileAttached': 'File attached',
+    'chat.mediaReady': 'Attachment ready: {name}',
+    'chat.mediaSaveTitle': 'Media saving',
+    'chat.photoVideo': 'Photo/video',
+    'chat.recordAudio': 'Audio',
+    'chat.recording': 'Recording',
+    'chat.recordingFailed': 'Microphone unavailable',
+    'chat.reply': 'Reply',
+    'chat.replyPreview': 'Reply',
+    'chat.replyTo': 'Reply to {name}',
+    'chat.soundOff': 'Chat sound off',
+    'chat.soundOn': 'Chat sound on',
+    'chat.stopRecording': 'Stop',
+    'chat.swipeToReply': 'Swipe to reply',
+    'chat.unsupportedRecorder': 'Audio recording not supported',
+    'chat.videoAttached': 'Video attached',
+    'reaction.done': 'Done',
+    'reaction.warning': 'Warning',
   },
   es: {
     'common.actions': 'Acciones',
@@ -2370,6 +2455,36 @@ const microcopyTranslations = {
     'drivers.statusService': 'En servicio',
     'drivers.statusTravelling': 'En viaje',
     'phone.channels': 'Chat, averias y documentos',
+    'chat.actions': 'Acciones mensaje',
+    'chat.attach': 'Adjuntar',
+    'chat.audioAttached': 'Audio adjunto',
+    'chat.audioMessage': 'Mensaje audio',
+    'chat.autoSaveAll': 'Todos los media',
+    'chat.autoSaveHint': 'Intenta descargar automaticamente los media entrantes en el telefono. El telefono puede pedir confirmacion.',
+    'chat.autoSaveNever': 'Nunca',
+    'chat.autoSavePhotos': 'Fotos y videos',
+    'chat.cancelReply': 'Cancelar respuesta',
+    'chat.copied': 'Copiado',
+    'chat.copy': 'Copiar',
+    'chat.downloadMedia': 'Descargar',
+    'chat.fileAttached': 'Archivo adjunto',
+    'chat.mediaReady': 'Adjunto listo: {name}',
+    'chat.mediaSaveTitle': 'Guardado media',
+    'chat.photoVideo': 'Foto/video',
+    'chat.recordAudio': 'Audio',
+    'chat.recording': 'Grabando',
+    'chat.recordingFailed': 'Microfono no disponible',
+    'chat.reply': 'Responder',
+    'chat.replyPreview': 'Respuesta',
+    'chat.replyTo': 'Respuesta a {name}',
+    'chat.soundOff': 'Sonido chat apagado',
+    'chat.soundOn': 'Sonido chat activo',
+    'chat.stopRecording': 'Stop',
+    'chat.swipeToReply': 'Desliza para responder',
+    'chat.unsupportedRecorder': 'Grabacion audio no soportada',
+    'chat.videoAttached': 'Video adjunto',
+    'reaction.done': 'Hecho',
+    'reaction.warning': 'Atencion',
   },
   fr: {
     'common.actions': 'Actions',
@@ -2396,6 +2511,36 @@ const microcopyTranslations = {
     'drivers.statusService': 'En service',
     'drivers.statusTravelling': 'En trajet',
     'phone.channels': 'Chat, pannes et documents',
+    'chat.actions': 'Actions message',
+    'chat.attach': 'Joindre',
+    'chat.audioAttached': 'Audio joint',
+    'chat.audioMessage': 'Message audio',
+    'chat.autoSaveAll': 'Tous les medias',
+    'chat.autoSaveHint': 'Essaie de telecharger automatiquement les medias entrants sur le telephone. Le telephone peut demander confirmation.',
+    'chat.autoSaveNever': 'Jamais',
+    'chat.autoSavePhotos': 'Photos et videos',
+    'chat.cancelReply': 'Annuler reponse',
+    'chat.copied': 'Copie',
+    'chat.copy': 'Copier',
+    'chat.downloadMedia': 'Telecharger',
+    'chat.fileAttached': 'Fichier joint',
+    'chat.mediaReady': 'Piece jointe prete : {name}',
+    'chat.mediaSaveTitle': 'Sauvegarde medias',
+    'chat.photoVideo': 'Photo/video',
+    'chat.recordAudio': 'Audio',
+    'chat.recording': 'Enregistrement',
+    'chat.recordingFailed': 'Microphone indisponible',
+    'chat.reply': 'Repondre',
+    'chat.replyPreview': 'Reponse',
+    'chat.replyTo': 'Reponse a {name}',
+    'chat.soundOff': 'Son chat coupe',
+    'chat.soundOn': 'Son chat actif',
+    'chat.stopRecording': 'Stop',
+    'chat.swipeToReply': 'Glisser pour repondre',
+    'chat.unsupportedRecorder': 'Enregistrement audio non supporte',
+    'chat.videoAttached': 'Video jointe',
+    'reaction.done': 'Fait',
+    'reaction.warning': 'Attention',
   },
   de: {
     'common.actions': 'Aktionen',
@@ -2422,6 +2567,36 @@ const microcopyTranslations = {
     'drivers.statusService': 'Im Einsatz',
     'drivers.statusTravelling': 'Unterwegs',
     'phone.channels': 'Chat, Schaden und Dokumente',
+    'chat.actions': 'Nachrichtenaktionen',
+    'chat.attach': 'Anhang',
+    'chat.audioAttached': 'Audio angehangt',
+    'chat.audioMessage': 'Audionachricht',
+    'chat.autoSaveAll': 'Alle Medien',
+    'chat.autoSaveHint': 'Versucht eingehende Chat-Medien automatisch auf das Telefon herunterzuladen. Das Telefon kann trotzdem Bestatigung verlangen.',
+    'chat.autoSaveNever': 'Nie',
+    'chat.autoSavePhotos': 'Fotos und Videos',
+    'chat.cancelReply': 'Antwort abbrechen',
+    'chat.copied': 'Kopiert',
+    'chat.copy': 'Kopieren',
+    'chat.downloadMedia': 'Herunterladen',
+    'chat.fileAttached': 'Datei angehangt',
+    'chat.mediaReady': 'Anhang bereit: {name}',
+    'chat.mediaSaveTitle': 'Medien speichern',
+    'chat.photoVideo': 'Foto/Video',
+    'chat.recordAudio': 'Audio',
+    'chat.recording': 'Aufnahme',
+    'chat.recordingFailed': 'Mikrofon nicht verfugbar',
+    'chat.reply': 'Antworten',
+    'chat.replyPreview': 'Antwort',
+    'chat.replyTo': 'Antwort an {name}',
+    'chat.soundOff': 'Chat-Ton aus',
+    'chat.soundOn': 'Chat-Ton an',
+    'chat.stopRecording': 'Stop',
+    'chat.swipeToReply': 'Zum Antworten wischen',
+    'chat.unsupportedRecorder': 'Audioaufnahme nicht unterstutzt',
+    'chat.videoAttached': 'Video angehangt',
+    'reaction.done': 'Erledigt',
+    'reaction.warning': 'Achtung',
   },
 }
 
@@ -2966,6 +3141,180 @@ function hasChatReactions(message) {
   return Object.values(message?.reactions ?? {}).some(Boolean)
 }
 
+function truncateChatText(value, maxLength = 120) {
+  const cleanValue = String(value ?? '').replace(/\s+/g, ' ').trim()
+  if (cleanValue.length <= maxLength) return cleanValue
+  return `${cleanValue.slice(0, maxLength - 1).trim()}...`
+}
+
+function encodeChatReplyPayload(reply) {
+  if (!reply) return ''
+
+  try {
+    return window.btoa(encodeURIComponent(JSON.stringify(reply)))
+  } catch {
+    return ''
+  }
+}
+
+function decodeChatReplyPayload(value) {
+  if (!value) return null
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(window.atob(value)))
+    return {
+      id: String(parsed.id ?? ''),
+      sender: String(parsed.sender ?? ''),
+      text: String(parsed.text ?? ''),
+    }
+  } catch {
+    return null
+  }
+}
+
+function parseChatMessageBody(body = '') {
+  const messageBody = String(body ?? '')
+
+  if (!messageBody.startsWith(chatReplyPrefix)) {
+    return { reply: null, text: messageBody }
+  }
+
+  const suffixIndex = messageBody.indexOf(chatReplySuffix)
+  if (suffixIndex < 0) return { reply: null, text: messageBody }
+
+  const encodedReply = messageBody.slice(chatReplyPrefix.length, suffixIndex)
+  const reply = decodeChatReplyPayload(encodedReply)
+  const text = messageBody.slice(suffixIndex + chatReplySuffix.length).replace(/^\n+/, '')
+
+  return { reply, text }
+}
+
+function composeChatMessageBody(text, reply) {
+  const cleanText = String(text ?? '').trim()
+  const encodedReply = encodeChatReplyPayload(reply)
+  if (!encodedReply) return cleanText
+
+  return `${chatReplyPrefix}${encodedReply}${chatReplySuffix}${cleanText ? `\n${cleanText}` : ''}`
+}
+
+function getChatMessageDisplay(message) {
+  return parseChatMessageBody(message?.body ?? '')
+}
+
+function getChatMessageText(message, fallback = 'Messaggio') {
+  const display = getChatMessageDisplay(message)
+  if (display.text) return display.text
+  if (!message?.attachmentPath) return fallback
+
+  const attachmentKind = getChatAttachmentKind(message.attachmentPath)
+  if (attachmentKind === 'audio') return 'Audio allegato'
+  if (attachmentKind === 'video') return 'Video allegato'
+  if (attachmentKind === 'image') return 'Foto allegata'
+  return 'File allegato'
+}
+
+function createChatReplyReference(message, sender) {
+  if (!message?.id) return null
+
+  return {
+    id: message.id,
+    sender,
+    text: truncateChatText(getChatMessageText(message), 140),
+  }
+}
+
+async function copyChatText(message) {
+  const text = getChatMessageText(message, '')
+  if (!text) return false
+
+  try {
+    await navigator.clipboard?.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function playChatTone(kind = 'incoming') {
+  if (typeof window === 'undefined') return
+
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext
+    if (!AudioContext) return
+
+    const context = new AudioContext()
+    const now = context.currentTime
+    const masterGain = context.createGain()
+    const frequencies = kind === 'outgoing' ? [587, 880] : [784, 1046, 1318]
+
+    masterGain.gain.setValueAtTime(0.0001, now)
+    masterGain.gain.exponentialRampToValueAtTime(0.17, now + 0.015)
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34)
+    masterGain.connect(context.destination)
+
+    frequencies.forEach((frequency, index) => {
+      const oscillator = context.createOscillator()
+      const noteGain = context.createGain()
+      const startAt = now + index * 0.07
+      const stopAt = startAt + 0.16
+
+      oscillator.type = index === 1 ? 'triangle' : 'sine'
+      oscillator.frequency.setValueAtTime(frequency, startAt)
+      noteGain.gain.setValueAtTime(0.0001, startAt)
+      noteGain.gain.exponentialRampToValueAtTime(0.22, startAt + 0.012)
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, stopAt)
+      oscillator.connect(noteGain)
+      noteGain.connect(masterGain)
+      oscillator.start(startAt)
+      oscillator.stop(stopAt + 0.03)
+    })
+
+    window.setTimeout(() => context.close().catch(() => {}), 520)
+  } catch {
+    // Browser audio can be blocked before the first user gesture.
+  }
+}
+
+function useChatSoundPreference() {
+  const [isEnabled, setIsEnabled] = useState(() => {
+    if (typeof localStorage === 'undefined') return true
+    return localStorage.getItem(chatSoundStorageKey) !== 'false'
+  })
+
+  const toggleSound = useCallback(() => {
+    setIsEnabled((currentValue) => {
+      const nextValue = !currentValue
+      localStorage.setItem(chatSoundStorageKey, String(nextValue))
+      return nextValue
+    })
+  }, [])
+
+  const playSound = useCallback(
+    (kind) => {
+      if (isEnabled) playChatTone(kind)
+    },
+    [isEnabled],
+  )
+
+  return { isEnabled, playSound, toggleSound }
+}
+
+function useDriverMediaSavePreference() {
+  const [preference, setPreference] = useState(() => {
+    if (typeof localStorage === 'undefined') return 'never'
+    const storedPreference = localStorage.getItem(driverMediaSaveStorageKey)
+    return driverMediaSaveOptions.some((option) => option.value === storedPreference) ? storedPreference : 'never'
+  })
+
+  const updatePreference = useCallback((nextPreference) => {
+    const safePreference = driverMediaSaveOptions.some((option) => option.value === nextPreference) ? nextPreference : 'never'
+    localStorage.setItem(driverMediaSaveStorageKey, safePreference)
+    setPreference(safePreference)
+  }, [])
+
+  return [preference, updatePreference]
+}
+
 function getChatActorKey(actorRole, actorId) {
   return actorRole && actorId ? `${actorRole}:${actorId}` : ''
 }
@@ -3034,51 +3383,99 @@ function shouldIgnoreReactionGesture(target) {
   return Boolean(target?.closest?.('a, button, input, label, select, textarea'))
 }
 
-function useReactionPicker() {
-  const [openReactionMessageId, setOpenReactionMessageId] = useState('')
+function useChatMessageActions({ onReply }) {
+  const [openActionMessageId, setOpenActionMessageId] = useState('')
+  const [swipeState, setSwipeState] = useState({ messageId: '', offset: 0 })
   const holdTimerRef = useRef(null)
+  const swipeRef = useRef(null)
 
-  function clearReactionHold() {
+  function clearMessageHold() {
     if (holdTimerRef.current && typeof window !== 'undefined') {
       window.clearTimeout(holdTimerRef.current)
       holdTimerRef.current = null
     }
   }
 
-  function openReactionPicker(messageId) {
-    clearReactionHold()
-    setOpenReactionMessageId(messageId)
+  function openMessageActions(messageId) {
+    clearMessageHold()
+    setOpenActionMessageId(messageId)
   }
 
-  function closeReactionPicker() {
-    clearReactionHold()
-    setOpenReactionMessageId('')
+  function closeMessageActions() {
+    clearMessageHold()
+    setOpenActionMessageId('')
   }
 
-  function startReactionHold(messageId, event) {
+  function startMessageHold(message, event) {
     if (shouldIgnoreReactionGesture(event.target)) return
 
-    clearReactionHold()
-    holdTimerRef.current = window.setTimeout(() => openReactionPicker(messageId), 500)
+    clearMessageHold()
+    holdTimerRef.current = window.setTimeout(() => openMessageActions(message.id), 520)
   }
 
-  function getReactionTriggerProps(messageId) {
+  function resetSwipe() {
+    swipeRef.current = null
+    setSwipeState({ messageId: '', offset: 0 })
+  }
+
+  function getMessageActionProps(message) {
     return {
       onContextMenu: (event) => {
         if (shouldIgnoreReactionGesture(event.target)) return
         event.preventDefault()
-        openReactionPicker(messageId)
+        openMessageActions(message.id)
       },
-      onMouseDown: (event) => {
-        if (event.button !== 0) return
-        startReactionHold(messageId, event)
+      onPointerCancel: () => {
+        clearMessageHold()
+        resetSwipe()
       },
-      onMouseLeave: clearReactionHold,
-      onMouseUp: clearReactionHold,
-      onTouchCancel: clearReactionHold,
-      onTouchEnd: clearReactionHold,
-      onTouchMove: clearReactionHold,
-      onTouchStart: (event) => startReactionHold(messageId, event),
+      onPointerDown: (event) => {
+        if (event.button && event.button !== 0) return
+        if (shouldIgnoreReactionGesture(event.target)) return
+
+        swipeRef.current = {
+          id: message.id,
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          swiped: false,
+        }
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+        startMessageHold(message, event)
+      },
+      onPointerLeave: clearMessageHold,
+      onPointerMove: (event) => {
+        const swipe = swipeRef.current
+        if (!swipe || swipe.id !== message.id) return
+
+        const deltaX = event.clientX - swipe.startX
+        const deltaY = event.clientY - swipe.startY
+
+        if (Math.abs(deltaY) > 18 && Math.abs(deltaY) > Math.abs(deltaX)) {
+          clearMessageHold()
+          setSwipeState({ messageId: '', offset: 0 })
+          return
+        }
+
+        if (deltaX <= 8 || Math.abs(deltaY) > 36) return
+
+        clearMessageHold()
+        event.preventDefault()
+        const offset = Math.min(76, deltaX)
+        setSwipeState({ messageId: message.id, offset })
+
+        if (!swipe.swiped && deltaX > 58) {
+          swipe.swiped = true
+          closeMessageActions()
+          onReply?.(message)
+          navigator.vibrate?.(12)
+        }
+      },
+      onPointerUp: (event) => {
+        clearMessageHold()
+        event.currentTarget.releasePointerCapture?.(event.pointerId)
+        resetSwipe()
+      },
     }
   }
 
@@ -3091,9 +3488,11 @@ function useReactionPicker() {
   }, [])
 
   return {
-    closeReactionPicker,
-    getReactionTriggerProps,
-    openReactionMessageId,
+    closeMessageActions,
+    getMessageActionProps,
+    openActionMessageId,
+    openMessageActions,
+    swipeState,
   }
 }
 
@@ -3324,13 +3723,111 @@ function isPreviewableAssetPath(path) {
   return Boolean(path && !/^(blob:|data:|https?:)/.test(path))
 }
 
+function getFileExtension(value = '') {
+  const cleanValue = String(value ?? '').split('?')[0].split('#')[0].toLowerCase()
+  const extension = cleanValue.slice(cleanValue.lastIndexOf('.') + 1)
+  return extension && extension !== cleanValue ? extension : ''
+}
+
 function isSupportedImageFile(file) {
-  return Boolean(file?.type?.startsWith('image/'))
+  const extension = getFileExtension(file?.name)
+  return Boolean(
+    file?.type?.startsWith('image/') ||
+      ['avif', 'heic', 'heif', 'jpeg', 'jpg', 'png', 'webp'].includes(extension),
+  )
 }
 
 function isSupportedDocumentFile(file) {
   const fileName = file?.name?.toLowerCase() ?? ''
   return isSupportedImageFile(file) || file?.type === 'application/pdf' || fileName.endsWith('.pdf')
+}
+
+function isSupportedAudioFile(file) {
+  const extension = getFileExtension(file?.name)
+  return Boolean(file?.type?.startsWith('audio/') || ['aac', 'm4a', 'mp3', 'ogg', 'opus', 'wav', 'webm'].includes(extension))
+}
+
+function isSupportedVideoFile(file) {
+  const extension = getFileExtension(file?.name)
+  return Boolean(file?.type?.startsWith('video/') || ['m4v', 'mov', 'mp4', 'webm'].includes(extension))
+}
+
+function getChatAttachmentKind(value = '', mimeType = '') {
+  const cleanMimeType = String(mimeType ?? '').toLowerCase()
+  const cleanValue = String(value ?? '').toLowerCase()
+  const extension = getFileExtension(cleanValue)
+  const baseName = cleanValue.split('?')[0].split('#')[0].slice(cleanValue.lastIndexOf('/') + 1)
+
+  if (cleanMimeType.startsWith('image/') || ['avif', 'heic', 'heif', 'jpeg', 'jpg', 'png', 'webp'].includes(extension)) {
+    return 'image'
+  }
+
+  if (baseName.includes('audio-chat-')) {
+    return 'audio'
+  }
+
+  if (cleanMimeType.startsWith('audio/') || ['aac', 'm4a', 'mp3', 'ogg', 'opus', 'wav'].includes(extension)) {
+    return 'audio'
+  }
+
+  if (cleanMimeType.startsWith('video/') || ['m4v', 'mov', 'mp4', 'webm'].includes(extension)) {
+    return 'video'
+  }
+
+  return value ? 'file' : ''
+}
+
+function getChatAttachmentLabel(kind, t) {
+  if (kind === 'audio') return t('chat.audioAttached')
+  if (kind === 'video') return t('chat.videoAttached')
+  if (kind === 'image') return t('chat.photoAttached')
+  return t('chat.fileAttached')
+}
+
+function getChatAttachmentFileName(path = '', fallback = 'camion-chiaro-media') {
+  const cleanPath = String(path ?? '').split('?')[0].split('#')[0]
+  return decodeURIComponent(cleanPath.slice(cleanPath.lastIndexOf('/') + 1) || fallback)
+}
+
+function shouldAutoSaveChatMedia(kind, preference) {
+  if (preference === 'all') return ['audio', 'image', 'video'].includes(kind)
+  if (preference === 'photos') return ['image', 'video'].includes(kind)
+  return false
+}
+
+function triggerChatMediaDownload(url, fileName) {
+  if (typeof document === 'undefined' || !url) return false
+
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName || 'camion-chiaro-media'
+  link.rel = 'noreferrer'
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  return true
+}
+
+function getSupportedAudioMimeType() {
+  if (typeof MediaRecorder === 'undefined') return ''
+
+  return ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac'].find((mimeType) =>
+    MediaRecorder.isTypeSupported?.(mimeType),
+  ) ?? ''
+}
+
+function createRecordedAudioFile(chunks, mimeType) {
+  const cleanMimeType = String(mimeType || 'audio/webm').split(';')[0]
+  const extension = cleanMimeType.includes('mp4') || cleanMimeType.includes('aac') ? 'm4a' : 'webm'
+  const blob = new Blob(chunks, { type: cleanMimeType })
+  return new File([blob], `audio-chat-${Date.now()}.${extension}`, { type: cleanMimeType })
+}
+
+function formatRecordingTime(seconds) {
+  const safeSeconds = Math.max(0, Number(seconds) || 0)
+  const minutes = Math.floor(safeSeconds / 60)
+  return `${minutes}:${String(safeSeconds % 60).padStart(2, '0')}`
 }
 
 function formatBytes(bytes) {
@@ -3772,6 +4269,37 @@ function App() {
     if (!(await ensureStorageBudget(uploadFile, setStatus))) return null
 
     return uploadFile
+  }
+
+  async function prepareChatAttachmentUploadFile(file, setStatus) {
+    if (!file) return null
+
+    const attachmentKind = getChatAttachmentKind(file.name, file.type)
+    const hasSupportedFileShape = isSupportedImageFile(file) || isSupportedAudioFile(file) || isSupportedVideoFile(file)
+
+    if (!hasSupportedFileShape || !attachmentKind || !['audio', 'image', 'video'].includes(attachmentKind)) {
+      setStatus('Puoi allegare foto, video o audio nella chat.')
+      return null
+    }
+
+    if (attachmentKind === 'image') {
+      return prepareImageUploadFile(file, setStatus, {
+        maxSize: maxChatImageFileSize,
+        maxSizeLabel: '8 MB',
+      })
+    }
+
+    const maxSize = attachmentKind === 'audio' ? maxChatAudioFileSize : maxChatVideoFileSize
+    const maxSizeLabel = attachmentKind === 'audio' ? '16 MB' : '64 MB'
+
+    if (file.size > maxSize) {
+      setStatus(`File ${attachmentKind === 'audio' ? 'audio' : 'video'} troppo grande. Usa un file sotto ${maxSizeLabel}.`)
+      return null
+    }
+
+    if (!(await ensureStorageBudget(file, setStatus))) return null
+
+    return file
   }
 
   async function prepareDriverDocumentUploadFile(file) {
@@ -5096,8 +5624,8 @@ function App() {
     return true
   }
 
-  async function sendChatMessage({ attachmentFile = null, body = '', driverId, senderRole, threadId }) {
-    const cleanBody = body.trim()
+  async function sendChatMessage({ attachmentFile = null, body = '', driverId, replyToMessage = null, senderRole, threadId }) {
+    const cleanBody = String(body ?? '').trim()
     let uploadAttachmentFile = attachmentFile
 
     if (!driverId) {
@@ -5106,15 +5634,12 @@ function App() {
     }
 
     if (!cleanBody && !attachmentFile) {
-      setChatSyncStatus('Scrivi un messaggio o allega una foto.')
+      setChatSyncStatus('Scrivi un messaggio o allega un file.')
       return false
     }
 
     if (attachmentFile) {
-      uploadAttachmentFile = await prepareImageUploadFile(attachmentFile, setChatSyncStatus, {
-        maxSize: maxOperationalImageFileSize,
-        maxSizeLabel: '8 MB',
-      })
+      uploadAttachmentFile = await prepareChatAttachmentUploadFile(attachmentFile, setChatSyncStatus)
       if (!uploadAttachmentFile) return false
     }
 
@@ -5156,7 +5681,7 @@ function App() {
       const messageResult = await createSupabaseChatMessage(
         {
           attachmentPath: '',
-          body: cleanBody,
+          body: composeChatMessageBody(cleanBody, replyToMessage),
           senderRole,
           threadId: targetThread.id,
         },
@@ -5179,7 +5704,8 @@ function App() {
         }),
       )
       setChatSyncStatus('Messaggio inviato.')
-      const chatNotificationBody = cleanBody || 'Foto allegata in chat.'
+      const attachmentKind = uploadAttachmentFile ? getChatAttachmentKind(uploadAttachmentFile.name, uploadAttachmentFile.type) : ''
+      const chatNotificationBody = cleanBody || (uploadAttachmentFile ? getChatAttachmentLabel(attachmentKind, t) : 'Risposta in chat.')
       if (senderRole === 'company') {
         const pushResult = await notifyPhone({
           body: chatNotificationBody,
@@ -5231,7 +5757,7 @@ function App() {
       }
     const localMessage = {
       attachmentPath: uploadAttachmentFile ? URL.createObjectURL(uploadAttachmentFile) : '',
-      body: cleanBody,
+      body: composeChatMessageBody(cleanBody, replyToMessage),
       companyId: localThread.companyId,
       createdAt: now,
       id: `chat-message-${Date.now()}`,
@@ -9010,24 +9536,351 @@ function MessageStatus({ status }) {
   )
 }
 
-function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, onOpen, onReact }) {
+function ChatSoundButton({ enabled, onToggle, t }) {
+  return (
+    <button
+      aria-label={enabled ? t('chat.soundOn') : t('chat.soundOff')}
+      className={enabled ? 'icon-button chat-sound-button is-enabled' : 'icon-button chat-sound-button'}
+      onClick={onToggle}
+      title={enabled ? t('chat.soundOn') : t('chat.soundOff')}
+      type="button"
+    >
+      {enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+    </button>
+  )
+}
+
+function ChatReplyPreview({ onCancel, reply, t }) {
+  if (!reply) return null
+
+  return (
+    <div className="chat-reply-compose">
+      <Reply size={16} />
+      <span>
+        <strong>{t('chat.replyTo', { name: reply.sender })}</strong>
+        <small>{reply.text}</small>
+      </span>
+      <button aria-label={t('chat.cancelReply')} onClick={onCancel} type="button">
+        <X size={15} />
+      </button>
+    </div>
+  )
+}
+
+function ChatQuotedMessage({ onOpen, reply, t }) {
+  if (!reply) return null
+
+  return (
+    <button className="chat-message-reply" onClick={() => onOpen?.(reply.id)} type="button">
+      <strong>{reply.sender || t('chat.replyPreview')}</strong>
+      <span>{reply.text}</span>
+    </button>
+  )
+}
+
+function ChatAvatarButton({ imageUrl, name, onOpen }) {
+  const buttonDisabled = !imageUrl
+
+  return (
+    <button
+      aria-label={`Apri foto profilo ${name}`}
+      className="chat-avatar-button"
+      disabled={buttonDisabled}
+      onClick={() => onOpen?.(imageUrl, name)}
+      type="button"
+    >
+      <EntityAvatar imageUrl={imageUrl} name={name} />
+    </button>
+  )
+}
+
+function ChatAttachment({ attachmentPath, compact = false, onLoad, t, url }) {
+  if (!attachmentPath || !url) return null
+
+  const attachmentKind = getChatAttachmentKind(attachmentPath)
+  const fileName = getChatAttachmentFileName(attachmentPath)
+  const className = compact ? 'chat-attachment is-compact' : 'chat-attachment'
+  const label = getChatAttachmentLabel(attachmentKind, t)
+
+  return (
+    <div className={className}>
+      {attachmentKind === 'image' ? (
+        <a href={url} rel="noreferrer" target="_blank">
+          <img alt={label} onLoad={onLoad} src={url} />
+        </a>
+      ) : attachmentKind === 'video' ? (
+        <video controls onLoadedMetadata={onLoad} playsInline preload="metadata" src={url} />
+      ) : attachmentKind === 'audio' ? (
+        <div className="chat-audio-attachment">
+          <Mic size={16} />
+          <audio controls onLoadedMetadata={onLoad} preload="metadata" src={url} />
+        </div>
+      ) : (
+        <a className="chat-file-attachment" href={url} rel="noreferrer" target="_blank">
+          <Paperclip size={16} />
+          <span>{fileName}</span>
+        </a>
+      )}
+      {!compact && (
+        <button
+          className="chat-download-button"
+          onClick={() => triggerChatMediaDownload(url, fileName)}
+          type="button"
+        >
+          <Download size={14} />
+          {t('chat.downloadMedia')}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function ChatAttachmentMenu({ disabled = false, onFile, t }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') return undefined
+
+    function handleOutsidePointer(event) {
+      if (!menuRef.current?.contains(event.target)) setIsOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointer)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointer)
+  }, [isOpen])
+
+  function handleFileChange(event) {
+    onFile?.(event)
+    setIsOpen(false)
+  }
+
+  return (
+    <span className="chat-attachment-menu-wrap" ref={menuRef}>
+      <button
+        aria-expanded={isOpen}
+        aria-label={t('chat.attach')}
+        className="icon-button chat-compose-icon-button"
+        disabled={disabled}
+        onClick={() => setIsOpen((currentValue) => !currentValue)}
+        title={t('chat.attach')}
+        type="button"
+      >
+        <Plus size={18} />
+      </button>
+      {isOpen && (
+        <span className="chat-attachment-menu">
+          <label className="chat-attachment-option">
+            <Camera size={16} />
+            <span>{t('chat.photo')}</span>
+            <input accept="image/*,video/*" capture="environment" disabled={disabled} onChange={handleFileChange} type="file" />
+          </label>
+          <label className="chat-attachment-option">
+            <ImageIcon size={16} />
+            <span>{t('chat.photoVideo')}</span>
+            <input accept={chatGalleryMediaAccept} disabled={disabled} onChange={handleFileChange} type="file" />
+          </label>
+          <label className="chat-attachment-option">
+            <Paperclip size={16} />
+            <span>{t('chat.attach')}</span>
+            <input accept={chatMediaAccept} disabled={disabled} onChange={handleFileChange} type="file" />
+          </label>
+        </span>
+      )}
+    </span>
+  )
+}
+
+function ChatAudioRecorder({ disabled = false, onRecord, t }) {
+  const [isRecording, setIsRecording] = useState(false)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [recordingStatus, setRecordingStatus] = useState('')
+  const chunksRef = useRef([])
+  const holdModeRef = useRef(false)
+  const holdStartTimerRef = useRef(0)
+  const mediaRecorderRef = useRef(null)
+  const pendingStopRef = useRef(false)
+  const suppressNextClickRef = useRef(false)
+  const streamRef = useRef(null)
+  const timerRef = useRef(0)
+
+  const cleanupRecorder = useCallback(() => {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current)
+      timerRef.current = 0
+    }
+
+    streamRef.current?.getTracks?.().forEach((track) => track.stop())
+    streamRef.current = null
+    mediaRecorderRef.current = null
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (holdStartTimerRef.current) window.clearTimeout(holdStartTimerRef.current)
+      cleanupRecorder()
+    }
+  }, [cleanupRecorder])
+
+  async function startRecording() {
+    if (disabled || isRecording) return
+    pendingStopRef.current = false
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setRecordingStatus(t('chat.unsupportedRecorder'))
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = getSupportedAudioMimeType()
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+
+      chunksRef.current = []
+      streamRef.current = stream
+      mediaRecorderRef.current = recorder
+      setElapsedSeconds(0)
+      setRecordingStatus('')
+
+      recorder.addEventListener('dataavailable', (event) => {
+        if (event.data?.size) chunksRef.current.push(event.data)
+      })
+
+      recorder.addEventListener('stop', () => {
+        const chunks = chunksRef.current
+        chunksRef.current = []
+        cleanupRecorder()
+        setIsRecording(false)
+
+        if (chunks.length > 0) {
+          onRecord?.(createRecordedAudioFile(chunks, recorder.mimeType || mimeType))
+        }
+      })
+
+      recorder.start()
+      setIsRecording(true)
+      timerRef.current = window.setInterval(() => {
+        setElapsedSeconds((currentSeconds) => currentSeconds + 1)
+      }, 1000)
+
+      if (pendingStopRef.current) {
+        pendingStopRef.current = false
+        recorder.stop()
+      }
+    } catch {
+      cleanupRecorder()
+      setIsRecording(false)
+      setRecordingStatus(t('chat.recordingFailed'))
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      return
+    }
+
+    pendingStopRef.current = true
+  }
+
+  function handlePointerDown(event) {
+    if (disabled || isRecording) return
+
+    holdModeRef.current = false
+    if (holdStartTimerRef.current) window.clearTimeout(holdStartTimerRef.current)
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    holdStartTimerRef.current = window.setTimeout(() => {
+      holdStartTimerRef.current = 0
+      holdModeRef.current = true
+      void startRecording()
+    }, 220)
+  }
+
+  function handlePointerUp(event) {
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+
+    if (holdStartTimerRef.current) {
+      window.clearTimeout(holdStartTimerRef.current)
+      holdStartTimerRef.current = 0
+      return
+    }
+
+    if (holdModeRef.current) {
+      suppressNextClickRef.current = true
+      holdModeRef.current = false
+      stopRecording()
+      window.setTimeout(() => {
+        suppressNextClickRef.current = false
+      }, 0)
+    }
+  }
+
+  function handleClick() {
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false
+      return
+    }
+
+    if (isRecording) {
+      stopRecording()
+      return
+    }
+
+    void startRecording()
+  }
+
+  return (
+    <span className="chat-audio-recorder">
+      <button
+        aria-label={isRecording ? t('chat.stopRecording') : t('chat.recordAudio')}
+        className={isRecording ? 'icon-button chat-compose-icon-button is-recording' : 'icon-button chat-compose-icon-button'}
+        disabled={disabled}
+        onClick={handleClick}
+        onPointerCancel={handlePointerUp}
+        onPointerDown={handlePointerDown}
+        onPointerLeave={handlePointerUp}
+        onPointerUp={handlePointerUp}
+        title={isRecording ? t('chat.stopRecording') : t('chat.recordAudio')}
+        type="button"
+      >
+        {isRecording ? <Square size={16} /> : <Mic size={18} />}
+      </button>
+      {isRecording && <small className="chat-recording-timer">{formatRecordingTime(elapsedSeconds)}</small>}
+      {recordingStatus && <small>{recordingStatus}</small>}
+    </span>
+  )
+}
+
+function DriverMediaSettings({ onPreferenceChange, preference, t }) {
+  return (
+    <article className="driver-media-settings">
+      <div>
+        <strong>{t('chat.mediaSaveTitle')}</strong>
+        <span>{t('chat.autoSaveHint')}</span>
+      </div>
+      <select value={preference} onChange={(event) => onPreferenceChange?.(event.target.value)}>
+        {driverMediaSaveOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {t(option.labelKey)}
+          </option>
+        ))}
+      </select>
+    </article>
+  )
+}
+
+function ChatReactionBar({ message, onOpen }) {
   const { t } = useI18n()
   const reactions = message.reactions ?? {}
-  const currentReaction = reactions[actorRole] ?? ''
   const visibleReactions = Object.entries(reactions).filter(([, reaction]) => reaction)
-
-  function handleReactionClick(reaction) {
-    onReact?.(message, actorRole, currentReaction === reaction.value ? '' : reaction.value)
-    onClose?.()
-  }
 
   return (
     <div className="chat-reaction-row">
       <button
-        aria-label={t('reaction.add')}
+        aria-label={t('chat.actions')}
         className="chat-reaction-open-button"
         onClick={onOpen}
-        title={t('reaction.add')}
+        title={t('chat.actions')}
         type="button"
       >
         <SmilePlus size={15} />
@@ -9041,27 +9894,49 @@ function ChatReactionBar({ actorRole, isPickerOpen = false, message, onClose, on
           ))}
         </div>
       )}
-      {isPickerOpen && (
-        <div
-          className="chat-reaction-picker"
-          aria-label={t('reaction.choose')}
-          onMouseDown={(event) => event.stopPropagation()}
-          onTouchStart={(event) => event.stopPropagation()}
-        >
-          {chatReactionOptions.map((reaction) => (
-            <button
-              aria-label={t(`reaction.${reaction.value}`)}
-              className={currentReaction === reaction.value ? 'chat-reaction-button is-active' : 'chat-reaction-button'}
-              key={reaction.value}
-              onClick={() => handleReactionClick(reaction)}
-              title={t(`reaction.${reaction.value}`)}
-              type="button"
-            >
-              {reaction.emoji}
-            </button>
-          ))}
-        </div>
-      )}
+    </div>
+  )
+}
+
+function ChatMessageActionMenu({ actorRole, message, onClose, onCopy, onReact, onReply, t }) {
+  const currentReaction = message.reactions?.[actorRole] ?? ''
+
+  function handleReactionClick(reaction) {
+    onReact?.(message, actorRole, currentReaction === reaction.value ? '' : reaction.value)
+    onClose?.()
+  }
+
+  return (
+    <div
+      className="chat-message-action-menu"
+      aria-label={t('chat.actions')}
+      onPointerDown={(event) => event.stopPropagation()}
+      role="menu"
+    >
+      <div className="chat-reaction-picker" aria-label={t('reaction.choose')}>
+        {chatReactionOptions.map((reaction) => (
+          <button
+            aria-label={t(`reaction.${reaction.value}`)}
+            className={currentReaction === reaction.value ? 'chat-reaction-button is-active' : 'chat-reaction-button'}
+            key={reaction.value}
+            onClick={() => handleReactionClick(reaction)}
+            title={t(`reaction.${reaction.value}`)}
+            type="button"
+          >
+            {reaction.emoji}
+          </button>
+        ))}
+      </div>
+      <div className="chat-message-action-list">
+        <button onClick={() => onReply?.(message)} type="button">
+          <Reply size={15} />
+          {t('chat.reply')}
+        </button>
+        <button onClick={() => onCopy?.(message)} type="button">
+          <Copy size={15} />
+          {t('chat.copy')}
+        </button>
+      </div>
     </div>
   )
 }
@@ -9084,11 +9959,19 @@ function ChatWorkspace({
   )
   const [selectedDriverId, setSelectedDriverId] = useState('')
   const [messageBody, setMessageBody] = useState('')
-  const [photoFile, setPhotoFile] = useState(null)
+  const [attachmentFile, setAttachmentFile] = useState(null)
   const [isSending, setIsSending] = useState(false)
   const [isCompanyChatOpen, setIsCompanyChatOpen] = useState(false)
+  const [replyToMessage, setReplyToMessage] = useState(null)
+  const [copiedMessageId, setCopiedMessageId] = useState('')
+  const [highlightedMessageId, setHighlightedMessageId] = useState('')
+  const [chatPhotoPreview, setChatPhotoPreview] = useState(null)
   const messagesListRef = useRef(null)
-  const reactionPicker = useReactionPicker()
+  const composeTextareaRef = useRef(null)
+  const seenChatMessageIdsRef = useRef(new Set())
+  const activeSoundThreadRef = useRef('')
+  const chatSound = useChatSoundPreference()
+  const messageActions = useChatMessageActions({ onReply: startReplyToMessage })
   const scrollCompanyChatToBottom = useCallback(() => {
     const listElement = messagesListRef.current
     if (listElement) listElement.scrollTop = listElement.scrollHeight
@@ -9136,9 +10019,13 @@ function ChatWorkspace({
   const selectedThread = selectedDriver
     ? chatThreads.find((thread) => thread.driverId === selectedDriver.id && thread.contextType === 'general')
     : null
-  const visibleMessages = selectedThread
-    ? [...(messagesByThread.get(selectedThread.id) ?? [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-    : []
+  const visibleMessages = useMemo(
+    () =>
+      selectedThread
+        ? [...(messagesByThread.get(selectedThread.id) ?? [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+        : [],
+    [messagesByThread, selectedThread],
+  )
   const lastVisibleMessageId = visibleMessages[visibleMessages.length - 1]?.id ?? ''
   const selectedDriverIsOnline = isChatActorOnline(chatLiveState, 'driver', selectedDriver?.id)
   const selectedDriverIsTyping = Boolean(
@@ -9188,36 +10075,75 @@ function ChatWorkspace({
     return messages[messages.length - 1] ?? null
   }
 
-  function handlePhotoChange(event) {
+  function handleAttachmentChange(event) {
     const file = event.target.files?.[0] ?? null
-    setPhotoFile(file)
+    setAttachmentFile(file)
     event.target.value = ''
   }
 
   function selectDriverChat(driverId) {
     setSelectedDriverId(driverId)
     setIsCompanyChatOpen(true)
-    reactionPicker.closeReactionPicker()
+    setReplyToMessage(null)
+    messageActions.closeMessageActions()
+  }
+
+  function getCompanyMessageSenderLabel(message) {
+    return message.senderRole === 'company' ? t('chat.company') : selectedDriver?.name ?? t('chat.driver')
+  }
+
+  function startReplyToMessage(message) {
+    setReplyToMessage(createChatReplyReference(message, getCompanyMessageSenderLabel(message)))
+    messageActions.closeMessageActions()
+    window.setTimeout(() => composeTextareaRef.current?.focus(), 80)
+  }
+
+  async function handleCopyMessage(message) {
+    const copied = await copyChatText(message)
+    messageActions.closeMessageActions()
+
+    if (!copied) return
+
+    setCopiedMessageId(message.id)
+    window.setTimeout(() => setCopiedMessageId(''), 1400)
+  }
+
+  function openReplyTarget(messageId) {
+    if (!messageId || !messagesListRef.current) return
+
+    const targetElement = messagesListRef.current.querySelector(`[data-chat-message-id="${messageId}"]`)
+    if (!targetElement) return
+
+    targetElement.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setHighlightedMessageId(messageId)
+    window.setTimeout(() => setHighlightedMessageId(''), 1400)
+  }
+
+  function openChatAvatarPreview(imageUrl, name) {
+    if (imageUrl) setChatPhotoPreview({ imageUrl, name })
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (!selectedDriver || isSending || (!messageBody.trim() && !photoFile)) return
+    if (!selectedDriver || isSending || (!messageBody.trim() && !attachmentFile)) return
 
     setIsSending(true)
     const sent = await onSendMessage?.({
-      attachmentFile: photoFile,
+      attachmentFile,
       body: messageBody,
       driverId: selectedDriver.id,
       senderRole: 'company',
       threadId: selectedThread?.id,
+      replyToMessage,
     })
     setIsSending(false)
 
     if (sent) {
+      chatSound.playSound('outgoing')
       signalCompanyTyping('')
       setMessageBody('')
-      setPhotoFile(null)
+      setAttachmentFile(null)
+      setReplyToMessage(null)
     }
   }
 
@@ -9236,6 +10162,26 @@ function ChatWorkspace({
     event.preventDefault()
     event.currentTarget.form?.requestSubmit()
   }
+
+  useEffect(() => {
+    if (!selectedThread?.id) return
+
+    const seenMessages = seenChatMessageIdsRef.current
+
+    if (activeSoundThreadRef.current !== selectedThread.id) {
+      activeSoundThreadRef.current = selectedThread.id
+      visibleMessages.forEach((message) => seenMessages.add(message.id))
+      return
+    }
+
+    const newMessages = visibleMessages.filter((message) => !seenMessages.has(message.id))
+
+    if (isCompanyChatOpen && newMessages.some((message) => message.senderRole === 'driver')) {
+      chatSound.playSound('incoming')
+    }
+
+    newMessages.forEach((message) => seenMessages.add(message.id))
+  }, [chatSound, isCompanyChatOpen, lastVisibleMessageId, selectedThread?.id, visibleMessages])
 
   return (
     <section
@@ -9280,7 +10226,7 @@ function ChatWorkspace({
                       ? t('chat.typing')
                       : lastMessage
                       ? `${lastMessage.senderRole === 'driver' ? t('chat.driver') : t('chat.company')}: ${
-                          lastMessage.body || t('chat.photoAttached')
+                          getChatMessageText(lastMessage, t('chat.photoAttached'))
                         }`
                       : t('chat.noMessages')}
                   </small>
@@ -9322,8 +10268,24 @@ function ChatWorkspace({
               {selectedDriverPresenceLabel}
             </span>
           </div>
-          {selectedDriver && <EntityAvatar imageUrl={assetPreviewUrl(selectedDriver.profileImagePath)} name={selectedDriver.name} />}
+          <div className="chat-thread-header-actions">
+            <ChatSoundButton enabled={chatSound.isEnabled} onToggle={chatSound.toggleSound} t={t} />
+            {selectedDriver && (
+              <ChatAvatarButton
+                imageUrl={assetPreviewUrl(selectedDriver.profileImagePath)}
+                name={selectedDriver.name}
+                onOpen={openChatAvatarPreview}
+              />
+            )}
+          </div>
         </div>
+        {chatPhotoPreview && (
+          <PhotoPreviewModal
+            imageUrl={chatPhotoPreview.imageUrl}
+            name={chatPhotoPreview.name}
+            onClose={() => setChatPhotoPreview(null)}
+          />
+        )}
         <div className="chat-message-list" ref={messagesListRef}>
           {selectedDriver && visibleMessages.length === 0 && (
             <div className="chat-empty-state">
@@ -9341,41 +10303,57 @@ function ChatWorkspace({
           )}
           {visibleMessages.map((message) => {
             const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
-            const isReactionPickerOpen = reactionPicker.openReactionMessageId === message.id
+            const isActionMenuOpen = messageActions.openActionMessageId === message.id
+            const messageDisplay = getChatMessageDisplay(message)
+            const swipeOffset = messageActions.swipeState.messageId === message.id ? messageActions.swipeState.offset : 0
             const messageClassName = [
               message.senderRole === 'company' ? 'chat-message is-company' : 'chat-message is-driver',
               hasChatReactions(message) ? 'has-reaction' : '',
-              isReactionPickerOpen ? 'has-reaction-picker' : '',
+              isActionMenuOpen ? 'has-action-menu' : '',
+              swipeOffset ? 'is-swiping' : '',
+              highlightedMessageId === message.id ? 'is-reply-highlighted' : '',
             ].filter(Boolean).join(' ')
 
             return (
               <article
                 className={messageClassName}
+                data-chat-message-id={message.id}
                 key={message.id}
-                {...reactionPicker.getReactionTriggerProps(message.id)}
+                style={swipeOffset ? { '--swipe-offset': `${swipeOffset}px` } : undefined}
+                {...messageActions.getMessageActionProps(message)}
               >
                 <div className="chat-message-meta">
-                  <span>{message.senderRole === 'company' ? t('chat.company') : selectedDriver?.name ?? t('chat.driver')}</span>
+                  <span>{getCompanyMessageSenderLabel(message)}</span>
                   <small>{formatShortDateTime(message.createdAt)}</small>
                 </div>
-                {message.body && <p>{message.body}</p>}
-                {message.attachmentPath && attachmentUrl && (
-                  <a className="chat-attachment" href={attachmentUrl} rel="noreferrer" target="_blank">
-                    <img alt={t('chat.photoAttached')} onLoad={scrollCompanyChatToBottom} src={attachmentUrl} />
-                  </a>
-                )}
+                <ChatQuotedMessage onOpen={openReplyTarget} reply={messageDisplay.reply} t={t} />
+                {messageDisplay.text && <p>{messageDisplay.text}</p>}
+                <ChatAttachment
+                  attachmentPath={message.attachmentPath}
+                  onLoad={scrollCompanyChatToBottom}
+                  t={t}
+                  url={attachmentUrl}
+                />
                 {message.attachmentPath && !attachmentUrl && <small>{t('chat.photoLoading')}</small>}
                 {message.senderRole === 'company' && (
                   <MessageStatus status={getMessageStatus(message, 'company')} />
                 )}
                 <ChatReactionBar
-                  actorRole="company"
-                  isPickerOpen={isReactionPickerOpen}
                   message={message}
-                  onClose={reactionPicker.closeReactionPicker}
-                  onOpen={() => reactionPicker.openReactionPicker(message.id)}
-                  onReact={onReactToMessage}
+                  onOpen={() => messageActions.openMessageActions(message.id)}
                 />
+                {isActionMenuOpen && (
+                  <ChatMessageActionMenu
+                    actorRole="company"
+                    message={message}
+                    onClose={messageActions.closeMessageActions}
+                    onCopy={handleCopyMessage}
+                    onReact={onReactToMessage}
+                    onReply={startReplyToMessage}
+                    t={t}
+                  />
+                )}
+                {copiedMessageId === message.id && <span className="chat-copy-toast">{t('chat.copied')}</span>}
               </article>
             )
           })}
@@ -9390,7 +10368,9 @@ function ChatWorkspace({
           <span className="chat-scroll-anchor" />
         </div>
         <form className="chat-compose" onSubmit={handleSubmit}>
+          <ChatReplyPreview onCancel={() => setReplyToMessage(null)} reply={replyToMessage} t={t} />
           <textarea
+            ref={composeTextareaRef}
             disabled={!selectedDriver}
             onKeyDown={handleComposeKeyDown}
             onChange={(event) => {
@@ -9401,25 +10381,19 @@ function ChatWorkspace({
             value={messageBody}
           />
           <div className="chat-compose-actions">
-            <label className="document-action-button">
-              {t('chat.photo')}
-              <input accept="image/*" capture="environment" disabled={!selectedDriver} onChange={handlePhotoChange} type="file" />
-            </label>
-            <label className="document-action-button">
-              {t('chat.gallery')}
-              <input accept="image/*" disabled={!selectedDriver} onChange={handlePhotoChange} type="file" />
-            </label>
-            {photoFile && (
-              <button className="small-button" onClick={() => setPhotoFile(null)} type="button">
+            <ChatAttachmentMenu disabled={!selectedDriver} onFile={handleAttachmentChange} t={t} />
+            <ChatAudioRecorder disabled={!selectedDriver || isSending} onRecord={setAttachmentFile} t={t} />
+            {attachmentFile && (
+              <button className="small-button" onClick={() => setAttachmentFile(null)} type="button">
                 {t('common.remove')}
               </button>
             )}
-            <button className="primary-button" disabled={!selectedDriver || isSending || (!messageBody.trim() && !photoFile)} type="submit">
+            <button className="primary-button" disabled={!selectedDriver || isSending || (!messageBody.trim() && !attachmentFile)} type="submit">
               <Send size={16} />
               {isSending ? t('chat.sending') : t('chat.send')}
             </button>
           </div>
-          {photoFile && <small>{t('chat.photoReady', { name: photoFile.name })}</small>}
+          {attachmentFile && <small>{t('chat.mediaReady', { name: attachmentFile.name })}</small>}
         </form>
       </div>
     </section>
@@ -10244,6 +11218,7 @@ function DriverMobile({
   vehicleRecords = vehicles,
 }) {
   const { t } = useI18n()
+  const [mediaSavePreference, setMediaSavePreference] = useDriverMediaSavePreference()
   const [selectedPreviewDriverId, setSelectedPreviewDriverId] = useState('')
   const previewDriver =
     driverRecords.find((entry) => entry.id === selectedPreviewDriverId) ??
@@ -10523,6 +11498,11 @@ function DriverMobile({
           onInstallApp={onInstallPhoneApp}
           showInstallAction={false}
         />
+        <DriverMediaSettings
+          onPreferenceChange={setMediaSavePreference}
+          preference={mediaSavePreference}
+          t={t}
+        />
         {nextItem && (
           <article className="next-card">
             <span className={`status-pill tone-${nextItem.urgency.tone}`}>{nextItem.urgency.label}</span>
@@ -10644,6 +11624,7 @@ function DriverMobile({
           <div className="driver-chat-list">
             {driverChatMessages.slice(-2).map((message) => {
               const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
+              const messageDisplay = getChatMessageDisplay(message)
 
               return (
                 <div
@@ -10651,12 +11632,9 @@ function DriverMobile({
                   key={message.id}
                 >
                   <small>{message.senderRole === 'driver' ? t('chat.you') : t('chat.company')} · {formatShortDateTime(message.createdAt)}</small>
-                  {message.body && <p>{message.body}</p>}
-                  {message.attachmentPath && attachmentUrl && (
-                    <a href={attachmentUrl} rel="noreferrer" target="_blank">
-                      <img alt={t('chat.photoAttached')} src={attachmentUrl} />
-                    </a>
-                  )}
+                  <ChatQuotedMessage reply={messageDisplay.reply} t={t} />
+                  {messageDisplay.text && <p>{messageDisplay.text}</p>}
+                  <ChatAttachment attachmentPath={message.attachmentPath} compact t={t} url={attachmentUrl} />
                   {message.senderRole === 'driver' && (
                     <MessageStatus status={getMessageStatus(message, 'driver')} />
                   )}
@@ -10748,9 +11726,12 @@ function DriverMobile({
             assetPreviewUrl={assetPreviewUrl}
             chatLiveState={chatLiveState}
             chatMessages={driverChatMessages}
+            companyLogoUrl={companyLogoUrl}
+            companyName={companyName}
             companyPresenceId={companyPresenceId}
             companyIsTyping={companyIsTyping}
             driver={driver}
+            mediaSavePreference={mediaSavePreference}
             onClose={() => setIsDriverChatOpen(false)}
             onReactToMessage={onReactToMessage}
             onSendChatMessage={onSendChatMessage}
@@ -10891,9 +11872,12 @@ function DriverChatScreen({
   assetPreviewUrl = () => '',
   chatLiveState = emptyChatLiveState,
   chatMessages = [],
+  companyLogoUrl = '',
+  companyName = 'Azienda',
   companyIsTyping = false,
   companyPresenceId = '',
   driver,
+  mediaSavePreference = 'never',
   onClose,
   onReactToMessage,
   onSendChatMessage,
@@ -10902,13 +11886,22 @@ function DriverChatScreen({
 }) {
   const { t } = useI18n()
   const [chatForm, setChatForm] = useState({
+    attachmentFile: null,
     body: '',
-    photoFile: null,
   })
   const [isSending, setIsSending] = useState(false)
+  const [replyToMessage, setReplyToMessage] = useState(null)
+  const [copiedMessageId, setCopiedMessageId] = useState('')
+  const [highlightedMessageId, setHighlightedMessageId] = useState('')
+  const [chatPhotoPreview, setChatPhotoPreview] = useState(null)
   const messagesListRef = useRef(null)
+  const composeTextareaRef = useRef(null)
+  const seenChatMessageIdsRef = useRef(new Set())
+  const hasLoadedInitialMessagesRef = useRef(false)
+  const savedAttachmentPathsRef = useRef(new Set())
   const lastMessageId = chatMessages[chatMessages.length - 1]?.id ?? ''
-  const reactionPicker = useReactionPicker()
+  const chatSound = useChatSoundPreference()
+  const messageActions = useChatMessageActions({ onReply: startReplyToMessage })
   const scrollDriverChatToBottom = useCallback(() => {
     const listElement = messagesListRef.current
     if (listElement) listElement.scrollTop = listElement.scrollHeight
@@ -10931,6 +11924,41 @@ function DriverChatScreen({
     threadId: thread?.id,
   })
 
+  function getDriverMessageSenderLabel(message) {
+    return message.senderRole === 'driver' ? t('chat.you') : t('chat.company')
+  }
+
+  function startReplyToMessage(message) {
+    setReplyToMessage(createChatReplyReference(message, getDriverMessageSenderLabel(message)))
+    messageActions.closeMessageActions()
+    window.setTimeout(() => composeTextareaRef.current?.focus(), 80)
+  }
+
+  async function handleCopyMessage(message) {
+    const copied = await copyChatText(message)
+    messageActions.closeMessageActions()
+
+    if (!copied) return
+
+    setCopiedMessageId(message.id)
+    window.setTimeout(() => setCopiedMessageId(''), 1400)
+  }
+
+  function openReplyTarget(messageId) {
+    if (!messageId || !messagesListRef.current) return
+
+    const targetElement = messagesListRef.current.querySelector(`[data-chat-message-id="${messageId}"]`)
+    if (!targetElement) return
+
+    targetElement.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setHighlightedMessageId(messageId)
+    window.setTimeout(() => setHighlightedMessageId(''), 1400)
+  }
+
+  function openChatAvatarPreview(imageUrl, name) {
+    if (imageUrl) setChatPhotoPreview({ imageUrl, name })
+  }
+
   useLayoutEffect(() => {
     return startChatBottomScroll(scrollDriverChatToBottom, messagesListRef.current)
   }, [chatMessages.length, lastMessageId, scrollDriverChatToBottom])
@@ -10939,31 +11967,70 @@ function DriverChatScreen({
     if (companyIsTyping) scrollDriverChatToBottom()
   }, [companyIsTyping, scrollDriverChatToBottom])
 
-  function handlePhotoFile(event) {
+  function handleAttachmentFile(event) {
     const file = event.target.files?.[0] ?? null
-    setChatForm((currentForm) => ({ ...currentForm, photoFile: file }))
+    setChatForm((currentForm) => ({ ...currentForm, attachmentFile: file }))
     event.target.value = ''
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (!driver || (!chatForm.body.trim() && !chatForm.photoFile)) return
+    if (!driver || (!chatForm.body.trim() && !chatForm.attachmentFile)) return
 
     setIsSending(true)
     const sent = await onSendChatMessage?.({
-      attachmentFile: chatForm.photoFile,
+      attachmentFile: chatForm.attachmentFile,
       body: chatForm.body,
       driverId: driver.id,
+      replyToMessage,
       senderRole: 'driver',
       threadId: thread?.id,
     })
     setIsSending(false)
 
     if (sent) {
+      chatSound.playSound('outgoing')
       signalDriverTyping('')
-      setChatForm({ body: '', photoFile: null })
+      setReplyToMessage(null)
+      setChatForm({ attachmentFile: null, body: '' })
     }
   }
+
+  useEffect(() => {
+    const seenMessages = seenChatMessageIdsRef.current
+
+    if (!hasLoadedInitialMessagesRef.current) {
+      chatMessages.forEach((message) => seenMessages.add(message.id))
+      hasLoadedInitialMessagesRef.current = true
+      return
+    }
+
+    const newMessages = chatMessages.filter((message) => !seenMessages.has(message.id))
+
+    if (newMessages.some((message) => message.senderRole === 'company')) {
+      chatSound.playSound('incoming')
+    }
+
+    newMessages.forEach((message) => seenMessages.add(message.id))
+  }, [chatMessages, chatSound, lastMessageId])
+
+  useEffect(() => {
+    if (mediaSavePreference === 'never') return
+
+    chatMessages.forEach((message) => {
+      if (message.senderRole !== 'company' || !message.attachmentPath) return
+      if (savedAttachmentPathsRef.current.has(message.attachmentPath)) return
+
+      const attachmentKind = getChatAttachmentKind(message.attachmentPath)
+      if (!shouldAutoSaveChatMedia(attachmentKind, mediaSavePreference)) return
+
+      const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
+      if (!attachmentUrl) return
+
+      const downloaded = triggerChatMediaDownload(attachmentUrl, getChatAttachmentFileName(message.attachmentPath))
+      if (downloaded) savedAttachmentPathsRef.current.add(message.attachmentPath)
+    })
+  }, [assetPreviewUrl, chatMessages, mediaSavePreference])
 
   return (
     <div className="driver-chat-screen" role="dialog" aria-label={t('chat.company')}>
@@ -10971,35 +12038,51 @@ function DriverChatScreen({
         <button aria-label={t('common.back')} className="icon-button" onClick={onClose} type="button">
           <ArrowLeft size={18} />
         </button>
-        <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
+        <ChatAvatarButton imageUrl={companyLogoUrl} name={companyName} onOpen={openChatAvatarPreview} />
         <div>
           <strong>{t('chat.company')}</strong>
           <span className={companyPresenceClassName}>{companyPresenceLabel}</span>
         </div>
+        <ChatSoundButton enabled={chatSound.isEnabled} onToggle={chatSound.toggleSound} t={t} />
       </div>
+      {chatPhotoPreview && (
+        <PhotoPreviewModal
+          imageUrl={chatPhotoPreview.imageUrl}
+          name={chatPhotoPreview.name}
+          onClose={() => setChatPhotoPreview(null)}
+        />
+      )}
 
       <div className="driver-chat-screen-list" ref={messagesListRef}>
         {chatMessages.map((message) => {
           const attachmentUrl = assetPreviewUrl(message.attachmentPath) || message.attachmentPath
-          const isReactionPickerOpen = reactionPicker.openReactionMessageId === message.id
+          const isActionMenuOpen = messageActions.openActionMessageId === message.id
+          const messageDisplay = getChatMessageDisplay(message)
+          const swipeOffset = messageActions.swipeState.messageId === message.id ? messageActions.swipeState.offset : 0
           const messageClassName = [
             message.senderRole === 'driver' ? 'driver-chat-screen-message is-driver' : 'driver-chat-screen-message is-company',
             hasChatReactions(message) ? 'has-reaction' : '',
-            isReactionPickerOpen ? 'has-reaction-picker' : '',
+            isActionMenuOpen ? 'has-action-menu' : '',
+            swipeOffset ? 'is-swiping' : '',
+            highlightedMessageId === message.id ? 'is-reply-highlighted' : '',
           ].filter(Boolean).join(' ')
 
           return (
             <article
               className={messageClassName}
+              data-chat-message-id={message.id}
               key={message.id}
-              {...reactionPicker.getReactionTriggerProps(message.id)}
+              style={swipeOffset ? { '--swipe-offset': `${swipeOffset}px` } : undefined}
+              {...messageActions.getMessageActionProps(message)}
             >
-              {message.body && <p>{message.body}</p>}
-              {message.attachmentPath && attachmentUrl && (
-                <a href={attachmentUrl} rel="noreferrer" target="_blank">
-                  <img alt={t('chat.photoAttached')} onLoad={scrollDriverChatToBottom} src={attachmentUrl} />
-                </a>
-              )}
+              <ChatQuotedMessage onOpen={openReplyTarget} reply={messageDisplay.reply} t={t} />
+              {messageDisplay.text && <p>{messageDisplay.text}</p>}
+              <ChatAttachment
+                attachmentPath={message.attachmentPath}
+                onLoad={scrollDriverChatToBottom}
+                t={t}
+                url={attachmentUrl}
+              />
               <small>
                 {formatShortDateTime(message.createdAt)}
                 {message.senderRole === 'driver' && (
@@ -11007,13 +12090,21 @@ function DriverChatScreen({
                 )}
               </small>
               <ChatReactionBar
-                actorRole="driver"
-                isPickerOpen={isReactionPickerOpen}
                 message={message}
-                onClose={reactionPicker.closeReactionPicker}
-                onOpen={() => reactionPicker.openReactionPicker(message.id)}
-                onReact={onReactToMessage}
+                onOpen={() => messageActions.openMessageActions(message.id)}
               />
+              {isActionMenuOpen && (
+                <ChatMessageActionMenu
+                  actorRole="driver"
+                  message={message}
+                  onClose={messageActions.closeMessageActions}
+                  onCopy={handleCopyMessage}
+                  onReact={onReactToMessage}
+                  onReply={startReplyToMessage}
+                  t={t}
+                />
+              )}
+              {copiedMessageId === message.id && <span className="chat-copy-toast">{t('chat.copied')}</span>}
             </article>
           )
         })}
@@ -11036,15 +12127,17 @@ function DriverChatScreen({
       </div>
 
       <form className="driver-chat-screen-compose" onSubmit={handleSubmit}>
-        {chatForm.photoFile && (
+        <ChatReplyPreview onCancel={() => setReplyToMessage(null)} reply={replyToMessage} t={t} />
+        {chatForm.attachmentFile && (
           <div className="driver-chat-file-pill">
-            <span>{chatForm.photoFile.name}</span>
-            <button onClick={() => setChatForm((currentForm) => ({ ...currentForm, photoFile: null }))} type="button">
+            <span>{chatForm.attachmentFile.name}</span>
+            <button onClick={() => setChatForm((currentForm) => ({ ...currentForm, attachmentFile: null }))} type="button">
               {t('common.remove')}
             </button>
           </div>
         )}
         <textarea
+          ref={composeTextareaRef}
           onChange={(event) => {
             setChatForm((currentForm) => ({ ...currentForm, body: event.target.value }))
             signalDriverTyping(event.target.value)
@@ -11053,15 +12146,9 @@ function DriverChatScreen({
           value={chatForm.body}
         />
         <div className="driver-chat-screen-actions">
-          <label className="document-action-button">
-            {t('chat.photo')}
-            <input accept="image/*" capture="environment" onChange={handlePhotoFile} type="file" />
-          </label>
-          <label className="document-action-button">
-            {t('chat.gallery')}
-            <input accept="image/*" onChange={handlePhotoFile} type="file" />
-          </label>
-          <button className="upload-button" disabled={isSending || (!chatForm.body.trim() && !chatForm.photoFile)} type="submit">
+          <ChatAttachmentMenu onFile={handleAttachmentFile} t={t} />
+          <ChatAudioRecorder disabled={isSending} onRecord={(file) => setChatForm((currentForm) => ({ ...currentForm, attachmentFile: file }))} t={t} />
+          <button className="upload-button" disabled={isSending || (!chatForm.body.trim() && !chatForm.attachmentFile)} type="submit">
             <Send size={16} />
             {isSending ? t('chat.sending') : t('chat.send')}
           </button>

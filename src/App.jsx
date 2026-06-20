@@ -3335,6 +3335,7 @@ function isSupportedDocumentFile(file) {
 
 function formatBytes(bytes) {
   const safeBytes = Number(bytes) || 0
+  if (safeBytes > 0 && safeBytes < 1024) return `${safeBytes} B`
   if (safeBytes < 1024 * 1024) return `${Math.round(safeBytes / 1024)} KB`
   if (safeBytes < 1024 * 1024 * 1024) return `${(safeBytes / 1024 / 1024).toFixed(1)} MB`
   return `${(safeBytes / 1024 / 1024 / 1024).toFixed(1)} GB`

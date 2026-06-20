@@ -110,3 +110,6 @@ Eseguilo dopo `23B_fatture_aziende.sql`.
 
 Il file `25_storage_file_e_limiti.sql` aggiunge il conteggio dei file caricati per azienda.
 Eseguilo dopo `24_dati_fatturazione_stripe.sql`.
+
+Il file `26_fix_conteggio_storage_reale.sql` aggiorna il riepilogo spazio leggendo anche i file reali nello Storage Supabase.
+Eseguilo dopo `25_storage_file_e_limiti.sql` se il pannello "Spazio file" resta a zero.

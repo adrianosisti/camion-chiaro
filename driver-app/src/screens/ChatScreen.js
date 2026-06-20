@@ -23,6 +23,9 @@ import {
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
+const chatReceiveSound = require('../../assets/sounds/chat-receive.wav')
+const chatSendSound = require('../../assets/sounds/chat-send.wav')
+
 function getMessageText(message) {
   return String(message.body ?? '').trim()
 }
@@ -176,15 +179,41 @@ export function ChatScreen({
   const listRef = useRef(null)
   const pendingStopRef = useRef('')
   const recordingStartedAtRef = useRef(0)
+  const soundHydratedRef = useRef(false)
   const typingTimerRef = useRef(null)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder, 250)
+  const receiveSoundPlayer = useAudioPlayer(chatReceiveSound, { keepAudioSessionActive: true })
+  const sendSoundPlayer = useAudioPlayer(chatSendSound, { keepAudioSessionActive: true })
   const listMessages = useMemo(() => [...messages].reverse(), [messages])
 
   useEffect(() => () => {
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
     onTyping?.(false)
   }, [])
+
+  useEffect(() => {
+    const latestMessage = messages[messages.length - 1]
+    const latestMessageId = latestMessage?.id ?? ''
+
+    if (!latestMessageId) {
+      soundHydratedRef.current = false
+      return
+    }
+
+    if (!soundHydratedRef.current) {
+      soundHydratedRef.current = latestMessageId
+      return
+    }
+
+    if (soundHydratedRef.current === latestMessageId) return
+
+    soundHydratedRef.current = latestMessageId
+
+    if (latestMessage.senderRole === 'company') {
+      playChatSound(receiveSoundPlayer)
+    }
+  }, [messages, receiveSoundPlayer])
 
   useEffect(() => {
     isSendingRef.current = isSending
@@ -211,6 +240,15 @@ export function ChatScreen({
     }
   }
 
+  function playChatSound(player) {
+    try {
+      player.seekTo(0)
+      player.play()
+    } catch {
+      // Chat sounds are helpful feedback, but they should never block messaging.
+    }
+  }
+
   async function handleSendText() {
     const cleanBody = body.trim()
     if (!cleanBody || isSending) return
@@ -222,6 +260,7 @@ export function ChatScreen({
     setIsSending(false)
 
     if (!sent) setBody(cleanBody)
+    if (sent) playChatSound(sendSoundPlayer)
     setTimeout(() => listRef.current?.scrollToOffset?.({ animated: false, offset: 0 }), 80)
   }
 
@@ -245,6 +284,7 @@ export function ChatScreen({
     })
     setIsSending(false)
 
+    if (sent) playChatSound(sendSoundPlayer)
     if (!sent) Alert.alert('Allegato non inviato', 'Riprova tra qualche secondo.')
   }
 
@@ -336,6 +376,7 @@ export function ChatScreen({
     })
     setIsSending(false)
 
+    if (sent) playChatSound(sendSoundPlayer)
     if (!sent) Alert.alert('Vocale non inviato', 'Riprova tra qualche secondo.')
   }
 
@@ -415,26 +456,28 @@ export function ChatScreen({
         }
       />
 
-      {isRecording ? (
-          <View style={styles.recordingBar}>
-            <View style={styles.recordingDot} />
-          <Text style={styles.recordingText}>{isCancelling ? 'Rilascia per eliminare' : 'Tieni premuto, scorri a sinistra per eliminare'}</Text>
-          <Text style={styles.recordingTime}>{Math.round((recorderState.durationMillis ?? 0) / 1000)}s</Text>
-        </View>
-      ) : null}
-
       <View style={styles.composer}>
-        <Pressable disabled={isSending} onPress={handlePickImage} style={styles.roundButton}>
+        <Pressable disabled={isSending || isRecording} onPress={handlePickImage} style={[styles.roundButton, isRecording && styles.hiddenComposerItem]}>
           <Text style={styles.roundButtonText}>+</Text>
         </Pressable>
         <TextInput
+          editable={!isRecording && !isSending}
           multiline
           onChangeText={handleBodyChange}
           placeholder="Scrivi un messaggio"
           placeholderTextColor="#94a3b8"
-          style={styles.input}
+          style={[styles.input, isRecording && styles.hiddenComposerItem]}
           value={body}
         />
+        {isRecording ? (
+          <View style={styles.recordingInline}>
+            <View style={styles.recordingDot} />
+            <Text numberOfLines={1} style={styles.recordingText}>
+              {isCancelling ? 'Rilascia per eliminare' : 'Scorri a sinistra per eliminare'}
+            </Text>
+            <Text style={styles.recordingTime}>{Math.round((recorderState.durationMillis ?? 0) / 1000)}s</Text>
+          </View>
+        ) : null}
         {canSendText ? (
           <Pressable onPress={handleSendText} style={styles.sendButton}>
             <Text style={styles.sendText}>Invia</Text>
@@ -633,6 +676,9 @@ const styles = StyleSheet.create({
   headerCopy: {
     flex: 1,
   },
+  hiddenComposerItem: {
+    display: 'none',
+  },
   imageAttachment: {
     aspectRatio: 1.2,
     borderRadius: 14,
@@ -730,6 +776,16 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 9,
     width: 9,
+  },
+  recordingInline: {
+    alignItems: 'center',
+    backgroundColor: '#020617',
+    borderRadius: 22,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 13,
   },
   recordingText: {
     color: colors.white,

@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system'
 import { apiBaseUrl, driverAuthDomain, isSupabaseConfigured, supabase } from './supabaseClient'
 import { mapChatMessage, mapChatThread, mapDriverContext } from './mappers'
 
@@ -34,9 +35,14 @@ function sanitizeFileName(value = 'file') {
     .slice(0, 80) || 'file'
 }
 
-async function getBlobFromUri(uri) {
-  const response = await fetch(uri)
-  return response.blob()
+async function getFileBodyFromUri(uri) {
+  const bytes = await new File(uri).bytes()
+
+  if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+    return bytes.buffer
+  }
+
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
 }
 
 export async function getCurrentSession() {
@@ -184,8 +190,8 @@ async function uploadChatAttachment({ attachment, companyId, threadId }) {
 
   const cleanFileName = sanitizeFileName(attachment.name ?? `allegato-${Date.now()}`)
   const filePath = `${companyId}/chat/${threadId}/${Date.now()}-${cleanFileName}`
-  const blob = await getBlobFromUri(attachment.uri)
-  const { error } = await supabase.storage.from(companyAssetsBucket).upload(filePath, blob, {
+  const fileBody = await getFileBodyFromUri(attachment.uri)
+  const { error } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
     cacheControl: '3600',
     contentType: attachment.type || 'application/octet-stream',
     upsert: false,
@@ -352,9 +358,9 @@ export async function uploadDriverDocumentFile({ companyId, documentId, driverId
 
   const cleanFileName = sanitizeFileName(file.name ?? `documento-${Date.now()}`)
   const filePath = `${companyId}/${driverId}/${documentId}/${Date.now()}-${cleanFileName}`
-  const blob = await getBlobFromUri(file.uri)
+  const fileBody = await getFileBodyFromUri(file.uri)
 
-  const { error: uploadError } = await supabase.storage.from(driverDocumentsBucket).upload(filePath, blob, {
+  const { error: uploadError } = await supabase.storage.from(driverDocumentsBucket).upload(filePath, fileBody, {
     cacheControl: '3600',
     contentType: file.type || 'application/octet-stream',
     upsert: false,
@@ -382,9 +388,9 @@ export async function uploadDriverProfileImage({ companyId, driverId, file }) {
 
   const cleanFileName = sanitizeFileName(file.name ?? `profilo-${Date.now()}.jpg`)
   const filePath = `${companyId}/drivers/${driverId}/profile/${Date.now()}-${cleanFileName}`
-  const blob = await getBlobFromUri(file.uri)
+  const fileBody = await getFileBodyFromUri(file.uri)
 
-  const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, blob, {
+  const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
     cacheControl: '3600',
     contentType: file.type || 'image/jpeg',
     upsert: false,
@@ -434,8 +440,8 @@ export async function createFaultReport(payload) {
   if (payload.photo?.uri) {
     const cleanFileName = sanitizeFileName(payload.photo.name ?? `guasto-${Date.now()}.jpg`)
     photoPath = `${payload.companyId}/faults/${payload.driverId}/${Date.now()}-${cleanFileName}`
-    const blob = await getBlobFromUri(payload.photo.uri)
-    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(photoPath, blob, {
+    const fileBody = await getFileBodyFromUri(payload.photo.uri)
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(photoPath, fileBody, {
       cacheControl: '3600',
       contentType: payload.photo.type || 'image/jpeg',
       upsert: false,

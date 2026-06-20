@@ -31,6 +31,7 @@ import {
   subscribeToDriverChatMessages,
   subscribeToDriverPresence,
   uploadDriverDocumentFile,
+  uploadDriverProfileImage,
 } from './src/services/driverApi'
 import { colors, layout } from './src/theme'
 
@@ -298,6 +299,24 @@ export default function App() {
     return true
   }
 
+  async function handleUpdateProfilePhoto(file) {
+    if (!driver || !file?.uri) return false
+
+    const result = await uploadDriverProfileImage({
+      companyId: driver.companyId,
+      driverId: driver.id,
+      file,
+    })
+
+    if (result.error) {
+      Alert.alert('Foto non caricata', result.error.message)
+      return false
+    }
+
+    await loadDriverData({ silent: true })
+    return true
+  }
+
   async function handleSubmitCheck(payload) {
     if (!driver) return false
 
@@ -382,6 +401,7 @@ export default function App() {
         logoUrl={logoUrl}
         driverName={driverName}
         isRefreshing={isRefreshing}
+        onUpdateProfilePhoto={handleUpdateProfilePhoto}
         onRefresh={() => loadDriverData()}
         unreadCompanyMessages={unreadCompanyMessages}
       />

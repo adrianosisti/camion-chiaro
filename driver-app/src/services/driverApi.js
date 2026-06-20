@@ -374,6 +374,36 @@ export async function uploadDriverDocumentFile({ companyId, documentId, driverId
   return { data, error }
 }
 
+export async function uploadDriverProfileImage({ companyId, driverId, file }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !driverId || !file?.uri) {
+    return { data: null, error: { message: 'Foto profilo mancante.' } }
+  }
+
+  const cleanFileName = sanitizeFileName(file.name ?? `profilo-${Date.now()}.jpg`)
+  const filePath = `${companyId}/drivers/${driverId}/profile/${Date.now()}-${cleanFileName}`
+  const blob = await getBlobFromUri(file.uri)
+
+  const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, blob, {
+    cacheControl: '3600',
+    contentType: file.type || 'image/jpeg',
+    upsert: false,
+  })
+
+  if (uploadError) return { data: null, error: uploadError }
+
+  const { data, error } = await supabase.rpc('set_driver_profile_image_file', {
+    target_driver_id: driverId,
+    uploaded_file_path: filePath,
+  })
+
+  if (error) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+  }
+
+  return { data, error }
+}
+
 export async function createVehicleCheck(payload) {
   if (!isSupabaseConfigured) return notConfiguredError()
 

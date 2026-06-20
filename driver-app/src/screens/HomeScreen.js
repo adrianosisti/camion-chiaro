@@ -1,4 +1,5 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
 import { MetricPill } from '../components/MetricPill'
 import { Panel } from '../components/Panel'
 import { colors, layout } from '../theme'
@@ -16,6 +17,7 @@ export function HomeScreen({
   isRefreshing,
   logoUrl,
   onRefresh,
+  onUpdateProfilePhoto,
   unreadCompanyMessages = 0,
 }) {
   const documents = context?.documents ?? []
@@ -29,14 +31,34 @@ export function HomeScreen({
   const driveableVehicle = vehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')
   const criticalChecks = checks.filter((check) => !check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
 
+  async function updateProfilePhoto() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      mediaTypes: ['images'],
+      quality: 0.72,
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    const asset = result.assets[0]
+    const uploaded = await onUpdateProfilePhoto?.({
+      name: asset.fileName || `profilo-${Date.now()}.jpg`,
+      type: asset.mimeType || 'image/jpeg',
+      uri: asset.uri,
+    })
+
+    if (uploaded) Alert.alert('Foto aggiornata', 'La foto profilo e stata salvata.')
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <View style={styles.heroTop}>
           <View style={styles.identityBlock}>
-            <View style={styles.profileImageWrap}>
+            <Pressable onPress={updateProfilePhoto} style={styles.profileImageWrap}>
               {driverProfileUrl ? <Image source={{ uri: driverProfileUrl }} style={styles.profileImage} /> : <Text style={styles.profileInitial}>IO</Text>}
-            </View>
+            </Pressable>
             <View style={styles.heroCopy}>
               <Text style={styles.heroGreeting}>Ciao {driverName}</Text>
               <View style={styles.companyRow}>

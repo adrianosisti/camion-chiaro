@@ -154,6 +154,7 @@ export function CompanyManagementScreen({
   const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
   const [activeForm, setActiveForm] = useState('driver')
   const [activeList, setActiveList] = useState(initialSection)
+  const [mode, setMode] = useState('archive')
   const [driverForm, setDriverForm] = useState({
     adrDueDate: '',
     depot: '',
@@ -203,8 +204,21 @@ export function CompanyManagementScreen({
     .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
 
   useEffect(() => {
-    if (initialSection) setActiveList(initialSection)
+    if (initialSection) {
+      setActiveList(initialSection)
+      setMode('archive')
+    }
   }, [initialSection])
+
+  function openCreateForm(formType) {
+    setActiveForm(formType)
+    setMode('create')
+  }
+
+  function openArchive(section = activeList) {
+    setActiveList(section)
+    setMode('archive')
+  }
 
   function updateDriverForm(field, value) {
     setDriverForm((currentForm) => ({ ...currentForm, [field]: value }))
@@ -288,6 +302,7 @@ export function CompanyManagementScreen({
         tachographCardDueDate: '',
         username: '',
       })
+      openArchive('drivers')
       Alert.alert('Autista creato', `Username: ${payload.username}\nPassword: ${password}`)
     }
   }
@@ -358,6 +373,7 @@ export function CompanyManagementScreen({
         tachographFile: null,
         type: '',
       })
+      openArchive('vehicles')
       Alert.alert('Mezzo creato', 'La flotta e stata aggiornata.')
     }
   }
@@ -401,6 +417,7 @@ export function CompanyManagementScreen({
         scope: 'vehicle',
         type: '',
       })
+      openArchive('deadlines')
       Alert.alert('Scadenza creata', 'La pratica e stata aggiunta.')
     }
   }
@@ -417,14 +434,35 @@ export function CompanyManagementScreen({
         </View>
       </View>
 
-      <View style={styles.formTabs}>
-        <Chip active={activeForm === 'driver'} label="Autista" onPress={() => setActiveForm('driver')} />
-        <Chip active={activeForm === 'vehicle'} label="Mezzo" onPress={() => setActiveForm('vehicle')} />
-        <Chip active={activeForm === 'deadline'} label="Scadenza" onPress={() => setActiveForm('deadline')} />
+      <View style={styles.modeBar}>
+        <Pressable onPress={() => openArchive(activeList)} style={[styles.modeButton, mode === 'archive' && styles.modeButtonActive]}>
+          <Ionicons color={mode === 'archive' ? colors.white : colors.cyanDark} name="albums-outline" size={18} />
+          <Text style={[styles.modeButtonText, mode === 'archive' && styles.modeButtonTextActive]}>Archivio</Text>
+        </Pressable>
+        <Pressable onPress={() => openCreateForm(activeForm)} style={[styles.modeButton, mode === 'create' && styles.modeButtonActive]}>
+          <Ionicons color={mode === 'create' ? colors.white : colors.cyanDark} name="add-circle-outline" size={18} />
+          <Text style={[styles.modeButtonText, mode === 'create' && styles.modeButtonTextActive]}>Nuovo</Text>
+        </Pressable>
       </View>
 
-      {activeForm === 'driver' ? (
-        <Panel kicker="Nuovo" title="Crea autista">
+      {mode === 'create' ? (
+        <View style={styles.formTabs}>
+          <Chip active={activeForm === 'driver'} label="Autista" onPress={() => setActiveForm('driver')} />
+          <Chip active={activeForm === 'vehicle'} label="Mezzo" onPress={() => setActiveForm('vehicle')} />
+          <Chip active={activeForm === 'deadline'} label="Scadenza" onPress={() => setActiveForm('deadline')} />
+        </View>
+      ) : null}
+
+      {mode === 'create' && activeForm === 'driver' ? (
+        <Panel
+          kicker="Nuovo"
+          right={
+            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
+              <Text style={styles.closeFormText}>Chiudi</Text>
+            </Pressable>
+          }
+          title="Crea autista"
+        >
           <TextField label="Nome e cognome" onChangeText={(value) => updateDriverForm('name', value)} placeholder="Marco Bianchi" value={driverForm.name} />
           <TextField label="Telefono" keyboardType="phone-pad" onChangeText={(value) => updateDriverForm('phone', value)} placeholder="+39..." value={driverForm.phone} />
           <TextField label="Username app" onChangeText={(value) => updateDriverForm('username', value)} placeholder="marco.bianchi" value={driverForm.username} />
@@ -441,8 +479,16 @@ export function CompanyManagementScreen({
         </Panel>
       ) : null}
 
-      {activeForm === 'vehicle' ? (
-        <Panel kicker="Nuovo" title="Aggiungi mezzo">
+      {mode === 'create' && activeForm === 'vehicle' ? (
+        <Panel
+          kicker="Nuovo"
+          right={
+            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
+              <Text style={styles.closeFormText}>Chiudi</Text>
+            </Pressable>
+          }
+          title="Aggiungi mezzo"
+        >
           <TextField label="Targa" onChangeText={(value) => updateVehicleForm('plate', value)} placeholder="AB123CD" value={vehicleForm.plate} />
           <Text style={styles.label}>Tipo flotta</Text>
           <View style={styles.chipGrid}>
@@ -491,8 +537,16 @@ export function CompanyManagementScreen({
         </Panel>
       ) : null}
 
-      {activeForm === 'deadline' ? (
-        <Panel kicker="Nuova" title="Aggiungi scadenza">
+      {mode === 'create' && activeForm === 'deadline' ? (
+        <Panel
+          kicker="Nuova"
+          right={
+            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
+              <Text style={styles.closeFormText}>Chiudi</Text>
+            </Pressable>
+          }
+          title="Aggiungi scadenza"
+        >
           <TextField label="Tipo scadenza" onChangeText={(value) => updateDeadlineForm('type', value)} placeholder="Revisione, assicurazione, CQC..." value={deadlineForm.type} />
           <Text style={styles.label}>Categoria</Text>
           <View style={styles.chipGrid}>
@@ -540,6 +594,22 @@ export function CompanyManagementScreen({
           <Chip active={activeList === 'vehicles'} label="Flotta" onPress={() => setActiveList('vehicles')} />
           <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
         </View>
+        {mode === 'archive' ? (
+          <View style={styles.quickCreateRow}>
+            <Pressable onPress={() => openCreateForm('driver')} style={styles.quickCreateButton}>
+              <Ionicons color={colors.ink} name="person-add-outline" size={17} />
+              <Text style={styles.quickCreateText}>Autista</Text>
+            </Pressable>
+            <Pressable onPress={() => openCreateForm('vehicle')} style={styles.quickCreateButton}>
+              <Ionicons color={colors.ink} name="bus-outline" size={17} />
+              <Text style={styles.quickCreateText}>Mezzo</Text>
+            </Pressable>
+            <Pressable onPress={() => openCreateForm('deadline')} style={styles.quickCreateButton}>
+              <Ionicons color={colors.ink} name="calendar-outline" size={17} />
+              <Text style={styles.quickCreateText}>Scadenza</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {activeList === 'drivers' ? (
           <View style={styles.archiveList}>
@@ -675,6 +745,17 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: colors.white,
   },
+  closeFormButton: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  closeFormText: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '900',
+  },
   content: {
     padding: layout.screenPadding,
     paddingBottom: 28,
@@ -744,6 +825,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 12,
+  },
+  modeBar: {
+    backgroundColor: '#dff7fb',
+    borderColor: colors.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    padding: 5,
+  },
+  modeButton: {
+    alignItems: 'center',
+    borderRadius: 14,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 7,
+    justifyContent: 'center',
+    minHeight: 42,
+  },
+  modeButtonActive: {
+    backgroundColor: colors.ink,
+  },
+  modeButtonText: {
+    color: colors.cyanDark,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  modeButtonTextActive: {
+    color: colors.white,
   },
   groupTitle: {
     color: colors.cyanDark,
@@ -844,6 +955,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
+  },
+  quickCreateButton: {
+    alignItems: 'center',
+    backgroundColor: colors.cyan,
+    borderRadius: 14,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: 8,
+  },
+  quickCreateRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  quickCreateText: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '900',
   },
   selectorList: {
     flexDirection: 'row',

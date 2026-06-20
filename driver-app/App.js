@@ -63,6 +63,10 @@ function getDailyVehicleStorageKey(driverId) {
   return `camion-chiaro-daily-vehicle:${driverId}:${getLocalDateKey()}`
 }
 
+function getDriverChatReadStorageKey(driverId) {
+  return `camion-chiaro-driver-chat-read:${driverId}`
+}
+
 const driverTabs = [
   { id: 'home', icon: 'home-outline', label: 'Home' },
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat' },
@@ -111,6 +115,19 @@ function countUnreadMessagesForRole(messages, readerRole) {
   return messages.filter((message) => message.senderRole === 'company' && !message.readByDriverAt).length
 }
 
+function getMessageTime(message) {
+  const time = new Date(message?.createdAt ?? 0).getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+function countUnreadDriverMessages(messages, readWatermark = 0) {
+  return messages.filter((message) => (
+    message.senderRole === 'company'
+      && !message.readByDriverAt
+      && getMessageTime(message) > readWatermark
+  )).length
+}
+
 function markMessagesReadLocally(messages, readerRole, readAt = new Date().toISOString()) {
   const senderRole = readerRole === 'company' ? 'driver' : 'company'
   const timestampField = readerRole === 'company' ? 'readByCompanyAt' : 'readByDriverAt'
@@ -134,7 +151,7 @@ export default function App() {
   const [companyContext, setCompanyContext] = useState(null)
   const [companyDriverPhotoUrls, setCompanyDriverPhotoUrls] = useState({})
   const [context, setContext] = useState(null)
-  const [driverUnreadMessages, setDriverUnreadMessages] = useState(0)
+  const [driverChatReadWatermark, setDriverChatReadWatermark] = useState(0)
   const [driverProfileUrl, setDriverProfileUrl] = useState('')
   const [isBooting, setIsBooting] = useState(true)
   const [isCompanyOnline, setIsCompanyOnline] = useState(false)
@@ -161,15 +178,23 @@ export default function App() {
   const driverName = getDriverName(context)
   const headerSubtitle = accountType === 'company' ? 'Area azienda' : driverName
   const selectedCompanyDriver = companyContext?.drivers?.find((currentDriver) => currentDriver.id === selectedCompanyDriverId) ?? null
-  const unreadCompanyMessages = activeTab === 'chat' ? 0 : driverUnreadMessages
+  const unreadCompanyMessages = useMemo(() => {
+    if (accountType !== 'driver' || activeTab === 'chat') return 0
+    return countUnreadDriverMessages(chatMessages, driverChatReadWatermark)
+  }, [accountType, activeTab, chatMessages, driverChatReadWatermark])
   const unreadDriverMessages = companyContext?.unreadDriverMessages ?? 0
   const chatBadgeCount = accountType === 'company'
     ? unreadDriverMessages
     : activeTab === 'chat' ? 0 : unreadCompanyMessages
 
   function clearDriverUnreadMessages() {
+    const readWatermark = Date.now()
     driverChatReadVersionRef.current += 1
-    setDriverUnreadMessages(0)
+    setDriverChatReadWatermark(readWatermark)
+
+    if (driver?.id) {
+      void AsyncStorage.setItem(getDriverChatReadStorageKey(driver.id), String(readWatermark))
+    }
   }
 
   async function loadAssetUrls(nextContext) {
@@ -225,12 +250,9 @@ export default function App() {
 
       setChatMessages(nextMessages)
       setChatThread(chatResult.data.thread)
-      const readClearedWhileLoading = driverChatReadVersionRef.current !== requestReadVersion
-      const stillReadingChat = activeTabRef.current === 'chat'
-      const nextUnreadMessages = shouldMarkAsRead || stillReadingChat || readClearedWhileLoading
-        ? 0
-        : countUnreadMessagesForRole(nextMessages, 'driver')
-      setDriverUnreadMessages(nextUnreadMessages)
+      if (driverChatReadVersionRef.current !== requestReadVersion || activeTabRef.current === 'chat') {
+        clearDriverUnreadMessages()
+      }
       return true
     }
 
@@ -399,6 +421,32 @@ export default function App() {
   }, [accountType, activeTab])
 
   useEffect(() => {
+    if (accountType !== 'driver' || !driver?.id) {
+      setDriverChatReadWatermark(0)
+      return undefined
+    }
+
+    let isActive = true
+
+    async function loadDriverChatReadWatermark() {
+      const storedWatermark = await AsyncStorage.getItem(getDriverChatReadStorageKey(driver.id))
+      const parsedWatermark = Number(storedWatermark)
+      if (isActive) {
+        setDriverChatReadWatermark((currentWatermark) => Math.max(
+          currentWatermark,
+          Number.isFinite(parsedWatermark) ? parsedWatermark : 0,
+        ))
+      }
+    }
+
+    void loadDriverChatReadWatermark()
+
+    return () => {
+      isActive = false
+    }
+  }, [accountType, driver?.id])
+
+  useEffect(() => {
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab('home')
     }
@@ -560,6 +608,7 @@ export default function App() {
     setActiveTab('home')
     setChatMessages([])
     setChatThread(null)
+    setDriverChatReadWatermark(0)
     clearDriverUnreadMessages()
     setCompanyChatMessages([])
     setCompanyChatThread(null)

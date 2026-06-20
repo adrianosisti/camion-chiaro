@@ -816,6 +816,10 @@ export default function App() {
         driverProfileUrl={driverProfileUrl}
         logoUrl={logoUrl}
         driverName={driverName}
+        onOpenChat={() => setActiveTab('chat')}
+        onOpenDocuments={() => setActiveTab('documents')}
+        onOpenOperations={() => setActiveTab('operations')}
+        onOpenSettings={() => setActiveTab('settings')}
         onUpdateProfilePhoto={handleUpdateProfilePhoto}
         unreadCompanyMessages={unreadCompanyMessages}
       />

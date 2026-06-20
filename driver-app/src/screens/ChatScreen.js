@@ -165,6 +165,7 @@ export function ChatScreen({
   onRefresh,
   onSend,
   onTyping,
+  soundEnabled = true,
 }) {
   const [body, setBody] = useState('')
   const [dragOffset, setDragOffset] = useState(0)
@@ -241,6 +242,8 @@ export function ChatScreen({
   }
 
   function playChatSound(player) {
+    if (!soundEnabled) return
+
     try {
       player.seekTo(0)
       player.play()

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
+import * as ImagePicker from 'expo-image-picker'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { createDriverDocumentSignedUrl } from '../services/driverApi'
@@ -42,7 +43,17 @@ function DocumentRow({ document, onUploadDocument }) {
     await Linking.openURL(signedUrl)
   }
 
-  async function pickDocument() {
+  async function uploadSelectedFile(file) {
+    if (!file?.uri) return
+
+    setIsBusy(true)
+    const uploaded = await onUploadDocument?.(document, file)
+    setIsBusy(false)
+
+    if (uploaded) Alert.alert('Documento aggiornato', 'Il file e stato salvato.')
+  }
+
+  async function pickDocumentFile() {
     const result = await DocumentPicker.getDocumentAsync({
       copyToCacheDirectory: true,
       multiple: false,
@@ -52,15 +63,36 @@ function DocumentRow({ document, onUploadDocument }) {
     if (result.canceled || !result.assets?.[0]) return
 
     const file = result.assets[0]
-    setIsBusy(true)
-    const uploaded = await onUploadDocument?.(document, {
+    await uploadSelectedFile({
       name: file.name,
       type: file.mimeType || 'application/octet-stream',
       uri: file.uri,
     })
-    setIsBusy(false)
+  }
 
-    if (uploaded) Alert.alert('Documento aggiornato', 'Il file e stato salvato.')
+  async function takeDocumentPhoto() {
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      mediaTypes: ['images'],
+      quality: 0.78,
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    const asset = result.assets[0]
+    await uploadSelectedFile({
+      name: asset.fileName || `documento-${Date.now()}.jpg`,
+      type: asset.mimeType || 'image/jpeg',
+      uri: asset.uri,
+    })
+  }
+
+  function pickDocument() {
+    Alert.alert('Carica documento', 'Scegli se fotografarlo o caricarlo dai file.', [
+      { text: 'Fotocamera', onPress: takeDocumentPhoto },
+      { text: 'File/Galleria', onPress: pickDocumentFile },
+      { style: 'cancel', text: 'Annulla' },
+    ])
   }
 
   return (

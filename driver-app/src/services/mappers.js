@@ -45,6 +45,39 @@ export function mapDriverDocument(row = {}) {
   }
 }
 
+export function mapVehicleCheck(row = {}) {
+  return {
+    companyId: row.company_id ?? row.companyId ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    documentsOnBoard: row.documents_on_board ?? row.documentsOnBoard ?? false,
+    driverId: row.driver_id ?? row.driverId ?? '',
+    id: row.id,
+    lightsOk: row.lights_ok ?? row.lightsOk ?? false,
+    notes: row.notes ?? '',
+    odometerKm: row.odometer_km ?? row.odometerKm ?? 0,
+    semitrailerId: row.semitrailer_id ?? row.semitrailerId ?? '',
+    tiresOk: row.tires_ok ?? row.tiresOk ?? false,
+    tractorId: row.tractor_id ?? row.tractorId ?? '',
+  }
+}
+
+export function mapFaultReport(row = {}) {
+  return {
+    companyId: row.company_id ?? row.companyId ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    description: row.description ?? '',
+    driverId: row.driver_id ?? row.driverId ?? '',
+    id: row.id,
+    photoPath: row.photo_path ?? row.photoPath ?? '',
+    semitrailerId: row.semitrailer_id ?? row.semitrailerId ?? '',
+    severity: row.severity ?? 'medium',
+    status: row.status ?? 'open',
+    title: row.title ?? 'Guasto',
+    updatedAt: row.updated_at ?? row.updatedAt ?? '',
+    vehicleId: row.vehicle_id ?? row.vehicleId ?? '',
+  }
+}
+
 export function mapChatMessage(row = {}) {
   return {
     attachmentPath: row.attachment_path ?? row.attachmentPath ?? '',
@@ -81,6 +114,8 @@ export function mapDriverContext(data = {}) {
       filePath: entry.filePath ?? entry.file_path,
     })),
     drivers: (data.drivers ?? []).map(mapDriver),
+    faultReports: (data.faultReports ?? []).map(mapFaultReport),
+    vehicleChecks: (data.vehicleChecks ?? []).map(mapVehicleCheck),
     vehicles: (data.vehicles ?? []).map(mapVehicle),
   }
 }

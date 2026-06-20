@@ -31,8 +31,9 @@ export function HomeScreen({
   const driveableVehicle = vehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')
   const criticalChecks = checks.filter((check) => !check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
 
-  async function updateProfilePhoto() {
-    const result = await ImagePicker.launchImageLibraryAsync({
+  async function pickProfilePhoto(source) {
+    const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
+    const result = await picker({
       allowsEditing: true,
       aspect: [1, 1],
       mediaTypes: ['images'],
@@ -49,6 +50,14 @@ export function HomeScreen({
     })
 
     if (uploaded) Alert.alert('Foto aggiornata', 'La foto profilo e stata salvata.')
+  }
+
+  async function updateProfilePhoto() {
+    Alert.alert('Foto profilo', 'Scegli come aggiornare la foto.', [
+      { text: 'Fotocamera', onPress: () => pickProfilePhoto('camera') },
+      { text: 'Galleria', onPress: () => pickProfilePhoto('gallery') },
+      { style: 'cancel', text: 'Annulla' },
+    ])
   }
 
   return (

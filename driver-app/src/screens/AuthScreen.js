@@ -3,36 +3,42 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native'
 import { PrimaryButton } from '../components/PrimaryButton'
-import { signInDriver } from '../services/driverApi'
+import { signInCompany, signInDriver } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
 export function AuthScreen({ onAuthenticated }) {
+  const [accountType, setAccountType] = useState('driver')
+  const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
+  const isCompany = accountType === 'company'
 
   async function handleLogin() {
-    if (!username.trim() || !password) {
-      Alert.alert('Dati mancanti', 'Inserisci username autista e password.')
+    if ((!isCompany && !username.trim()) || (isCompany && !email.trim()) || !password) {
+      Alert.alert('Dati mancanti', isCompany ? 'Inserisci email azienda e password.' : 'Inserisci username autista e password.')
       return
     }
 
     setIsLoading(true)
-    const result = await signInDriver({ password, username })
+    const result = isCompany
+      ? await signInCompany({ email, password })
+      : await signInDriver({ password, username })
     setIsLoading(false)
 
     if (result.error || !result.data) {
-      Alert.alert('Accesso non riuscito', result.error?.message ?? 'Controlla username e password.')
+      Alert.alert('Accesso non riuscito', result.error?.message ?? 'Controlla credenziali e password.')
       return
     }
 
-    onAuthenticated?.(result.data)
+    onAuthenticated?.(result.data, accountType)
   }
 
   return (
@@ -44,19 +50,47 @@ export function AuthScreen({ onAuthenticated }) {
         <Text style={styles.brandInitial}>CC</Text>
       </View>
       <Text style={styles.title}>Camion Chiaro</Text>
-      <Text style={styles.subtitle}>Area autisti</Text>
+      <Text style={styles.subtitle}>{isCompany ? 'Area azienda' : 'Area autisti'}</Text>
 
       <View style={styles.form}>
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          autoCapitalize="none"
-          autoCorrect={false}
-          onChangeText={setUsername}
-          placeholder="es. marco"
-          placeholderTextColor="#94a3b8"
-          style={styles.input}
-          value={username}
-        />
+        <View style={styles.modeSwitch}>
+          <Pressable
+            onPress={() => setAccountType('driver')}
+            style={[styles.modeButton, !isCompany && styles.modeButtonActive]}
+          >
+            <Text style={[styles.modeText, !isCompany && styles.modeTextActive]}>Autista</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setAccountType('company')}
+            style={[styles.modeButton, isCompany && styles.modeButtonActive]}
+          >
+            <Text style={[styles.modeText, isCompany && styles.modeTextActive]}>Azienda</Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.label}>{isCompany ? 'Email azienda' : 'Username'}</Text>
+        {isCompany ? (
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            onChangeText={setEmail}
+            placeholder="azienda@email.it"
+            placeholderTextColor="#94a3b8"
+            style={styles.input}
+            value={email}
+          />
+        ) : (
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setUsername}
+            placeholder="es. marco"
+            placeholderTextColor="#94a3b8"
+            style={styles.input}
+            value={username}
+          />
+        )}
 
         <Text style={styles.label}>Password</Text>
         <TextInput
@@ -74,7 +108,9 @@ export function AuthScreen({ onAuthenticated }) {
       </View>
 
       <Text style={styles.footerText}>
-        Le credenziali vengono create dall azienda nel pannello Camion Chiaro.
+        {isCompany
+          ? 'Accedi con l account azienda usato sul sito Camion Chiaro.'
+          : 'Le credenziali vengono create dall azienda nel pannello Camion Chiaro.'}
       </Text>
     </KeyboardAvoidingView>
   )
@@ -128,6 +164,32 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 12,
     fontWeight: '900',
+  },
+  modeButton: {
+    alignItems: 'center',
+    borderRadius: 999,
+    flex: 1,
+    minHeight: 38,
+    justifyContent: 'center',
+  },
+  modeButtonActive: {
+    backgroundColor: colors.ink,
+  },
+  modeSwitch: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 4,
+    padding: 4,
+  },
+  modeText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  modeTextActive: {
+    color: colors.white,
   },
   screen: {
     alignItems: 'stretch',

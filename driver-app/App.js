@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   ActivityIndicator,
   Alert,
@@ -15,17 +16,21 @@ import {
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import { AuthScreen } from './src/screens/AuthScreen'
 import { ChatScreen } from './src/screens/ChatScreen'
+import { CompanyHomeScreen } from './src/screens/CompanyHomeScreen'
 import { DocumentsScreen } from './src/screens/DocumentsScreen'
 import { HomeScreen } from './src/screens/HomeScreen'
 import { OperationsScreen } from './src/screens/OperationsScreen'
+import { SettingsScreen } from './src/screens/SettingsScreen'
 import {
   createCompanyAssetSignedUrl,
   createDriverDocument,
   createFaultReport,
   createVehicleCheck,
+  fetchCompanyContext,
   fetchDriverChat,
   fetchDriverContext,
   getCurrentSession,
+  getSessionAccountType,
   sendChatMessage,
   signOutDriver,
   subscribeToDriverChatMessages,
@@ -35,11 +40,19 @@ import {
 } from './src/services/driverApi'
 import { colors, layout } from './src/theme'
 
-const tabs = [
+const settingsStorageKey = 'camion-chiaro-native-settings'
+
+const driverTabs = [
   { id: 'home', label: 'Home' },
   { id: 'chat', label: 'Chat' },
   { id: 'documents', label: 'Documenti' },
   { id: 'operations', label: 'Check' },
+  { id: 'settings', label: 'Menu' },
+]
+
+const companyTabs = [
+  { id: 'home', label: 'Home' },
+  { id: 'settings', label: 'Menu' },
 ]
 
 function getDriverName(context) {
@@ -61,24 +74,34 @@ function mergeChatMessage(messages, message) {
 }
 
 export default function App() {
+  const [accountType, setAccountType] = useState('driver')
   const [activeTab, setActiveTab] = useState('home')
   const [appStatus, setAppStatus] = useState('Caricamento app...')
+  const [chatSoundEnabled, setChatSoundEnabled] = useState(true)
   const [chatMessages, setChatMessages] = useState([])
   const [chatThread, setChatThread] = useState(null)
+  const [companyContext, setCompanyContext] = useState(null)
   const [context, setContext] = useState(null)
   const [driverProfileUrl, setDriverProfileUrl] = useState('')
   const [isBooting, setIsBooting] = useState(true)
   const [isCompanyOnline, setIsCompanyOnline] = useState(false)
   const [isCompanyTyping, setIsCompanyTyping] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
   const [session, setSession] = useState(null)
+  const [settingsReady, setSettingsReady] = useState(false)
   const presenceRef = useRef(null)
   const typingTimeoutRef = useRef(null)
 
   const driver = context?.drivers?.[0] ?? null
-  const companyName = getCompanyName(context)
+  const visibleTabs = accountType === 'company' ? companyTabs : driverTabs
+  const activeCompanyContext = companyContext ?? context
+  const companyName = accountType === 'company'
+    ? activeCompanyContext?.companyProfile?.name ?? 'Azienda'
+    : getCompanyName(context)
   const driverName = getDriverName(context)
+  const headerSubtitle = accountType === 'company' ? 'Area azienda' : driverName
   const unreadCompanyMessages = chatMessages.filter(
     (message) => message.senderRole === 'company' && !message.readByDriverAt,
   ).length
@@ -125,6 +148,7 @@ export default function App() {
       return false
     }
 
+    setCompanyContext(null)
     setContext(contextResult.data)
     await loadAssetUrls(contextResult.data)
     const loadedDriver = contextResult.data?.drivers?.[0]
@@ -138,17 +162,69 @@ export default function App() {
     return true
   }
 
+  async function loadCompanyData({ silent = false } = {}) {
+    if (!silent) setAppStatus('Aggiorno dati azienda...')
+    setIsRefreshing(true)
+
+    const contextResult = await fetchCompanyContext()
+
+    if (contextResult.error) {
+      setAppStatus(contextResult.error.message)
+      setIsRefreshing(false)
+      return false
+    }
+
+    setCompanyContext(contextResult.data)
+    setContext(null)
+    setChatMessages([])
+    setChatThread(null)
+
+    const companyLogoPath = contextResult.data?.companyProfile?.logoPath
+    const logoResult = companyLogoPath
+      ? await createCompanyAssetSignedUrl(companyLogoPath)
+      : { data: null }
+
+    setLogoUrl(logoResult.data?.signedUrl ?? '')
+    setDriverProfileUrl('')
+    setAppStatus('')
+    setIsRefreshing(false)
+    return true
+  }
+
   useEffect(() => {
     let isMounted = true
 
     async function boot() {
-      const sessionResult = await getCurrentSession()
+      const [sessionResult, storedSettings] = await Promise.all([
+        getCurrentSession(),
+        AsyncStorage.getItem(settingsStorageKey),
+      ])
       if (!isMounted) return
 
+      if (storedSettings) {
+        try {
+          const parsedSettings = JSON.parse(storedSettings)
+          if (parsedSettings.language) setLanguage(parsedSettings.language)
+          if (typeof parsedSettings.chatSoundEnabled === 'boolean') {
+            setChatSoundEnabled(parsedSettings.chatSoundEnabled)
+          }
+        } catch {
+          // Ignore invalid local settings and keep safe defaults.
+        }
+      }
+      setSettingsReady(true)
       setSession(sessionResult.data?.session ?? null)
 
       if (sessionResult.data?.session) {
-        await loadDriverData({ silent: true })
+        const roleResult = await getSessionAccountType()
+        const nextAccountType = roleResult.data === 'company' ? 'company' : 'driver'
+        setAccountType(nextAccountType)
+
+        if (nextAccountType === 'company') {
+          await loadCompanyData({ silent: true })
+        } else {
+          await loadDriverData({ silent: true })
+        }
       }
 
       if (isMounted) setIsBooting(false)
@@ -162,7 +238,18 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!driver?.companyId || !driver?.id) return undefined
+    if (!settingsReady) return
+    AsyncStorage.setItem(settingsStorageKey, JSON.stringify({ chatSoundEnabled, language }))
+  }, [chatSoundEnabled, language, settingsReady])
+
+  useEffect(() => {
+    if (!visibleTabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab('home')
+    }
+  }, [activeTab, visibleTabs])
+
+  useEffect(() => {
+    if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
 
     let isActive = true
     const unsubscribe = subscribeToDriverChatMessages({
@@ -177,10 +264,10 @@ export default function App() {
       isActive = false
       unsubscribe?.()
     }
-  }, [driver?.companyId, driver?.id])
+  }, [accountType, driver?.companyId, driver?.id])
 
   useEffect(() => {
-    if (!driver?.companyId || !driver?.id) return undefined
+    if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
 
     const presence = subscribeToDriverPresence({
       actor: {
@@ -212,21 +299,26 @@ export default function App() {
       if (presenceRef.current === presence) presenceRef.current = null
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
-  }, [driver?.companyId, driver?.id, chatThread?.id])
+  }, [accountType, driver?.companyId, driver?.id, chatThread?.id])
 
-  async function handleAuthenticated(nextSession) {
+  async function handleAuthenticated(nextSession, nextAccountType = 'driver') {
+    const safeAccountType = nextAccountType === 'company' ? 'company' : 'driver'
+    setAccountType(safeAccountType)
     setSession(nextSession)
-    const loaded = await loadDriverData()
+    setActiveTab('home')
+    const loaded = safeAccountType === 'company' ? await loadCompanyData() : await loadDriverData()
     if (!loaded) {
-      Alert.alert('Accesso riuscito', 'Login ok, ma i dati autista non sono stati caricati.')
+      Alert.alert('Accesso riuscito', 'Login ok, ma i dati non sono stati caricati.')
     }
   }
 
   async function handleSignOut() {
     await signOutDriver()
+    setAccountType('driver')
     setActiveTab('home')
     setChatMessages([])
     setChatThread(null)
+    setCompanyContext(null)
     setContext(null)
     setDriverProfileUrl('')
     setIsCompanyOnline(false)
@@ -354,6 +446,32 @@ export default function App() {
   }
 
   const activeScreen = useMemo(() => {
+    if (accountType === 'company') {
+      if (activeTab === 'settings') {
+        return (
+          <SettingsScreen
+            accountType="company"
+            chatSoundEnabled={chatSoundEnabled}
+            language={language}
+            onChatSoundChange={setChatSoundEnabled}
+            onLanguageChange={setLanguage}
+            onRefresh={() => loadCompanyData()}
+            onSignOut={handleSignOut}
+          />
+        )
+      }
+
+      return (
+        <CompanyHomeScreen
+          context={companyContext}
+          isRefreshing={isRefreshing}
+          logoUrl={logoUrl}
+          onOpenSettings={() => setActiveTab('settings')}
+          onRefresh={() => loadCompanyData()}
+        />
+      )
+    }
+
     if (activeTab === 'chat') {
       return (
         <ChatScreen
@@ -367,6 +485,7 @@ export default function App() {
           onRefresh={() => loadDriverData({ silent: true })}
           onSend={handleSendChatMessage}
           onTyping={handleTyping}
+          soundEnabled={chatSoundEnabled}
         />
       )
     }
@@ -393,6 +512,20 @@ export default function App() {
       )
     }
 
+    if (activeTab === 'settings') {
+      return (
+        <SettingsScreen
+          accountType="driver"
+          chatSoundEnabled={chatSoundEnabled}
+          language={language}
+          onChatSoundChange={setChatSoundEnabled}
+          onLanguageChange={setLanguage}
+          onRefresh={() => loadDriverData()}
+          onSignOut={handleSignOut}
+        />
+      )
+    }
+
     return (
       <HomeScreen
         companyName={companyName}
@@ -407,9 +540,12 @@ export default function App() {
       />
     )
   }, [
+    accountType,
     activeTab,
+    chatSoundEnabled,
     chatMessages,
     chatThread?.id,
+    companyContext,
     companyName,
     context,
     driver,
@@ -418,6 +554,7 @@ export default function App() {
     isCompanyOnline,
     isCompanyTyping,
     isRefreshing,
+    language,
     logoUrl,
   ])
 
@@ -452,7 +589,7 @@ export default function App() {
           </View>
           <View>
             <Text style={styles.companyName}>{companyName}</Text>
-            <Text style={styles.driverName}>{driverName}</Text>
+            <Text style={styles.driverName}>{headerSubtitle}</Text>
           </View>
         </View>
         <Pressable onPress={handleSignOut} style={styles.logoutButton}>
@@ -471,7 +608,7 @@ export default function App() {
       </KeyboardAvoidingView>
 
       <View style={styles.tabBar}>
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id
           const hasBadge = tab.id === 'chat' && unreadCompanyMessages > 0
 

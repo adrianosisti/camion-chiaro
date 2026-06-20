@@ -1,6 +1,15 @@
 import { File } from 'expo-file-system'
 import { apiBaseUrl, driverAuthDomain, isSupabaseConfigured, supabase } from './supabaseClient'
-import { mapChatMessage, mapChatThread, mapDriverContext } from './mappers'
+import {
+  mapChatMessage,
+  mapChatThread,
+  mapDriver,
+  mapDriverContext,
+  mapDriverDocument,
+  mapFaultReport,
+  mapVehicle,
+  mapVehicleCheck,
+} from './mappers'
 
 const companyAssetsBucket = 'company-assets'
 const driverDocumentsBucket = 'driver-documents'
@@ -26,6 +35,29 @@ function notConfiguredError() {
 const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_message_at'
 const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
+
+function mapCompanyProfile(row = {}) {
+  return {
+    headquarters: row.headquarters ?? '',
+    id: row.id,
+    logoPath: row.logo_path ?? row.logoPath ?? '',
+    name: row.name ?? 'Azienda',
+    vatNumber: row.vat_number ?? row.vatNumber ?? '',
+  }
+}
+
+function mapComplianceItem(row = {}) {
+  return {
+    documentNumber: row.document_number ?? '',
+    driverId: row.driver_id ?? '',
+    dueDate: row.due_date ?? '',
+    id: row.id,
+    scope: row.scope ?? '',
+    status: row.status ?? 'open',
+    type: row.type ?? 'Scadenza',
+    vehicleId: row.vehicle_id ?? '',
+  }
+}
 
 function sanitizeFileName(value = 'file') {
   return String(value)
@@ -61,9 +93,52 @@ export async function signInDriver({ password, username }) {
   return { data: data?.session ?? null, error }
 }
 
+export async function signInCompany({ email, password }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: String(email ?? '').trim(),
+    password,
+  })
+
+  return { data: data?.session ?? null, error }
+}
+
 export async function signOutDriver() {
   if (!isSupabaseConfigured) return
   await supabase.auth.signOut()
+}
+
+export async function getSessionAccountType() {
+  if (!isSupabaseConfigured) return { data: 'driver', error: null }
+
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id
+
+  if (!userId) return { data: 'driver', error: null }
+
+  const profileResult = await supabase
+    .from('user_profiles')
+    .select('account_type')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (profileResult.data?.account_type === 'company') {
+    return { data: 'company', error: null }
+  }
+
+  const memberResult = await supabase
+    .from('company_members')
+    .select('company_id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle()
+
+  if (memberResult.data?.company_id) {
+    return { data: 'company', error: null }
+  }
+
+  return { data: 'driver', error: profileResult.error ?? memberResult.error ?? null }
 }
 
 export async function fetchDriverContext() {
@@ -100,6 +175,119 @@ export async function fetchDriverContext() {
       data: null,
       error: { message: 'Connessione al server Camion Chiaro non riuscita.' },
     }
+  }
+}
+
+export async function fetchCompanyContext() {
+  if (!isSupabaseConfigured) return notConfiguredError()
+
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id
+
+  if (!userId) {
+    return { data: null, error: { message: 'Sessione azienda scaduta. Fai login.' } }
+  }
+
+  const membershipResult = await supabase
+    .from('company_members')
+    .select('company_id, role')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle()
+
+  if (membershipResult.error || !membershipResult.data?.company_id) {
+    return {
+      data: null,
+      error: membershipResult.error ?? { message: 'Account azienda non collegato a nessuna azienda.' },
+    }
+  }
+
+  const companyId = membershipResult.data.company_id
+  const [
+    companyResult,
+    driversResult,
+    vehiclesResult,
+    documentsResult,
+    checksResult,
+    faultsResult,
+    complianceResult,
+    unreadChatResult,
+  ] = await Promise.all([
+    supabase
+      .from('companies')
+      .select('id, name, vat_number, headquarters, logo_path')
+      .eq('id', companyId)
+      .maybeSingle(),
+    supabase
+      .from('drivers')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
+    supabase
+      .from('vehicles')
+      .select('id, plate, model, type, fleet_type, km, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('plate', { ascending: true }),
+    supabase
+      .from('driver_documents')
+      .select('id, driver_id, type, document_number, expires_at, file_path, status, visible_to_driver')
+      .eq('company_id', companyId)
+      .order('expires_at', { ascending: true, nullsFirst: false }),
+    supabase
+      .from('vehicle_checks')
+      .select('id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, created_at')
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(30),
+    supabase
+      .from('fault_reports')
+      .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(30),
+    supabase
+      .from('compliance_items')
+      .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('due_date', { ascending: true })
+      .limit(50),
+    supabase
+      .from('chat_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .eq('sender_role', 'driver')
+      .is('read_by_company_at', null),
+  ])
+
+  const firstError = [
+    companyResult.error,
+    driversResult.error,
+    vehiclesResult.error,
+    documentsResult.error,
+    checksResult.error,
+    faultsResult.error,
+    complianceResult.error,
+    unreadChatResult.error,
+  ].find(Boolean)
+
+  if (firstError) return { data: null, error: firstError }
+
+  return {
+    data: {
+      companyProfile: mapCompanyProfile(companyResult.data),
+      complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
+      documents: (documentsResult.data ?? []).map(mapDriverDocument),
+      drivers: (driversResult.data ?? []).map(mapDriver),
+      faultReports: (faultsResult.data ?? []).map(mapFaultReport),
+      membership: membershipResult.data,
+      unreadDriverMessages: unreadChatResult.count ?? 0,
+      vehicleChecks: (checksResult.data ?? []).map(mapVehicleCheck),
+      vehicles: (vehiclesResult.data ?? []).map(mapVehicle),
+    },
+    error: null,
   }
 }
 

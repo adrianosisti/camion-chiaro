@@ -132,8 +132,9 @@ export function OperationsScreen({
     }
   }
 
-  async function pickFaultPhoto() {
-    const result = await ImagePicker.launchImageLibraryAsync({
+  async function pickFaultPhotoFrom(source) {
+    const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
+    const result = await picker({
       allowsEditing: false,
       mediaTypes: ['images'],
       quality: 0.72,
@@ -150,6 +151,14 @@ export function OperationsScreen({
         uri: asset.uri,
       },
     }))
+  }
+
+  function pickFaultPhoto() {
+    Alert.alert('Foto guasto', 'Scegli come allegare la foto.', [
+      { text: 'Fotocamera', onPress: () => pickFaultPhotoFrom('camera') },
+      { text: 'Galleria', onPress: () => pickFaultPhotoFrom('gallery') },
+      { style: 'cancel', text: 'Annulla' },
+    ])
   }
 
   async function submitFault() {

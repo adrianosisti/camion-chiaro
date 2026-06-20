@@ -10,10 +10,11 @@ import {
   View,
 } from 'react-native'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { t } from '../i18n/native'
 import { signInCompany, signInDriver } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
-export function AuthScreen({ onAuthenticated }) {
+export function AuthScreen({ language = 'it', onAuthenticated }) {
   const [accountType, setAccountType] = useState('driver')
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -23,7 +24,10 @@ export function AuthScreen({ onAuthenticated }) {
 
   async function handleLogin() {
     if ((!isCompany && !username.trim()) || (isCompany && !email.trim()) || !password) {
-      Alert.alert('Dati mancanti', isCompany ? 'Inserisci email azienda e password.' : 'Inserisci username autista e password.')
+      Alert.alert(
+        t(language, 'missingLoginTitle'),
+        isCompany ? t(language, 'missingCompanyLogin') : t(language, 'missingDriverLogin'),
+      )
       return
     }
 
@@ -34,7 +38,7 @@ export function AuthScreen({ onAuthenticated }) {
     setIsLoading(false)
 
     if (result.error || !result.data) {
-      Alert.alert('Accesso non riuscito', result.error?.message ?? 'Controlla credenziali e password.')
+      Alert.alert(t(language, 'loginFailedTitle'), result.error?.message ?? t(language, 'loginFailedHelp'))
       return
     }
 
@@ -50,7 +54,7 @@ export function AuthScreen({ onAuthenticated }) {
         <Text style={styles.brandInitial}>CC</Text>
       </View>
       <Text style={styles.title}>Camion Chiaro</Text>
-      <Text style={styles.subtitle}>{isCompany ? 'Area azienda' : 'Area autisti'}</Text>
+      <Text style={styles.subtitle}>{isCompany ? t(language, 'companyArea') : t(language, 'driverArea')}</Text>
 
       <View style={styles.form}>
         <View style={styles.modeSwitch}>
@@ -58,17 +62,17 @@ export function AuthScreen({ onAuthenticated }) {
             onPress={() => setAccountType('driver')}
             style={[styles.modeButton, !isCompany && styles.modeButtonActive]}
           >
-            <Text style={[styles.modeText, !isCompany && styles.modeTextActive]}>Autista</Text>
+            <Text style={[styles.modeText, !isCompany && styles.modeTextActive]}>{t(language, 'driver')}</Text>
           </Pressable>
           <Pressable
             onPress={() => setAccountType('company')}
             style={[styles.modeButton, isCompany && styles.modeButtonActive]}
           >
-            <Text style={[styles.modeText, isCompany && styles.modeTextActive]}>Azienda</Text>
+            <Text style={[styles.modeText, isCompany && styles.modeTextActive]}>{t(language, 'company')}</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.label}>{isCompany ? 'Email azienda' : 'Username'}</Text>
+        <Text style={styles.label}>{isCompany ? t(language, 'companyEmail') : t(language, 'username')}</Text>
         {isCompany ? (
           <TextInput
             autoCapitalize="none"
@@ -92,7 +96,7 @@ export function AuthScreen({ onAuthenticated }) {
           />
         )}
 
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>{t(language, 'password')}</Text>
         <TextInput
           autoCapitalize="none"
           autoCorrect={false}
@@ -104,13 +108,13 @@ export function AuthScreen({ onAuthenticated }) {
           value={password}
         />
 
-        <PrimaryButton loading={isLoading} onPress={handleLogin} title="Entra" />
+        <PrimaryButton loading={isLoading} onPress={handleLogin} title={t(language, 'login')} />
       </View>
 
       <Text style={styles.footerText}>
         {isCompany
-          ? 'Accedi con l account azienda usato sul sito Camion Chiaro.'
-          : 'Le credenziali vengono create dall azienda nel pannello Camion Chiaro.'}
+          ? t(language, 'companyLoginHelp')
+          : t(language, 'driverLoginHelp')}
       </Text>
     </KeyboardAvoidingView>
   )

@@ -159,14 +159,18 @@ export default function App() {
   const [isBooting, setIsBooting] = useState(true)
   const [isCompanyOnline, setIsCompanyOnline] = useState(false)
   const [isCompanyTyping, setIsCompanyTyping] = useState(false)
+  const [isSelectedDriverTyping, setIsSelectedDriverTyping] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
+  const [onlineDriverIds, setOnlineDriverIds] = useState([])
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
   const [selectedDailyVehicleId, setSelectedDailyVehicleId] = useState('')
   const [settingsReady, setSettingsReady] = useState(false)
+  const companyPresenceRef = useRef(null)
+  const companyTypingTimeoutRef = useRef(null)
   const presenceRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const activeTabRef = useRef(activeTab)
@@ -181,6 +185,7 @@ export default function App() {
   const driverName = getDriverName(context)
   const headerSubtitle = accountType === 'company' ? t(language, 'accountAreaCompany') : driverName
   const selectedCompanyDriver = companyContext?.drivers?.find((currentDriver) => currentDriver.id === selectedCompanyDriverId) ?? null
+  const selectedCompanyDriverOnline = Boolean(selectedCompanyDriverId && onlineDriverIds.includes(selectedCompanyDriverId))
   const rawUnreadDriverMessages = useMemo(
     () => chatMessages.filter((message) => message.senderRole === 'company' && !message.readByDriverAt),
     [chatMessages],
@@ -596,6 +601,7 @@ export default function App() {
       actor: {
         actorId: driver.id,
         actorName: driver.name,
+        actorRole: 'driver',
       },
       companyId: driver.companyId,
       handlers: {
@@ -624,6 +630,51 @@ export default function App() {
     }
   }, [accountType, driver?.companyId, driver?.id, chatThread?.id])
 
+  useEffect(() => {
+    const companyId = companyContext?.companyProfile?.id
+    if (accountType !== 'company' || !companyId) {
+      setOnlineDriverIds([])
+      setIsSelectedDriverTyping(false)
+      return undefined
+    }
+
+    const presence = subscribeToDriverPresence({
+      actor: {
+        actorId: companyId,
+        actorName: companyName,
+        actorRole: 'company',
+      },
+      companyId,
+      handlers: {
+        onPresenceChange: (presences) => {
+          const nextOnlineDriverIds = presences
+            .filter((presence) => presence.actorRole === 'driver')
+            .map((presence) => presence.actorId)
+          setOnlineDriverIds([...new Set(nextOnlineDriverIds)])
+        },
+        onTyping: (payload) => {
+          if (payload.actorRole !== 'driver') return
+          if (selectedCompanyDriverId && payload.actorId !== selectedCompanyDriverId) return
+          if (companyChatThread?.id && payload.threadId !== companyChatThread.id) return
+
+          setIsSelectedDriverTyping(Boolean(payload.isTyping))
+          if (companyTypingTimeoutRef.current) clearTimeout(companyTypingTimeoutRef.current)
+          if (payload.isTyping) {
+            companyTypingTimeoutRef.current = setTimeout(() => setIsSelectedDriverTyping(false), 2200)
+          }
+        },
+      },
+    })
+
+    companyPresenceRef.current = presence
+
+    return () => {
+      presence.cleanup()
+      if (companyPresenceRef.current === presence) companyPresenceRef.current = null
+      if (companyTypingTimeoutRef.current) clearTimeout(companyTypingTimeoutRef.current)
+    }
+  }, [accountType, companyChatThread?.id, companyContext?.companyProfile?.id, companyName, selectedCompanyDriverId])
+
   async function handleAuthenticated(nextSession, nextAccountType = 'driver') {
     const safeAccountType = nextAccountType === 'company' ? 'company' : 'driver'
     setAccountType(safeAccountType)
@@ -651,7 +702,9 @@ export default function App() {
     setDriverProfileUrl('')
     setIsCompanyOnline(false)
     setIsCompanyTyping(false)
+    setIsSelectedDriverTyping(false)
     setLogoUrl('')
+    setOnlineDriverIds([])
     setSelectedCompanyDriverId('')
     setSelectedDailyVehicleId('')
     setSession(null)
@@ -830,6 +883,13 @@ export default function App() {
     presenceRef.current?.sendTyping({
       isTyping,
       threadId: chatThread?.id,
+    })
+  }
+
+  function handleCompanyTyping(isTyping) {
+    companyPresenceRef.current?.sendTyping({
+      isTyping,
+      threadId: companyChatThread?.id,
     })
   }
 
@@ -1045,6 +1105,7 @@ export default function App() {
             messages={companyChatMessages}
             onBackToDrivers={() => {
               setSelectedCompanyDriverId('')
+              setIsSelectedDriverTyping(false)
               setCompanyChatMessages([])
               setCompanyChatThread(null)
             }}
@@ -1052,7 +1113,10 @@ export default function App() {
             onRefresh={() => loadCompanyChatData()}
             onSelectDriver={handleSelectCompanyDriver}
             onSend={handleSendCompanyChatMessage}
+            onTyping={handleCompanyTyping}
             selectedDriver={selectedCompanyDriver}
+            selectedDriverOnline={selectedCompanyDriverOnline}
+            selectedDriverTyping={isSelectedDriverTyping}
             soundEnabled={chatSoundEnabled}
             unreadByDriverId={companyContext?.unreadDriverMessagesByDriverId ?? {}}
           />
@@ -1199,12 +1263,15 @@ export default function App() {
     driverProfileUrl,
     isCompanyOnline,
     isCompanyTyping,
+    isSelectedDriverTyping,
     isRefreshing,
     language,
     logoUrl,
     managementInitialSection,
+    onlineDriverIds,
     selectedCompanyDriver,
     selectedCompanyDriverId,
+    selectedCompanyDriverOnline,
     selectedDailyVehicleId,
     unreadCompanyMessages,
   ])
@@ -1224,7 +1291,7 @@ export default function App() {
     return (
       <SafeAreaView style={styles.authShell}>
         <ExpoStatusBar style="dark" />
-        <AuthScreen onAuthenticated={handleAuthenticated} />
+        <AuthScreen language={language} onAuthenticated={handleAuthenticated} />
       </SafeAreaView>
     )
   }

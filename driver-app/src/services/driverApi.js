@@ -913,12 +913,13 @@ export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
     }
   }
 
+  const actorRole = actor.actorRole === 'company' ? 'company' : 'driver'
   const clientId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
   const channel = supabase
     .channel(`chat-presence-${companyId}`, {
       config: {
         presence: {
-          key: `driver:${actor.actorId}:${clientId}`,
+          key: `${actorRole}:${actor.actorId}:${clientId}`,
         },
       },
     })
@@ -930,7 +931,8 @@ export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
       handlers.onPresenceChange?.(presences)
     })
     .on('broadcast', { event: 'typing' }, ({ payload }) => {
-      if (!payload?.actorId || payload.actorId === actor.actorId) return
+      if (!payload?.actorId) return
+      if (payload.actorId === actor.actorId && payload.actorRole === actorRole) return
       handlers.onTyping?.(payload)
     })
     .subscribe(async (status) => {
@@ -938,7 +940,7 @@ export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
       await channel.track({
         actorId: actor.actorId,
         actorName: actor.actorName ?? '',
-        actorRole: 'driver',
+        actorRole,
         lastSeenAt: new Date().toISOString(),
         onlineAt: new Date().toISOString(),
       })
@@ -956,7 +958,7 @@ export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
         payload: {
           actorId: actor.actorId,
           actorName: actor.actorName ?? '',
-          actorRole: 'driver',
+          actorRole,
           isTyping,
           sentAt: new Date().toISOString(),
           threadId,

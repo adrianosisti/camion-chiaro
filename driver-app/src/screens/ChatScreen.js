@@ -570,13 +570,13 @@ export function ChatScreen({
 
     if (!latestMessageId || latestRenderedMessageIdRef.current === latestMessageId) return
 
-    const shouldScroll = shouldStickToBottomRef.current || latestMessage.senderRole === 'driver'
+    const shouldScroll = shouldStickToBottomRef.current || latestMessage.senderRole === currentUserRole
     latestRenderedMessageIdRef.current = latestMessageId
 
     if (shouldScroll) {
       setTimeout(() => listRef.current?.scrollToOffset?.({ animated: false, offset: 0 }), 40)
     }
-  }, [messages])
+  }, [currentUserRole, messages])
 
   useEffect(() => {
     isSendingRef.current = isSending

@@ -34,7 +34,10 @@ export function CompanyChatScreen({
   onRefresh,
   onSelectDriver,
   onSend,
+  onTyping,
   selectedDriver,
+  selectedDriverOnline = false,
+  selectedDriverTyping = false,
   soundEnabled = true,
   unreadByDriverId = {},
 }) {
@@ -78,6 +81,8 @@ export function CompanyChatScreen({
         <ChatScreen
           companyLogoUrl={companyLogoUrl}
           companyName={selectedDriver.name}
+          companyOnline={selectedDriverOnline}
+          companyTyping={selectedDriverTyping}
           currentUserRole="company"
           driverProfileUrl={driverPhotoUrl}
           messages={messages}
@@ -85,6 +90,7 @@ export function CompanyChatScreen({
           onReactToMessage={onReactToMessage}
           onRefresh={onRefresh}
           onSend={onSend}
+          onTyping={onTyping}
           ownAvatarUrl={companyLogoUrl}
           participantAvatarUrl={driverPhotoUrl}
           participantName={selectedDriver.name}

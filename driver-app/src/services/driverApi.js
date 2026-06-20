@@ -19,6 +19,10 @@ function notConfiguredError() {
   return { data: null, error: { message: 'Configura le chiavi Supabase in driver-app/.env.' } }
 }
 
+const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_message_at'
+const chatMessageSelect =
+  'id, company_id, driver_id, thread_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
+
 export async function getCurrentSession() {
   if (!isSupabaseConfigured) return { data: { session: null }, error: null }
   return supabase.auth.getSession()
@@ -83,7 +87,7 @@ export async function fetchDriverChat({ companyId, driverId }) {
 
   const { data: threadData, error: threadError } = await supabase
     .from('chat_threads')
-    .select('id, company_id, driver_id, title, context_type, last_message_at')
+    .select(chatThreadSelect)
     .eq('company_id', companyId)
     .eq('driver_id', driverId)
     .eq('context_type', 'general')
@@ -94,7 +98,7 @@ export async function fetchDriverChat({ companyId, driverId }) {
 
   const { data: messageData, error: messageError } = await supabase
     .from('chat_messages')
-    .select('id, company_id, driver_id, thread_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at')
+    .select(chatMessageSelect)
     .eq('company_id', companyId)
     .eq('thread_id', threadData.id)
     .order('created_at', { ascending: true })
@@ -122,6 +126,17 @@ async function ensureChatThread({ companyId, driverId, threadId }) {
     }
   }
 
+  const { data: existingData, error: existingError } = await supabase
+    .from('chat_threads')
+    .select(chatThreadSelect)
+    .eq('company_id', companyId)
+    .eq('driver_id', driverId)
+    .eq('context_type', 'general')
+    .maybeSingle()
+
+  if (existingError) return { data: null, error: existingError }
+  if (existingData) return { data: mapChatThread(existingData), error: null }
+
   const { data, error } = await supabase
     .from('chat_threads')
     .insert({
@@ -130,8 +145,20 @@ async function ensureChatThread({ companyId, driverId, threadId }) {
       driver_id: driverId,
       title: 'Chat autista',
     })
-    .select('id, company_id, driver_id, title, context_type, last_message_at')
+    .select(chatThreadSelect)
     .single()
+
+  if (error?.code === '23505') {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('chat_threads')
+      .select(chatThreadSelect)
+      .eq('company_id', companyId)
+      .eq('driver_id', driverId)
+      .eq('context_type', 'general')
+      .maybeSingle()
+
+    return { data: fallbackData ? mapChatThread(fallbackData) : null, error: fallbackError }
+  }
 
   return { data: data ? mapChatThread(data) : null, error }
 }
@@ -151,7 +178,7 @@ export async function sendChatMessage({ body, companyId, driverId, threadId }) {
       sender_role: 'driver',
       thread_id: threadResult.data.id,
     })
-    .select('id, company_id, driver_id, thread_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at')
+    .select(chatMessageSelect)
     .single()
 
   if (error) return { data: null, error }

@@ -3,6 +3,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Modal,
   PanResponder,
   Pressable,
   RefreshControl,
@@ -11,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import * as Clipboard from 'expo-clipboard'
 import * as ImagePicker from 'expo-image-picker'
 import {
   RecordingPresets,
@@ -25,6 +27,17 @@ import { colors, layout } from '../theme'
 
 const chatReceiveSound = require('../../assets/sounds/chat-receive.wav')
 const chatSendSound = require('../../assets/sounds/chat-send.wav')
+const chatReplyPrefix = '[[cc-reply:'
+const chatReplySuffix = ']]'
+
+const reactionOptions = [
+  { emoji: '👍', value: 'ok' },
+  { emoji: '❤️', value: 'heart' },
+  { emoji: '🙏', value: 'thanks' },
+  { emoji: '👀', value: 'seen' },
+  { emoji: '✅', value: 'done' },
+  { emoji: '⚠️', value: 'warning' },
+]
 
 function getMessageText(message) {
   return String(message.body ?? '').trim()
@@ -33,6 +46,136 @@ function getMessageText(message) {
 function formatMessageTime(value) {
   if (!value) return ''
   return new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+}
+
+function base64Encode(value) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+  let output = ''
+  let index = 0
+
+  while (index < value.length) {
+    const first = value.charCodeAt(index++)
+    const second = value.charCodeAt(index++)
+    const third = value.charCodeAt(index++)
+    const encodedFirst = first >> 2
+    const encodedSecond = ((first & 3) << 4) | (second >> 4)
+    const encodedThird = Number.isNaN(second) ? 64 : ((second & 15) << 2) | (third >> 6)
+    const encodedFourth = Number.isNaN(third) ? 64 : third & 63
+    output += alphabet.charAt(encodedFirst) + alphabet.charAt(encodedSecond) + alphabet.charAt(encodedThird) + alphabet.charAt(encodedFourth)
+  }
+
+  return output
+}
+
+function encodeChatReplyPayload(reply) {
+  if (!reply) return ''
+
+  try {
+    return base64Encode(encodeURIComponent(JSON.stringify(reply)))
+  } catch {
+    return ''
+  }
+}
+
+function composeChatMessageBody(text, reply) {
+  const cleanText = String(text ?? '').trim()
+  const encodedReply = encodeChatReplyPayload(reply)
+  if (!encodedReply) return cleanText
+
+  return `${chatReplyPrefix}${encodedReply}${chatReplySuffix}${cleanText ? `\n${cleanText}` : ''}`
+}
+
+function base64Decode(value) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+  let output = ''
+  let index = 0
+  const cleanValue = String(value ?? '').replace(/[^A-Za-z0-9+/=]/g, '')
+
+  while (index < cleanValue.length) {
+    const first = alphabet.indexOf(cleanValue.charAt(index++))
+    const second = alphabet.indexOf(cleanValue.charAt(index++))
+    const third = alphabet.indexOf(cleanValue.charAt(index++))
+    const fourth = alphabet.indexOf(cleanValue.charAt(index++))
+    const byteOne = (first << 2) | (second >> 4)
+    const byteTwo = ((second & 15) << 4) | (third >> 2)
+    const byteThree = ((third & 3) << 6) | fourth
+    output += String.fromCharCode(byteOne)
+    if (third !== 64) output += String.fromCharCode(byteTwo)
+    if (fourth !== 64) output += String.fromCharCode(byteThree)
+  }
+
+  return output
+}
+
+function decodeChatReplyPayload(value) {
+  if (!value) return null
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(base64Decode(value)))
+    return {
+      id: String(parsed.id ?? ''),
+      sender: String(parsed.sender ?? ''),
+      text: String(parsed.text ?? ''),
+    }
+  } catch {
+    return null
+  }
+}
+
+function parseChatMessageBody(body = '') {
+  const messageBody = String(body ?? '')
+
+  if (!messageBody.startsWith(chatReplyPrefix)) {
+    return { reply: null, text: messageBody }
+  }
+
+  const suffixIndex = messageBody.indexOf(chatReplySuffix)
+  if (suffixIndex < 0) return { reply: null, text: messageBody }
+
+  const encodedReply = messageBody.slice(chatReplyPrefix.length, suffixIndex)
+  const reply = decodeChatReplyPayload(encodedReply)
+  const text = messageBody.slice(suffixIndex + chatReplySuffix.length).replace(/^\n+/, '')
+
+  return { reply, text }
+}
+
+function truncateChatText(value, maxLength = 120) {
+  const cleanValue = String(value ?? '').replace(/\s+/g, ' ').trim()
+  if (cleanValue.length <= maxLength) return cleanValue
+  return `${cleanValue.slice(0, maxLength - 1).trim()}...`
+}
+
+function getMessageDisplay(message) {
+  return parseChatMessageBody(message?.body ?? '')
+}
+
+function getMessagePreviewText(message) {
+  const display = getMessageDisplay(message)
+  if (display.text) return display.text
+  if (isAudioPath(message?.attachmentPath)) return 'Messaggio vocale'
+  if (isImagePath(message?.attachmentPath)) return 'Foto allegata'
+  return 'Messaggio'
+}
+
+function createReplyReference(message, sender) {
+  if (!message?.id) return null
+
+  return {
+    id: message.id,
+    sender,
+    text: truncateChatText(getMessagePreviewText(message), 120),
+  }
+}
+
+function getReactionEmoji(value) {
+  const legacyReactionMap = {
+    Cuore: '❤️',
+    Grazie: '🙏',
+    OK: '👍',
+    Visto: '👀',
+  }
+
+  return reactionOptions.find((reaction) => reaction.value === value)?.emoji ?? legacyReactionMap[value] ?? value
 }
 
 function getInitials(value = 'Azienda') {
@@ -52,12 +195,16 @@ function isAudioPath(path = '') {
   return /\.(m4a|aac|mp3|mp4|mpeg|ogg|opus|wav|webm)$/i.test(path)
 }
 
-function Avatar({ initials, isDriver, uri }) {
-  return (
+function Avatar({ initials, isDriver, onPress, uri }) {
+  const content = (
     <View style={[styles.avatar, isDriver ? styles.driverAvatar : styles.companyAvatar]}>
       {uri ? <Image source={{ uri }} style={styles.avatarImage} /> : <Text style={styles.avatarText}>{initials}</Text>}
     </View>
   )
+
+  if (!uri || !onPress) return content
+
+  return <Pressable onPress={onPress}>{content}</Pressable>
 }
 
 function MicGlyph({ active = false }) {
@@ -129,19 +276,28 @@ function AttachmentPreview({ path }) {
   )
 }
 
-function MessageBubble({ companyLogoUrl, driverProfileUrl, message }) {
+function MessageBubble({ companyLogoUrl, driverProfileUrl, message, onAvatarPress, onLongPress }) {
   const isDriver = message.senderRole === 'driver'
   const isReadByCompany = Boolean(message.readByCompanyAt)
-  const messageText = getMessageText(message)
+  const display = getMessageDisplay(message)
+  const messageText = String(display.text ?? '').trim()
+  const visibleReactions = Object.entries(message.reactions ?? {}).filter(([, reaction]) => reaction)
 
   return (
     <View style={[styles.messageRow, isDriver && styles.messageRowDriver]}>
-      {!isDriver ? <Avatar initials="AZ" uri={companyLogoUrl} /> : null}
-      <View style={[styles.bubble, isDriver ? styles.driverBubble : styles.companyBubble]}>
+      {!isDriver ? <Avatar initials="AZ" onPress={() => onAvatarPress?.(companyLogoUrl, 'Azienda')} uri={companyLogoUrl} /> : null}
+      <Pressable onLongPress={() => onLongPress?.(message)} style={[styles.bubble, isDriver ? styles.driverBubble : styles.companyBubble]}>
+        {display.reply ? (
+          <View style={styles.replyQuote}>
+            <Text numberOfLines={1} style={styles.replyQuoteSender}>{display.reply.sender || 'Risposta'}</Text>
+            <Text numberOfLines={2} style={styles.replyQuoteText}>{display.reply.text}</Text>
+          </View>
+        ) : null}
         <AttachmentPreview path={message.attachmentPath} />
         {messageText ? <Text style={styles.bubbleText}>{messageText}</Text> : null}
         <View style={styles.bubbleMeta}>
           <Text style={styles.bubbleTime}>{formatMessageTime(message.createdAt)}</Text>
+          {isDriver && isReadByCompany ? <Text style={styles.readAtText}>Letto {formatMessageTime(message.readByCompanyAt)}</Text> : null}
           {isDriver ? (
             <View accessibilityLabel={isReadByCompany ? 'Letto' : 'Consegnato'} style={styles.readReceipt}>
               <Text style={[styles.checkMark, isReadByCompany && styles.checkMarkRead]}>✓</Text>
@@ -149,8 +305,15 @@ function MessageBubble({ companyLogoUrl, driverProfileUrl, message }) {
             </View>
           ) : null}
         </View>
-      </View>
-      {isDriver ? <Avatar initials="IO" isDriver uri={driverProfileUrl} /> : null}
+        {visibleReactions.length ? (
+          <View style={styles.reactionSummary}>
+            {visibleReactions.map(([role, reaction]) => (
+              <Text key={role} style={styles.reactionSummaryText}>{getReactionEmoji(reaction)}</Text>
+            ))}
+          </View>
+        ) : null}
+      </Pressable>
+      {isDriver ? <Avatar initials="IO" isDriver onPress={() => onAvatarPress?.(driverProfileUrl, 'Autista')} uri={driverProfileUrl} /> : null}
     </View>
   )
 }
@@ -163,12 +326,16 @@ export function ChatScreen({
   driverProfileUrl,
   messages = [],
   onRefresh,
+  onReactToMessage,
   onSend,
   onTyping,
   soundEnabled = true,
 }) {
+  const [actionMessage, setActionMessage] = useState(null)
   const [body, setBody] = useState('')
   const [dragOffset, setDragOffset] = useState(0)
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const [replyToMessage, setReplyToMessage] = useState(null)
   const [isCancelling, setIsCancelling] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSending, setIsSending] = useState(false)
@@ -180,7 +347,9 @@ export function ChatScreen({
   const listRef = useRef(null)
   const pendingStopRef = useRef('')
   const recordingStartedAtRef = useRef(0)
+  const shouldStickToBottomRef = useRef(true)
   const soundHydratedRef = useRef(false)
+  const latestRenderedMessageIdRef = useRef('')
   const typingTimerRef = useRef(null)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder, 250)
@@ -215,6 +384,20 @@ export function ChatScreen({
       playChatSound(receiveSoundPlayer)
     }
   }, [messages, receiveSoundPlayer])
+
+  useEffect(() => {
+    const latestMessage = messages[messages.length - 1]
+    const latestMessageId = latestMessage?.id ?? ''
+
+    if (!latestMessageId || latestRenderedMessageIdRef.current === latestMessageId) return
+
+    const shouldScroll = shouldStickToBottomRef.current || latestMessage.senderRole === 'driver'
+    latestRenderedMessageIdRef.current = latestMessageId
+
+    if (shouldScroll) {
+      setTimeout(() => listRef.current?.scrollToOffset?.({ animated: false, offset: 0 }), 40)
+    }
+  }, [messages])
 
   useEffect(() => {
     isSendingRef.current = isSending
@@ -256,13 +439,18 @@ export function ChatScreen({
     const cleanBody = body.trim()
     if (!cleanBody || isSending) return
 
+    const outgoingBody = composeChatMessageBody(cleanBody, replyToMessage)
     setBody('')
+    setReplyToMessage(null)
     onTyping?.(false)
     setIsSending(true)
-    const sent = await onSend?.(cleanBody)
+    const sent = await onSend?.(outgoingBody)
     setIsSending(false)
 
-    if (!sent) setBody(cleanBody)
+    if (!sent) {
+      setBody(cleanBody)
+      setReplyToMessage(replyToMessage)
+    }
     if (sent) playChatSound(sendSoundPlayer)
     setTimeout(() => listRef.current?.scrollToOffset?.({ animated: false, offset: 0 }), 80)
   }
@@ -280,13 +468,16 @@ export function ChatScreen({
 
     const asset = result.assets[0]
     setIsSending(true)
-    const sent = await onSend?.(asset.type === 'video' ? 'Video allegato' : 'Foto allegata', {
+    const cleanBody = composeChatMessageBody(asset.type === 'video' ? 'Video allegato' : 'Foto allegata', replyToMessage)
+    setReplyToMessage(null)
+    const sent = await onSend?.(cleanBody, {
       name: asset.fileName || `allegato-${Date.now()}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
       type: asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg'),
       uri: asset.uri,
     })
     setIsSending(false)
 
+    if (!sent) setReplyToMessage(replyToMessage)
     if (sent) playChatSound(sendSoundPlayer)
     if (!sent) Alert.alert('Allegato non inviato', 'Riprova tra qualche secondo.')
   }
@@ -372,13 +563,16 @@ export function ChatScreen({
     if (shouldCancel || elapsedMs < 650 || !uri) return
 
     setIsSending(true)
-    const sent = await onSend?.('Messaggio vocale', {
+    const cleanBody = composeChatMessageBody('Messaggio vocale', replyToMessage)
+    setReplyToMessage(null)
+    const sent = await onSend?.(cleanBody, {
       name: `audio-chat-${Date.now()}.m4a`,
       type: 'audio/mp4',
       uri,
     })
     setIsSending(false)
 
+    if (!sent) setReplyToMessage(replyToMessage)
     if (sent) playChatSound(sendSoundPlayer)
     if (!sent) Alert.alert('Vocale non inviato', 'Riprova tra qualche secondo.')
   }
@@ -426,6 +620,36 @@ export function ChatScreen({
     [body],
   )
 
+  function handleScroll(event) {
+    shouldStickToBottomRef.current = event.nativeEvent.contentOffset.y < 90
+  }
+
+  function openAvatarPreview(uri, name) {
+    if (!uri) return
+    setPhotoPreview({ name, uri })
+  }
+
+  async function copyMessage(message) {
+    const text = getMessagePreviewText(message)
+    if (!text) return
+    await Clipboard.setStringAsync(text)
+    setActionMessage(null)
+    Alert.alert('Copiato', 'Messaggio copiato.')
+  }
+
+  function replyToSelectedMessage(message) {
+    const sender = message.senderRole === 'driver' ? 'Tu' : companyName
+    setReplyToMessage(createReplyReference(message, sender))
+    setActionMessage(null)
+  }
+
+  async function reactToSelectedMessage(message, reaction) {
+    const currentReaction = message.reactions?.driver ?? ''
+    const nextReaction = currentReaction === reaction ? '' : reaction
+    setActionMessage(null)
+    await onReactToMessage?.(message, 'driver', nextReaction)
+  }
+
   return (
     <View style={styles.screen}>
       <View style={styles.chatHeader}>
@@ -446,10 +670,18 @@ export function ChatScreen({
         inverted={listMessages.length > 0}
         keyExtractor={(item) => item.id}
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={80}
         ref={listRef}
         refreshControl={<RefreshControl onRefresh={handleRefresh} refreshing={isRefreshing} tintColor={colors.cyan} />}
         renderItem={({ item }) => (
-          <MessageBubble companyLogoUrl={companyLogoUrl} driverProfileUrl={driverProfileUrl} message={item} />
+          <MessageBubble
+            companyLogoUrl={companyLogoUrl}
+            driverProfileUrl={driverProfileUrl}
+            message={item}
+            onAvatarPress={openAvatarPreview}
+            onLongPress={setActionMessage}
+          />
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -458,6 +690,18 @@ export function ChatScreen({
           </View>
         }
       />
+
+      {replyToMessage ? (
+        <View style={styles.replyComposer}>
+          <View style={styles.replyComposerCopy}>
+            <Text numberOfLines={1} style={styles.replyComposerTitle}>Risposta a {replyToMessage.sender}</Text>
+            <Text numberOfLines={1} style={styles.replyComposerText}>{replyToMessage.text}</Text>
+          </View>
+          <Pressable onPress={() => setReplyToMessage(null)} style={styles.replyComposerClose}>
+            <Text style={styles.replyComposerCloseText}>×</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={styles.composer}>
         <Pressable disabled={isSending || isRecording} onPress={handlePickImage} style={[styles.roundButton, isRecording && styles.hiddenComposerItem]}>
@@ -502,11 +746,74 @@ export function ChatScreen({
           </View>
         )}
       </View>
+
+      <Modal animationType="fade" transparent visible={Boolean(actionMessage)} onRequestClose={() => setActionMessage(null)}>
+        <Pressable onPress={() => setActionMessage(null)} style={styles.modalBackdrop}>
+          <Pressable style={styles.actionSheet}>
+            <Text style={styles.actionTitle}>Messaggio</Text>
+            <View style={styles.reactionPicker}>
+              {reactionOptions.map((reaction) => (
+                <Pressable
+                  key={reaction.value}
+                  onPress={() => reactToSelectedMessage(actionMessage, reaction.value)}
+                  style={styles.reactionButton}
+                >
+                  <Text style={styles.reactionButtonText}>{reaction.emoji}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable onPress={() => replyToSelectedMessage(actionMessage)} style={styles.actionRow}>
+              <Text style={styles.actionRowText}>Rispondi</Text>
+            </Pressable>
+            <Pressable onPress={() => copyMessage(actionMessage)} style={styles.actionRow}>
+              <Text style={styles.actionRowText}>Copia</Text>
+            </Pressable>
+            <Pressable onPress={() => setActionMessage(null)} style={styles.actionRow}>
+              <Text style={styles.actionRowText}>Annulla</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal animationType="fade" transparent visible={Boolean(photoPreview)} onRequestClose={() => setPhotoPreview(null)}>
+        <Pressable onPress={() => setPhotoPreview(null)} style={styles.photoModalBackdrop}>
+          <View style={styles.photoModalCard}>
+            {photoPreview?.uri ? <Image source={{ uri: photoPreview.uri }} style={styles.photoModalImage} /> : null}
+            <Text style={styles.photoModalTitle}>{photoPreview?.name}</Text>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  actionRow: {
+    borderTopColor: colors.line,
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  actionRowText: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  actionSheet: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    marginHorizontal: 18,
+    overflow: 'hidden',
+    width: '90%',
+  },
+  actionTitle: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '900',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    textTransform: 'uppercase',
+  },
   audioAttachment: {
     alignItems: 'center',
     backgroundColor: 'rgba(18, 198, 223, 0.14)',
@@ -722,6 +1029,75 @@ const styles = StyleSheet.create({
   messageRowDriver: {
     justifyContent: 'flex-end',
   },
+  modalBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 6, 23, 0.36)',
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 22,
+  },
+  photoModalBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 6, 23, 0.82)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 22,
+  },
+  photoModalCard: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  photoModalImage: {
+    aspectRatio: 1,
+    borderColor: colors.cyan,
+    borderRadius: 24,
+    borderWidth: 2,
+    maxWidth: 320,
+    width: '90%',
+  },
+  photoModalTitle: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '900',
+    marginTop: 14,
+  },
+  reactionButton: {
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 999,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  reactionButtonText: {
+    fontSize: 22,
+  },
+  reactionPicker: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 14,
+  },
+  reactionSummary: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 2,
+    marginBottom: -19,
+    marginTop: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  reactionSummaryText: {
+    fontSize: 13,
+  },
+  readAtText: {
+    color: colors.cyanDark,
+    fontSize: 10,
+    fontWeight: '900',
+  },
   micButton: {
     alignItems: 'center',
     backgroundColor: colors.ink,
@@ -800,6 +1176,65 @@ const styles = StyleSheet.create({
     color: colors.cyan,
     fontSize: 12,
     fontWeight: '900',
+  },
+  replyComposer: {
+    alignItems: 'center',
+    backgroundColor: '#ecfeff',
+    borderLeftColor: colors.cyan,
+    borderLeftWidth: 4,
+    borderTopColor: colors.line,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: 8,
+  },
+  replyComposerClose: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
+  },
+  replyComposerCloseText: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    lineHeight: 22,
+  },
+  replyComposerCopy: {
+    flex: 1,
+  },
+  replyComposerText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  replyComposerTitle: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  replyQuote: {
+    backgroundColor: 'rgba(2, 6, 23, 0.06)',
+    borderLeftColor: colors.cyan,
+    borderLeftWidth: 3,
+    borderRadius: 10,
+    marginBottom: 8,
+    padding: 8,
+  },
+  replyQuoteSender: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  replyQuoteText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
   },
   roundButton: {
     alignItems: 'center',

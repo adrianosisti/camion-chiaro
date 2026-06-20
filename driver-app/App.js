@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
+import { Ionicons } from '@expo/vector-icons'
 import { AuthScreen } from './src/screens/AuthScreen'
 import { ChatScreen } from './src/screens/ChatScreen'
 import { CompanyHomeScreen } from './src/screens/CompanyHomeScreen'
@@ -35,6 +36,7 @@ import {
   signOutDriver,
   subscribeToDriverChatMessages,
   subscribeToDriverPresence,
+  updateChatMessageReaction,
   uploadDriverDocumentFile,
   uploadDriverProfileImage,
 } from './src/services/driverApi'
@@ -43,16 +45,16 @@ import { colors, layout } from './src/theme'
 const settingsStorageKey = 'camion-chiaro-native-settings'
 
 const driverTabs = [
-  { id: 'home', label: 'Home' },
-  { id: 'chat', label: 'Chat' },
-  { id: 'documents', label: 'Documenti' },
-  { id: 'operations', label: 'Check' },
-  { id: 'settings', label: 'Menu' },
+  { id: 'home', icon: 'home-outline', label: 'Home' },
+  { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat' },
+  { id: 'documents', icon: 'document-text-outline', label: 'Documenti' },
+  { id: 'operations', icon: 'checkbox-outline', label: 'Check' },
+  { id: 'settings', icon: 'settings-outline', label: 'Menu' },
 ]
 
 const companyTabs = [
-  { id: 'home', label: 'Home' },
-  { id: 'settings', label: 'Menu' },
+  { id: 'home', icon: 'business-outline', label: 'Home' },
+  { id: 'settings', icon: 'settings-outline', label: 'Menu' },
 ]
 
 function getDriverName(context) {
@@ -351,6 +353,39 @@ export default function App() {
     return true
   }
 
+  async function handleReactToMessage(message, actorRole, reaction) {
+    if (!message?.id) return false
+
+    const previousMessages = chatMessages
+    const nextReactions = { ...(message.reactions ?? {}) }
+
+    if (reaction) {
+      nextReactions[actorRole] = reaction
+    } else {
+      delete nextReactions[actorRole]
+    }
+
+    setChatMessages((currentMessages) => currentMessages.map((currentMessage) => (
+      currentMessage.id === message.id ? { ...currentMessage, reactions: nextReactions } : currentMessage
+    )))
+
+    const result = await updateChatMessageReaction({ ...message, reactions: message.reactions ?? {} }, actorRole, reaction)
+
+    if (result.error) {
+      setChatMessages(previousMessages)
+      Alert.alert('Reazione non salvata', result.error.message)
+      return false
+    }
+
+    if (result.data) {
+      setChatMessages((currentMessages) => currentMessages.map((currentMessage) => (
+        currentMessage.id === result.data.id ? result.data : currentMessage
+      )))
+    }
+
+    return true
+  }
+
   function handleTyping(isTyping) {
     presenceRef.current?.sendTyping({
       isTyping,
@@ -482,6 +517,7 @@ export default function App() {
           driverProfileUrl={driverProfileUrl}
           driverName={driverName}
           messages={chatMessages}
+          onReactToMessage={handleReactToMessage}
           onRefresh={() => loadDriverData({ silent: true })}
           onSend={handleSendChatMessage}
           onTyping={handleTyping}
@@ -533,9 +569,7 @@ export default function App() {
         driverProfileUrl={driverProfileUrl}
         logoUrl={logoUrl}
         driverName={driverName}
-        isRefreshing={isRefreshing}
         onUpdateProfilePhoto={handleUpdateProfilePhoto}
-        onRefresh={() => loadDriverData()}
         unreadCompanyMessages={unreadCompanyMessages}
       />
     )
@@ -614,11 +648,16 @@ export default function App() {
 
           return (
             <Pressable
+              accessibilityLabel={tab.label}
               key={tab.id}
               onPress={() => setActiveTab(tab.id)}
               style={[styles.tabButton, isActive && styles.tabButtonActive]}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+              <Ionicons
+                color={isActive ? colors.ink : colors.muted}
+                name={tab.icon}
+                size={22}
+              />
               {hasBadge ? <Text style={styles.tabBadge}>{unreadCompanyMessages}</Text> : null}
             </Pressable>
           )
@@ -745,27 +784,21 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     padding: 10,
   },
   tabButton: {
     alignItems: 'center',
-    borderRadius: 999,
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderWidth: 1,
+    borderRadius: 16,
     flex: 1,
-    flexDirection: 'row',
-    gap: 5,
     justifyContent: 'center',
-    minHeight: 42,
+    minHeight: 44,
   },
   tabButtonActive: {
-    backgroundColor: colors.ink,
-  },
-  tabText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  tabTextActive: {
-    color: colors.white,
+    backgroundColor: '#a7f3ff',
+    borderColor: colors.ink,
   },
 })

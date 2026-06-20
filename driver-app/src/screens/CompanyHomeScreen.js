@@ -21,6 +21,19 @@ function getVehiclePlate(vehicles, vehicleId) {
   return vehicles.find((vehicle) => vehicle.id === vehicleId)?.plate ?? 'Mezzo'
 }
 
+const dailyPhrases = [
+  'Una flotta chiara fa lavorare meglio tutti.',
+  'Le scadenze viste in tempo costano sempre meno.',
+  'Ogni segnalazione letta presto protegge viaggio e cliente.',
+  'Controllo semplice, decisioni piu rapide.',
+  'Meno carta, piu strada sotto controllo.',
+]
+
+function getDailyPhrase() {
+  const dayKey = Math.floor(Date.now() / 86400000)
+  return dailyPhrases[dayKey % dailyPhrases.length]
+}
+
 export function CompanyHomeScreen({
   context,
   isRefreshing = false,
@@ -38,6 +51,7 @@ export function CompanyHomeScreen({
   const openFaults = faults.filter((fault) => fault.status !== 'closed')
   const criticalChecks = checks.filter((check) => !check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
   const nextDeadlines = complianceItems.filter((item) => item.dueDate).slice(0, 4)
+  const dailyPhrase = getDailyPhrase()
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -59,6 +73,7 @@ export function CompanyHomeScreen({
           <MetricPill label="Check critici" tone={criticalChecks.length ? 'danger' : 'success'} value={criticalChecks.length} />
           <MetricPill label="Chat" tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
         </View>
+        <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>
 
       <Panel
@@ -149,6 +164,13 @@ const styles = StyleSheet.create({
   content: {
     padding: layout.screenPadding,
     paddingBottom: 28,
+  },
+  dailyPhrase: {
+    color: '#cffafe',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginTop: 12,
   },
   deadlineDate: {
     color: colors.cyanDark,

@@ -88,6 +88,7 @@ export function mapChatMessage(row = {}) {
     id: row.id,
     readByCompanyAt: row.read_by_company_at ?? row.readByCompanyAt ?? '',
     readByDriverAt: row.read_by_driver_at ?? row.readByDriverAt ?? '',
+    reactions: row.reactions ?? {},
     senderRole: row.sender_role ?? row.senderRole ?? 'driver',
     threadId: row.thread_id ?? row.threadId ?? '',
   }

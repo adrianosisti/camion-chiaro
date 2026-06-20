@@ -34,7 +34,7 @@ function notConfiguredError() {
 
 const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_message_at'
 const chatMessageSelect =
-  'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
+  'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
 
 function mapCompanyProfile(row = {}) {
   return {
@@ -428,6 +428,36 @@ export async function sendChatMessage({ attachment = null, body, companyId, driv
     },
     error: null,
   }
+}
+
+export async function updateChatMessageReaction(message, actorRole, reaction) {
+  if (!isSupabaseConfigured || !message?.id || !['company', 'driver'].includes(actorRole)) {
+    return { data: null, error: null }
+  }
+
+  const reactions = { ...(message.reactions ?? {}) }
+
+  if (reaction) {
+    reactions[actorRole] = reaction
+  } else {
+    delete reactions[actorRole]
+  }
+
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .update({ reactions })
+    .eq('id', message.id)
+    .select(chatMessageSelect)
+    .single()
+
+  if (error?.code === '42703') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL reazioni chat. Esegui il file 19_chat_reazioni.sql in Supabase.' },
+    }
+  }
+
+  return { data: data ? mapChatMessage(data) : null, error }
 }
 
 export async function createCompanyAssetSignedUrl(filePath) {

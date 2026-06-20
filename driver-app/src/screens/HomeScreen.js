@@ -9,14 +9,25 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
 }
 
+const dailyPhrases = [
+  'Strada chiara, giornata sotto controllo.',
+  'Ogni check fatto bene evita un problema domani.',
+  'Precisione oggi, meno fermate domani.',
+  'La sicurezza parte prima di accendere il motore.',
+  'Un mezzo curato lavora meglio e ti porta piu lontano.',
+]
+
+function getDailyPhrase() {
+  const dayKey = Math.floor(Date.now() / 86400000)
+  return dailyPhrases[dayKey % dailyPhrases.length]
+}
+
 export function HomeScreen({
   companyName,
   context,
   driverProfileUrl,
   driverName,
-  isRefreshing,
   logoUrl,
-  onRefresh,
   onUpdateProfilePhoto,
   unreadCompanyMessages = 0,
 }) {
@@ -30,6 +41,7 @@ export function HomeScreen({
   const openFaults = faults.filter((fault) => fault.status !== 'closed')
   const driveableVehicle = vehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')
   const criticalChecks = checks.filter((check) => !check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
+  const dailyPhrase = getDailyPhrase()
 
   async function pickProfilePhoto(source) {
     const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
@@ -78,15 +90,13 @@ export function HomeScreen({
               </View>
             </View>
           </View>
-          <Pressable onPress={onRefresh} style={styles.refreshButton}>
-            <Text style={styles.refreshText}>{isRefreshing ? '...' : 'Aggiorna'}</Text>
-          </Pressable>
         </View>
         <View style={styles.metricRow}>
           <MetricPill label="Messaggi" tone={unreadCompanyMessages ? 'warning' : 'info'} value={unreadCompanyMessages} />
           <MetricPill label="Guasti aperti" tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
           <MetricPill label="Check critici" tone={criticalChecks.length ? 'danger' : 'success'} value={criticalChecks.length} />
         </View>
+        <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>
 
       <Panel kicker="Mezzo" title={driveableVehicle?.plate || 'Nessun mezzo assegnato'}>
@@ -149,6 +159,13 @@ const styles = StyleSheet.create({
     padding: layout.screenPadding,
     paddingBottom: 28,
   },
+  dailyPhrase: {
+    color: '#cffafe',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginTop: 12,
+  },
   hero: {
     backgroundColor: colors.ink,
     borderColor: '#123047',
@@ -200,17 +217,6 @@ const styles = StyleSheet.create({
   profileInitial: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '900',
-  },
-  refreshButton: {
-    backgroundColor: colors.cyan,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  refreshText: {
-    color: colors.ink,
-    fontSize: 12,
     fontWeight: '900',
   },
 })

@@ -1489,7 +1489,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   shell: {
-    backgroundColor: '#07111f',
+    backgroundColor: '#020617',
     flex: 1,
   },
   statusText: {
@@ -1525,7 +1525,7 @@ const styles = StyleSheet.create({
     gap: 7,
     paddingHorizontal: 12,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 12,
+    paddingBottom: Platform.OS === 'ios' ? 26 : 12,
     shadowColor: '#000',
     shadowOffset: { height: -8, width: 0 },
     shadowOpacity: 0.18,

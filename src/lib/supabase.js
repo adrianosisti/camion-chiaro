@@ -194,6 +194,17 @@ function mapCompanyInvoice(row) {
   }
 }
 
+function mapCompanyStorageSummary(row = {}) {
+  return {
+    chatBytes: Number(row.chat_bytes ?? 0),
+    documentBytes: Number(row.document_bytes ?? 0),
+    faultBytes: Number(row.fault_bytes ?? 0),
+    fileCount: Number(row.file_count ?? 0),
+    profileBytes: Number(row.profile_bytes ?? 0),
+    totalBytes: Number(row.total_bytes ?? 0),
+  }
+}
+
 const companyProfileBaseSelectColumns = 'id, name, vat_number, headquarters, logo_path'
 const companyProfileBillingSelectColumns = `
   id,
@@ -227,6 +238,43 @@ async function selectCompanyProfileById(supabase, companyId) {
   }
 
   return supabase.from('companies').select(companyProfileBaseSelectColumns).eq('id', companyId).maybeSingle()
+}
+
+async function registerCompanyStorageFile({
+  bucket,
+  category = 'other',
+  companyId,
+  documentId = null,
+  driverId = null,
+  file,
+  filePath,
+}) {
+  if (!companyId || !filePath || !file) return
+
+  const supabase = await getSupabaseClient()
+  if (!supabase) return
+
+  await supabase.rpc('register_company_storage_file', {
+    file_size_bytes: file.size ?? 0,
+    storage_bucket: bucket,
+    storage_category: category,
+    storage_path: filePath,
+    target_company_id: companyId,
+    target_document_id: documentId,
+    target_driver_id: driverId,
+  })
+}
+
+async function markCompanyStorageFileDeleted({ bucket, filePath }) {
+  if (!bucket || !filePath || filePath.startsWith('blob:') || filePath.startsWith('http')) return
+
+  const supabase = await getSupabaseClient()
+  if (!supabase) return
+
+  await supabase.rpc('mark_company_storage_file_deleted', {
+    storage_bucket: bucket,
+    storage_path: filePath,
+  })
 }
 
 function mapChatThread(row) {
@@ -557,6 +605,33 @@ export async function fetchCompanyInvoices(companyId = configuredCompanyId) {
   }
 
   return { data: data ? data.map(mapCompanyInvoice) : [], error }
+}
+
+export async function fetchCompanyStorageSummary(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: mapCompanyStorageSummary(), error: null }
+  }
+
+  const { data, error } = await supabase.rpc('get_company_storage_summary', {
+    target_company_id: companyId,
+  })
+
+  if (error?.code === '42883' || error?.code === '42P01') {
+    return { data: mapCompanyStorageSummary(), error: null, missingTable: true }
+  }
+
+  const row = Array.isArray(data) ? data[0] : data
+  return { data: mapCompanyStorageSummary(row), error }
+}
+
+export async function markDriverDocumentStorageFileDeleted(filePath) {
+  await markCompanyStorageFileDeleted({ bucket: driverDocumentsBucket, filePath })
+}
+
+export async function markCompanyAssetStorageFileDeleted(filePath) {
+  await markCompanyStorageFileDeleted({ bucket: companyAssetsBucket, filePath })
 }
 
 export async function updateCompanyProfile(updates, companyId = configuredCompanyId) {
@@ -1055,6 +1130,17 @@ export async function createFaultReportRecord(report, companyId = configuredComp
     await supabase.storage.from(companyAssetsBucket).remove([photoPath])
   }
 
+  if (!error && photoFile && photoPath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'fault',
+      companyId,
+      driverId: report.driverId,
+      file: photoFile,
+      filePath: photoPath,
+    })
+  }
+
   return { data: data ? mapFaultReport(data) : null, error }
 }
 
@@ -1127,6 +1213,16 @@ export async function createChatMessageRecord(message, companyId = configuredCom
 
   if (error && attachmentPath) {
     await supabase.storage.from(companyAssetsBucket).remove([attachmentPath])
+  }
+
+  if (!error && attachmentFile && attachmentPath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'chat',
+      companyId,
+      file: attachmentFile,
+      filePath: attachmentPath,
+    })
   }
 
   return { data: data ? mapChatMessage(data) : null, error }
@@ -1332,10 +1428,21 @@ export async function uploadDriverDocumentFile(document, file, companyId = confi
     return { data: null, error }
   }
 
+  await registerCompanyStorageFile({
+    bucket: driverDocumentsBucket,
+    category: 'document',
+    companyId,
+    documentId: document.id,
+    driverId: document.driverId,
+    file,
+    filePath,
+  })
+  await markCompanyStorageFileDeleted({ bucket: driverDocumentsBucket, filePath: document.filePath })
+
   return { data: data ? mapDriverDocument(data) : null, error: null }
 }
 
-export async function uploadCompanyLogoFile(file, companyId = configuredCompanyId) {
+export async function uploadCompanyLogoFile(file, companyId = configuredCompanyId, previousLogoPath = '') {
   const supabase = await getSupabaseClient()
 
   if (!supabase || !companyId || !file) {
@@ -1364,10 +1471,19 @@ export async function uploadCompanyLogoFile(file, companyId = configuredCompanyI
     return { data: null, error }
   }
 
+  await registerCompanyStorageFile({
+    bucket: companyAssetsBucket,
+    category: 'logo',
+    companyId,
+    file,
+    filePath,
+  })
+  await markCompanyStorageFileDeleted({ bucket: companyAssetsBucket, filePath: previousLogoPath })
+
   return { data: data ? mapCompanyProfile(data) : null, error: null }
 }
 
-export async function uploadDriverProfileImageFile(driverId, file, companyId = configuredCompanyId) {
+export async function uploadDriverProfileImageFile(driverId, file, companyId = configuredCompanyId, previousProfileImagePath = '') {
   const supabase = await getSupabaseClient()
 
   if (!supabase || !companyId || !driverId || !file) {
@@ -1395,6 +1511,16 @@ export async function uploadDriverProfileImageFile(driverId, file, companyId = c
     await supabase.storage.from(companyAssetsBucket).remove([filePath])
     return { data: null, error }
   }
+
+  await registerCompanyStorageFile({
+    bucket: companyAssetsBucket,
+    category: 'profile',
+    companyId,
+    driverId,
+    file,
+    filePath,
+  })
+  await markCompanyStorageFileDeleted({ bucket: companyAssetsBucket, filePath: previousProfileImagePath })
 
   return { data: data ? mapDriver(data) : null, error: null }
 }

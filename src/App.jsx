@@ -66,6 +66,7 @@ import {
   fetchChatThreads,
   fetchComplianceItems,
   fetchCompanyInvoices,
+  fetchCompanyStorageSummary,
   fetchDriverDocuments,
   fetchDriverSessionData,
   fetchDrivers,
@@ -75,6 +76,8 @@ import {
   getCurrentAuthSession,
   isSupabaseConfigured,
   logDriverDocumentEvent as logSupabaseDriverDocumentEvent,
+  markCompanyAssetStorageFileDeleted,
+  markDriverDocumentStorageFileDeleted,
   savePushSubscription,
   sendPushNotification,
   markChatMessagesRead as markSupabaseChatMessagesRead,
@@ -128,7 +131,24 @@ const documentTypes = [
 
 const driverDocumentStatusOptions = ['Caricato', 'Verificato', 'Scaduto', 'Mancante']
 const maxDriverDocumentFileSize = 10 * 1024 * 1024
+const maxOperationalImageFileSize = 8 * 1024 * 1024
 const maxProfileImageFileSize = 5 * 1024 * 1024
+const imageCompressionMaxSide = 1600
+const imageCompressionQuality = 0.76
+const storagePlanLimitsBytes = {
+  business: 50 * 1024 * 1024 * 1024,
+  enterprise: 200 * 1024 * 1024 * 1024,
+  pro: 10 * 1024 * 1024 * 1024,
+  starter: 2 * 1024 * 1024 * 1024,
+}
+const emptyCompanyStorageSummary = {
+  chatBytes: 0,
+  documentBytes: 0,
+  faultBytes: 0,
+  fileCount: 0,
+  profileBytes: 0,
+  totalBytes: 0,
+}
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
 const demoCompanyName = 'Spedifast SRL'
@@ -3308,6 +3328,79 @@ function isSupportedImageFile(file) {
   return Boolean(file?.type?.startsWith('image/'))
 }
 
+function isSupportedDocumentFile(file) {
+  const fileName = file?.name?.toLowerCase() ?? ''
+  return isSupportedImageFile(file) || file?.type === 'application/pdf' || fileName.endsWith('.pdf')
+}
+
+function formatBytes(bytes) {
+  const safeBytes = Number(bytes) || 0
+  if (safeBytes < 1024 * 1024) return `${Math.round(safeBytes / 1024)} KB`
+  if (safeBytes < 1024 * 1024 * 1024) return `${(safeBytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(safeBytes / 1024 / 1024 / 1024).toFixed(1)} GB`
+}
+
+function getStorageLimitBytes(plan) {
+  return storagePlanLimitsBytes[plan] ?? storagePlanLimitsBytes.starter
+}
+
+function getStorageUsagePercent(summary, plan) {
+  const limitBytes = getStorageLimitBytes(plan)
+  if (!limitBytes) return 0
+  return Math.min(100, Math.round(((summary?.totalBytes ?? 0) / limitBytes) * 100))
+}
+
+function fileNameWithExtension(fileName, extension) {
+  const cleanName = String(fileName || 'immagine').replace(/\.[^.]+$/, '')
+  return `${cleanName}.${extension}`
+}
+
+async function loadImageElement(file) {
+  const imageUrl = URL.createObjectURL(file)
+
+  try {
+    const image = new Image()
+    image.decoding = 'async'
+    image.src = imageUrl
+    await image.decode()
+    return image
+  } finally {
+    URL.revokeObjectURL(imageUrl)
+  }
+}
+
+async function compressImageFile(file, { maxSide = imageCompressionMaxSide, quality = imageCompressionQuality } = {}) {
+  if (!isSupportedImageFile(file) || file.type === 'image/svg+xml') return file
+  if (typeof document === 'undefined') return file
+
+  try {
+    const image = await loadImageElement(file)
+    const width = image.naturalWidth || image.width
+    const height = image.naturalHeight || image.height
+    if (!width || !height) return file
+
+    const scale = Math.min(1, maxSide / Math.max(width, height))
+    const targetWidth = Math.max(1, Math.round(width * scale))
+    const targetHeight = Math.max(1, Math.round(height * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = targetWidth
+    canvas.height = targetHeight
+    const context = canvas.getContext('2d')
+    if (!context) return file
+
+    context.drawImage(image, 0, 0, targetWidth, targetHeight)
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+    if (!blob || blob.size >= file.size) return file
+
+    return new File([blob], fileNameWithExtension(file.name, 'jpg'), {
+      lastModified: Date.now(),
+      type: 'image/jpeg',
+    })
+  } catch {
+    return file
+  }
+}
+
 function loadAcknowledgedCheckIds() {
   try {
     const storedIds = JSON.parse(localStorage.getItem('camionChiaroAcknowledgedChecks') ?? '[]')
@@ -3405,6 +3498,7 @@ function App() {
   const [chatLiveState, setChatLiveState] = useState(emptyChatLiveState)
   const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
+  const [companyStorageSummary, setCompanyStorageSummary] = useState(emptyCompanyStorageSummary)
   const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState({
     billingActivatedAt: '',
@@ -3573,6 +3667,7 @@ function App() {
     setActiveCompanyId('')
     setAssetPreviewUrls({})
     setCompanyInvoiceRecords([])
+    setCompanyStorageSummary(emptyCompanyStorageSummary)
 
     if (nextSession.role === 'driver') {
       if (isSupabaseConfigured) resetDriverSessionData()
@@ -3596,6 +3691,7 @@ function App() {
     setChatLiveState(emptyChatLiveState)
     setDocumentEventRecords([])
     setCompanyInvoiceRecords([])
+    setCompanyStorageSummary(emptyCompanyStorageSummary)
     setDriverUploadSent(false)
     setMorningCheckSent(false)
     setFaultReported(false)
@@ -3611,7 +3707,40 @@ function App() {
     return assetPreviewUrls[path] ?? ''
   }
 
-  function validateImageFile(file, setStatus) {
+  async function refreshStorageSummary(companyId = activeCompanyId) {
+    if (!isSupabaseConfigured || !companyId) {
+      setCompanyStorageSummary(emptyCompanyStorageSummary)
+      return emptyCompanyStorageSummary
+    }
+
+    const result = await fetchCompanyStorageSummary(companyId)
+
+    if (result.data) {
+      setCompanyStorageSummary(result.data)
+      return result.data
+    }
+
+    return companyStorageSummary
+  }
+
+  async function ensureStorageBudget(file, setStatus) {
+    if (!file || !hasCompanyDataConnection) return true
+
+    const latestSummary = await refreshStorageSummary(activeCompanyId)
+    const limitBytes = getStorageLimitBytes(companyProfile.billingPlan)
+    const nextTotalBytes = (latestSummary?.totalBytes ?? 0) + file.size
+
+    if (nextTotalBytes <= limitBytes) return true
+
+    setStatus(
+      `Spazio del piano ${getBillingPlanLabel(companyProfile.billingPlan)} esaurito: ${formatBytes(
+        latestSummary?.totalBytes ?? 0,
+      )} usati su ${formatBytes(limitBytes)}. Elimina file vecchi o passa a un piano superiore.`,
+    )
+    return false
+  }
+
+  function validateImageFile(file, setStatus, { maxSize = maxProfileImageFileSize, maxSizeLabel = '5 MB' } = {}) {
     if (!file) return false
 
     if (!isSupportedImageFile(file)) {
@@ -3619,12 +3748,50 @@ function App() {
       return false
     }
 
-    if (file.size > maxProfileImageFileSize) {
-      setStatus('Immagine troppo grande. Usa una foto sotto 5 MB.')
+    if (file.size > maxSize) {
+      setStatus(`Immagine troppo grande. Usa una foto sotto ${maxSizeLabel}.`)
       return false
     }
 
     return true
+  }
+
+  async function prepareImageUploadFile(file, setStatus, options = {}) {
+    if (!file) return null
+
+    if (!isSupportedImageFile(file)) {
+      setStatus('Carica un file immagine: JPG, PNG, WEBP o HEIC.')
+      return null
+    }
+
+    setStatus('Ottimizzo immagine...')
+    const uploadFile = await compressImageFile(file)
+
+    if (!validateImageFile(uploadFile, setStatus, options)) return null
+    if (!(await ensureStorageBudget(uploadFile, setStatus))) return null
+
+    return uploadFile
+  }
+
+  async function prepareDriverDocumentUploadFile(file) {
+    if (!file) return null
+
+    if (!isSupportedDocumentFile(file)) {
+      setDriverDocumentUploadStatus('Carica una foto o un PDF.')
+      return null
+    }
+
+    setDriverDocumentUploadStatus(isSupportedImageFile(file) ? 'Ottimizzo documento...' : 'Controllo documento...')
+    const uploadFile = isSupportedImageFile(file) ? await compressImageFile(file) : file
+
+    if (uploadFile.size > maxDriverDocumentFileSize) {
+      setDriverDocumentUploadStatus('File troppo grande. Usa una foto o un PDF sotto 10 MB.')
+      return null
+    }
+
+    if (!(await ensureStorageBudget(uploadFile, setDriverDocumentUploadStatus))) return null
+
+    return uploadFile
   }
 
   async function installPhoneApp() {
@@ -3749,7 +3916,11 @@ function App() {
   }
 
   async function uploadCompanyLogo(file) {
-    if (!validateImageFile(file, setCompanySettingsStatus)) return false
+    const uploadFile = await prepareImageUploadFile(file, setCompanySettingsStatus, {
+      maxSize: maxProfileImageFileSize,
+      maxSizeLabel: '5 MB',
+    })
+    if (!uploadFile) return false
 
     if (isSupabaseConfigured && session?.role === 'company' && !activeCompanyId) {
       setCompanySettingsStatus('Aspetta il caricamento azienda, poi riprova.')
@@ -3758,7 +3929,7 @@ function App() {
 
     if (hasCompanyDataConnection && session?.role === 'company') {
       setCompanySettingsStatus('Caricamento logo azienda...')
-      const result = await uploadSupabaseCompanyLogoFile(file, activeCompanyId)
+      const result = await uploadSupabaseCompanyLogoFile(uploadFile, activeCompanyId, companyProfile.logoPath)
 
       if (result.error) {
         setCompanySettingsStatus(`Errore Supabase: ${result.error.message}`)
@@ -3778,11 +3949,12 @@ function App() {
         }
       }
 
+      void refreshStorageSummary(activeCompanyId)
       setCompanySettingsStatus('Logo azienda aggiornato.')
       return true
     }
 
-    const previewUrl = URL.createObjectURL(file)
+    const previewUrl = URL.createObjectURL(uploadFile)
     setCompanyProfile((currentProfile) => ({ ...currentProfile, logoPath: previewUrl }))
     setCompanySettingsStatus('Logo azienda aggiornato in modalità locale.')
     return true
@@ -3790,7 +3962,11 @@ function App() {
 
   async function uploadDriverProfileImage(driverId, file) {
     const setStatus = session?.role === 'driver' ? setDriverDocumentUploadStatus : setDriversSyncStatus
-    if (!validateImageFile(file, setStatus)) return false
+    const uploadFile = await prepareImageUploadFile(file, setStatus, {
+      maxSize: maxProfileImageFileSize,
+      maxSizeLabel: '5 MB',
+    })
+    if (!uploadFile) return false
 
     if (isSupabaseConfigured && ['company', 'driver'].includes(session?.role) && !activeCompanyId) {
       setStatus('Aspetta il caricamento azienda, poi riprova.')
@@ -3799,7 +3975,14 @@ function App() {
 
     if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
       setStatus('Caricamento foto profilo...')
-      const result = await uploadSupabaseDriverProfileImageFile(driverId, file, activeCompanyId)
+      const previousDriverImagePath =
+        driverRecords.find((driver) => driver.id === driverId)?.profileImagePath ?? ''
+      const result = await uploadSupabaseDriverProfileImageFile(
+        driverId,
+        uploadFile,
+        activeCompanyId,
+        previousDriverImagePath,
+      )
 
       if (result.error) {
         setStatus(`Errore Supabase: ${result.error.message}`)
@@ -3821,11 +4004,12 @@ function App() {
         }
       }
 
+      void refreshStorageSummary(activeCompanyId)
       setStatus('Foto profilo aggiornata.')
       return true
     }
 
-    const previewUrl = URL.createObjectURL(file)
+    const previewUrl = URL.createObjectURL(uploadFile)
     setDriverRecords((currentDrivers) =>
       currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, profileImagePath: previewUrl } : driver)),
     )
@@ -3835,6 +4019,8 @@ function App() {
 
   async function removeDriverProfileImage(driverId) {
     const setStatus = session?.role === 'driver' ? setDriverDocumentUploadStatus : setDriversSyncStatus
+    const previousDriverImagePath =
+      driverRecords.find((driver) => driver.id === driverId)?.profileImagePath ?? ''
 
     if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
       setStatus('Rimozione foto profilo...')
@@ -3851,6 +4037,8 @@ function App() {
         )
       }
 
+      await markCompanyAssetStorageFileDeleted(previousDriverImagePath)
+      void refreshStorageSummary(activeCompanyId)
       setStatus('Foto profilo rimossa.')
       return true
     }
@@ -3941,6 +4129,7 @@ function App() {
         faultsResult,
         chatThreadsResult,
         chatMessagesResult,
+        storageSummaryResult,
       ] = await Promise.all([
         fetchDrivers(companyId),
         fetchVehicles(companyId),
@@ -3952,6 +4141,7 @@ function App() {
         fetchFaultReports(companyId),
         fetchChatThreads(companyId),
         fetchChatMessages(companyId),
+        fetchCompanyStorageSummary(companyId),
       ])
 
       if (!isMounted) return
@@ -3974,6 +4164,7 @@ function App() {
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
       if (chatMessagesResult.data) setChatMessageRecords(chatMessagesResult.data)
+      if (storageSummaryResult.data) setCompanyStorageSummary(storageSummaryResult.data)
       setDriversSyncStatus('Dati Supabase caricati.')
       setDocumentsSyncStatus('Documenti Supabase caricati.')
       setFleetSyncStatus('Dati Supabase caricati.')
@@ -4018,15 +4209,17 @@ function App() {
         setFaultReportRecords(driverSessionResult.data.faultReports ?? [])
         const companyId = driverSessionResult.data.companyId
         if (companyId) {
-          const [chatThreadsResult, chatMessagesResult] = await Promise.all([
+          const [chatThreadsResult, chatMessagesResult, storageSummaryResult] = await Promise.all([
             fetchChatThreads(companyId),
             fetchChatMessages(companyId),
+            fetchCompanyStorageSummary(companyId),
           ])
 
           if (!isMounted) return
 
           if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
           if (chatMessagesResult.data) setChatMessageRecords(chatMessagesResult.data)
+          if (storageSummaryResult.data) setCompanyStorageSummary(storageSummaryResult.data)
           setChatSyncStatus(
             chatThreadsResult.error || chatMessagesResult.error
               ? 'Chat non attiva. L azienda deve eseguire SQL parte 14.'
@@ -4083,6 +4276,7 @@ function App() {
     let unsubscribeOperations = () => {}
     let chatRefreshTimer = 0
     let documentsRefreshTimer = 0
+    let storageRefreshTimer = 0
 
     async function refreshChatRecords() {
       const [threadsResult, messagesResult] = await Promise.all([
@@ -4106,6 +4300,13 @@ function App() {
 
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
       if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
+    }
+
+    async function refreshCompanyStorageRecords() {
+      const storageResult = await fetchCompanyStorageSummary(activeCompanyId)
+
+      if (!isMounted) return
+      if (storageResult.data) setCompanyStorageSummary(storageResult.data)
     }
 
     subscribeToChatMessages(activeCompanyId, (message, payload) => {
@@ -4172,13 +4373,16 @@ function App() {
 
     void refreshChatRecords()
     void refreshDriverDocuments()
+    void refreshCompanyStorageRecords()
     chatRefreshTimer = window.setInterval(refreshChatRecords, 4000)
     documentsRefreshTimer = window.setInterval(refreshDriverDocuments, 8000)
+    storageRefreshTimer = window.setInterval(refreshCompanyStorageRecords, 15000)
 
     return () => {
       isMounted = false
       window.clearInterval(chatRefreshTimer)
       window.clearInterval(documentsRefreshTimer)
+      window.clearInterval(storageRefreshTimer)
       unsubscribeChat()
       unsubscribeOperations()
     }
@@ -4238,6 +4442,7 @@ function App() {
     setChatLiveState(emptyChatLiveState)
     setDocumentEventRecords([])
     setCompanyInvoiceRecords([])
+    setCompanyStorageSummary(emptyCompanyStorageSummary)
     setChatSyncStatus('')
     setCompanyProfile({
       billingActivatedAt: '',
@@ -4562,6 +4767,10 @@ function App() {
 
     if (removed) {
       void recordDocumentEvent(document, 'file_removed', { previousFilePath: document.filePath })
+      if (hasCompanyDataConnection) {
+        await markDriverDocumentStorageFileDeleted(document.filePath)
+        void refreshStorageSummary(activeCompanyId)
+      }
       setDriverDocumentUploadStatus('File documento eliminato. La scheda resta disponibile.')
     }
 
@@ -4580,6 +4789,11 @@ function App() {
         setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
         return false
       }
+
+      if (document?.filePath) {
+        await markDriverDocumentStorageFileDeleted(document.filePath)
+        void refreshStorageSummary(activeCompanyId)
+      }
     }
 
     if (!hasCompanyDataConnection && document) void recordDocumentEvent(document, 'deleted')
@@ -4591,16 +4805,14 @@ function App() {
   async function uploadDriverDocumentFile(document, file) {
     if (!file) return false
 
-    if (file.size > maxDriverDocumentFileSize) {
-      setDriverDocumentUploadStatus('File troppo grande. Usa una foto o un PDF sotto 10 MB.')
-      return false
-    }
+    const uploadFile = await prepareDriverDocumentUploadFile(file)
+    if (!uploadFile) return false
 
     setUploadingDriverDocumentId(document.id)
     setDriverDocumentUploadStatus('Caricamento documento...')
 
     if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
-      const result = await uploadSupabaseDriverDocumentFile(document, file, activeCompanyId)
+      const result = await uploadSupabaseDriverDocumentFile(document, uploadFile, activeCompanyId)
       setUploadingDriverDocumentId('')
 
       if (result.error) {
@@ -4629,6 +4841,7 @@ function App() {
           })
         }
       }
+      void refreshStorageSummary(activeCompanyId)
       setDriverUploadSent(true)
       setDriverDocumentUploadStatus('Documento caricato. Ora puoi aprirlo dall app.')
       return true
@@ -4637,15 +4850,15 @@ function App() {
     setDocumentRecords((currentDocuments) =>
       currentDocuments.map((currentDocument) =>
         currentDocument.id === document.id
-          ? { ...currentDocument, filePath: file.name, status: 'Caricato' }
+          ? { ...currentDocument, filePath: uploadFile.name, status: 'Caricato' }
           : currentDocument,
       ),
     )
     setUploadingDriverDocumentId('')
     setDriverUploadSent(true)
     setDriverDocumentUploadStatus('Documento selezionato in modalità locale.')
-    void recordDocumentEvent({ ...document, filePath: file.name, status: 'Caricato' }, 'file_uploaded', {
-      filePath: file.name,
+    void recordDocumentEvent({ ...document, filePath: uploadFile.name, status: 'Caricato' }, 'file_uploaded', {
+      filePath: uploadFile.name,
       previousFilePath: document.filePath,
     })
     return true
@@ -4824,14 +5037,21 @@ function App() {
 
   async function submitFaultReport(report) {
     const { photoFile, ...reportData } = report
+    let uploadPhotoFile = photoFile ?? null
 
-    if (photoFile && !validateImageFile(photoFile, setOperationsSyncStatus)) return false
+    if (photoFile) {
+      uploadPhotoFile = await prepareImageUploadFile(photoFile, setOperationsSyncStatus, {
+        maxSize: maxOperationalImageFileSize,
+        maxSizeLabel: '8 MB',
+      })
+      if (!uploadPhotoFile) return false
+    }
 
     const localReport = {
       ...reportData,
       createdAt: new Date().toISOString(),
       id: `fault-${Date.now()}`,
-      photoPath: photoFile ? URL.createObjectURL(photoFile) : reportData.photoPath ?? '',
+      photoPath: uploadPhotoFile ? URL.createObjectURL(uploadPhotoFile) : reportData.photoPath ?? '',
       status: 'open',
       updatedAt: new Date().toISOString(),
     }
@@ -4839,7 +5059,7 @@ function App() {
     setOperationsSyncStatus('Invio segnalazione guasto...')
 
     if (hasCompanyDataConnection && session?.role === 'driver') {
-      const result = await createSupabaseFaultReport(reportData, activeCompanyId, photoFile)
+      const result = await createSupabaseFaultReport(reportData, activeCompanyId, uploadPhotoFile)
 
       if (result.error) {
         setOperationsSyncStatus(`Errore guasto: ${result.error.message}`)
@@ -4847,6 +5067,7 @@ function App() {
       }
 
       setFaultReportRecords((currentReports) => [result.data, ...currentReports])
+      void refreshStorageSummary(activeCompanyId)
       setFaultReported(true)
       const pushResult = await notifyPhone({
         body: `${result.data.title} su ${getVehicleDisplayName(reportData.vehicleId)}.`,
@@ -4876,6 +5097,7 @@ function App() {
 
   async function sendChatMessage({ attachmentFile = null, body = '', driverId, senderRole, threadId }) {
     const cleanBody = body.trim()
+    let uploadAttachmentFile = attachmentFile
 
     if (!driverId) {
       setChatSyncStatus('Seleziona un autista prima di inviare.')
@@ -4887,7 +5109,13 @@ function App() {
       return false
     }
 
-    if (attachmentFile && !validateImageFile(attachmentFile, setChatSyncStatus)) return false
+    if (attachmentFile) {
+      uploadAttachmentFile = await prepareImageUploadFile(attachmentFile, setChatSyncStatus, {
+        maxSize: maxOperationalImageFileSize,
+        maxSizeLabel: '8 MB',
+      })
+      if (!uploadAttachmentFile) return false
+    }
 
     const selectedDriver = driverRecords.find((driver) => driver.id === driverId)
     const messageCompanyId = activeCompanyId || selectedDriver?.companyId || ''
@@ -4932,7 +5160,7 @@ function App() {
           threadId: targetThread.id,
         },
         messageCompanyId,
-        attachmentFile,
+        uploadAttachmentFile,
       )
 
       if (messageResult.error || !messageResult.data) {
@@ -4941,6 +5169,7 @@ function App() {
       }
 
       setChatMessageRecords((currentMessages) => upsertRecordById(currentMessages, messageResult.data))
+      void refreshStorageSummary(messageCompanyId)
       setChatThreadRecords((currentThreads) =>
         upsertRecordById(currentThreads, {
           ...targetThread,
@@ -5000,7 +5229,7 @@ function App() {
         vehicleCheckId: null,
       }
     const localMessage = {
-      attachmentPath: attachmentFile ? URL.createObjectURL(attachmentFile) : '',
+      attachmentPath: uploadAttachmentFile ? URL.createObjectURL(uploadAttachmentFile) : '',
       body: cleanBody,
       companyId: localThread.companyId,
       createdAt: now,
@@ -5525,6 +5754,7 @@ function App() {
             companyEmail={session.email}
             companyInvoices={companyInvoiceRecords}
             companyProfile={{ ...companyProfile, name: companyName }}
+            companyStorageSummary={companyStorageSummary}
             companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
             installPromptAvailable={Boolean(installPromptEvent)}
             isStandaloneMode={isStandaloneMode}
@@ -6877,6 +7107,7 @@ function SettingsWorkspace({
   companyInvoices = [],
   companyLogoUrl,
   companyProfile,
+  companyStorageSummary = emptyCompanyStorageSummary,
   installPromptAvailable,
   isStandaloneMode,
   language,
@@ -6899,6 +7130,14 @@ function SettingsWorkspace({
     vatNumber: companyProfile.vatNumber ?? '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const storageLimitBytes = getStorageLimitBytes(companyProfile.billingPlan)
+  const storageUsagePercent = getStorageUsagePercent(companyStorageSummary, companyProfile.billingPlan)
+  const storageBreakdown = [
+    ['Documenti', companyStorageSummary.documentBytes],
+    ['Chat', companyStorageSummary.chatBytes],
+    ['Guasti', companyStorageSummary.faultBytes],
+    ['Profili e logo', companyStorageSummary.profileBytes],
+  ]
 
   function updateField(field, value) {
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
@@ -7034,6 +7273,38 @@ function SettingsWorkspace({
             ) : (
               <p className="invoice-empty">Le fatture emesse compariranno qui con il PDF scaricabile.</p>
             )}
+          </div>
+        </aside>
+        <aside className="panel storage-panel">
+          <div className="panel-header compact">
+            <div>
+              <p className="overline">Archivio digitale</p>
+              <h2>Spazio file</h2>
+            </div>
+            <FileText size={20} />
+          </div>
+          <div className="storage-summary">
+            <div className="storage-usage-heading">
+              <span>
+                <strong>{formatBytes(companyStorageSummary.totalBytes)}</strong>
+                <small>usati su {formatBytes(storageLimitBytes)}</small>
+              </span>
+              <b>{storageUsagePercent}%</b>
+            </div>
+            <div className="storage-meter" aria-label={`Spazio usato ${storageUsagePercent}%`}>
+              <span style={{ width: `${storageUsagePercent}%` }} />
+            </div>
+            <div className="storage-breakdown">
+              {storageBreakdown.map(([label, bytes]) => (
+                <div className="storage-breakdown-row" key={label}>
+                  <span>{label}</span>
+                  <strong>{formatBytes(bytes)}</strong>
+                </div>
+              ))}
+            </div>
+            <p className="storage-note">
+              {companyStorageSummary.fileCount} file registrati. Le immagini vengono ottimizzate prima del caricamento.
+            </p>
           </div>
         </aside>
         <div className="settings-phone-setup">

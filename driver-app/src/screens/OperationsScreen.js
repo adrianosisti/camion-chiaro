@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { colors, layout } from '../theme'
@@ -32,6 +34,34 @@ function ToggleRow({ label, onValueChange, value }) {
   )
 }
 
+function VehicleSelector({ emptyLabel, onSelect, selectedId, vehicles }) {
+  if (!vehicles.length) {
+    return <Text style={styles.helper}>{emptyLabel}</Text>
+  }
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectorScroll}>
+      <View style={styles.selectorRow}>
+        {vehicles.map((vehicle) => {
+          const selected = vehicle.id === selectedId
+          return (
+            <Pressable
+              key={vehicle.id}
+              onPress={() => onSelect(vehicle.id)}
+              style={[styles.vehicleChip, selected && styles.vehicleChipActive]}
+            >
+              <Text style={[styles.vehiclePlate, selected && styles.vehiclePlateActive]}>{vehicle.plate}</Text>
+              <Text style={[styles.vehicleType, selected && styles.vehicleTypeActive]}>
+                {vehicle.fleetType || vehicle.type || 'Mezzo'}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    </ScrollView>
+  )
+}
+
 export function OperationsScreen({
   checks = [],
   faults = [],
@@ -47,11 +77,14 @@ export function OperationsScreen({
     lightsOk: true,
     notes: '',
     odometerKm: '',
+    semitrailerId: '',
     tiresOk: true,
     tractorId: firstVehicle?.id ?? '',
   })
   const [faultForm, setFaultForm] = useState({
     description: '',
+    photo: null,
+    semitrailerId: '',
     severity: 'medium',
     title: '',
     vehicleId: firstVehicle?.id ?? '',
@@ -63,6 +96,22 @@ export function OperationsScreen({
     () => driveableVehicles.find((vehicle) => vehicle.id === checkForm.tractorId) ?? firstVehicle,
     [checkForm.tractorId, driveableVehicles, firstVehicle],
   )
+  const faultVehicle = useMemo(
+    () => driveableVehicles.find((vehicle) => vehicle.id === faultForm.vehicleId) ?? firstVehicle,
+    [faultForm.vehicleId, driveableVehicles, firstVehicle],
+  )
+
+  useEffect(() => {
+    if (!firstVehicle?.id) return
+    setCheckForm((currentForm) => ({
+      ...currentForm,
+      tractorId: currentForm.tractorId || firstVehicle.id,
+    }))
+    setFaultForm((currentForm) => ({
+      ...currentForm,
+      vehicleId: currentForm.vehicleId || firstVehicle.id,
+    }))
+  }, [firstVehicle?.id])
 
   async function submitCheck() {
     if (!currentVehicle) {
@@ -83,8 +132,28 @@ export function OperationsScreen({
     }
   }
 
+  async function pickFaultPhoto() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: false,
+      mediaTypes: ['images'],
+      quality: 0.72,
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    const asset = result.assets[0]
+    setFaultForm((currentForm) => ({
+      ...currentForm,
+      photo: {
+        name: asset.fileName || `guasto-${Date.now()}.jpg`,
+        type: asset.mimeType || 'image/jpeg',
+        uri: asset.uri,
+      },
+    }))
+  }
+
   async function submitFault() {
-    if (!currentVehicle || !faultForm.title.trim()) {
+    if (!faultVehicle || !faultForm.title.trim()) {
       Alert.alert('Dati mancanti', 'Inserisci titolo guasto e mezzo.')
       return
     }
@@ -92,19 +161,33 @@ export function OperationsScreen({
     setIsSendingFault(true)
     const sent = await onSubmitFault?.({
       ...faultForm,
-      vehicleId: currentVehicle.id,
+      vehicleId: faultVehicle.id,
     })
     setIsSendingFault(false)
 
     if (sent) {
       Alert.alert('Guasto inviato', 'La segnalazione e arrivata in azienda.')
-      setFaultForm((currentForm) => ({ ...currentForm, description: '', title: '' }))
+      setFaultForm((currentForm) => ({ ...currentForm, description: '', photo: null, title: '' }))
     }
   }
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <Panel kicker="Check mattutino" title={getVehicleLabel(currentVehicle)}>
+        <Text style={styles.sectionLabel}>Mezzo</Text>
+        <VehicleSelector
+          emptyLabel="L azienda deve aggiungere furgoni, motrici o trattori."
+          onSelect={(tractorId) => setCheckForm((currentForm) => ({ ...currentForm, tractorId }))}
+          selectedId={checkForm.tractorId}
+          vehicles={driveableVehicles}
+        />
+        <Text style={styles.sectionLabel}>Semirimorchio opzionale</Text>
+        <VehicleSelector
+          emptyLabel="Nessun semirimorchio in flotta."
+          onSelect={(semitrailerId) => setCheckForm((currentForm) => ({ ...currentForm, semitrailerId }))}
+          selectedId={checkForm.semitrailerId}
+          vehicles={trailers}
+        />
         <ToggleRow
           label="Luci ok"
           onValueChange={(value) => setCheckForm((currentForm) => ({ ...currentForm, lightsOk: value }))}
@@ -136,11 +219,24 @@ export function OperationsScreen({
           style={[styles.input, styles.textArea]}
           value={checkForm.notes}
         />
-        {trailers.length ? <Text style={styles.helper}>Semirimorchio opzionale da aggiungere nella prossima iterazione.</Text> : null}
         <PrimaryButton loading={isSendingCheck} onPress={submitCheck} title="Invia check" />
       </Panel>
 
       <Panel kicker="Guasto" title="Segnala all azienda">
+        <Text style={styles.sectionLabel}>Mezzo guasto</Text>
+        <VehicleSelector
+          emptyLabel="L azienda deve aggiungere almeno un mezzo."
+          onSelect={(vehicleId) => setFaultForm((currentForm) => ({ ...currentForm, vehicleId }))}
+          selectedId={faultForm.vehicleId}
+          vehicles={driveableVehicles}
+        />
+        <Text style={styles.sectionLabel}>Semirimorchio agganciato</Text>
+        <VehicleSelector
+          emptyLabel="Nessun semirimorchio in flotta."
+          onSelect={(semitrailerId) => setFaultForm((currentForm) => ({ ...currentForm, semitrailerId }))}
+          selectedId={faultForm.semitrailerId}
+          vehicles={trailers}
+        />
         <TextInput
           onChangeText={(value) => setFaultForm((currentForm) => ({ ...currentForm, title: value }))}
           placeholder="Titolo guasto"
@@ -169,6 +265,10 @@ export function OperationsScreen({
             </Pressable>
           ))}
         </View>
+        <Pressable onPress={pickFaultPhoto} style={styles.photoButton}>
+          <Text style={styles.photoButtonText}>{faultForm.photo ? 'Cambia foto guasto' : 'Aggiungi foto guasto'}</Text>
+        </Pressable>
+        {faultForm.photo?.uri ? <Image source={{ uri: faultForm.photo.uri }} style={styles.faultPhoto} /> : null}
         <PrimaryButton loading={isSendingFault} onPress={submitFault} title="Invia guasto" />
       </Panel>
 
@@ -191,6 +291,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 19,
     marginBottom: 8,
+  },
+  faultPhoto: {
+    aspectRatio: 1.4,
+    borderRadius: 14,
+    marginBottom: 12,
+    width: '100%',
   },
   input: {
     backgroundColor: '#f8fbff',
@@ -228,6 +334,35 @@ const styles = StyleSheet.create({
   severityTextActive: {
     color: colors.white,
   },
+  photoButton: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    marginBottom: 10,
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  photoButtonText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  sectionLabel: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+    marginBottom: 7,
+    marginTop: 4,
+  },
+  selectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 10,
+  },
+  selectorScroll: {
+    marginBottom: 4,
+  },
   textArea: {
     minHeight: 88,
     textAlignVertical: 'top',
@@ -244,5 +379,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     minHeight: 48,
+  },
+  vehicleChip: {
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    minWidth: 104,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+  },
+  vehicleChipActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  vehiclePlate: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  vehiclePlateActive: {
+    color: colors.white,
+  },
+  vehicleType: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  vehicleTypeActive: {
+    color: '#a7f3ff',
   },
 })

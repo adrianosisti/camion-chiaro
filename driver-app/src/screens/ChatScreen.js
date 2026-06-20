@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
+  Alert,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -8,10 +10,20 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from 'expo-audio'
+import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
 function getMessageText(message) {
-  return String(message.body ?? '').trim() || 'Messaggio'
+  return String(message.body ?? '').trim()
 }
 
 function formatMessageTime(value) {
@@ -19,11 +31,134 @@ function formatMessageTime(value) {
   return new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
 }
 
-export function ChatScreen({ companyName, messages = [], onRefresh, onSend }) {
+function getInitials(value = 'Azienda') {
+  return String(value)
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'CC'
+}
+
+function isImagePath(path = '') {
+  return /\.(jpe?g|png|webp|heic|heif)$/i.test(path)
+}
+
+function isAudioPath(path = '') {
+  return /\.(m4a|aac|mp3|mp4|mpeg|ogg|opus|wav|webm)$/i.test(path)
+}
+
+function Avatar({ initials, isDriver, uri }) {
+  return (
+    <View style={[styles.avatar, isDriver ? styles.driverAvatar : styles.companyAvatar]}>
+      {uri ? <Image source={{ uri }} style={styles.avatarImage} /> : <Text style={styles.avatarText}>{initials}</Text>}
+    </View>
+  )
+}
+
+function AudioAttachment({ signedUrl }) {
+  const player = useAudioPlayer(signedUrl || null)
+
+  function playAudio() {
+    if (!signedUrl) return
+    player.seekTo(0)
+    player.play()
+  }
+
+  return (
+    <Pressable onPress={playAudio} style={styles.audioAttachment}>
+      <View style={styles.audioIcon}>
+        <Text style={styles.audioIconText}>▶</Text>
+      </View>
+      <View style={styles.audioWave}>
+        {[...Array(12)].map((_, index) => (
+          <View key={index} style={[styles.waveBar, { height: 8 + ((index * 7) % 18) }]} />
+        ))}
+      </View>
+      <Text style={styles.audioText}>Vocale</Text>
+    </Pressable>
+  )
+}
+
+function AttachmentPreview({ path }) {
+  const [signedUrl, setSignedUrl] = useState('')
+
+  useEffect(() => {
+    let isActive = true
+
+    async function loadSignedUrl() {
+      const result = await createCompanyAssetSignedUrl(path)
+      if (isActive) setSignedUrl(result.data?.signedUrl ?? '')
+    }
+
+    if (path) loadSignedUrl()
+
+    return () => {
+      isActive = false
+    }
+  }, [path])
+
+  if (!path) return null
+
+  if (isAudioPath(path)) {
+    return <AudioAttachment signedUrl={signedUrl} />
+  }
+
+  if (isImagePath(path)) {
+    return signedUrl ? <Image source={{ uri: signedUrl }} style={styles.imageAttachment} /> : <View style={styles.imageSkeleton} />
+  }
+
+  return (
+    <View style={styles.fileAttachment}>
+      <Text style={styles.fileAttachmentText}>Allegato disponibile</Text>
+    </View>
+  )
+}
+
+function MessageBubble({ companyLogoUrl, driverProfileUrl, message }) {
+  const isDriver = message.senderRole === 'driver'
+  const messageText = getMessageText(message)
+
+  return (
+    <View style={[styles.messageRow, isDriver && styles.messageRowDriver]}>
+      {!isDriver ? <Avatar initials="AZ" uri={companyLogoUrl} /> : null}
+      <View style={[styles.bubble, isDriver ? styles.driverBubble : styles.companyBubble]}>
+        <AttachmentPreview path={message.attachmentPath} />
+        {messageText ? <Text style={styles.bubbleText}>{messageText}</Text> : null}
+        <View style={styles.bubbleMeta}>
+          <Text style={styles.bubbleTime}>{formatMessageTime(message.createdAt)}</Text>
+          {isDriver ? <Text style={styles.checkMarks}>✓✓</Text> : null}
+        </View>
+      </View>
+      {isDriver ? <Avatar initials="IO" isDriver uri={driverProfileUrl} /> : null}
+    </View>
+  )
+}
+
+export function ChatScreen({
+  companyLogoUrl,
+  companyName,
+  companyOnline = false,
+  companyTyping = false,
+  driverProfileUrl,
+  messages = [],
+  onRefresh,
+  onSend,
+  onTyping,
+}) {
   const [body, setBody] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
   const listRef = useRef(null)
+  const typingTimerRef = useRef(null)
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
+  const recorderState = useAudioRecorderState(audioRecorder, 250)
+
+  useEffect(() => () => {
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+    onTyping?.(false)
+  }, [])
 
   async function handleRefresh() {
     setIsRefreshing(true)
@@ -31,11 +166,23 @@ export function ChatScreen({ companyName, messages = [], onRefresh, onSend }) {
     setIsRefreshing(false)
   }
 
-  async function handleSend() {
+  function handleBodyChange(value) {
+    setBody(value)
+    const hasText = Boolean(value.trim())
+    onTyping?.(hasText)
+
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+    if (hasText) {
+      typingTimerRef.current = setTimeout(() => onTyping?.(false), 1500)
+    }
+  }
+
+  async function handleSendText() {
     const cleanBody = body.trim()
     if (!cleanBody || isSending) return
 
     setBody('')
+    onTyping?.(false)
     setIsSending(true)
     const sent = await onSend?.(cleanBody)
     setIsSending(false)
@@ -44,15 +191,80 @@ export function ChatScreen({ companyName, messages = [], onRefresh, onSend }) {
     setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 80)
   }
 
+  async function handlePickImage() {
+    if (isSending) return
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: false,
+      mediaTypes: ['images', 'videos'],
+      quality: 0.72,
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    const asset = result.assets[0]
+    setIsSending(true)
+    const sent = await onSend?.(asset.type === 'video' ? 'Video allegato' : 'Foto allegata', {
+      name: asset.fileName || `allegato-${Date.now()}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
+      type: asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg'),
+      uri: asset.uri,
+    })
+    setIsSending(false)
+
+    if (!sent) Alert.alert('Allegato non inviato', 'Riprova tra qualche secondo.')
+  }
+
+  async function startRecording() {
+    if (isRecording || isSending) return
+
+    const permission = await AudioModule.requestRecordingPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Microfono bloccato', 'Consenti il microfono per inviare messaggi vocali.')
+      return
+    }
+
+    await setAudioModeAsync({
+      allowsRecording: true,
+      playsInSilentMode: true,
+    })
+    await audioRecorder.prepareToRecordAsync()
+    audioRecorder.record()
+    setIsRecording(true)
+  }
+
+  async function stopRecording() {
+    if (!isRecording && !recorderState.isRecording) return
+
+    setIsRecording(false)
+    await audioRecorder.stop()
+    const uri = audioRecorder.uri
+
+    if (!uri) return
+
+    setIsSending(true)
+    const sent = await onSend?.('Messaggio vocale', {
+      name: `vocale-${Date.now()}.m4a`,
+      type: 'audio/mp4',
+      uri,
+    })
+    setIsSending(false)
+
+    if (!sent) Alert.alert('Vocale non inviato', 'Riprova tra qualche secondo.')
+  }
+
+  const statusText = companyTyping ? 'sta scrivendo...' : companyOnline ? 'online' : 'chat azienda'
+  const canSendText = Boolean(body.trim()) && !isSending
+
   return (
     <View style={styles.screen}>
       <View style={styles.chatHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>AZ</Text>
-        </View>
-        <View>
-          <Text style={styles.chatTitle}>{companyName}</Text>
-          <Text style={styles.chatSubtitle}>Chat azienda</Text>
+        <Avatar initials={getInitials(companyName)} uri={companyLogoUrl} />
+        <View style={styles.headerCopy}>
+          <Text numberOfLines={1} style={styles.chatTitle}>{companyName}</Text>
+          <View style={styles.statusRow}>
+            <View style={[styles.statusDot, companyOnline && styles.statusDotOnline]} />
+            <Text style={[styles.chatSubtitle, companyTyping && styles.typingText]}>{statusText}</Text>
+          </View>
         </View>
       </View>
 
@@ -63,15 +275,9 @@ export function ChatScreen({ companyName, messages = [], onRefresh, onSend }) {
         onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: true })}
         ref={listRef}
         refreshControl={<RefreshControl onRefresh={handleRefresh} refreshing={isRefreshing} tintColor={colors.cyan} />}
-        renderItem={({ item }) => {
-          const isDriver = item.senderRole === 'driver'
-          return (
-            <View style={[styles.bubble, isDriver ? styles.driverBubble : styles.companyBubble]}>
-              <Text style={styles.bubbleText}>{getMessageText(item)}</Text>
-              <Text style={styles.bubbleTime}>{formatMessageTime(item.createdAt)}</Text>
-            </View>
-          )
-        }}
+        renderItem={({ item }) => (
+          <MessageBubble companyLogoUrl={companyLogoUrl} driverProfileUrl={driverProfileUrl} message={item} />
+        )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>Nessun messaggio</Text>
@@ -80,49 +286,110 @@ export function ChatScreen({ companyName, messages = [], onRefresh, onSend }) {
         }
       />
 
+      {isRecording ? (
+        <View style={styles.recordingBar}>
+          <View style={styles.recordingDot} />
+          <Text style={styles.recordingText}>Sto registrando... rilascia per inviare</Text>
+          <Text style={styles.recordingTime}>{Math.round((recorderState.durationMillis ?? 0) / 1000)}s</Text>
+        </View>
+      ) : null}
+
       <View style={styles.composer}>
-        <Pressable style={styles.roundButton}>
+        <Pressable disabled={isSending} onPress={handlePickImage} style={styles.roundButton}>
           <Text style={styles.roundButtonText}>+</Text>
         </Pressable>
         <TextInput
           multiline
-          onChangeText={setBody}
+          onChangeText={handleBodyChange}
           placeholder="Scrivi un messaggio"
           placeholderTextColor="#94a3b8"
           style={styles.input}
           value={body}
         />
-        <Pressable
-          disabled={!body.trim() || isSending}
-          onPress={handleSend}
-          style={[styles.sendButton, (!body.trim() || isSending) && styles.sendButtonMuted]}
-        >
-          <Text style={styles.sendText}>{body.trim() ? 'Invia' : 'Mic'}</Text>
-        </Pressable>
+        {canSendText ? (
+          <Pressable onPress={handleSendText} style={styles.sendButton}>
+            <Text style={styles.sendText}>Invia</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            delayLongPress={180}
+            disabled={isSending}
+            onLongPress={startRecording}
+            onPressOut={stopRecording}
+            style={[styles.micButton, isRecording && styles.micButtonActive]}
+          >
+            <Text style={styles.micText}>Mic</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  audioAttachment: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(18, 198, 223, 0.14)',
+    borderRadius: 14,
+    flexDirection: 'row',
+    gap: 9,
+    marginBottom: 8,
+    minWidth: 210,
+    padding: 10,
+  },
+  audioIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
+  },
+  audioIconText: {
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  audioText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  audioWave: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 3,
+  },
   avatar: {
     alignItems: 'center',
     backgroundColor: colors.cyan,
     borderRadius: 16,
-    height: 46,
+    height: 42,
     justifyContent: 'center',
-    width: 46,
+    overflow: 'hidden',
+    width: 42,
+  },
+  avatarImage: {
+    height: '100%',
+    width: '100%',
   },
   avatarText: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
   },
   bubble: {
-    borderRadius: 16,
-    marginBottom: 8,
-    maxWidth: '82%',
+    borderRadius: 18,
+    maxWidth: '78%',
     padding: 11,
+  },
+  bubbleMeta: {
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 6,
   },
   bubbleText: {
     color: colors.ink,
@@ -131,11 +398,9 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   bubbleTime: {
-    alignSelf: 'flex-end',
     color: colors.muted,
     fontSize: 10,
     fontWeight: '800',
-    marginTop: 6,
   },
   chatHeader: {
     alignItems: 'center',
@@ -144,23 +409,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: 'row',
     gap: 11,
-    padding: layout.screenPadding,
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: 12,
   },
   chatSubtitle: {
     color: colors.muted,
     fontSize: 12,
     fontWeight: '800',
-    marginTop: 2,
   },
   chatTitle: {
     color: colors.ink,
     fontSize: 17,
     fontWeight: '900',
   },
+  checkMarks: {
+    color: colors.cyanDark,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  companyAvatar: {
+    backgroundColor: '#e0faff',
+    borderColor: colors.cyan,
+    borderWidth: 1,
+  },
   companyBubble: {
-    alignSelf: 'flex-start',
     backgroundColor: colors.white,
     borderColor: colors.line,
+    borderTopLeftRadius: 6,
     borderWidth: 1,
   },
   composer: {
@@ -172,10 +447,13 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 10,
   },
+  driverAvatar: {
+    backgroundColor: colors.ink,
+  },
   driverBubble: {
-    alignSelf: 'flex-end',
     backgroundColor: '#dff9ff',
     borderColor: colors.cyan,
+    borderTopRightRadius: 6,
     borderWidth: 1,
   },
   emptyState: {
@@ -195,10 +473,37 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
   },
+  fileAttachment: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    marginBottom: 8,
+    padding: 10,
+  },
+  fileAttachmentText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  headerCopy: {
+    flex: 1,
+  },
+  imageAttachment: {
+    aspectRatio: 1.2,
+    borderRadius: 14,
+    marginBottom: 8,
+    width: 220,
+  },
+  imageSkeleton: {
+    backgroundColor: '#e2e8f0',
+    borderRadius: 14,
+    height: 160,
+    marginBottom: 8,
+    width: 220,
+  },
   input: {
     backgroundColor: '#f8fbff',
     borderColor: colors.line,
-    borderRadius: 999,
+    borderRadius: 22,
     borderWidth: 1,
     color: colors.ink,
     flex: 1,
@@ -211,6 +516,59 @@ const styles = StyleSheet.create({
   messageList: {
     padding: layout.screenPadding,
     paddingBottom: 24,
+  },
+  messageRow: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-start',
+    marginBottom: 10,
+  },
+  messageRowDriver: {
+    justifyContent: 'flex-end',
+  },
+  micButton: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    height: 44,
+    justifyContent: 'center',
+    minWidth: 54,
+    paddingHorizontal: 12,
+  },
+  micButtonActive: {
+    backgroundColor: colors.danger,
+    transform: [{ scale: 1.08 }],
+  },
+  micText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  recordingBar: {
+    alignItems: 'center',
+    backgroundColor: '#020617',
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: 10,
+  },
+  recordingDot: {
+    backgroundColor: colors.danger,
+    borderRadius: 999,
+    height: 9,
+    width: 9,
+  },
+  recordingText: {
+    color: colors.white,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  recordingTime: {
+    color: colors.cyan,
+    fontSize: 12,
+    fontWeight: '900',
   },
   roundButton: {
     alignItems: 'center',
@@ -231,19 +589,40 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     alignItems: 'center',
-    backgroundColor: colors.ink,
+    backgroundColor: colors.cyan,
     borderRadius: 999,
     height: 44,
     justifyContent: 'center',
-    minWidth: 54,
+    minWidth: 58,
     paddingHorizontal: 12,
   },
-  sendButtonMuted: {
-    backgroundColor: '#dbeafe',
-  },
   sendText: {
-    color: colors.white,
+    color: colors.ink,
     fontSize: 12,
     fontWeight: '900',
+  },
+  statusDot: {
+    backgroundColor: '#cbd5e1',
+    borderRadius: 999,
+    height: 7,
+    width: 7,
+  },
+  statusDotOnline: {
+    backgroundColor: colors.success,
+  },
+  statusRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 2,
+  },
+  typingText: {
+    color: colors.success,
+  },
+  waveBar: {
+    backgroundColor: colors.cyanDark,
+    borderRadius: 999,
+    opacity: 0.8,
+    width: 3,
   },
 })

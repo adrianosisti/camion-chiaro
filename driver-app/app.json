@@ -28,7 +28,8 @@
     "plugins": [
       "expo-document-picker",
       "expo-image-picker",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-audio"
     ],
     "extra": {
       "eas": {

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +19,8 @@ import { DocumentsScreen } from './src/screens/DocumentsScreen'
 import { HomeScreen } from './src/screens/HomeScreen'
 import { OperationsScreen } from './src/screens/OperationsScreen'
 import {
+  createCompanyAssetSignedUrl,
+  createDriverDocument,
   createFaultReport,
   createVehicleCheck,
   fetchDriverChat,
@@ -25,6 +28,9 @@ import {
   getCurrentSession,
   sendChatMessage,
   signOutDriver,
+  subscribeToDriverChatMessages,
+  subscribeToDriverPresence,
+  uploadDriverDocumentFile,
 } from './src/services/driverApi'
 import { colors, layout } from './src/theme'
 
@@ -43,15 +49,31 @@ function getCompanyName(context) {
   return context?.companyProfile?.name || 'Azienda'
 }
 
+function mergeChatMessage(messages, message) {
+  if (!message?.id) return messages
+  const exists = messages.some((currentMessage) => currentMessage.id === message.id)
+  if (exists) {
+    return messages.map((currentMessage) => (currentMessage.id === message.id ? message : currentMessage))
+  }
+
+  return [...messages, message].sort((first, second) => new Date(first.createdAt) - new Date(second.createdAt))
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('home')
   const [appStatus, setAppStatus] = useState('Caricamento app...')
   const [chatMessages, setChatMessages] = useState([])
   const [chatThread, setChatThread] = useState(null)
   const [context, setContext] = useState(null)
+  const [driverProfileUrl, setDriverProfileUrl] = useState('')
   const [isBooting, setIsBooting] = useState(true)
+  const [isCompanyOnline, setIsCompanyOnline] = useState(false)
+  const [isCompanyTyping, setIsCompanyTyping] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [logoUrl, setLogoUrl] = useState('')
   const [session, setSession] = useState(null)
+  const presenceRef = useRef(null)
+  const typingTimeoutRef = useRef(null)
 
   const driver = context?.drivers?.[0] ?? null
   const companyName = getCompanyName(context)
@@ -59,6 +81,36 @@ export default function App() {
   const unreadCompanyMessages = chatMessages.filter(
     (message) => message.senderRole === 'company' && !message.readByDriverAt,
   ).length
+
+  async function loadAssetUrls(nextContext) {
+    const loadedDriver = nextContext?.drivers?.[0]
+    const companyLogoPath = nextContext?.companyProfile?.logoPath
+    const driverPhotoPath = loadedDriver?.profileImagePath
+    const [logoResult, profileResult] = await Promise.all([
+      companyLogoPath ? createCompanyAssetSignedUrl(companyLogoPath) : Promise.resolve({ data: null }),
+      driverPhotoPath ? createCompanyAssetSignedUrl(driverPhotoPath) : Promise.resolve({ data: null }),
+    ])
+
+    setLogoUrl(logoResult.data?.signedUrl ?? '')
+    setDriverProfileUrl(profileResult.data?.signedUrl ?? '')
+  }
+
+  async function loadDriverChatData(targetDriver = driver) {
+    if (!targetDriver?.companyId || !targetDriver?.id) return false
+
+    const chatResult = await fetchDriverChat({
+      companyId: targetDriver.companyId,
+      driverId: targetDriver.id,
+    })
+
+    if (chatResult.data) {
+      setChatMessages(chatResult.data.messages)
+      setChatThread(chatResult.data.thread)
+      return true
+    }
+
+    return false
+  }
 
   async function loadDriverData({ silent = false } = {}) {
     if (!silent) setAppStatus('Aggiorno dati autista...')
@@ -73,18 +125,11 @@ export default function App() {
     }
 
     setContext(contextResult.data)
+    await loadAssetUrls(contextResult.data)
     const loadedDriver = contextResult.data?.drivers?.[0]
 
     if (loadedDriver?.companyId && loadedDriver?.id) {
-      const chatResult = await fetchDriverChat({
-        companyId: loadedDriver.companyId,
-        driverId: loadedDriver.id,
-      })
-
-      if (chatResult.data) {
-        setChatMessages(chatResult.data.messages)
-        setChatThread(chatResult.data.thread)
-      }
+      await loadDriverChatData(loadedDriver)
     }
 
     setAppStatus('')
@@ -115,6 +160,59 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!driver?.companyId || !driver?.id) return undefined
+
+    let isActive = true
+    const unsubscribe = subscribeToDriverChatMessages({
+      companyId: driver.companyId,
+      onMessage: async () => {
+        if (!isActive) return
+        await loadDriverChatData(driver)
+      },
+    })
+
+    return () => {
+      isActive = false
+      unsubscribe?.()
+    }
+  }, [driver?.companyId, driver?.id])
+
+  useEffect(() => {
+    if (!driver?.companyId || !driver?.id) return undefined
+
+    const presence = subscribeToDriverPresence({
+      actor: {
+        actorId: driver.id,
+        actorName: driver.name,
+      },
+      companyId: driver.companyId,
+      handlers: {
+        onPresenceChange: (presences) => {
+          setIsCompanyOnline(presences.some((presence) => presence.actorRole === 'company'))
+        },
+        onTyping: (payload) => {
+          if (payload.actorRole !== 'company') return
+          if (chatThread?.id && payload.threadId !== chatThread.id) return
+
+          setIsCompanyTyping(Boolean(payload.isTyping))
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+          if (payload.isTyping) {
+            typingTimeoutRef.current = setTimeout(() => setIsCompanyTyping(false), 2200)
+          }
+        },
+      },
+    })
+
+    presenceRef.current = presence
+
+    return () => {
+      presence.cleanup()
+      if (presenceRef.current === presence) presenceRef.current = null
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    }
+  }, [driver?.companyId, driver?.id, chatThread?.id])
+
   async function handleAuthenticated(nextSession) {
     setSession(nextSession)
     const loaded = await loadDriverData()
@@ -129,13 +227,18 @@ export default function App() {
     setChatMessages([])
     setChatThread(null)
     setContext(null)
+    setDriverProfileUrl('')
+    setIsCompanyOnline(false)
+    setIsCompanyTyping(false)
+    setLogoUrl('')
     setSession(null)
   }
 
-  async function handleSendChatMessage(body) {
-    if (!driver || !body.trim()) return false
+  async function handleSendChatMessage(body, attachment = null) {
+    if (!driver || (!body.trim() && !attachment?.uri)) return false
 
     const result = await sendChatMessage({
+      attachment,
       body,
       companyId: driver.companyId,
       driverId: driver.id,
@@ -149,9 +252,49 @@ export default function App() {
 
     if (result.data?.thread && !chatThread) setChatThread(result.data.thread)
     if (result.data?.message) {
-      setChatMessages((currentMessages) => [...currentMessages, result.data.message])
+      setChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
     }
 
+    return true
+  }
+
+  function handleTyping(isTyping) {
+    presenceRef.current?.sendTyping({
+      isTyping,
+      threadId: chatThread?.id,
+    })
+  }
+
+  async function handleCreateDocument(payload) {
+    if (!driver || !payload?.type?.trim()) return false
+
+    const result = await createDriverDocument(payload)
+
+    if (result.error) {
+      Alert.alert('Documento non creato', result.error.message)
+      return false
+    }
+
+    await loadDriverData({ silent: true })
+    return true
+  }
+
+  async function handleUploadDocument(document, file) {
+    if (!driver || !document?.id || !file?.uri) return false
+
+    const result = await uploadDriverDocumentFile({
+      companyId: driver.companyId,
+      documentId: document.id,
+      driverId: driver.id,
+      file,
+    })
+
+    if (result.error) {
+      Alert.alert('File non caricato', result.error.message)
+      return false
+    }
+
+    await loadDriverData({ silent: true })
     return true
   }
 
@@ -196,16 +339,27 @@ export default function App() {
       return (
         <ChatScreen
           companyName={companyName}
+          companyOnline={isCompanyOnline}
+          companyTyping={isCompanyTyping}
+          companyLogoUrl={logoUrl}
+          driverProfileUrl={driverProfileUrl}
           driverName={driverName}
           messages={chatMessages}
           onRefresh={() => loadDriverData({ silent: true })}
           onSend={handleSendChatMessage}
+          onTyping={handleTyping}
         />
       )
     }
 
     if (activeTab === 'documents') {
-      return <DocumentsScreen documents={context?.documents ?? []} />
+      return (
+        <DocumentsScreen
+          documents={context?.documents ?? []}
+          onCreateDocument={handleCreateDocument}
+          onUploadDocument={handleUploadDocument}
+        />
+      )
     }
 
     if (activeTab === 'operations') {
@@ -224,13 +378,28 @@ export default function App() {
       <HomeScreen
         companyName={companyName}
         context={context}
+        driverProfileUrl={driverProfileUrl}
+        logoUrl={logoUrl}
         driverName={driverName}
         isRefreshing={isRefreshing}
         onRefresh={() => loadDriverData()}
         unreadCompanyMessages={unreadCompanyMessages}
       />
     )
-  }, [activeTab, chatMessages, chatThread?.id, companyName, context, driver, driverName, isRefreshing])
+  }, [
+    activeTab,
+    chatMessages,
+    chatThread?.id,
+    companyName,
+    context,
+    driver,
+    driverName,
+    driverProfileUrl,
+    isCompanyOnline,
+    isCompanyTyping,
+    isRefreshing,
+    logoUrl,
+  ])
 
   if (isBooting) {
     return (
@@ -257,9 +426,14 @@ export default function App() {
       <ExpoStatusBar style="dark" />
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <View>
-          <Text style={styles.companyName}>{companyName}</Text>
-          <Text style={styles.driverName}>{driverName}</Text>
+        <View style={styles.headerIdentity}>
+          <View style={styles.headerLogo}>
+            {logoUrl ? <Image source={{ uri: logoUrl }} style={styles.headerLogoImage} /> : <Text style={styles.headerLogoText}>CC</Text>}
+          </View>
+          <View>
+            <Text style={styles.companyName}>{companyName}</Text>
+            <Text style={styles.driverName}>{driverName}</Text>
+          </View>
         </View>
         <Pressable onPress={handleSignOut} style={styles.logoutButton}>
           <Text style={styles.logoutText}>Esci</Text>
@@ -304,6 +478,7 @@ const styles = StyleSheet.create({
   },
   companyName: {
     color: colors.ink,
+    flexShrink: 1,
     fontSize: 20,
     fontWeight: '900',
   },
@@ -325,6 +500,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: layout.screenPadding,
     paddingVertical: 14,
+  },
+  headerIdentity: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+    paddingRight: 10,
+  },
+  headerLogo: {
+    alignItems: 'center',
+    backgroundColor: '#e0faff',
+    borderColor: colors.cyan,
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 44,
+  },
+  headerLogoImage: {
+    height: '100%',
+    width: '100%',
+  },
+  headerLogoText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
   },
   loadingScreen: {
     alignItems: 'center',

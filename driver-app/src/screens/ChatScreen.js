@@ -3,10 +3,12 @@ import {
   Alert,
   FlatList,
   Image,
+  Linking,
   Modal,
   PanResponder,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -192,7 +194,19 @@ function isImagePath(path = '') {
 }
 
 function isAudioPath(path = '') {
-  return /\.(m4a|aac|mp3|mp4|mpeg|ogg|opus|wav|webm)$/i.test(path)
+  if (/audio-chat-/i.test(path)) return /\.(m4a|aac|mp3|mp4|mpeg|ogg|opus|wav|webm)$/i.test(path)
+  return /\.(m4a|aac|mp3|mpeg|ogg|opus|wav)$/i.test(path)
+}
+
+function isVideoPath(path = '') {
+  return /\.(m4v|mov|mp4|webm)$/i.test(path) && !/audio-chat-/i.test(path)
+}
+
+function getAttachmentKind(path = '') {
+  if (isImagePath(path)) return 'image'
+  if (isAudioPath(path)) return 'audio'
+  if (isVideoPath(path)) return 'video'
+  return path ? 'file' : ''
 }
 
 function Avatar({ initials, isDriver, onPress, uri }) {
@@ -276,17 +290,119 @@ function AttachmentPreview({ path }) {
   )
 }
 
-function MessageBubble({ companyLogoUrl, driverProfileUrl, message, onAvatarPress, onLongPress }) {
-  const isDriver = message.senderRole === 'driver'
-  const isReadByCompany = Boolean(message.readByCompanyAt)
+function getAttachmentTitle(path = '') {
+  const kind = getAttachmentKind(path)
+  if (kind === 'image') return 'Foto'
+  if (kind === 'video') return 'Video'
+  if (kind === 'audio') return 'Audio'
+  return 'File'
+}
+
+function MediaPreviewItem({ message, onOpenImage }) {
+  const [signedUrl, setSignedUrl] = useState('')
+  const kind = getAttachmentKind(message.attachmentPath)
+
+  useEffect(() => {
+    let isActive = true
+
+    async function loadSignedUrl() {
+      const result = await createCompanyAssetSignedUrl(message.attachmentPath)
+      if (isActive) setSignedUrl(result.data?.signedUrl ?? '')
+    }
+
+    if (message.attachmentPath) loadSignedUrl()
+
+    return () => {
+      isActive = false
+    }
+  }, [message.attachmentPath])
+
+  async function openMedia() {
+    if (!signedUrl) return
+    if (kind === 'image') {
+      onOpenImage?.(signedUrl, getAttachmentTitle(message.attachmentPath))
+      return
+    }
+    await Linking.openURL(signedUrl)
+  }
+
+  return (
+    <Pressable onPress={openMedia} style={styles.mediaItem}>
+      <View style={styles.mediaThumb}>
+        {kind === 'image' && signedUrl ? (
+          <Image source={{ uri: signedUrl }} style={styles.mediaThumbImage} />
+        ) : (
+          <Text style={styles.mediaThumbText}>{kind === 'audio' ? '♪' : kind === 'video' ? '▶' : 'DOC'}</Text>
+        )}
+      </View>
+      <View style={styles.mediaCopy}>
+        <Text style={styles.mediaTitle}>{getAttachmentTitle(message.attachmentPath)}</Text>
+        <Text style={styles.mediaMeta}>{formatMessageTime(message.createdAt)}</Text>
+      </View>
+      <Text style={styles.mediaOpenText}>Apri</Text>
+    </Pressable>
+  )
+}
+
+function ChatInfoModal({
+  companyLogoUrl,
+  companyName,
+  mediaMessages,
+  onClose,
+  onOpenImage,
+  visible,
+}) {
+  return (
+    <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
+      <View style={styles.infoScreen}>
+        <View style={styles.infoHeader}>
+          <Pressable onPress={onClose} style={styles.infoCloseButton}>
+            <Text style={styles.infoCloseText}>‹</Text>
+          </Pressable>
+          <Text style={styles.infoHeaderTitle}>Info chat</Text>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.infoContent}>
+          <View style={styles.infoProfile}>
+            <View style={styles.infoAvatar}>
+              {companyLogoUrl ? <Image source={{ uri: companyLogoUrl }} style={styles.infoAvatarImage} /> : <Text style={styles.infoAvatarText}>{getInitials(companyName)}</Text>}
+            </View>
+            <Text numberOfLines={2} style={styles.infoName}>{companyName}</Text>
+            <Text style={styles.infoSubtitle}>Media, audio e file condivisi in chat</Text>
+          </View>
+
+          <View style={styles.infoSection}>
+            <View style={styles.infoSectionHeader}>
+              <Text style={styles.infoSectionTitle}>Media della chat</Text>
+              <Text style={styles.infoSectionCount}>{mediaMessages.length}</Text>
+            </View>
+
+            {mediaMessages.length ? (
+              mediaMessages.map((message) => (
+                <MediaPreviewItem key={`${message.id}-${message.attachmentPath}`} message={message} onOpenImage={onOpenImage} />
+              ))
+            ) : (
+              <Text style={styles.infoEmptyText}>Nessun media condiviso ancora.</Text>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  )
+}
+
+function MessageBubble({ currentUserRole, message, onAvatarPress, onLongPress, ownAvatarUrl, participantAvatarUrl, participantName }) {
+  const isOwn = message.senderRole === currentUserRole
+  const readAt = currentUserRole === 'driver' ? message.readByCompanyAt : message.readByDriverAt
+  const isRead = Boolean(readAt)
   const display = getMessageDisplay(message)
   const messageText = String(display.text ?? '').trim()
   const visibleReactions = Object.entries(message.reactions ?? {}).filter(([, reaction]) => reaction)
 
   return (
-    <View style={[styles.messageRow, isDriver && styles.messageRowDriver]}>
-      {!isDriver ? <Avatar initials="AZ" onPress={() => onAvatarPress?.(companyLogoUrl, 'Azienda')} uri={companyLogoUrl} /> : null}
-      <Pressable onLongPress={() => onLongPress?.(message)} style={[styles.bubble, isDriver ? styles.driverBubble : styles.companyBubble]}>
+    <View style={[styles.messageRow, isOwn && styles.messageRowDriver]}>
+      {!isOwn ? <Avatar initials={getInitials(participantName)} onPress={() => onAvatarPress?.(participantAvatarUrl, participantName)} uri={participantAvatarUrl} /> : null}
+      <Pressable onLongPress={() => onLongPress?.(message)} style={[styles.bubble, isOwn ? styles.driverBubble : styles.companyBubble]}>
         {display.reply ? (
           <View style={styles.replyQuote}>
             <Text numberOfLines={1} style={styles.replyQuoteSender}>{display.reply.sender || 'Risposta'}</Text>
@@ -297,11 +413,11 @@ function MessageBubble({ companyLogoUrl, driverProfileUrl, message, onAvatarPres
         {messageText ? <Text style={styles.bubbleText}>{messageText}</Text> : null}
         <View style={styles.bubbleMeta}>
           <Text style={styles.bubbleTime}>{formatMessageTime(message.createdAt)}</Text>
-          {isDriver && isReadByCompany ? <Text style={styles.readAtText}>Letto {formatMessageTime(message.readByCompanyAt)}</Text> : null}
-          {isDriver ? (
-            <View accessibilityLabel={isReadByCompany ? 'Letto' : 'Consegnato'} style={styles.readReceipt}>
-              <Text style={[styles.checkMark, isReadByCompany && styles.checkMarkRead]}>✓</Text>
-              <Text style={[styles.checkMark, styles.checkMarkSecond, isReadByCompany && styles.checkMarkRead]}>✓</Text>
+          {isOwn && isRead ? <Text style={styles.readAtText}>Letto {formatMessageTime(readAt)}</Text> : null}
+          {isOwn ? (
+            <View accessibilityLabel={isRead ? 'Letto' : 'Consegnato'} style={styles.readReceipt}>
+              <Text style={[styles.checkMark, isRead && styles.checkMarkRead]}>✓</Text>
+              <Text style={[styles.checkMark, styles.checkMarkSecond, isRead && styles.checkMarkRead]}>✓</Text>
             </View>
           ) : null}
         </View>
@@ -313,7 +429,7 @@ function MessageBubble({ companyLogoUrl, driverProfileUrl, message, onAvatarPres
           </View>
         ) : null}
       </Pressable>
-      {isDriver ? <Avatar initials="IO" isDriver onPress={() => onAvatarPress?.(driverProfileUrl, 'Autista')} uri={driverProfileUrl} /> : null}
+      {isOwn ? <Avatar initials="IO" isDriver onPress={() => onAvatarPress?.(ownAvatarUrl, 'Tu')} uri={ownAvatarUrl} /> : null}
     </View>
   )
 }
@@ -323,8 +439,13 @@ export function ChatScreen({
   companyName,
   companyOnline = false,
   companyTyping = false,
+  currentUserRole = 'driver',
   driverProfileUrl,
   messages = [],
+  offlineLabel = 'chat azienda',
+  ownAvatarUrl,
+  participantAvatarUrl,
+  participantName,
   onRefresh,
   onReactToMessage,
   onSend,
@@ -333,6 +454,7 @@ export function ChatScreen({
 }) {
   const [actionMessage, setActionMessage] = useState(null)
   const [body, setBody] = useState('')
+  const [isChatInfoOpen, setIsChatInfoOpen] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
   const [photoPreview, setPhotoPreview] = useState(null)
   const [replyToMessage, setReplyToMessage] = useState(null)
@@ -356,6 +478,10 @@ export function ChatScreen({
   const receiveSoundPlayer = useAudioPlayer(chatReceiveSound, { keepAudioSessionActive: true })
   const sendSoundPlayer = useAudioPlayer(chatSendSound, { keepAudioSessionActive: true })
   const listMessages = useMemo(() => [...messages].reverse(), [messages])
+  const mediaMessages = useMemo(() => messages.filter((message) => message.attachmentPath), [messages])
+  const chatPartnerName = participantName || companyName
+  const chatPartnerAvatarUrl = participantAvatarUrl ?? (currentUserRole === 'driver' ? companyLogoUrl : driverProfileUrl)
+  const chatOwnAvatarUrl = ownAvatarUrl ?? (currentUserRole === 'driver' ? driverProfileUrl : companyLogoUrl)
 
   useEffect(() => () => {
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
@@ -577,7 +703,7 @@ export function ChatScreen({
     if (!sent) Alert.alert('Vocale non inviato', 'Riprova tra qualche secondo.')
   }
 
-  const statusText = companyTyping ? 'sta scrivendo...' : companyOnline ? 'online' : 'chat azienda'
+  const statusText = companyTyping ? 'sta scrivendo...' : companyOnline ? 'online' : offlineLabel
   const canSendText = Boolean(body.trim()) && !isSending
   const micPanResponder = useMemo(
     () =>
@@ -629,6 +755,10 @@ export function ChatScreen({
     setPhotoPreview({ name, uri })
   }
 
+  function openMediaPreview(uri, name) {
+    setPhotoPreview({ name, uri })
+  }
+
   async function copyMessage(message) {
     const text = getMessagePreviewText(message)
     if (!text) return
@@ -638,30 +768,31 @@ export function ChatScreen({
   }
 
   function replyToSelectedMessage(message) {
-    const sender = message.senderRole === 'driver' ? 'Tu' : companyName
+    const sender = message.senderRole === currentUserRole ? 'Tu' : chatPartnerName
     setReplyToMessage(createReplyReference(message, sender))
     setActionMessage(null)
   }
 
   async function reactToSelectedMessage(message, reaction) {
-    const currentReaction = message.reactions?.driver ?? ''
+    const currentReaction = message.reactions?.[currentUserRole] ?? ''
     const nextReaction = currentReaction === reaction ? '' : reaction
     setActionMessage(null)
-    await onReactToMessage?.(message, 'driver', nextReaction)
+    await onReactToMessage?.(message, currentUserRole, nextReaction)
   }
 
   return (
     <View style={styles.screen}>
-      <View style={styles.chatHeader}>
-        <Avatar initials={getInitials(companyName)} uri={companyLogoUrl} />
+      <Pressable onPress={() => setIsChatInfoOpen(true)} style={styles.chatHeader}>
+        <Avatar initials={getInitials(chatPartnerName)} uri={chatPartnerAvatarUrl} />
         <View style={styles.headerCopy}>
-          <Text numberOfLines={1} style={styles.chatTitle}>{companyName}</Text>
+          <Text numberOfLines={1} style={styles.chatTitle}>{chatPartnerName}</Text>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, companyOnline && styles.statusDotOnline]} />
             <Text style={[styles.chatSubtitle, companyTyping && styles.typingText]}>{statusText}</Text>
           </View>
         </View>
-      </View>
+        <Text style={styles.infoHint}>Info</Text>
+      </Pressable>
 
       <FlatList
         contentContainerStyle={styles.messageList}
@@ -676,11 +807,13 @@ export function ChatScreen({
         refreshControl={<RefreshControl onRefresh={handleRefresh} refreshing={isRefreshing} tintColor={colors.cyan} />}
         renderItem={({ item }) => (
           <MessageBubble
-            companyLogoUrl={companyLogoUrl}
-            driverProfileUrl={driverProfileUrl}
+            currentUserRole={currentUserRole}
             message={item}
             onAvatarPress={openAvatarPreview}
             onLongPress={setActionMessage}
+            ownAvatarUrl={chatOwnAvatarUrl}
+            participantAvatarUrl={chatPartnerAvatarUrl}
+            participantName={chatPartnerName}
           />
         )}
         ListEmptyComponent={
@@ -783,6 +916,15 @@ export function ChatScreen({
           </View>
         </Pressable>
       </Modal>
+
+      <ChatInfoModal
+        companyLogoUrl={chatPartnerAvatarUrl}
+        companyName={chatPartnerName}
+        mediaMessages={mediaMessages}
+        onClose={() => setIsChatInfoOpen(false)}
+        onOpenImage={openMediaPreview}
+        visible={isChatInfoOpen}
+      />
     </View>
   )
 }

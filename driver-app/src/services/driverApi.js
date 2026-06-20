@@ -324,6 +324,31 @@ export async function fetchDriverChat({ companyId, driverId }) {
   }
 }
 
+export async function fetchCompanyDriverChat({ companyId, driverId }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !driverId) return { data: { messages: [], thread: null }, error: null }
+
+  const threadResult = await ensureChatThread({ companyId, driverId })
+  if (threadResult.error || !threadResult.data) return threadResult
+
+  const { data: messageData, error: messageError } = await supabase
+    .from('chat_messages')
+    .select(chatMessageSelect)
+    .eq('company_id', companyId)
+    .eq('thread_id', threadResult.data.id)
+    .order('created_at', { ascending: true })
+
+  if (messageError) return { data: null, error: messageError }
+
+  return {
+    data: {
+      messages: (messageData ?? []).map(mapChatMessage),
+      thread: threadResult.data,
+    },
+    error: null,
+  }
+}
+
 async function ensureChatThread({ companyId, driverId, threadId }) {
   if (threadId) {
     return {
@@ -410,6 +435,47 @@ export async function sendChatMessage({ attachment = null, body, companyId, driv
       body,
       company_id: companyId,
       sender_role: 'driver',
+      thread_id: threadResult.data.id,
+    })
+    .select(chatMessageSelect)
+    .single()
+
+  if (error && uploadResult.data) {
+    await supabase.storage.from(companyAssetsBucket).remove([uploadResult.data])
+  }
+
+  if (error) return { data: null, error }
+
+  return {
+    data: {
+      message: mapChatMessage(data),
+      thread: threadResult.data,
+    },
+    error: null,
+  }
+}
+
+export async function sendCompanyChatMessage({ attachment = null, body, companyId, driverId, threadId }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+
+  const threadResult = await ensureChatThread({ companyId, driverId, threadId })
+  if (threadResult.error || !threadResult.data) return threadResult
+
+  const uploadResult = await uploadChatAttachment({
+    attachment,
+    companyId,
+    threadId: threadResult.data.id,
+  })
+
+  if (uploadResult.error) return { data: null, error: uploadResult.error }
+
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .insert({
+      attachment_path: uploadResult.data || null,
+      body,
+      company_id: companyId,
+      sender_role: 'company',
       thread_id: threadResult.data.id,
     })
     .select(chatMessageSelect)

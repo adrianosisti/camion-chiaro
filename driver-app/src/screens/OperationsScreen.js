@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { t } from '../i18n/native'
 import { colors, layout } from '../theme'
 
 function getVehicleLabel(vehicle) {
@@ -65,6 +66,7 @@ function VehicleSelector({ emptyLabel, onSelect, selectedId, vehicles }) {
 export function OperationsScreen({
   checks = [],
   faults = [],
+  language = 'it',
   onOpenHome,
   onSubmitCheck,
   onSubmitFault,
@@ -125,6 +127,14 @@ export function OperationsScreen({
   }
 
   async function pickFaultPhotoFrom(source) {
+    if (source === 'camera') {
+      const permission = await ImagePicker.requestCameraPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per scattare la foto del guasto.')
+        return
+      }
+    }
+
     const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
     const result = await picker({
       allowsEditing: false,
@@ -143,14 +153,6 @@ export function OperationsScreen({
         uri: asset.uri,
       },
     }))
-  }
-
-  function pickFaultPhoto() {
-    Alert.alert('Foto guasto', 'Scegli come allegare la foto.', [
-      { text: 'Fotocamera', onPress: () => pickFaultPhotoFrom('camera') },
-      { text: 'Galleria', onPress: () => pickFaultPhotoFrom('gallery') },
-      { style: 'cancel', text: 'Annulla' },
-    ])
   }
 
   async function submitFault() {
@@ -179,11 +181,11 @@ export function OperationsScreen({
           <Text style={styles.helper}>
             L autista non deve scegliere tutta la flotta ogni volta. Prima seleziona in Home il mezzo che sta prendendo oggi; se cambia mezzo durante il giorno, lo cambia da li.
           </Text>
-          <PrimaryButton onPress={onOpenHome} title="Vai alla Home" />
+          <PrimaryButton onPress={onOpenHome} title={t(language, 'backHome')} />
         </Panel>
       ) : null}
 
-      <Panel kicker="Check mattutino" title={getVehicleLabel(selectedVehicle)}>
+      <Panel kicker={t(language, 'checkMorning')} title={getVehicleLabel(selectedVehicle)}>
         <Text style={styles.sectionLabel}>Mezzo del turno</Text>
         <View style={styles.selectedVehicleCard}>
           <Text style={styles.selectedVehiclePlate}>{selectedVehicle?.plate ?? 'Non selezionato'}</Text>
@@ -230,7 +232,7 @@ export function OperationsScreen({
         <PrimaryButton loading={isSendingCheck} onPress={submitCheck} title="Invia check" />
       </Panel>
 
-      <Panel kicker="Guasto" title="Segnala all azienda">
+      <Panel kicker={t(language, 'fault')} title="Segnala all azienda">
         <Text style={styles.sectionLabel}>Mezzo guasto</Text>
         <View style={styles.selectedVehicleCard}>
           <Text style={styles.selectedVehiclePlate}>{selectedVehicle?.plate ?? 'Non selezionato'}</Text>
@@ -271,9 +273,15 @@ export function OperationsScreen({
             </Pressable>
           ))}
         </View>
-        <Pressable onPress={pickFaultPhoto} style={styles.photoButton}>
-          <Text style={styles.photoButtonText}>{faultForm.photo ? 'Cambia foto guasto' : 'Aggiungi foto guasto'}</Text>
-        </Pressable>
+        <Text style={styles.sectionLabel}>Foto guasto</Text>
+        <View style={styles.photoActions}>
+          <Pressable onPress={() => pickFaultPhotoFrom('camera')} style={styles.photoButton}>
+            <Text style={styles.photoButtonText}>Scatta foto</Text>
+          </Pressable>
+          <Pressable onPress={() => pickFaultPhotoFrom('gallery')} style={styles.photoButtonSecondary}>
+            <Text style={styles.photoButtonSecondaryText}>{t(language, 'gallery')}</Text>
+          </Pressable>
+        </View>
         {faultForm.photo?.uri ? <Image source={{ uri: faultForm.photo.uri }} style={styles.faultPhoto} /> : null}
         <PrimaryButton loading={isSendingFault} onPress={submitFault} title="Invia guasto" />
       </Panel>
@@ -344,10 +352,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#e0f2fe',
     borderRadius: 999,
-    marginBottom: 10,
+    flex: 1,
     minHeight: 42,
     justifyContent: 'center',
     paddingHorizontal: 14,
+  },
+  photoActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  photoButtonSecondary: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    flex: 1,
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  photoButtonSecondaryText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '900',
   },
   photoButtonText: {
     color: colors.ink,

@@ -3,24 +3,34 @@ import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { MetricPill } from '../components/MetricPill'
 import { Panel } from '../components/Panel'
+import { getLocale, t } from '../i18n/native'
 import { colors, layout } from '../theme'
 
-function formatDate(value) {
-  if (!value) return 'Senza scadenza'
-  return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
+function formatDate(value, language) {
+  if (!value) return t(language, 'noDeadline')
+  return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
 }
 
-const dailyPhrases = [
-  'Strada chiara, giornata sotto controllo.',
-  'Ogni check fatto bene evita un problema domani.',
-  'Precisione oggi, meno fermate domani.',
-  'La sicurezza parte prima di accendere il motore.',
-  'Un mezzo curato lavora meglio e ti porta piu lontano.',
-]
+const dailyPhrases = {
+  de: ['Klare Strecke, klarer Tag.', 'Sicherheit beginnt vor dem Start.', 'Ein guter Check spart morgen Zeit.'],
+  en: ['Clear road, clear day.', 'Safety starts before the engine.', 'A good check today saves time tomorrow.'],
+  es: ['Ruta clara, dia bajo control.', 'La seguridad empieza antes del motor.', 'Un buen check hoy evita problemas manana.'],
+  fr: ['Route claire, journee sous controle.', 'La securite commence avant le moteur.', 'Un bon controle aujourd hui evite les soucis demain.'],
+  it: [
+    'Strada chiara, giornata sotto controllo.',
+    'Ogni check fatto bene evita un problema domani.',
+    'Precisione oggi, meno fermate domani.',
+    'La sicurezza parte prima di accendere il motore.',
+    'Un mezzo curato lavora meglio e ti porta piu lontano.',
+  ],
+  pl: ['Jasna trasa, spokojny dzien.', 'Bezpieczenstwo zaczyna sie przed silnikiem.', 'Dobry przeglad dzis oszczedza czas jutro.'],
+  ro: ['Drum clar, zi sub control.', 'Siguranta incepe inainte de motor.', 'Un check bun azi economiseste timp maine.'],
+}
 
-function getDailyPhrase() {
+function getDailyPhrase(language) {
+  const phrases = dailyPhrases[language] ?? dailyPhrases.it
   const dayKey = Math.floor(Date.now() / 86400000)
-  return dailyPhrases[dayKey % dailyPhrases.length]
+  return phrases[dayKey % phrases.length]
 }
 
 function formatVehicleType(value) {
@@ -45,6 +55,7 @@ export function HomeScreen({
   context,
   driverProfileUrl,
   driverName,
+  language = 'it',
   logoUrl,
   onOpenChat,
   onOpenDocuments,
@@ -67,7 +78,7 @@ export function HomeScreen({
   const selectedDailyVehicle = driveableVehicles.find((vehicle) => vehicle.id === selectedDailyVehicleId) ?? null
   const criticalChecks = checks.filter((check) => !check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
   const latestChecks = checks.slice(0, 3)
-  const dailyPhrase = getDailyPhrase()
+  const dailyPhrase = getDailyPhrase(language)
 
   async function pickProfilePhoto(source) {
     const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
@@ -122,8 +133,8 @@ export function HomeScreen({
         </View>
         <View style={styles.metricRow}>
           <MetricPill label="Messaggi" tone={unreadCompanyMessages ? 'warning' : 'info'} value={unreadCompanyMessages} />
-          <MetricPill label="Guasti aperti" tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
-          <MetricPill label="Check critici" tone={criticalChecks.length ? 'danger' : 'success'} value={criticalChecks.length} />
+          <MetricPill label={t(language, 'faultsOpen')} tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
+          <MetricPill label={t(language, 'checkCritical')} tone={criticalChecks.length ? 'danger' : 'success'} value={criticalChecks.length} />
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>
@@ -138,7 +149,7 @@ export function HomeScreen({
         />
         <ActionTile
           icon="document-text-outline"
-          label="Documenti"
+          label={t(language, 'documents')}
           meta={`${documents.length} disponibili`}
           onPress={onOpenDocuments}
         />
@@ -234,7 +245,7 @@ export function HomeScreen({
             <View style={[styles.statusDot, (!check.lightsOk || !check.tiresOk || !check.documentsOnBoard) && styles.statusDotDanger]} />
             <View style={styles.listCopy}>
               <Text style={styles.listTitle}>{check.odometerKm ? `${check.odometerKm} km` : 'Check mattutino'}</Text>
-              <Text style={styles.listMeta}>{formatDate(check.createdAt)}</Text>
+              <Text style={styles.listMeta}>{formatDate(check.createdAt, language)}</Text>
             </View>
           </View>
         ))}
@@ -253,7 +264,7 @@ export function HomeScreen({
         {documents.slice(0, 4).map((document) => (
           <View key={document.id} style={styles.documentRow}>
             <Text style={styles.documentTitle}>{document.type}</Text>
-            <Text style={styles.documentDate}>{formatDate(document.expiresAt)}</Text>
+            <Text style={styles.documentDate}>{formatDate(document.expiresAt, language)}</Text>
           </View>
         ))}
         {!documents.length ? <Text style={styles.bodyText}>Non risultano documenti visibili.</Text> : null}

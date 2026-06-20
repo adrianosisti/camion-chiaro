@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { t } from '../i18n/native'
 import { colors, layout } from '../theme'
 
 const languages = [
@@ -26,15 +27,15 @@ export function SettingsScreen({
 }) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Panel kicker="App" title="Impostazioni">
+      <Panel kicker="App" title={t(language, 'appSettings')}>
         <Text style={styles.helper}>
           {accountType === 'company'
-            ? 'Preferenze del pannello azienda su telefono.'
-            : 'Preferenze dell app autista su questo telefono.'}
+            ? t(language, 'appSettingsCompanyHelp')
+            : t(language, 'appSettingsDriverHelp')}
         </Text>
       </Panel>
 
-      <Panel kicker="Lingua" title="Lingua app">
+      <Panel kicker={t(language, 'language')} title={t(language, 'languageApp')}>
         <View style={styles.languageGrid}>
           {languages.map((item) => {
             const selected = item.id === language
@@ -51,11 +52,11 @@ export function SettingsScreen({
         </View>
       </Panel>
 
-      <Panel kicker="Chat" title="Suoni e messaggi">
+      <Panel kicker="Chat" title={t(language, 'chatSettings')}>
         <View style={styles.settingRow}>
           <View style={styles.settingCopy}>
-            <Text style={styles.settingTitle}>Suono chat</Text>
-            <Text style={styles.settingMeta}>Riproduci un tono quando invii o ricevi messaggi.</Text>
+            <Text style={styles.settingTitle}>{t(language, 'chatSound')}</Text>
+            <Text style={styles.settingMeta}>{t(language, 'chatSoundHelp')}</Text>
           </View>
           <Switch
             onValueChange={onChatSoundChange}
@@ -67,7 +68,7 @@ export function SettingsScreen({
       </Panel>
 
       {accountType === 'driver' ? (
-        <Panel kicker="Chat" title="Diagnostica badge">
+        <Panel kicker="Chat" title={t(language, 'chatDiagnostics')}>
           <Text style={styles.helper}>
             Badge: {chatDiagnostics?.badgeCount ?? 0} | Non letti raw: {chatDiagnostics?.rawUnreadCount ?? 0} | Messaggi: {chatDiagnostics?.messageCount ?? 0}
           </Text>
@@ -79,10 +80,10 @@ export function SettingsScreen({
         </Panel>
       ) : null}
 
-      <Panel kicker="Sessione" title="Account">
-        <PrimaryButton onPress={onRefresh} title="Aggiorna dati" tone="light" />
+      <Panel kicker={t(language, 'session')} title="Account">
+        <PrimaryButton onPress={onRefresh} title={t(language, 'refreshData')} tone="light" />
         <View style={styles.buttonGap} />
-        <PrimaryButton onPress={onSignOut} title="Esci dall account" />
+        <PrimaryButton onPress={onSignOut} title={t(language, 'signOut')} />
       </Panel>
     </ScrollView>
   )

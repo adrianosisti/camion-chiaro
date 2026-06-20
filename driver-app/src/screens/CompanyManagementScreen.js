@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Ionicons } from '@expo/vector-icons'
+import { DateField } from '../components/DateField'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { getLocale } from '../i18n/native'
 import { colors, layout } from '../theme'
 
 const fleetTypes = [
@@ -19,9 +21,9 @@ const scopes = [
   { id: 'company', label: 'Azienda' },
 ]
 
-function formatDate(value) {
+function formatDate(value, language = 'it') {
   if (!value) return 'Senza data'
-  return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
+  return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
 }
 
 function getDeadlineDays(value) {
@@ -64,7 +66,7 @@ function getSortedDeadlines(deadlines) {
     .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
 }
 
-function RelatedDeadlines({ deadlines }) {
+function RelatedDeadlines({ deadlines, language = 'it' }) {
   const visibleDeadlines = getSortedDeadlines(deadlines).slice(0, 4)
 
   if (!visibleDeadlines.length) {
@@ -78,7 +80,7 @@ function RelatedDeadlines({ deadlines }) {
         return (
           <View key={item.id} style={[styles.deadlineChip, styles[`${tone}Chip`]]}>
             <Text numberOfLines={1} style={styles.deadlineChipTitle}>{item.type}</Text>
-            <Text style={[styles.deadlineChipMeta, styles[`${tone}Text`]]}>{formatDate(item.dueDate)}</Text>
+            <Text style={[styles.deadlineChipMeta, styles[`${tone}Text`]]}>{formatDate(item.dueDate, language)}</Text>
           </View>
         )
       })}
@@ -144,6 +146,7 @@ function AttachmentButton({ file, label, onPress, onRemove }) {
 export function CompanyManagementScreen({
   context,
   initialSection = 'drivers',
+  language = 'it',
   onCreateDeadline,
   onCreateDriver,
   onCreateVehicle,
@@ -470,11 +473,11 @@ export function CompanyManagementScreen({
           <TextField label="Ruolo" onChangeText={(value) => updateDriverForm('role', value)} placeholder="Autista" value={driverForm.role} />
           <TextField label="Deposito" onChangeText={(value) => updateDriverForm('depot', value)} placeholder="Sede o reparto" value={driverForm.depot} />
           <Text style={styles.groupTitle}>Scadenze iniziali</Text>
-          <TextField label="Patente" onChangeText={(value) => updateDriverForm('licenseDueDate', value)} placeholder="YYYY-MM-DD" value={driverForm.licenseDueDate} />
-          <TextField label="CQC" onChangeText={(value) => updateDriverForm('cqcDueDate', value)} placeholder="YYYY-MM-DD" value={driverForm.cqcDueDate} />
-          <TextField label="ADR" onChangeText={(value) => updateDriverForm('adrDueDate', value)} placeholder="YYYY-MM-DD" value={driverForm.adrDueDate} />
-          <TextField label="Tessera tachigrafica" onChangeText={(value) => updateDriverForm('tachographCardDueDate', value)} placeholder="YYYY-MM-DD" value={driverForm.tachographCardDueDate} />
-          <TextField label="Visita medica" onChangeText={(value) => updateDriverForm('medicalDueDate', value)} placeholder="YYYY-MM-DD" value={driverForm.medicalDueDate} />
+          <DateField label="Patente" language={language} onChange={(value) => updateDriverForm('licenseDueDate', value)} value={driverForm.licenseDueDate} />
+          <DateField label="CQC" language={language} onChange={(value) => updateDriverForm('cqcDueDate', value)} value={driverForm.cqcDueDate} />
+          <DateField label="ADR" language={language} onChange={(value) => updateDriverForm('adrDueDate', value)} value={driverForm.adrDueDate} />
+          <DateField label="Tessera tachigrafica" language={language} onChange={(value) => updateDriverForm('tachographCardDueDate', value)} value={driverForm.tachographCardDueDate} />
+          <DateField label="Visita medica" language={language} onChange={(value) => updateDriverForm('medicalDueDate', value)} value={driverForm.medicalDueDate} />
           <PrimaryButton loading={isSaving} onPress={submitDriver} title="Crea autista" />
         </Panel>
       ) : null}
@@ -505,28 +508,28 @@ export function CompanyManagementScreen({
           <TextField label="Allestimento" onChangeText={(value) => updateVehicleForm('type', value)} placeholder="Centinato, frigo..." value={vehicleForm.type} />
           <TextField label="Km" keyboardType="number-pad" onChangeText={(value) => updateVehicleForm('km', value)} placeholder="0" value={vehicleForm.km} />
           <Text style={styles.groupTitle}>Scadenze iniziali mezzo</Text>
-          <TextField label="Assicurazione" onChangeText={(value) => updateVehicleForm('insuranceDueDate', value)} placeholder="YYYY-MM-DD" value={vehicleForm.insuranceDueDate} />
+          <DateField label="Assicurazione" language={language} onChange={(value) => updateVehicleForm('insuranceDueDate', value)} value={vehicleForm.insuranceDueDate} />
           <AttachmentButton
             file={vehicleForm.insuranceFile}
             label="Allega assicurazione"
             onPress={() => pickAttachment((file) => updateVehicleForm('insuranceFile', file))}
             onRemove={() => updateVehicleForm('insuranceFile', null)}
           />
-          <TextField label="Revisione" onChangeText={(value) => updateVehicleForm('revisionDueDate', value)} placeholder="YYYY-MM-DD" value={vehicleForm.revisionDueDate} />
+          <DateField label="Revisione" language={language} onChange={(value) => updateVehicleForm('revisionDueDate', value)} value={vehicleForm.revisionDueDate} />
           <AttachmentButton
             file={vehicleForm.revisionFile}
             label="Allega revisione"
             onPress={() => pickAttachment((file) => updateVehicleForm('revisionFile', file))}
             onRemove={() => updateVehicleForm('revisionFile', null)}
           />
-          <TextField label="Tachigrafo" onChangeText={(value) => updateVehicleForm('tachographDueDate', value)} placeholder="YYYY-MM-DD" value={vehicleForm.tachographDueDate} />
+          <DateField label="Tachigrafo" language={language} onChange={(value) => updateVehicleForm('tachographDueDate', value)} value={vehicleForm.tachographDueDate} />
           <AttachmentButton
             file={vehicleForm.tachographFile}
             label="Allega documento tachigrafo"
             onPress={() => pickAttachment((file) => updateVehicleForm('tachographFile', file))}
             onRemove={() => updateVehicleForm('tachographFile', null)}
           />
-          <TextField label="Libretto mezzo" onChangeText={(value) => updateVehicleForm('bookletDueDate', value)} placeholder="YYYY-MM-DD" value={vehicleForm.bookletDueDate} />
+          <DateField label="Libretto mezzo" language={language} onChange={(value) => updateVehicleForm('bookletDueDate', value)} value={vehicleForm.bookletDueDate} />
           <AttachmentButton
             file={vehicleForm.bookletFile}
             label="Allega libretto"
@@ -575,7 +578,7 @@ export function CompanyManagementScreen({
               </View>
             </>
           ) : null}
-          <TextField label="Data scadenza" onChangeText={(value) => updateDeadlineForm('dueDate', value)} placeholder="YYYY-MM-DD" value={deadlineForm.dueDate} />
+          <DateField label="Data scadenza" language={language} onChange={(value) => updateDeadlineForm('dueDate', value)} value={deadlineForm.dueDate} />
           <TextField label="Numero documento" onChangeText={(value) => updateDeadlineForm('documentNumber', value)} placeholder="Opzionale" value={deadlineForm.documentNumber} />
           <TextField label="Responsabile" onChangeText={(value) => updateDeadlineForm('owner', value)} placeholder="Opzionale" value={deadlineForm.owner} />
           <AttachmentButton
@@ -624,7 +627,7 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{driver.username} · {driver.phone || 'telefono mancante'}</Text>
                   </View>
                 </View>
-                <RelatedDeadlines deadlines={deadlines.filter((item) => item.driverId === driver.id)} />
+                <RelatedDeadlines deadlines={deadlines.filter((item) => item.driverId === driver.id)} language={language} />
               </View>
             ))}
             {!drivers.length ? <Text style={styles.emptyText}>Nessun autista presente.</Text> : null}
@@ -644,7 +647,7 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{vehicle.model || 'Modello mancante'} · {vehicle.fleetType || 'mezzo'}</Text>
                   </View>
                 </View>
-                <RelatedDeadlines deadlines={deadlines.filter((item) => item.vehicleId === vehicle.id)} />
+                <RelatedDeadlines deadlines={deadlines.filter((item) => item.vehicleId === vehicle.id)} language={language} />
               </View>
             ))}
             {!activeVehicles.length ? <Text style={styles.emptyText}>Nessun mezzo presente.</Text> : null}
@@ -661,7 +664,7 @@ export function CompanyManagementScreen({
                   <View style={styles.listCopy}>
                     <Text style={styles.listTitle}>{item.type}</Text>
                     <Text style={styles.listMeta}>
-                      {getDeadlineSubject(item, drivers, activeVehicles)} · {formatDate(item.dueDate)} · {getDeadlineStatusLabel(item)}
+                      {getDeadlineSubject(item, drivers, activeVehicles)} · {formatDate(item.dueDate, language)} · {getDeadlineStatusLabel(item)}
                     </Text>
                     {item.filePath ? <Text style={styles.fileMeta}>Allegato presente</Text> : null}
                   </View>

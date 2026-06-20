@@ -45,9 +45,11 @@ import {
   subscribeToDriverChatMessages,
   subscribeToDriverPresence,
   updateChatMessageReaction,
+  updateFaultReportStatus,
   uploadDriverDocumentFile,
   uploadDriverProfileImage,
 } from './src/services/driverApi'
+import { t } from './src/i18n/native'
 import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
@@ -67,19 +69,23 @@ function getDriverChatReadStorageKey(driverId) {
   return `camion-chiaro-driver-chat-read:${driverId}`
 }
 
+function getCompanyResolvedChecksStorageKey(companyId) {
+  return `camion-chiaro-company-resolved-checks:${companyId}`
+}
+
 const driverTabs = [
-  { id: 'home', icon: 'home-outline', label: 'Home' },
-  { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat' },
-  { id: 'documents', icon: 'document-text-outline', label: 'Doc' },
-  { id: 'operations', icon: 'checkbox-outline', label: 'Check' },
-  { id: 'settings', icon: 'settings-outline', label: 'Menu' },
+  { id: 'home', icon: 'home-outline', label: 'Home', labelKey: 'home' },
+  { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
+  { id: 'documents', icon: 'document-text-outline', label: 'Doc', labelKey: 'documents' },
+  { id: 'operations', icon: 'checkbox-outline', label: 'Check', labelKey: 'check' },
+  { id: 'settings', icon: 'settings-outline', label: 'Menu', labelKey: 'menu' },
 ]
 
 const companyTabs = [
-  { id: 'home', icon: 'business-outline', label: 'Home' },
-  { id: 'manage', icon: 'albums-outline', label: 'Anagraf.' },
-  { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat' },
-  { id: 'settings', icon: 'settings-outline', label: 'Menu' },
+  { id: 'home', icon: 'business-outline', label: 'Home', labelKey: 'home' },
+  { id: 'manage', icon: 'albums-outline', label: 'Anagraf.', labelKey: 'archive' },
+  { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
+  { id: 'settings', icon: 'settings-outline', label: 'Menu', labelKey: 'menu' },
 ]
 
 function getDriverName(context) {
@@ -160,6 +166,7 @@ export default function App() {
   const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
+  const [resolvedCompanyCheckIds, setResolvedCompanyCheckIds] = useState([])
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
   const [selectedDailyVehicleId, setSelectedDailyVehicleId] = useState('')
@@ -176,7 +183,7 @@ export default function App() {
     ? activeCompanyContext?.companyProfile?.name ?? 'Azienda'
     : getCompanyName(context)
   const driverName = getDriverName(context)
-  const headerSubtitle = accountType === 'company' ? 'Area azienda' : driverName
+  const headerSubtitle = accountType === 'company' ? t(language, 'accountAreaCompany') : driverName
   const selectedCompanyDriver = companyContext?.drivers?.find((currentDriver) => currentDriver.id === selectedCompanyDriverId) ?? null
   const rawUnreadDriverMessages = useMemo(
     () => chatMessages.filter((message) => message.senderRole === 'company' && !message.readByDriverAt),
@@ -587,6 +594,34 @@ export default function App() {
   }, [accountType, activeTab, selectedCompanyDriver?.id])
 
   useEffect(() => {
+    const companyId = companyContext?.companyProfile?.id
+    if (accountType !== 'company' || !companyId) {
+      setResolvedCompanyCheckIds([])
+      return undefined
+    }
+
+    let isActive = true
+
+    async function loadResolvedChecks() {
+      const storedValue = await AsyncStorage.getItem(getCompanyResolvedChecksStorageKey(companyId))
+      if (!isActive) return
+
+      try {
+        const parsedValue = JSON.parse(storedValue || '[]')
+        setResolvedCompanyCheckIds(Array.isArray(parsedValue) ? parsedValue.filter(Boolean) : [])
+      } catch {
+        setResolvedCompanyCheckIds([])
+      }
+    }
+
+    void loadResolvedChecks()
+
+    return () => {
+      isActive = false
+    }
+  }, [accountType, companyContext?.companyProfile?.id])
+
+  useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
 
     const presence = subscribeToDriverPresence({
@@ -649,6 +684,7 @@ export default function App() {
     setIsCompanyOnline(false)
     setIsCompanyTyping(false)
     setLogoUrl('')
+    setResolvedCompanyCheckIds([])
     setSelectedCompanyDriverId('')
     setSelectedDailyVehicleId('')
     setSession(null)
@@ -973,6 +1009,41 @@ export default function App() {
     return result.data
   }
 
+  async function handleResolveCompanyFault(reportId) {
+    if (!reportId) return false
+
+    const result = await updateFaultReportStatus(reportId, 'closed')
+
+    if (result.error) {
+      Alert.alert('Guasto non chiuso', result.error.message)
+      return false
+    }
+
+    setCompanyContext((currentContext) => {
+      if (!currentContext) return currentContext
+      const updatedReport = result.data
+
+      return {
+        ...currentContext,
+        faultReports: currentContext.faultReports.map((report) => (
+          report.id === reportId ? { ...report, ...(updatedReport ?? {}), status: 'closed' } : report
+        )),
+      }
+    })
+
+    return true
+  }
+
+  async function handleResolveCompanyCheck(checkId) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !checkId) return false
+
+    const nextIds = Array.from(new Set([...resolvedCompanyCheckIds, checkId]))
+    setResolvedCompanyCheckIds(nextIds)
+    await AsyncStorage.setItem(getCompanyResolvedChecksStorageKey(companyId), JSON.stringify(nextIds))
+    return true
+  }
+
   function openCompanyManagement(section = 'drivers') {
     setManagementInitialSection(section)
     setActiveTab('manage')
@@ -1025,6 +1096,7 @@ export default function App() {
           <CompanyManagementScreen
             context={companyContext}
             initialSection={managementInitialSection}
+            language={language}
             onCreateDeadline={handleCreateCompanyDeadline}
             onCreateDriver={handleCreateCompanyDriver}
             onCreateVehicle={handleCreateCompanyVehicle}
@@ -1036,10 +1108,14 @@ export default function App() {
         <CompanyHomeScreen
           context={companyContext}
           isRefreshing={isRefreshing}
+          language={language}
           logoUrl={logoUrl}
           onOpenManagement={openCompanyManagement}
           onOpenSettings={() => setActiveTab('settings')}
           onRefresh={() => loadCompanyData()}
+          onResolveCheck={handleResolveCompanyCheck}
+          onResolveFault={handleResolveCompanyFault}
+          resolvedCheckIds={resolvedCompanyCheckIds}
         />
       )
     }
@@ -1053,6 +1129,7 @@ export default function App() {
           companyLogoUrl={logoUrl}
           driverProfileUrl={driverProfileUrl}
           driverName={driverName}
+          language={language}
           messages={chatMessages}
           onReactToMessage={handleReactToMessage}
           onRefresh={() => loadDriverData({ silent: true })}
@@ -1067,6 +1144,7 @@ export default function App() {
       return (
         <DocumentsScreen
           documents={context?.documents ?? []}
+          language={language}
           onCreateDocument={handleCreateDocument}
           onUploadDocument={handleUploadDocument}
         />
@@ -1078,6 +1156,7 @@ export default function App() {
         <OperationsScreen
           checks={context?.vehicleChecks ?? []}
           faults={context?.faultReports ?? []}
+          language={language}
           onOpenHome={() => setActiveTab('home')}
           onSubmitCheck={handleSubmitCheck}
           onSubmitFault={handleSubmitFault}
@@ -1107,9 +1186,10 @@ export default function App() {
       <HomeScreen
         companyName={companyName}
         context={context}
-        driverProfileUrl={driverProfileUrl}
-        logoUrl={logoUrl}
         driverName={driverName}
+        driverProfileUrl={driverProfileUrl}
+        language={language}
+        logoUrl={logoUrl}
         onOpenChat={openDriverChat}
         onOpenDocuments={() => setActiveTab('documents')}
         onOpenOperations={() => setActiveTab('operations')}
@@ -1142,6 +1222,7 @@ export default function App() {
     language,
     logoUrl,
     managementInitialSection,
+    resolvedCompanyCheckIds,
     selectedCompanyDriver,
     selectedCompanyDriverId,
     selectedDailyVehicleId,
@@ -1198,10 +1279,11 @@ export default function App() {
         {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id
           const hasBadge = tab.id === 'chat' && chatBadgeCount > 0
+          const tabLabel = t(language, tab.labelKey, tab.label)
 
           return (
             <Pressable
-              accessibilityLabel={tab.label}
+              accessibilityLabel={tabLabel}
               key={tab.id}
               onPress={() => {
                 if (accountType === 'driver' && tab.id === 'chat') {
@@ -1220,7 +1302,7 @@ export default function App() {
                   size={19}
                 />
               </View>
-              <Text numberOfLines={1} style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
+              <Text numberOfLines={1} style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tabLabel}</Text>
               {hasBadge ? <Text style={styles.tabBadge}>{chatBadgeCount}</Text> : null}
             </Pressable>
           )

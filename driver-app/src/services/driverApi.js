@@ -779,6 +779,45 @@ export async function createDriverDocumentSignedUrl(filePath) {
   return supabase.storage.from(driverDocumentsBucket).createSignedUrl(filePath, 600)
 }
 
+export async function updateFaultReportStatus(reportId, status) {
+  if (!isSupabaseConfigured || !reportId) return { data: null, error: null }
+
+  const accessToken = await getAccessToken()
+
+  if (apiBaseUrl && accessToken) {
+    try {
+      const response = await fetch(`${apiBaseUrl}/.netlify/functions/update-fault`, {
+        body: JSON.stringify({ reportId, status }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      })
+      const payload = await response.json().catch(() => ({}))
+
+      if (response.ok) {
+        return { data: payload.report ? mapFaultReport(payload.report) : null, error: null }
+      }
+
+      if (response.status !== 404) {
+        return { data: null, error: { message: payload.error ?? 'Aggiornamento guasto non riuscito.' } }
+      }
+    } catch {
+      // Fall back to the direct Supabase update for Expo previews.
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('fault_reports')
+    .update({ status })
+    .eq('id', reportId)
+    .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
+    .single()
+
+  return { data: data ? mapFaultReport(data) : null, error }
+}
+
 export function subscribeToDriverChatMessages({ companyId, onMessage }) {
   if (!isSupabaseConfigured || !companyId) return () => {}
 

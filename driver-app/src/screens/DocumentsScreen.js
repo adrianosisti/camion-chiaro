@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
+import * as FileSystem from 'expo-file-system/legacy'
 import * as ImagePicker from 'expo-image-picker'
+import { DateField } from '../components/DateField'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { getLocale, t } from '../i18n/native'
 import { createDriverDocumentSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
@@ -17,9 +20,9 @@ const documentPresets = [
   'Permesso di soggiorno',
 ]
 
-function formatDocumentDate(value) {
-  if (!value) return 'Scadenza non indicata'
-  return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
+function formatDocumentDate(value, language) {
+  if (!value) return t(language, 'noDeadline')
+  return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
 }
 
 function getDocumentTone(document) {
@@ -32,8 +35,39 @@ function getDocumentTone(document) {
   return 'ready'
 }
 
-function DocumentRow({ document, onUploadDocument }) {
+function isImageDocument(path = '') {
+  return /\.(jpe?g|png|webp|heic|heif)$/i.test(String(path ?? '').split('?')[0])
+}
+
+function getFileExtension(path = '') {
+  const cleanPath = String(path ?? '').split('?')[0]
+  const match = cleanPath.match(/\.([a-z0-9]+)$/i)
+  return match?.[1]?.toLowerCase() || 'pdf'
+}
+
+function DocumentPreview({ language, onClose, preview }) {
+  if (!preview?.uri) return null
+
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible>
+      <View style={styles.previewBackdrop}>
+        <View style={styles.previewShell}>
+          <View style={styles.previewHeader}>
+            <Text numberOfLines={1} style={styles.previewTitle}>{preview.title}</Text>
+            <Pressable onPress={onClose} style={styles.previewClose}>
+              <Text style={styles.previewCloseText}>{t(language, 'close')}</Text>
+            </Pressable>
+          </View>
+          <Image resizeMode="contain" source={{ uri: preview.uri }} style={styles.previewImage} />
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+function DocumentRow({ document, language = 'it', onUploadDocument }) {
   const [isBusy, setIsBusy] = useState(false)
+  const [preview, setPreview] = useState(null)
   const tone = getDocumentTone(document)
 
   async function showDocument() {
@@ -50,7 +84,25 @@ function DocumentRow({ document, onUploadDocument }) {
       return
     }
 
-    await Linking.openURL(signedUrl)
+    if (isImageDocument(document.filePath)) {
+      setPreview({ title: document.type, uri: signedUrl })
+      return
+    }
+
+    try {
+      setIsBusy(true)
+      const extension = getFileExtension(document.filePath)
+      const localUri = `${FileSystem.cacheDirectory}camion-chiaro-doc-${Date.now()}.${extension}`
+      const downloaded = await FileSystem.downloadAsync(signedUrl, localUri)
+      const openUri = Platform.OS === 'android' && FileSystem.getContentUriAsync
+        ? await FileSystem.getContentUriAsync(downloaded.uri)
+        : downloaded.uri
+      await Linking.openURL(openUri)
+    } catch {
+      Alert.alert('Documento non aperto', 'Non sono riuscito ad aprire il file. Riprova tra poco.')
+    } finally {
+      setIsBusy(false)
+    }
   }
 
   async function uploadSelectedFile(file) {
@@ -81,6 +133,12 @@ function DocumentRow({ document, onUploadDocument }) {
   }
 
   async function takeDocumentPhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per fotografare il documento.')
+      return
+    }
+
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: false,
       mediaTypes: ['images'],
@@ -112,24 +170,25 @@ function DocumentRow({ document, onUploadDocument }) {
       </View>
       <View style={styles.documentCopy}>
         <Text style={styles.documentTitle}>{document.type}</Text>
-        <Text style={styles.documentMeta}>{formatDocumentDate(document.expiresAt)}</Text>
+        <Text style={styles.documentMeta}>{formatDocumentDate(document.expiresAt, language)}</Text>
         <Text style={[styles.documentStatus, styles[`${tone}Text`]]}>
           {document.filePath ? 'File disponibile' : 'File da caricare'}
         </Text>
       </View>
       <View style={styles.documentActions}>
-        <Pressable onPress={showDocument} style={styles.actionButton}>
-          <Text style={styles.actionText}>Mostra</Text>
+        <Pressable disabled={isBusy} onPress={showDocument} style={styles.actionButton}>
+          <Text style={styles.actionText}>{t(language, 'documentShow')}</Text>
         </Pressable>
         <Pressable disabled={isBusy} onPress={pickDocument} style={[styles.actionButton, styles.actionButtonDark]}>
-          <Text style={styles.actionTextDark}>{document.filePath ? 'Cambia' : 'Carica'}</Text>
+          <Text style={styles.actionTextDark}>{document.filePath ? 'Cambia' : t(language, 'documentUpload')}</Text>
         </Pressable>
       </View>
+      <DocumentPreview language={language} onClose={() => setPreview(null)} preview={preview} />
     </View>
   )
 }
 
-export function DocumentsScreen({ documents = [], onCreateDocument, onUploadDocument }) {
+export function DocumentsScreen({ documents = [], language = 'it', onCreateDocument, onUploadDocument }) {
   const [documentNumber, setDocumentNumber] = useState('')
   const [documentType, setDocumentType] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
@@ -165,7 +224,7 @@ export function DocumentsScreen({ documents = [], onCreateDocument, onUploadDocu
         </Text>
       </Panel>
 
-      <Panel kicker="Nuovo" title="Aggiungi documento">
+      <Panel kicker="Nuovo" title={t(language, 'newDocument')}>
         <View style={styles.presetGrid}>
           {documentPresets.map((preset) => (
             <Pressable
@@ -191,18 +250,18 @@ export function DocumentsScreen({ documents = [], onCreateDocument, onUploadDocu
           style={styles.input}
           value={documentNumber}
         />
-        <TextInput
-          onChangeText={setExpiresAt}
-          placeholder="Scadenza opzionale YYYY-MM-DD"
-          placeholderTextColor="#94a3b8"
-          style={styles.input}
+        <DateField
+          label="Scadenza opzionale"
+          language={language}
+          onChange={setExpiresAt}
+          placeholder="Scadenza opzionale"
           value={expiresAt}
         />
-        <PrimaryButton loading={isCreating} onPress={createDocument} title="Crea documento" />
+        <PrimaryButton loading={isCreating} onPress={createDocument} title={t(language, 'createDocument')} />
       </Panel>
 
       {documents.map((document) => (
-        <DocumentRow document={document} key={document.id} onUploadDocument={onUploadDocument} />
+        <DocumentRow document={document} key={document.id} language={language} onUploadDocument={onUploadDocument} />
       ))}
 
       {documents.length === 0 ? (
@@ -313,6 +372,50 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  previewBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 6, 23, 0.72)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 14,
+  },
+  previewClose: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  previewCloseText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  previewHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  previewImage: {
+    backgroundColor: '#f8fbff',
+    borderRadius: 14,
+    height: 520,
+    maxHeight: '88%',
+    width: '100%',
+  },
+  previewShell: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    maxWidth: 520,
+    padding: 12,
+    width: '100%',
+  },
+  previewTitle: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '900',
   },
   missingIcon: {
     backgroundColor: '#fef3c7',

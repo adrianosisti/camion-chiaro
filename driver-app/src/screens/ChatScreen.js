@@ -16,6 +16,7 @@ import {
 } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 import * as ImagePicker from 'expo-image-picker'
+import { Ionicons } from '@expo/vector-icons'
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
@@ -202,6 +203,10 @@ function isVideoPath(path = '') {
   return /\.(m4v|mov|mp4|webm)$/i.test(path) && !/audio-chat-/i.test(path)
 }
 
+function isPreviewableImageUri(uri = '') {
+  return /^(https?:|file:|content:|data:image\/)/i.test(String(uri ?? '').trim())
+}
+
 function getAttachmentKind(path = '') {
   if (isImagePath(path)) return 'image'
   if (isAudioPath(path)) return 'audio'
@@ -210,13 +215,14 @@ function getAttachmentKind(path = '') {
 }
 
 function Avatar({ initials, isDriver, onPress, uri }) {
+  const safeUri = isPreviewableImageUri(uri) ? uri : ''
   const content = (
     <View style={[styles.avatar, isDriver ? styles.driverAvatar : styles.companyAvatar]}>
-      {uri ? <Image source={{ uri }} style={styles.avatarImage} /> : <Text style={styles.avatarText}>{initials}</Text>}
+      {safeUri ? <Image source={{ uri: safeUri }} style={styles.avatarImage} /> : <Text style={styles.avatarText}>{initials}</Text>}
     </View>
   )
 
-  if (!uri || !onPress) return content
+  if (!safeUri || !onPress) return content
 
   return <Pressable onPress={onPress}>{content}</Pressable>
 }
@@ -352,6 +358,8 @@ function ChatInfoModal({
   onOpenImage,
   visible,
 }) {
+  const safeLogoUrl = isPreviewableImageUri(companyLogoUrl) ? String(companyLogoUrl).trim() : ''
+
   return (
     <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
       <View style={styles.infoScreen}>
@@ -359,21 +367,21 @@ function ChatInfoModal({
           <Pressable onPress={onClose} style={styles.infoCloseButton}>
             <Text style={styles.infoCloseText}>‹</Text>
           </Pressable>
-          <Text style={styles.infoHeaderTitle}>Info chat</Text>
+          <Text style={styles.infoHeaderTitle}>Foto e media</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.infoContent}>
           <View style={styles.infoProfile}>
             <View style={styles.infoAvatar}>
-              {companyLogoUrl ? <Image source={{ uri: companyLogoUrl }} style={styles.infoAvatarImage} /> : <Text style={styles.infoAvatarText}>{getInitials(companyName)}</Text>}
+              {safeLogoUrl ? <Image source={{ uri: safeLogoUrl }} style={styles.infoAvatarImage} /> : <Text style={styles.infoAvatarText}>{getInitials(companyName)}</Text>}
             </View>
             <Text numberOfLines={2} style={styles.infoName}>{companyName}</Text>
-            <Text style={styles.infoSubtitle}>Media, audio e file condivisi in chat</Text>
+            <Text style={styles.infoSubtitle}>Foto e video condivisi in questa chat</Text>
           </View>
 
           <View style={styles.infoSection}>
             <View style={styles.infoSectionHeader}>
-              <Text style={styles.infoSectionTitle}>Media della chat</Text>
+              <Text style={styles.infoSectionTitle}>Galleria chat</Text>
               <Text style={styles.infoSectionCount}>{mediaMessages.length}</Text>
             </View>
 
@@ -382,7 +390,7 @@ function ChatInfoModal({
                 <MediaPreviewItem key={`${message.id}-${message.attachmentPath}`} message={message} onOpenImage={onOpenImage} />
               ))
             ) : (
-              <Text style={styles.infoEmptyText}>Nessun media condiviso ancora.</Text>
+              <Text style={styles.infoEmptyText}>Nessuna foto o video condivisi ancora.</Text>
             )}
           </View>
         </ScrollView>
@@ -478,7 +486,10 @@ export function ChatScreen({
   const receiveSoundPlayer = useAudioPlayer(chatReceiveSound, { keepAudioSessionActive: true })
   const sendSoundPlayer = useAudioPlayer(chatSendSound, { keepAudioSessionActive: true })
   const listMessages = useMemo(() => [...messages].reverse(), [messages])
-  const mediaMessages = useMemo(() => messages.filter((message) => message.attachmentPath), [messages])
+  const mediaMessages = useMemo(
+    () => messages.filter((message) => ['image', 'video'].includes(getAttachmentKind(message.attachmentPath))),
+    [messages],
+  )
   const chatPartnerName = participantName || companyName
   const chatPartnerAvatarUrl = participantAvatarUrl ?? (currentUserRole === 'driver' ? companyLogoUrl : driverProfileUrl)
   const chatOwnAvatarUrl = ownAvatarUrl ?? (currentUserRole === 'driver' ? driverProfileUrl : companyLogoUrl)
@@ -506,10 +517,10 @@ export function ChatScreen({
 
     soundHydratedRef.current = latestMessageId
 
-    if (latestMessage.senderRole === 'company') {
+    if (latestMessage.senderRole !== currentUserRole) {
       playChatSound(receiveSoundPlayer)
     }
-  }, [messages, receiveSoundPlayer])
+  }, [currentUserRole, messages, receiveSoundPlayer])
 
   useEffect(() => {
     const latestMessage = messages[messages.length - 1]
@@ -751,12 +762,13 @@ export function ChatScreen({
   }
 
   function openAvatarPreview(uri, name) {
-    if (!uri) return
-    setPhotoPreview({ name, uri })
+    if (!isPreviewableImageUri(uri)) return
+    setPhotoPreview({ name, uri: String(uri).trim() })
   }
 
   function openMediaPreview(uri, name) {
-    setPhotoPreview({ name, uri })
+    if (!isPreviewableImageUri(uri)) return
+    setPhotoPreview({ name, uri: String(uri).trim() })
   }
 
   async function copyMessage(message) {
@@ -782,7 +794,7 @@ export function ChatScreen({
 
   return (
     <View style={styles.screen}>
-      <Pressable onPress={() => setIsChatInfoOpen(true)} style={styles.chatHeader}>
+      <View style={styles.chatHeader}>
         <Avatar initials={getInitials(chatPartnerName)} uri={chatPartnerAvatarUrl} />
         <View style={styles.headerCopy}>
           <Text numberOfLines={1} style={styles.chatTitle}>{chatPartnerName}</Text>
@@ -791,8 +803,15 @@ export function ChatScreen({
             <Text style={[styles.chatSubtitle, companyTyping && styles.typingText]}>{statusText}</Text>
           </View>
         </View>
-        <Text style={styles.infoHint}>Info</Text>
-      </Pressable>
+        <Pressable
+          accessibilityLabel="Apri foto e media della chat"
+          onPress={() => setIsChatInfoOpen(true)}
+          style={styles.mediaHeaderButton}
+        >
+          <Ionicons color={colors.ink} name="images-outline" size={19} />
+          {mediaMessages.length > 0 ? <Text style={styles.mediaHeaderCount}>{mediaMessages.length}</Text> : null}
+        </Pressable>
+      </View>
 
       <FlatList
         contentContainerStyle={styles.messageList}
@@ -911,7 +930,13 @@ export function ChatScreen({
       <Modal animationType="fade" transparent visible={Boolean(photoPreview)} onRequestClose={() => setPhotoPreview(null)}>
         <Pressable onPress={() => setPhotoPreview(null)} style={styles.photoModalBackdrop}>
           <View style={styles.photoModalCard}>
-            {photoPreview?.uri ? <Image source={{ uri: photoPreview.uri }} style={styles.photoModalImage} /> : null}
+            {isPreviewableImageUri(photoPreview?.uri) ? (
+              <Image
+                onError={() => setPhotoPreview(null)}
+                source={{ uri: photoPreview.uri }}
+                style={styles.photoModalImage}
+              />
+            ) : null}
             <Text style={styles.photoModalTitle}>{photoPreview?.name}</Text>
           </View>
         </Pressable>
@@ -1125,8 +1150,184 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  infoAvatar: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderColor: colors.cyan,
+    borderRadius: 28,
+    borderWidth: 1,
+    height: 72,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 72,
+  },
+  infoAvatarImage: {
+    height: '100%',
+    width: '100%',
+  },
+  infoAvatarText: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  infoCloseButton: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  infoCloseText: {
+    color: colors.ink,
+    fontSize: 28,
+    fontWeight: '900',
+    lineHeight: 30,
+  },
+  infoContent: {
+    padding: layout.screenPadding,
+    paddingBottom: 34,
+  },
+  infoEmptyText: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '700',
+    paddingVertical: 18,
+    textAlign: 'center',
+  },
+  infoHeader: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: 12,
+  },
+  infoHeaderTitle: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  infoName: {
+    color: colors.ink,
+    fontSize: 21,
+    fontWeight: '900',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  infoProfile: {
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  infoScreen: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+  infoSection: {
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  infoSectionCount: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+    minWidth: 28,
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    textAlign: 'center',
+  },
+  infoSectionHeader: {
+    alignItems: 'center',
+    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 14,
+  },
+  infoSectionTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  infoSubtitle: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 4,
+    textAlign: 'center',
+  },
   headerCopy: {
     flex: 1,
+  },
+  mediaHeaderButton: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderColor: colors.cyan,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 4,
+    minHeight: 38,
+    minWidth: 46,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  mediaHeaderCount: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  mediaCopy: {
+    flex: 1,
+  },
+  mediaItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  mediaMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  mediaOpenText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  mediaThumb: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 12,
+    height: 52,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 52,
+  },
+  mediaThumbImage: {
+    height: '100%',
+    width: '100%',
+  },
+  mediaThumbText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  mediaTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
   },
   hiddenComposerItem: {
     display: 'none',

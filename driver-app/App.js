@@ -34,6 +34,7 @@ import {
   fetchDriverContext,
   getCurrentSession,
   getSessionAccountType,
+  markChatMessagesRead,
   sendChatMessage,
   sendCompanyChatMessage,
   signOutDriver,
@@ -79,6 +80,32 @@ function mergeChatMessage(messages, message) {
   return [...messages, message].sort((first, second) => new Date(first.createdAt) - new Date(second.createdAt))
 }
 
+function mergeChatMessageUpdates(messages, updatedMessages = []) {
+  const updatesById = new Map(updatedMessages.filter((message) => message?.id).map((message) => [message.id, message]))
+  if (!updatesById.size) return messages
+
+  return messages.map((message) => updatesById.get(message.id) ?? message)
+}
+
+function countUnreadMessagesForRole(messages, readerRole) {
+  if (readerRole === 'company') {
+    return messages.filter((message) => message.senderRole === 'driver' && !message.readByCompanyAt).length
+  }
+
+  return messages.filter((message) => message.senderRole === 'company' && !message.readByDriverAt).length
+}
+
+function markMessagesReadLocally(messages, readerRole, readAt = new Date().toISOString()) {
+  const senderRole = readerRole === 'company' ? 'driver' : 'company'
+  const timestampField = readerRole === 'company' ? 'readByCompanyAt' : 'readByDriverAt'
+
+  return messages.map((message) => (
+    message.senderRole === senderRole && !message[timestampField]
+      ? { ...message, [timestampField]: readAt }
+      : message
+  ))
+}
+
 export default function App() {
   const [accountType, setAccountType] = useState('driver')
   const [activeTab, setActiveTab] = useState('home')
@@ -116,6 +143,8 @@ export default function App() {
   const unreadCompanyMessages = chatMessages.filter(
     (message) => message.senderRole === 'company' && !message.readByDriverAt,
   ).length
+  const unreadDriverMessages = companyContext?.unreadDriverMessages ?? 0
+  const chatBadgeCount = accountType === 'company' ? unreadDriverMessages : unreadCompanyMessages
 
   async function loadAssetUrls(nextContext) {
     const loadedDriver = nextContext?.drivers?.[0]
@@ -142,7 +171,7 @@ export default function App() {
     setCompanyDriverPhotoUrls(Object.fromEntries(entries))
   }
 
-  async function loadDriverChatData(targetDriver = driver) {
+  async function loadDriverChatData(targetDriver = driver, { markAsRead = activeTab === 'chat' } = {}) {
     if (!targetDriver?.companyId || !targetDriver?.id) return false
 
     const chatResult = await fetchDriverChat({
@@ -151,7 +180,21 @@ export default function App() {
     })
 
     if (chatResult.data) {
-      setChatMessages(chatResult.data.messages)
+      let nextMessages = chatResult.data.messages
+
+      if (markAsRead && chatResult.data.thread?.id) {
+        const unreadCount = countUnreadMessagesForRole(nextMessages, 'driver')
+        if (unreadCount) {
+          nextMessages = markMessagesReadLocally(nextMessages, 'driver')
+        }
+
+        const readResult = await markChatMessagesRead(chatResult.data.thread.id, 'driver')
+        if (!readResult.error && readResult.data?.length) {
+          nextMessages = mergeChatMessageUpdates(nextMessages, readResult.data)
+        }
+      }
+
+      setChatMessages(nextMessages)
       setChatThread(chatResult.data.thread)
       return true
     }
@@ -177,7 +220,7 @@ export default function App() {
     const loadedDriver = contextResult.data?.drivers?.[0]
 
     if (loadedDriver?.companyId && loadedDriver?.id) {
-      await loadDriverChatData(loadedDriver)
+      await loadDriverChatData(loadedDriver, { markAsRead: activeTab === 'chat' })
     }
 
     setAppStatus('')
@@ -213,7 +256,7 @@ export default function App() {
     return true
   }
 
-  async function loadCompanyChatData(targetDriver = selectedCompanyDriver) {
+  async function loadCompanyChatData(targetDriver = selectedCompanyDriver, { markAsRead = activeTab === 'chat' } = {}) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !targetDriver?.id) return false
 
@@ -223,7 +266,34 @@ export default function App() {
     })
 
     if (chatResult.data) {
-      setCompanyChatMessages(chatResult.data.messages)
+      let nextMessages = chatResult.data.messages
+
+      if (markAsRead && chatResult.data.thread?.id) {
+        const unreadCount = countUnreadMessagesForRole(nextMessages, 'company')
+        if (unreadCount) {
+          nextMessages = markMessagesReadLocally(nextMessages, 'company')
+          setCompanyContext((currentContext) => {
+            if (!currentContext) return currentContext
+            const unreadByDriverId = {
+              ...(currentContext.unreadDriverMessagesByDriverId ?? {}),
+              [targetDriver.id]: 0,
+            }
+
+            return {
+              ...currentContext,
+              unreadDriverMessages: Math.max(0, (currentContext.unreadDriverMessages ?? 0) - unreadCount),
+              unreadDriverMessagesByDriverId: unreadByDriverId,
+            }
+          })
+        }
+
+        const readResult = await markChatMessagesRead(chatResult.data.thread.id, 'company')
+        if (!readResult.error && readResult.data?.length) {
+          nextMessages = mergeChatMessageUpdates(nextMessages, readResult.data)
+        }
+      }
+
+      setCompanyChatMessages(nextMessages)
       setCompanyChatThread(chatResult.data.thread)
       return true
     }
@@ -300,7 +370,7 @@ export default function App() {
       companyId: driver.companyId,
       onMessage: async () => {
         if (!isActive) return
-        await loadDriverChatData(driver)
+        await loadDriverChatData(driver, { markAsRead: activeTab === 'chat' })
       },
     })
 
@@ -308,7 +378,7 @@ export default function App() {
       isActive = false
       unsubscribe?.()
     }
-  }, [accountType, driver?.companyId, driver?.id])
+  }, [accountType, activeTab, driver?.companyId, driver?.id])
 
   useEffect(() => {
     const companyId = companyContext?.companyProfile?.id
@@ -317,11 +387,21 @@ export default function App() {
     let isActive = true
     const unsubscribe = subscribeToDriverChatMessages({
       companyId,
-      onMessage: async () => {
+      onMessage: async (message) => {
         if (!isActive) return
-        if (selectedCompanyDriverId) {
+
+        const hasOpenSelectedChat = activeTab === 'chat' && selectedCompanyDriverId && (
+          !companyChatThread?.id || message.threadId === companyChatThread.id
+        )
+
+        if (hasOpenSelectedChat) {
           const currentDriver = companyContext?.drivers?.find((entry) => entry.id === selectedCompanyDriverId)
-          await loadCompanyChatData(currentDriver)
+          await loadCompanyChatData(currentDriver, { markAsRead: true })
+          return
+        }
+
+        if (message.senderRole === 'driver') {
+          await loadCompanyData({ silent: true })
         }
       },
     })
@@ -330,7 +410,17 @@ export default function App() {
       isActive = false
       unsubscribe?.()
     }
-  }, [accountType, companyContext?.companyProfile?.id, selectedCompanyDriverId])
+  }, [accountType, activeTab, companyChatThread?.id, companyContext?.companyProfile?.id, selectedCompanyDriverId])
+
+  useEffect(() => {
+    if (accountType !== 'driver' || activeTab !== 'chat' || !driver?.companyId || !driver?.id) return
+    void loadDriverChatData(driver, { markAsRead: true })
+  }, [accountType, activeTab, driver?.companyId, driver?.id])
+
+  useEffect(() => {
+    if (accountType !== 'company' || activeTab !== 'chat' || !selectedCompanyDriver?.id) return
+    void loadCompanyChatData(selectedCompanyDriver, { markAsRead: true })
+  }, [accountType, activeTab, selectedCompanyDriver?.id])
 
   useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
@@ -634,6 +724,7 @@ export default function App() {
             onSend={handleSendCompanyChatMessage}
             selectedDriver={selectedCompanyDriver}
             soundEnabled={chatSoundEnabled}
+            unreadByDriverId={companyContext?.unreadDriverMessagesByDriverId ?? {}}
           />
         )
       }
@@ -787,9 +878,6 @@ export default function App() {
             <Text style={styles.driverName}>{headerSubtitle}</Text>
           </View>
         </View>
-        <Pressable onPress={handleSignOut} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Esci</Text>
-        </Pressable>
       </View>
 
       {appStatus ? <Text style={styles.statusText}>{appStatus}</Text> : null}
@@ -805,7 +893,7 @@ export default function App() {
       <View style={styles.tabBar}>
         {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id
-          const hasBadge = tab.id === 'chat' && unreadCompanyMessages > 0
+          const hasBadge = tab.id === 'chat' && chatBadgeCount > 0
 
           return (
             <Pressable
@@ -819,7 +907,7 @@ export default function App() {
                 name={tab.icon}
                 size={22}
               />
-              {hasBadge ? <Text style={styles.tabBadge}>{unreadCompanyMessages}</Text> : null}
+              {hasBadge ? <Text style={styles.tabBadge}>{chatBadgeCount}</Text> : null}
             </Pressable>
           )
         })}
@@ -904,17 +992,6 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontWeight: '900',
     marginTop: 18,
-  },
-  logoutButton: {
-    backgroundColor: colors.ink,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  logoutText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '900',
   },
   shell: {
     backgroundColor: colors.background,

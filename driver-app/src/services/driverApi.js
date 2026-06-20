@@ -35,6 +35,8 @@ function notConfiguredError() {
 const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_message_at'
 const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
+const chatMessageSelectWithoutReactions =
+  'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
 
 function mapCompanyProfile(row = {}) {
   return {
@@ -211,7 +213,8 @@ export async function fetchCompanyContext() {
     checksResult,
     faultsResult,
     complianceResult,
-    unreadChatResult,
+    unreadMessagesResult,
+    chatThreadsForUnreadResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -256,10 +259,14 @@ export async function fetchCompanyContext() {
       .limit(50),
     supabase
       .from('chat_messages')
-      .select('id', { count: 'exact', head: true })
+      .select('thread_id', { count: 'exact' })
       .eq('company_id', companyId)
       .eq('sender_role', 'driver')
       .is('read_by_company_at', null),
+    supabase
+      .from('chat_threads')
+      .select('id, driver_id')
+      .eq('company_id', companyId),
   ])
 
   const firstError = [
@@ -270,10 +277,23 @@ export async function fetchCompanyContext() {
     checksResult.error,
     faultsResult.error,
     complianceResult.error,
-    unreadChatResult.error,
+    unreadMessagesResult.error,
+    chatThreadsForUnreadResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
+
+  const driverIdByThreadId = new Map(
+    (chatThreadsForUnreadResult.data ?? []).map((thread) => [thread.id, thread.driver_id]),
+  )
+  const unreadDriverMessagesByDriverId = (unreadMessagesResult.data ?? []).reduce((counts, message) => {
+    const driverId = driverIdByThreadId.get(message.thread_id)
+    if (!driverId) return counts
+    return {
+      ...counts,
+      [driverId]: (counts[driverId] ?? 0) + 1,
+    }
+  }, {})
 
   return {
     data: {
@@ -283,7 +303,8 @@ export async function fetchCompanyContext() {
       drivers: (driversResult.data ?? []).map(mapDriver),
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       membership: membershipResult.data,
-      unreadDriverMessages: unreadChatResult.count ?? 0,
+      unreadDriverMessages: unreadMessagesResult.count ?? 0,
+      unreadDriverMessagesByDriverId,
       vehicleChecks: (checksResult.data ?? []).map(mapVehicleCheck),
       vehicles: (vehiclesResult.data ?? []).map(mapVehicle),
     },
@@ -524,6 +545,37 @@ export async function updateChatMessageReaction(message, actorRole, reaction) {
   }
 
   return { data: data ? mapChatMessage(data) : null, error }
+}
+
+export async function markChatMessagesRead(threadId, readerRole) {
+  if (!isSupabaseConfigured || !threadId || !['company', 'driver'].includes(readerRole)) {
+    return { data: [], error: null }
+  }
+
+  const timestampColumn = readerRole === 'company' ? 'read_by_company_at' : 'read_by_driver_at'
+  const senderRole = readerRole === 'company' ? 'driver' : 'company'
+  let { data, error } = await supabase
+    .from('chat_messages')
+    .update({ [timestampColumn]: new Date().toISOString() })
+    .eq('thread_id', threadId)
+    .eq('sender_role', senderRole)
+    .is(timestampColumn, null)
+    .select(chatMessageSelect)
+
+  if (error?.code === '42703') {
+    const fallbackResult = await supabase
+      .from('chat_messages')
+      .update({ [timestampColumn]: new Date().toISOString() })
+      .eq('thread_id', threadId)
+      .eq('sender_role', senderRole)
+      .is(timestampColumn, null)
+      .select(chatMessageSelectWithoutReactions)
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
+
+  return { data: (data ?? []).map(mapChatMessage), error }
 }
 
 export async function createCompanyAssetSignedUrl(filePath) {

@@ -33,6 +33,7 @@ export function CompanyChatScreen({
   onSend,
   selectedDriver,
   soundEnabled = true,
+  unreadByDriverId = {},
 }) {
   if (selectedDriver) {
     const driverPhotoUrl = driverPhotoUrls[selectedDriver.id] ?? ''
@@ -72,20 +73,32 @@ export function CompanyChatScreen({
       </View>
 
       {drivers.map((driver) => (
-        <Pressable key={driver.id} onPress={() => onSelectDriver?.(driver)} style={styles.driverRow}>
-          <DriverAvatar name={driver.name} uri={driverPhotoUrls[driver.id]} />
-          <View style={styles.driverCopy}>
-            <Text style={styles.driverName}>{driver.name}</Text>
-            <Text style={styles.driverMeta}>{driver.role || 'Autista'} · {driver.phone || driver.username}</Text>
-          </View>
-          <Text style={styles.openText}>Apri</Text>
-        </Pressable>
+        <DriverChatRow
+          driver={driver}
+          key={driver.id}
+          onPress={() => onSelectDriver?.(driver)}
+          photoUrl={driverPhotoUrls[driver.id]}
+          unreadCount={unreadByDriverId[driver.id] ?? 0}
+        />
       ))}
 
       {!drivers.length ? (
         <Text style={styles.emptyText}>{isLoading ? 'Carico autisti...' : 'Nessun autista presente.'}</Text>
       ) : null}
     </ScrollView>
+  )
+}
+
+function DriverChatRow({ driver, onPress, photoUrl, unreadCount = 0 }) {
+  return (
+    <Pressable onPress={onPress} style={styles.driverRow}>
+      <DriverAvatar name={driver.name} uri={photoUrl} />
+      <View style={styles.driverCopy}>
+        <Text style={styles.driverName}>{driver.name}</Text>
+        <Text style={styles.driverMeta}>{driver.role || 'Autista'} · {driver.phone || driver.username}</Text>
+      </View>
+      {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Text style={styles.openText}>Apri</Text>}
+    </Pressable>
   )
 }
 
@@ -179,6 +192,18 @@ const styles = StyleSheet.create({
     color: colors.cyanDark,
     fontSize: 12,
     fontWeight: '900',
+  },
+  unreadBadge: {
+    backgroundColor: colors.cyan,
+    borderRadius: 999,
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+    minWidth: 24,
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    textAlign: 'center',
   },
   selectedBar: {
     alignItems: 'center',

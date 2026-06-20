@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   FlatList,
   Image,
+  PanResponder,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -52,6 +53,16 @@ function Avatar({ initials, isDriver, uri }) {
   return (
     <View style={[styles.avatar, isDriver ? styles.driverAvatar : styles.companyAvatar]}>
       {uri ? <Image source={{ uri }} style={styles.avatarImage} /> : <Text style={styles.avatarText}>{initials}</Text>}
+    </View>
+  )
+}
+
+function MicGlyph({ active = false }) {
+  return (
+    <View style={styles.micGlyph}>
+      <View style={[styles.micCapsule, active && styles.micGlyphActive]} />
+      <View style={[styles.micStem, active && styles.micGlyphActive]} />
+      <View style={[styles.micBase, active && styles.micGlyphActive]} />
     </View>
   )
 }
@@ -117,6 +128,7 @@ function AttachmentPreview({ path }) {
 
 function MessageBubble({ companyLogoUrl, driverProfileUrl, message }) {
   const isDriver = message.senderRole === 'driver'
+  const isReadByCompany = Boolean(message.readByCompanyAt)
   const messageText = getMessageText(message)
 
   return (
@@ -127,7 +139,12 @@ function MessageBubble({ companyLogoUrl, driverProfileUrl, message }) {
         {messageText ? <Text style={styles.bubbleText}>{messageText}</Text> : null}
         <View style={styles.bubbleMeta}>
           <Text style={styles.bubbleTime}>{formatMessageTime(message.createdAt)}</Text>
-          {isDriver ? <Text style={styles.checkMarks}>✓✓</Text> : null}
+          {isDriver ? (
+            <View accessibilityLabel={isReadByCompany ? 'Letto' : 'Consegnato'} style={styles.readReceipt}>
+              <Text style={[styles.checkMark, isReadByCompany && styles.checkMarkRead]}>✓</Text>
+              <Text style={[styles.checkMark, styles.checkMarkSecond, isReadByCompany && styles.checkMarkRead]}>✓</Text>
+            </View>
+          ) : null}
         </View>
       </View>
       {isDriver ? <Avatar initials="IO" isDriver uri={driverProfileUrl} /> : null}
@@ -147,18 +164,35 @@ export function ChatScreen({
   onTyping,
 }) {
   const [body, setBody] = useState('')
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isCancelling, setIsCancelling] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const cancelRecordingRef = useRef(false)
+  const isPressingMicRef = useRef(false)
+  const isRecordingRef = useRef(false)
+  const isSendingRef = useRef(false)
   const listRef = useRef(null)
+  const pendingStopRef = useRef('')
+  const recordingStartedAtRef = useRef(0)
   const typingTimerRef = useRef(null)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder, 250)
+  const listMessages = useMemo(() => [...messages].reverse(), [messages])
 
   useEffect(() => () => {
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
     onTyping?.(false)
   }, [])
+
+  useEffect(() => {
+    isSendingRef.current = isSending
+  }, [isSending])
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording
+  }, [isRecording])
 
   async function handleRefresh() {
     setIsRefreshing(true)
@@ -188,7 +222,7 @@ export function ChatScreen({
     setIsSending(false)
 
     if (!sent) setBody(cleanBody)
-    setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 80)
+    setTimeout(() => listRef.current?.scrollToOffset?.({ animated: false, offset: 0 }), 80)
   }
 
   async function handlePickImage() {
@@ -214,12 +248,28 @@ export function ChatScreen({
     if (!sent) Alert.alert('Allegato non inviato', 'Riprova tra qualche secondo.')
   }
 
+  function resetMicGesture() {
+    setDragOffset(0)
+    setIsCancelling(false)
+    cancelRecordingRef.current = false
+  }
+
   async function startRecording() {
-    if (isRecording || isSending) return
+    if (isRecordingRef.current || isSendingRef.current || body.trim()) return
+
+    pendingStopRef.current = ''
 
     const permission = await AudioModule.requestRecordingPermissionsAsync()
     if (!permission.granted) {
+      isPressingMicRef.current = false
+      resetMicGesture()
       Alert.alert('Microfono bloccato', 'Consenti il microfono per inviare messaggi vocali.')
+      return
+    }
+
+    if (!isPressingMicRef.current) {
+      pendingStopRef.current = ''
+      resetMicGesture()
       return
     }
 
@@ -228,22 +278,59 @@ export function ChatScreen({
       playsInSilentMode: true,
     })
     await audioRecorder.prepareToRecordAsync()
+
+    if (!isPressingMicRef.current) {
+      pendingStopRef.current = ''
+      resetMicGesture()
+      return
+    }
+
     audioRecorder.record()
+    recordingStartedAtRef.current = Date.now()
+    isRecordingRef.current = true
     setIsRecording(true)
+
+    if (pendingStopRef.current) {
+      const shouldCancel = pendingStopRef.current === 'cancel'
+      pendingStopRef.current = ''
+      setTimeout(() => {
+        void stopRecording(shouldCancel)
+      }, 0)
+    }
   }
 
-  async function stopRecording() {
-    if (!isRecording && !recorderState.isRecording) return
+  async function stopRecording(shouldCancel = false) {
+    cancelRecordingRef.current = Boolean(shouldCancel)
 
+    if (!isRecordingRef.current && !recorderState.isRecording) {
+      pendingStopRef.current = shouldCancel ? 'cancel' : 'send'
+      return
+    }
+
+    const elapsedMs = Date.now() - recordingStartedAtRef.current
+    isRecordingRef.current = false
     setIsRecording(false)
-    await audioRecorder.stop()
-    const uri = audioRecorder.uri
+    resetMicGesture()
 
-    if (!uri) return
+    let uri = ''
+
+    try {
+      await audioRecorder.stop()
+      uri = audioRecorder.uri
+    } catch {
+      uri = ''
+    }
+
+    await setAudioModeAsync({
+      allowsRecording: false,
+      playsInSilentMode: true,
+    })
+
+    if (shouldCancel || elapsedMs < 650 || !uri) return
 
     setIsSending(true)
     const sent = await onSend?.('Messaggio vocale', {
-      name: `vocale-${Date.now()}.m4a`,
+      name: `audio-chat-${Date.now()}.m4a`,
       type: 'audio/mp4',
       uri,
     })
@@ -254,6 +341,42 @@ export function ChatScreen({
 
   const statusText = companyTyping ? 'sta scrivendo...' : companyOnline ? 'online' : 'chat azienda'
   const canSendText = Boolean(body.trim()) && !isSending
+  const micPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: () => isPressingMicRef.current,
+        onPanResponderGrant: () => {
+          if (isSendingRef.current || body.trim()) return
+
+          isPressingMicRef.current = true
+          cancelRecordingRef.current = false
+          setDragOffset(0)
+          setIsCancelling(false)
+          void startRecording()
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (!isPressingMicRef.current) return
+
+          const nextOffset = Math.max(-118, Math.min(0, gestureState.dx))
+          const shouldCancel = nextOffset <= -72
+          cancelRecordingRef.current = shouldCancel
+          setDragOffset(nextOffset)
+          setIsCancelling(shouldCancel)
+        },
+        onPanResponderRelease: () => {
+          if (!isPressingMicRef.current) return
+
+          isPressingMicRef.current = false
+          void stopRecording(cancelRecordingRef.current)
+        },
+        onPanResponderTerminate: () => {
+          isPressingMicRef.current = false
+          void stopRecording(true)
+        },
+        onStartShouldSetPanResponder: () => !isSendingRef.current && !body.trim(),
+      }),
+    [body],
+  )
 
   return (
     <View style={styles.screen}>
@@ -270,9 +393,11 @@ export function ChatScreen({
 
       <FlatList
         contentContainerStyle={styles.messageList}
-        data={messages}
+        data={listMessages}
+        initialNumToRender={24}
+        inverted={listMessages.length > 0}
         keyExtractor={(item) => item.id}
-        onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: true })}
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         ref={listRef}
         refreshControl={<RefreshControl onRefresh={handleRefresh} refreshing={isRefreshing} tintColor={colors.cyan} />}
         renderItem={({ item }) => (
@@ -287,9 +412,9 @@ export function ChatScreen({
       />
 
       {isRecording ? (
-        <View style={styles.recordingBar}>
-          <View style={styles.recordingDot} />
-          <Text style={styles.recordingText}>Sto registrando... rilascia per inviare</Text>
+          <View style={styles.recordingBar}>
+            <View style={styles.recordingDot} />
+          <Text style={styles.recordingText}>{isCancelling ? 'Rilascia per eliminare' : 'Tieni premuto, scorri a sinistra per eliminare'}</Text>
           <Text style={styles.recordingTime}>{Math.round((recorderState.durationMillis ?? 0) / 1000)}s</Text>
         </View>
       ) : null}
@@ -312,13 +437,16 @@ export function ChatScreen({
           </Pressable>
         ) : (
           <Pressable
-            delayLongPress={180}
             disabled={isSending}
-            onLongPress={startRecording}
-            onPressOut={stopRecording}
-            style={[styles.micButton, isRecording && styles.micButtonActive]}
+            hitSlop={8}
+            style={[
+              styles.micButton,
+              isRecording && styles.micButtonActive,
+              { transform: [{ translateX: dragOffset }, { scale: isRecording ? 1.08 : 1 }] },
+            ]}
+            {...micPanResponder.panHandlers}
           >
-            <Text style={styles.micText}>Mic</Text>
+            <MicGlyph active={isRecording} />
           </Pressable>
         )}
       </View>
@@ -422,10 +550,22 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
   },
-  checkMarks: {
-    color: colors.cyanDark,
-    fontSize: 10,
+  checkMark: {
+    color: '#94a3b8',
+    fontSize: 11,
     fontWeight: '900',
+    lineHeight: 12,
+  },
+  checkMarkRead: {
+    color: '#0ea5e9',
+  },
+  checkMarkSecond: {
+    marginLeft: -5,
+  },
+  readReceipt: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    marginLeft: 1,
   },
   companyAvatar: {
     backgroundColor: '#e0faff',
@@ -538,12 +678,35 @@ const styles = StyleSheet.create({
   },
   micButtonActive: {
     backgroundColor: colors.danger,
-    transform: [{ scale: 1.08 }],
   },
-  micText: {
+  micBase: {
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    height: 3,
+    marginTop: 2,
+    width: 17,
+  },
+  micCapsule: {
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    height: 19,
+    width: 12,
+  },
+  micGlyph: {
+    alignItems: 'center',
+    height: 27,
+    justifyContent: 'center',
+    width: 22,
+  },
+  micGlyphActive: {
     color: colors.white,
-    fontSize: 12,
-    fontWeight: '900',
+  },
+  micStem: {
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    height: 6,
+    marginTop: 1,
+    width: 3,
   },
   recordingBar: {
     alignItems: 'center',

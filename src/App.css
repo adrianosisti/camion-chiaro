@@ -3274,6 +3274,19 @@
   height: 34px;
 }
 
+.chat-audio-download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  color: #075985;
+  background: #e0f2fe;
+  cursor: pointer;
+}
+
 .chat-file-attachment {
   color: #075985;
   text-decoration: none;

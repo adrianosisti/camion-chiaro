@@ -44,6 +44,14 @@ function formatSeverity(value) {
   return 'Media'
 }
 
+function isCheckResolved(check) {
+  return ['resolved', 'archived', 'done', 'closed'].includes(check?.status)
+}
+
+function isCheckCritical(check) {
+  return !isCheckResolved(check) && (!check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
+}
+
 function formatDate(value, language = 'it') {
   if (!value) return ''
   return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
@@ -184,7 +192,6 @@ export function CompanyHomeScreen({
   onRefresh,
   onResolveCheck,
   onResolveFault,
-  resolvedCheckIds = [],
 }) {
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [isResolvingDetail, setIsResolvingDetail] = useState(false)
@@ -196,10 +203,7 @@ export function CompanyHomeScreen({
   const complianceItems = context?.complianceItems ?? []
   const unreadMessages = context?.unreadDriverMessages ?? 0
   const openFaults = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
-  const criticalChecks = checks.filter((check) => (
-    (!check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
-      && !resolvedCheckIds.includes(check.id)
-  ))
+  const criticalChecks = checks.filter(isCheckCritical)
   const activeDeadlines = complianceItems
     .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
     .slice()

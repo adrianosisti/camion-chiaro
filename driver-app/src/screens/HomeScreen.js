@@ -38,6 +38,14 @@ function formatVehicleType(value) {
   return String(value).charAt(0).toUpperCase() + String(value).slice(1)
 }
 
+function isCheckResolved(check) {
+  return ['resolved', 'archived', 'done', 'closed'].includes(check?.status)
+}
+
+function isCheckCritical(check) {
+  return !isCheckResolved(check) && (!check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
+}
+
 function ActionTile({ icon, label, meta, onPress, tone = 'light' }) {
   return (
     <Pressable onPress={onPress} style={[styles.actionTile, tone === 'dark' && styles.actionTileDark]}>
@@ -76,7 +84,7 @@ export function HomeScreen({
   const openFaults = faults.filter((fault) => fault.status !== 'closed')
   const driveableVehicles = vehicles.filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
   const selectedDailyVehicle = driveableVehicles.find((vehicle) => vehicle.id === selectedDailyVehicleId) ?? null
-  const criticalChecks = checks.filter((check) => !check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
+  const criticalChecks = checks.filter(isCheckCritical)
   const latestChecks = checks.slice(0, 3)
   const dailyPhrase = getDailyPhrase(language)
 
@@ -242,7 +250,7 @@ export function HomeScreen({
       >
         {latestChecks.map((check) => (
           <View key={check.id} style={styles.listRow}>
-            <View style={[styles.statusDot, (!check.lightsOk || !check.tiresOk || !check.documentsOnBoard) && styles.statusDotDanger]} />
+            <View style={[styles.statusDot, isCheckCritical(check) && styles.statusDotDanger]} />
             <View style={styles.listCopy}>
               <Text style={styles.listTitle}>{check.odometerKm ? `${check.odometerKm} km` : 'Check mattutino'}</Text>
               <Text style={styles.listMeta}>{formatDate(check.createdAt, language)}</Text>

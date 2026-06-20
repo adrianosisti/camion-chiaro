@@ -46,6 +46,7 @@ import {
   subscribeToDriverPresence,
   updateChatMessageReaction,
   updateFaultReportStatus,
+  updateVehicleCheckStatus,
   uploadDriverDocumentFile,
   uploadDriverProfileImage,
 } from './src/services/driverApi'
@@ -67,10 +68,6 @@ function getDailyVehicleStorageKey(driverId) {
 
 function getDriverChatReadStorageKey(driverId) {
   return `camion-chiaro-driver-chat-read:${driverId}`
-}
-
-function getCompanyResolvedChecksStorageKey(companyId) {
-  return `camion-chiaro-company-resolved-checks:${companyId}`
 }
 
 const driverTabs = [
@@ -166,7 +163,6 @@ export default function App() {
   const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
-  const [resolvedCompanyCheckIds, setResolvedCompanyCheckIds] = useState([])
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
   const [selectedDailyVehicleId, setSelectedDailyVehicleId] = useState('')
@@ -594,34 +590,6 @@ export default function App() {
   }, [accountType, activeTab, selectedCompanyDriver?.id])
 
   useEffect(() => {
-    const companyId = companyContext?.companyProfile?.id
-    if (accountType !== 'company' || !companyId) {
-      setResolvedCompanyCheckIds([])
-      return undefined
-    }
-
-    let isActive = true
-
-    async function loadResolvedChecks() {
-      const storedValue = await AsyncStorage.getItem(getCompanyResolvedChecksStorageKey(companyId))
-      if (!isActive) return
-
-      try {
-        const parsedValue = JSON.parse(storedValue || '[]')
-        setResolvedCompanyCheckIds(Array.isArray(parsedValue) ? parsedValue.filter(Boolean) : [])
-      } catch {
-        setResolvedCompanyCheckIds([])
-      }
-    }
-
-    void loadResolvedChecks()
-
-    return () => {
-      isActive = false
-    }
-  }, [accountType, companyContext?.companyProfile?.id])
-
-  useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
 
     const presence = subscribeToDriverPresence({
@@ -684,7 +652,6 @@ export default function App() {
     setIsCompanyOnline(false)
     setIsCompanyTyping(false)
     setLogoUrl('')
-    setResolvedCompanyCheckIds([])
     setSelectedCompanyDriverId('')
     setSelectedDailyVehicleId('')
     setSession(null)
@@ -1035,12 +1002,27 @@ export default function App() {
   }
 
   async function handleResolveCompanyCheck(checkId) {
-    const companyId = companyContext?.companyProfile?.id
-    if (!companyId || !checkId) return false
+    if (!checkId) return false
 
-    const nextIds = Array.from(new Set([...resolvedCompanyCheckIds, checkId]))
-    setResolvedCompanyCheckIds(nextIds)
-    await AsyncStorage.setItem(getCompanyResolvedChecksStorageKey(companyId), JSON.stringify(nextIds))
+    const result = await updateVehicleCheckStatus(checkId, 'resolved')
+
+    if (result.error) {
+      Alert.alert('Check non risolto', result.error.message)
+      return false
+    }
+
+    setCompanyContext((currentContext) => {
+      if (!currentContext) return currentContext
+      const updatedCheck = result.data
+
+      return {
+        ...currentContext,
+        vehicleChecks: currentContext.vehicleChecks.map((check) => (
+          check.id === checkId ? { ...check, ...(updatedCheck ?? {}), status: 'resolved' } : check
+        )),
+      }
+    })
+
     return true
   }
 
@@ -1115,7 +1097,6 @@ export default function App() {
           onRefresh={() => loadCompanyData()}
           onResolveCheck={handleResolveCompanyCheck}
           onResolveFault={handleResolveCompanyFault}
-          resolvedCheckIds={resolvedCompanyCheckIds}
         />
       )
     }
@@ -1222,7 +1203,6 @@ export default function App() {
     language,
     logoUrl,
     managementInitialSection,
-    resolvedCompanyCheckIds,
     selectedCompanyDriver,
     selectedCompanyDriverId,
     selectedDailyVehicleId,

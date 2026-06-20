@@ -109,10 +109,39 @@ function mapVehicleCheck(row) {
     lightsOk: row.lights_ok,
     notes: row.notes ?? '',
     odometerKm: row.odometer_km,
+    resolvedAt: row.resolved_at ?? '',
     semitrailerId: row.semitrailer_id,
+    status: row.status ?? 'open',
     tiresOk: row.tires_ok,
     tractorId: row.tractor_id,
   }
+}
+
+const vehicleCheckSelect =
+  'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, status, resolved_at, created_at'
+const vehicleCheckLegacySelect =
+  'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, created_at'
+
+async function fetchVehicleChecks(serviceClient, companyId, driverId) {
+  let result = await serviceClient
+    .from('vehicle_checks')
+    .select(vehicleCheckSelect)
+    .eq('company_id', companyId)
+    .eq('driver_id', driverId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (result.error?.code === '42703') {
+    result = await serviceClient
+      .from('vehicle_checks')
+      .select(vehicleCheckLegacySelect)
+      .eq('company_id', companyId)
+      .eq('driver_id', driverId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+  }
+
+  return result
 }
 
 function mapFaultReport(row) {
@@ -244,13 +273,7 @@ async function fetchDriverContext(serviceClient, driver) {
       .eq('driver_id', driver.id)
       .eq('visible_to_driver', true)
       .order('expires_at', { ascending: true, nullsFirst: false }),
-    serviceClient
-      .from('vehicle_checks')
-      .select('id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, created_at')
-      .eq('company_id', driver.company_id)
-      .eq('driver_id', driver.id)
-      .order('created_at', { ascending: false })
-      .limit(50),
+    fetchVehicleChecks(serviceClient, driver.company_id, driver.id),
     serviceClient
       .from('fault_reports')
       .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')

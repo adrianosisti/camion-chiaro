@@ -56,6 +56,8 @@ export function mapVehicleCheck(row = {}) {
     notes: row.notes ?? '',
     odometerKm: row.odometer_km ?? row.odometerKm ?? 0,
     semitrailerId: row.semitrailer_id ?? row.semitrailerId ?? '',
+    resolvedAt: row.resolved_at ?? row.resolvedAt ?? '',
+    status: row.status ?? 'open',
     tiresOk: row.tires_ok ?? row.tiresOk ?? false,
     tractorId: row.tractor_id ?? row.tractorId ?? '',
   }

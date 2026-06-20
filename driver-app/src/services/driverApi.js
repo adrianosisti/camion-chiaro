@@ -37,6 +37,10 @@ const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
 const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
+const vehicleCheckSelect =
+  'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, status, resolved_at, created_at'
+const vehicleCheckLegacySelect =
+  'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, created_at'
 
 function mapCompanyProfile(row = {}) {
   return {
@@ -132,6 +136,48 @@ async function registerCompanyStorageFile({
     target_document_id: null,
     target_driver_id: null,
   })
+}
+
+async function fetchVehicleChecksForDriver(companyId, driverId, limit = 50) {
+  let result = await supabase
+    .from('vehicle_checks')
+    .select(vehicleCheckSelect)
+    .eq('company_id', companyId)
+    .eq('driver_id', driverId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (result.error?.code === '42703') {
+    result = await supabase
+      .from('vehicle_checks')
+      .select(vehicleCheckLegacySelect)
+      .eq('company_id', companyId)
+      .eq('driver_id', driverId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+  }
+
+  return result
+}
+
+async function fetchVehicleChecksForCompany(companyId, limit = 30) {
+  let result = await supabase
+    .from('vehicle_checks')
+    .select(vehicleCheckSelect)
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (result.error?.code === '42703') {
+    result = await supabase
+      .from('vehicle_checks')
+      .select(vehicleCheckLegacySelect)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+  }
+
+  return result
 }
 
 export async function getCurrentSession() {
@@ -297,13 +343,7 @@ async function fetchDriverContextDirect() {
       .eq('driver_id', driver.id)
       .eq('visible_to_driver', true)
       .order('expires_at', { ascending: true, nullsFirst: false }),
-    supabase
-      .from('vehicle_checks')
-      .select('id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, created_at')
-      .eq('company_id', driver.company_id)
-      .eq('driver_id', driver.id)
-      .order('created_at', { ascending: false })
-      .limit(50),
+    fetchVehicleChecksForDriver(driver.company_id, driver.id, 50),
     supabase
       .from('fault_reports')
       .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
@@ -400,12 +440,7 @@ export async function fetchCompanyContext() {
       .select('id, driver_id, type, document_number, expires_at, file_path, status, visible_to_driver')
       .eq('company_id', companyId)
       .order('expires_at', { ascending: true, nullsFirst: false }),
-    supabase
-      .from('vehicle_checks')
-      .select('id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, created_at')
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false })
-      .limit(30),
+    fetchVehicleChecksForCompany(companyId, 30),
     supabase
       .from('fault_reports')
       .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
@@ -816,6 +851,34 @@ export async function updateFaultReportStatus(reportId, status) {
     .single()
 
   return { data: data ? mapFaultReport(data) : null, error }
+}
+
+export async function updateVehicleCheckStatus(checkId, status) {
+  if (!isSupabaseConfigured || !checkId) return { data: null, error: null }
+
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id ?? null
+  const payload = {
+    status,
+    resolved_at: status === 'resolved' ? new Date().toISOString() : null,
+    resolved_by: status === 'resolved' ? userId : null,
+  }
+
+  const { data, error } = await supabase
+    .from('vehicle_checks')
+    .update(payload)
+    .eq('id', checkId)
+    .select(vehicleCheckSelect)
+    .single()
+
+  if (error?.code === '42703') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL stato check. Esegui il file 29_stato_check_risolti.sql in Supabase.' },
+    }
+  }
+
+  return { data: data ? mapVehicleCheck(data) : null, error }
 }
 
 export function subscribeToDriverChatMessages({ companyId, onMessage }) {

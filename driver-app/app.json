@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Camion Chiaro Autisti",
+    "slug": "camion-chiaro-driver",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "camionchiaro-driver",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "it.camionchiaro.driver",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Camion Chiaro usa la fotocamera per caricare documenti, guasti e allegati chat.",
+        "NSMicrophoneUsageDescription": "Camion Chiaro usa il microfono per inviare messaggi vocali in chat.",
+        "NSPhotoLibraryUsageDescription": "Camion Chiaro usa la galleria per allegare foto, video e documenti."
+      }
+    },
+    "android": {
+      "package": "it.camionchiaro.driver",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-document-picker",
+      "expo-image-picker",
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "camion-chiaro-driver-local"
+      }
+    }
+  }
+}

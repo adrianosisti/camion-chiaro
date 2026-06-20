@@ -1,0 +1,31 @@
+{
+  "name": "camion-chiaro-driver-app",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "start": "expo start",
+    "start:tunnel": "expo start --tunnel"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "latest",
+    "@supabase/supabase-js": "^2.108.2",
+    "expo": "~56.0.0",
+    "expo-constants": "latest",
+    "expo-device": "latest",
+    "expo-document-picker": "latest",
+    "expo-file-system": "latest",
+    "expo-haptics": "latest",
+    "expo-image-picker": "latest",
+    "expo-notifications": "latest",
+    "expo-status-bar": "latest",
+    "react": "19.2.3",
+    "react-native": "0.85.0",
+    "react-native-url-polyfill": "latest"
+  },
+  "devDependencies": {
+    "@babel/core": "latest"
+  }
+}

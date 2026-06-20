@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env
+driver-app/.expo/
 royalty_free_tropical_dance_fl/
 global_hit_dance_126_fl/
 src/assets/hero.png

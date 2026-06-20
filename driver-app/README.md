@@ -43,13 +43,13 @@ La build vera, invece, si installa sul telefono e funziona anche fuori casa con 
 1. Accedi a Expo dal terminale:
 
 ```bash
-npx eas login
+npx eas-cli login
 ```
 
 2. Collega il progetto al tuo account Expo:
 
 ```bash
-npx eas init
+npx eas-cli init
 ```
 
 Questo comando inserira in `app.json` il vero `projectId` Expo.

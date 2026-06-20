@@ -269,7 +269,7 @@ export async function fetchCompanyContext() {
     faultsResult,
     complianceResult,
     unreadMessagesResult,
-    chatThreadsForUnreadResult,
+    chatThreadsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -320,8 +320,10 @@ export async function fetchCompanyContext() {
       .is('read_by_company_at', null),
     supabase
       .from('chat_threads')
-      .select('id, driver_id')
-      .eq('company_id', companyId),
+      .select(chatThreadSelect)
+      .eq('company_id', companyId)
+      .eq('context_type', 'general')
+      .order('last_message_at', { ascending: false, nullsFirst: false }),
   ])
 
   const firstError = [
@@ -333,13 +335,13 @@ export async function fetchCompanyContext() {
     faultsResult.error,
     complianceResult.error,
     unreadMessagesResult.error,
-    chatThreadsForUnreadResult.error,
+    chatThreadsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
 
   const driverIdByThreadId = new Map(
-    (chatThreadsForUnreadResult.data ?? []).map((thread) => [thread.id, thread.driver_id]),
+    (chatThreadsResult.data ?? []).map((thread) => [thread.id, thread.driver_id]),
   )
   const unreadDriverMessagesByDriverId = (unreadMessagesResult.data ?? []).reduce((counts, message) => {
     const driverId = driverIdByThreadId.get(message.thread_id)
@@ -353,6 +355,7 @@ export async function fetchCompanyContext() {
   return {
     data: {
       companyProfile: mapCompanyProfile(companyResult.data),
+      chatThreads: (chatThreadsResult.data ?? []).map(mapChatThread),
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
       documents: (documentsResult.data ?? []).map(mapDriverDocument),
       drivers: (driversResult.data ?? []).map(mapDriver),

@@ -543,6 +543,24 @@ export default function App() {
     if (result.data?.thread && !companyChatThread) setCompanyChatThread(result.data.thread)
     if (result.data?.message) {
       setCompanyChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
+      setCompanyContext((currentContext) => {
+        if (!currentContext || !result.data?.thread) return currentContext
+
+        const nextThread = {
+          ...result.data.thread,
+          driverId: selectedCompanyDriver.id,
+          lastMessageAt: result.data.message.createdAt,
+        }
+        const currentThreads = currentContext.chatThreads ?? []
+        const hasThread = currentThreads.some((thread) => thread.id === nextThread.id)
+
+        return {
+          ...currentContext,
+          chatThreads: hasThread
+            ? currentThreads.map((thread) => (thread.id === nextThread.id ? { ...thread, ...nextThread } : thread))
+            : [nextThread, ...currentThreads],
+        }
+      })
     }
 
     return true
@@ -776,6 +794,7 @@ export default function App() {
           <CompanyChatScreen
             companyLogoUrl={logoUrl}
             companyName={companyName}
+            chatThreads={companyContext?.chatThreads ?? []}
             driverPhotoUrls={companyDriverPhotoUrls}
             drivers={companyContext?.drivers ?? []}
             isLoading={isRefreshing}

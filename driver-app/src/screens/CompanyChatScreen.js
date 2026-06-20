@@ -1,4 +1,6 @@
+import { useMemo, useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { ChatScreen } from './ChatScreen'
 import { colors, layout } from '../theme'
 
@@ -20,6 +22,7 @@ function DriverAvatar({ name, uri }) {
 }
 
 export function CompanyChatScreen({
+  chatThreads = [],
   companyLogoUrl,
   companyName,
   driverPhotoUrls = {},
@@ -35,14 +38,40 @@ export function CompanyChatScreen({
   soundEnabled = true,
   unreadByDriverId = {},
 }) {
+  const [isStartingNewChat, setIsStartingNewChat] = useState(false)
+  const threadByDriverId = useMemo(
+    () => new Map(chatThreads.map((thread) => [thread.driverId, thread])),
+    [chatThreads],
+  )
+  const conversationDrivers = useMemo(
+    () => drivers
+      .filter((driver) => {
+        const thread = threadByDriverId.get(driver.id)
+        return Boolean(thread?.lastMessageAt || unreadByDriverId[driver.id])
+      })
+      .sort((firstDriver, secondDriver) => {
+        const firstThread = threadByDriverId.get(firstDriver.id)
+        const secondThread = threadByDriverId.get(secondDriver.id)
+        return new Date(secondThread?.lastMessageAt || 0) - new Date(firstThread?.lastMessageAt || 0)
+      }),
+    [drivers, threadByDriverId, unreadByDriverId],
+  )
+  const visibleDrivers = isStartingNewChat ? drivers : conversationDrivers
+
   if (selectedDriver) {
     const driverPhotoUrl = driverPhotoUrls[selectedDriver.id] ?? ''
 
     return (
       <View style={styles.chatWrap}>
         <View style={styles.selectedBar}>
-          <Pressable onPress={onBackToDrivers} style={styles.backButton}>
-            <Text style={styles.backText}>Autisti</Text>
+          <Pressable
+            onPress={() => {
+              setIsStartingNewChat(false)
+              onBackToDrivers?.()
+            }}
+            style={styles.backButton}
+          >
+            <Text style={styles.backText}>Chat</Text>
           </Pressable>
           <Text numberOfLines={1} style={styles.selectedTitle}>{selectedDriver.name}</Text>
         </View>
@@ -69,33 +98,68 @@ export function CompanyChatScreen({
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Chat autisti</Text>
-        <Text style={styles.heroText}>Apri una conversazione per scrivere, vedere media e rispondere ai messaggi.</Text>
+        <Text style={styles.heroText}>
+          {isStartingNewChat
+            ? 'Scegli un autista dall anagrafica e avvia la conversazione.'
+            : 'Qui trovi solo le conversazioni con messaggi gia presenti.'}
+        </Text>
+        <View style={styles.heroActions}>
+          <Pressable
+            onPress={() => setIsStartingNewChat((currentValue) => !currentValue)}
+            style={[styles.newChatButton, isStartingNewChat && styles.newChatButtonActive]}
+          >
+            <Ionicons color={isStartingNewChat ? colors.white : colors.ink} name={isStartingNewChat ? 'chatbubbles-outline' : 'add-circle-outline'} size={18} />
+            <Text style={[styles.newChatText, isStartingNewChat && styles.newChatTextActive]}>
+              {isStartingNewChat ? 'Conversazioni' : 'Nuova chat'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
-      {drivers.map((driver) => (
+      {visibleDrivers.map((driver) => (
         <DriverChatRow
           driver={driver}
           key={driver.id}
-          onPress={() => onSelectDriver?.(driver)}
+          lastMessageAt={threadByDriverId.get(driver.id)?.lastMessageAt}
+          onPress={() => {
+            setIsStartingNewChat(false)
+            onSelectDriver?.(driver)
+          }}
           photoUrl={driverPhotoUrls[driver.id]}
           unreadCount={unreadByDriverId[driver.id] ?? 0}
         />
       ))}
 
-      {!drivers.length ? (
-        <Text style={styles.emptyText}>{isLoading ? 'Carico autisti...' : 'Nessun autista presente.'}</Text>
+      {!visibleDrivers.length ? (
+        <Text style={styles.emptyText}>
+          {isLoading
+            ? 'Carico chat...'
+            : isStartingNewChat
+              ? 'Nessun autista in anagrafica.'
+              : 'Nessuna conversazione presente. Premi Nuova chat per scrivere a un autista.'}
+        </Text>
       ) : null}
     </ScrollView>
   )
 }
 
-function DriverChatRow({ driver, onPress, photoUrl, unreadCount = 0 }) {
+function formatLastMessageDate(value) {
+  if (!value) return 'Nessun messaggio'
+  return new Intl.DateTimeFormat('it-IT', {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: '2-digit',
+  }).format(new Date(value))
+}
+
+function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount = 0 }) {
   return (
     <Pressable onPress={onPress} style={styles.driverRow}>
       <DriverAvatar name={driver.name} uri={photoUrl} />
       <View style={styles.driverCopy}>
         <Text style={styles.driverName}>{driver.name}</Text>
-        <Text style={styles.driverMeta}>{driver.role || 'Autista'} · {driver.phone || driver.username}</Text>
+        <Text style={styles.driverMeta}>{driver.role || 'Autista'} · {formatLastMessageDate(lastMessageAt)}</Text>
       </View>
       {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Text style={styles.openText}>Apri</Text>}
     </Pressable>
@@ -187,6 +251,30 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 22,
     fontWeight: '900',
+  },
+  heroActions: {
+    alignItems: 'flex-start',
+    marginTop: 14,
+  },
+  newChatButton: {
+    alignItems: 'center',
+    backgroundColor: colors.cyan,
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 38,
+    paddingHorizontal: 12,
+  },
+  newChatButtonActive: {
+    backgroundColor: '#123047',
+  },
+  newChatText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  newChatTextActive: {
+    color: colors.white,
   },
   openText: {
     color: colors.cyanDark,

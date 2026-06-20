@@ -905,6 +905,58 @@ export function subscribeToDriverChatMessages({ companyId, onMessage }) {
   }
 }
 
+export function subscribeToOperationalUpdates({ companyId, driverId, handlers = {} }) {
+  if (!isSupabaseConfigured || !companyId) return () => {}
+
+  function shouldNotifyDriver(row) {
+    return !driverId || row?.driver_id === driverId
+  }
+
+  function handleVehicleCheck(payload) {
+    const row = payload.new
+    if (!row || !shouldNotifyDriver(row)) return
+    const check = mapVehicleCheck(row)
+    handlers.onVehicleCheck?.(check, payload)
+    handlers.onChange?.({ item: check, payload, type: 'vehicle_check' })
+  }
+
+  function handleFaultReport(payload) {
+    const row = payload.new
+    if (!row || !shouldNotifyDriver(row)) return
+    const fault = mapFaultReport(row)
+    handlers.onFaultReport?.(fault, payload)
+    handlers.onChange?.({ item: fault, payload, type: 'fault_report' })
+  }
+
+  const channel = supabase
+    .channel(`operations-${companyId}-${driverId || 'company'}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'vehicle_checks',
+      },
+      handleVehicleCheck,
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'fault_reports',
+      },
+      handleFaultReport,
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
 export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
   if (!isSupabaseConfigured || !companyId || !actor?.actorId) {
     return {

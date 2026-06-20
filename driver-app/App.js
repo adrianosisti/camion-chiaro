@@ -43,6 +43,7 @@ import {
   sendCompanyChatMessage,
   signOutDriver,
   subscribeToDriverChatMessages,
+  subscribeToOperationalUpdates,
   subscribeToDriverPresence,
   updateChatMessageReaction,
   updateFaultReportStatus,
@@ -508,6 +509,31 @@ export default function App() {
   }, [accountType, activeTab, driver?.companyId, driver?.id])
 
   useEffect(() => {
+    if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
+
+    let refreshTimer = null
+    function scheduleRefresh() {
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        void loadDriverData({ silent: true })
+      }, 450)
+    }
+
+    const unsubscribe = subscribeToOperationalUpdates({
+      companyId: driver.companyId,
+      driverId: driver.id,
+      handlers: {
+        onChange: scheduleRefresh,
+      },
+    })
+
+    return () => {
+      unsubscribe?.()
+      if (refreshTimer) clearTimeout(refreshTimer)
+    }
+  }, [accountType, driver?.companyId, driver?.id])
+
+  useEffect(() => {
     const companyId = companyContext?.companyProfile?.id
     if (accountType !== 'company' || !companyId) return undefined
 
@@ -538,6 +564,31 @@ export default function App() {
       unsubscribe?.()
     }
   }, [accountType, activeTab, companyChatThread?.id, companyContext?.companyProfile?.id, selectedCompanyDriverId])
+
+  useEffect(() => {
+    const companyId = companyContext?.companyProfile?.id
+    if (accountType !== 'company' || !companyId) return undefined
+
+    let refreshTimer = null
+    function scheduleRefresh() {
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        void loadCompanyData({ silent: true })
+      }, 450)
+    }
+
+    const unsubscribe = subscribeToOperationalUpdates({
+      companyId,
+      handlers: {
+        onChange: scheduleRefresh,
+      },
+    })
+
+    return () => {
+      unsubscribe?.()
+      if (refreshTimer) clearTimeout(refreshTimer)
+    }
+  }, [accountType, companyContext?.companyProfile?.id])
 
   useEffect(() => {
     if (accountType !== 'driver' || activeTab !== 'chat' || !driver?.companyId || !driver?.id) return

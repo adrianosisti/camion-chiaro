@@ -866,8 +866,8 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.shell}>
-      <ExpoStatusBar style="dark" />
-      <StatusBar barStyle="dark-content" />
+      <ExpoStatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <View style={styles.headerIdentity}>
           <View style={styles.headerLogo}>
@@ -903,7 +903,7 @@ export default function App() {
               style={[styles.tabButton, isActive && styles.tabButtonActive]}
             >
               <Ionicons
-                color={isActive ? colors.ink : colors.muted}
+                color={isActive ? colors.ink : '#cbd5e1'}
                 name={tab.icon}
                 size={22}
               />
@@ -928,6 +928,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   content: {
+    backgroundColor: colors.background,
     flex: 1,
   },
   driverName: {
@@ -994,7 +995,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   shell: {
-    backgroundColor: colors.background,
+    backgroundColor: '#07111f',
     flex: 1,
   },
   statusText: {
@@ -1018,17 +1019,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tabBar: {
-    backgroundColor: colors.white,
-    borderTopColor: colors.line,
+    backgroundColor: '#07111f',
+    borderTopColor: 'rgba(18, 198, 223, 0.32)',
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: 8,
-    padding: 10,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
   tabButton: {
     alignItems: 'center',
-    backgroundColor: '#f8fbff',
-    borderColor: colors.line,
+    backgroundColor: '#101b2d',
+    borderColor: 'rgba(148, 163, 184, 0.2)',
     borderWidth: 1,
     borderRadius: 16,
     flex: 1,
@@ -1036,7 +1039,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   tabButtonActive: {
-    backgroundColor: '#a7f3ff',
-    borderColor: colors.ink,
+    backgroundColor: colors.cyan,
+    borderColor: '#a7f3ff',
   },
 })

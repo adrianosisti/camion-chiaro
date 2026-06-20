@@ -1,0 +1,9 @@
+node_modules
+.expo
+dist
+*.log
+.env
+.env.*
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*

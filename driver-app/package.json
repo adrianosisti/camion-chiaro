@@ -5,8 +5,12 @@
   "main": "index.js",
   "scripts": {
     "android": "expo run:android",
+    "build:android:preview": "npx eas build --platform android --profile preview",
+    "build:ios:preview": "npx eas build --platform ios --profile preview",
+    "build:preview": "npx eas build --platform all --profile preview",
     "ios": "expo run:ios",
     "start": "expo start",
+    "start:clear": "expo start --clear",
     "start:tunnel": "expo start --tunnel"
   },
   "dependencies": {

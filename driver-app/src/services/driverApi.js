@@ -201,10 +201,7 @@ export async function getSessionAccountType() {
 export async function fetchDriverContext() {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!apiBaseUrl) {
-    return {
-      data: null,
-      error: { message: 'Configura EXPO_PUBLIC_API_BASE_URL con il sito Netlify.' },
-    }
+    return fetchDriverContextDirect()
   }
 
   const token = await getAccessToken()
@@ -223,15 +220,125 @@ export async function fetchDriverContext() {
     const payload = await response.json()
 
     if (!response.ok) {
-      return { data: null, error: { message: payload.error ?? 'Dati autista non disponibili.' } }
+      const fallbackResult = await fetchDriverContextDirect()
+      if (fallbackResult.data) return fallbackResult
+      return { data: null, error: { message: payload.error ?? fallbackResult.error?.message ?? 'Dati autista non disponibili.' } }
     }
 
     return { data: mapDriverContext(payload), error: null }
   } catch {
+    const fallbackResult = await fetchDriverContextDirect()
+    if (fallbackResult.data) return fallbackResult
+
     return {
       data: null,
-      error: { message: 'Connessione al server Camion Chiaro non riuscita.' },
+      error: { message: fallbackResult.error?.message ?? 'Connessione al server Camion Chiaro non riuscita.' },
     }
+  }
+}
+
+async function fetchDriverContextDirect() {
+  if (!isSupabaseConfigured) return notConfiguredError()
+
+  const sessionResult = await supabase.auth.getSession()
+  const user = sessionResult.data?.session?.user
+
+  if (!user?.id) {
+    return { data: null, error: { message: 'Sessione autista scaduta. Fai login.' } }
+  }
+
+  const driverResult = await supabase
+    .from('drivers')
+    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+    .eq('user_id', user.id)
+    .neq('status', 'archived')
+    .limit(1)
+    .maybeSingle()
+
+  if (driverResult.error) return { data: null, error: driverResult.error }
+  if (!driverResult.data) {
+    return {
+      data: null,
+      error: { message: 'Autista non collegato. Apri l anagrafica azienda e controlla che l account autista sia attivo.' },
+    }
+  }
+
+  const driver = driverResult.data
+  const [
+    companyResult,
+    vehiclesResult,
+    complianceResult,
+    documentsResult,
+    checksResult,
+    faultsResult,
+  ] = await Promise.all([
+    supabase
+      .from('companies')
+      .select('id, name, vat_number, headquarters, logo_path')
+      .eq('id', driver.company_id)
+      .maybeSingle(),
+    supabase
+      .from('vehicles')
+      .select('id, plate, model, type, fleet_type, km, status')
+      .eq('company_id', driver.company_id)
+      .neq('status', 'archived')
+      .order('plate', { ascending: true }),
+    supabase
+      .from('compliance_items')
+      .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status')
+      .eq('company_id', driver.company_id)
+      .eq('driver_id', driver.id)
+      .neq('status', 'archived')
+      .order('due_date', { ascending: true }),
+    supabase
+      .from('driver_documents')
+      .select('id, driver_id, type, document_number, expires_at, file_path, status, visible_to_driver')
+      .eq('company_id', driver.company_id)
+      .eq('driver_id', driver.id)
+      .eq('visible_to_driver', true)
+      .order('expires_at', { ascending: true, nullsFirst: false }),
+    supabase
+      .from('vehicle_checks')
+      .select('id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, created_at')
+      .eq('company_id', driver.company_id)
+      .eq('driver_id', driver.id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    supabase
+      .from('fault_reports')
+      .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
+      .eq('company_id', driver.company_id)
+      .eq('driver_id', driver.id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+  ])
+
+  const firstError = [
+    vehiclesResult.error,
+    complianceResult.error,
+    documentsResult.error,
+    checksResult.error,
+    faultsResult.error,
+  ].find(Boolean)
+
+  if (firstError) return { data: null, error: firstError }
+
+  const companyProfile = companyResult.data
+    ? mapCompanyProfile(companyResult.data)
+    : { id: driver.company_id, logoPath: '', name: 'Azienda' }
+
+  return {
+    data: mapDriverContext({
+      companyId: driver.company_id,
+      companyProfile,
+      complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
+      documents: documentsResult.data ?? [],
+      drivers: [driver],
+      faultReports: faultsResult.data ?? [],
+      vehicleChecks: checksResult.data ?? [],
+      vehicles: vehiclesResult.data ?? [],
+    }),
+    error: null,
   }
 }
 

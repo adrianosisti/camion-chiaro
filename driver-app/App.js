@@ -130,6 +130,7 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
+  const [managementInitialSection, setManagementInitialSection] = useState('drivers')
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
   const [settingsReady, setSettingsReady] = useState(false)
@@ -763,6 +764,11 @@ export default function App() {
     return result.data
   }
 
+  function openCompanyManagement(section = 'drivers') {
+    setManagementInitialSection(section)
+    setActiveTab('manage')
+  }
+
   const activeScreen = useMemo(() => {
     if (accountType === 'company') {
       if (activeTab === 'chat') {
@@ -808,6 +814,7 @@ export default function App() {
         return (
           <CompanyManagementScreen
             context={companyContext}
+            initialSection={managementInitialSection}
             onCreateDeadline={handleCreateCompanyDeadline}
             onCreateDriver={handleCreateCompanyDriver}
             onCreateVehicle={handleCreateCompanyVehicle}
@@ -820,7 +827,7 @@ export default function App() {
           context={companyContext}
           isRefreshing={isRefreshing}
           logoUrl={logoUrl}
-          onOpenManagement={() => setActiveTab('manage')}
+          onOpenManagement={openCompanyManagement}
           onOpenSettings={() => setActiveTab('settings')}
           onRefresh={() => loadCompanyData()}
         />
@@ -917,6 +924,7 @@ export default function App() {
     isRefreshing,
     language,
     logoUrl,
+    managementInitialSection,
     selectedCompanyDriver,
     selectedCompanyDriverId,
   ])

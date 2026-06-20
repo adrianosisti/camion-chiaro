@@ -21,6 +21,37 @@ function getVehiclePlate(vehicles, vehicleId) {
   return vehicles.find((vehicle) => vehicle.id === vehicleId)?.plate ?? 'Mezzo'
 }
 
+function formatDate(value) {
+  if (!value) return ''
+  return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
+}
+
+function getDeadlineDays(value) {
+  if (!value) return 9999
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.ceil((new Date(value) - today) / 86400000)
+}
+
+function getDeadlineTone(item) {
+  const days = getDeadlineDays(item.dueDate)
+  if (days < 0) return 'danger'
+  if (days <= 30) return 'warning'
+  return 'info'
+}
+
+function getDeadlineMeta(item, drivers, vehicles) {
+  const subject = item.scope === 'driver'
+    ? getDriverName(drivers, item.driverId)
+    : item.scope === 'vehicle'
+      ? getVehiclePlate(vehicles, item.vehicleId)
+      : 'Azienda'
+  const days = getDeadlineDays(item.dueDate)
+  const when = days < 0 ? `${Math.abs(days)} gg fa` : days === 0 ? 'oggi' : `tra ${days} gg`
+
+  return `${subject} · ${formatDate(item.dueDate)} · ${when}`
+}
+
 const dailyPhrases = [
   'Una flotta chiara fa lavorare meglio tutti.',
   'Le scadenze viste in tempo costano sempre meno.',
@@ -51,7 +82,14 @@ export function CompanyHomeScreen({
   const unreadMessages = context?.unreadDriverMessages ?? 0
   const openFaults = faults.filter((fault) => fault.status !== 'closed')
   const criticalChecks = checks.filter((check) => !check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
-  const nextDeadlines = complianceItems.filter((item) => item.dueDate).slice(0, 4)
+  const activeDeadlines = complianceItems
+    .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
+    .slice()
+    .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
+  const nextDeadlines = activeDeadlines.slice(0, 5)
+  const hasExpiredDeadlines = activeDeadlines.some((item) => getDeadlineDays(item.dueDate) < 0)
+  const hasSoonDeadlines = activeDeadlines.some((item) => getDeadlineDays(item.dueDate) <= 30)
+  const deadlineTone = hasExpiredDeadlines ? 'danger' : hasSoonDeadlines ? 'warning' : 'info'
   const dailyPhrase = getDailyPhrase()
 
   return (
@@ -72,6 +110,9 @@ export function CompanyHomeScreen({
         <View style={styles.metricRow}>
           <MetricPill label="Guasti" tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
           <MetricPill label="Check critici" tone={criticalChecks.length ? 'danger' : 'success'} value={criticalChecks.length} />
+        </View>
+        <View style={styles.metricRow}>
+          <MetricPill label="Scadenze" onPress={() => onOpenManagement?.('deadlines')} tone={deadlineTone} value={activeDeadlines.length} />
           <MetricPill label="Chat" tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
@@ -80,7 +121,7 @@ export function CompanyHomeScreen({
       <Panel
         kicker="Flotta"
         right={
-          <Pressable onPress={onOpenManagement} style={styles.smallButton}>
+          <Pressable onPress={() => onOpenManagement?.('vehicles')} style={styles.smallButton}>
             <Text style={styles.smallButtonText}>Gestisci</Text>
           </Pressable>
         }
@@ -121,12 +162,24 @@ export function CompanyHomeScreen({
         {!criticalChecks.length ? <Text style={styles.emptyText}>Nessuna criticita nei check recenti.</Text> : null}
       </Panel>
 
-      <Panel kicker="Scadenze" title="Prossime pratiche">
+      <Panel
+        kicker="Scadenze"
+        right={
+          <Pressable onPress={() => onOpenManagement?.('deadlines')} style={styles.smallButton}>
+            <Text style={styles.smallButtonText}>Apri</Text>
+          </Pressable>
+        }
+        title={nextDeadlines.length ? 'Prossime pratiche' : 'Nessuna pratica'}
+      >
         {nextDeadlines.map((item) => (
-          <View key={item.id} style={styles.deadlineRow}>
-            <Text style={styles.deadlineTitle}>{item.type}</Text>
-            <Text style={styles.deadlineDate}>{item.dueDate}</Text>
-          </View>
+          <Pressable key={item.id} onPress={() => onOpenManagement?.('deadlines')} style={styles.deadlineRow}>
+            <View style={[styles.deadlineDot, styles[`${getDeadlineTone(item)}Dot`]]} />
+            <View style={styles.deadlineCopy}>
+              <Text style={styles.deadlineTitle}>{item.type}</Text>
+              <Text style={styles.deadlineMeta}>{getDeadlineMeta(item, drivers, vehicles)}</Text>
+            </View>
+            <Text style={[styles.deadlineDate, styles[`${getDeadlineTone(item)}Text`]]}>{formatDate(item.dueDate)}</Text>
+          </Pressable>
         ))}
         {!nextDeadlines.length ? <Text style={styles.emptyText}>Nessuna scadenza imminente caricata.</Text> : null}
       </Panel>
@@ -180,11 +233,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  deadlineCopy: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  deadlineDot: {
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
+  deadlineMeta: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 3,
+  },
   deadlineRow: {
     alignItems: 'center',
     borderBottomColor: colors.line,
     borderBottomWidth: 1,
     flexDirection: 'row',
+    gap: 10,
     justifyContent: 'space-between',
     paddingVertical: 10,
   },
@@ -244,6 +313,7 @@ const styles = StyleSheet.create({
   metricRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 8,
   },
   settingsButton: {
     backgroundColor: colors.cyan,
@@ -278,5 +348,23 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 10,
     width: 10,
+  },
+  dangerDot: {
+    backgroundColor: colors.danger,
+  },
+  dangerText: {
+    color: colors.danger,
+  },
+  infoDot: {
+    backgroundColor: colors.cyan,
+  },
+  infoText: {
+    color: colors.cyanDark,
+  },
+  warningDot: {
+    backgroundColor: colors.warning,
+  },
+  warningText: {
+    color: colors.warning,
   },
 })

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Ionicons } from '@expo/vector-icons'
@@ -22,6 +22,68 @@ const scopes = [
 function formatDate(value) {
   if (!value) return 'Senza data'
   return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
+}
+
+function getDeadlineDays(value) {
+  if (!value) return 9999
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.ceil((new Date(value) - today) / 86400000)
+}
+
+function getDeadlineTone(item) {
+  const days = getDeadlineDays(item.dueDate)
+  if (days < 0) return 'danger'
+  if (days <= 30) return 'warning'
+  return 'info'
+}
+
+function getDeadlineStatusLabel(item) {
+  const days = getDeadlineDays(item.dueDate)
+  if (days < 0) return `Scaduta da ${Math.abs(days)} gg`
+  if (days === 0) return 'Scade oggi'
+  return `Tra ${days} gg`
+}
+
+function getDeadlineSubject(item, drivers, vehicles) {
+  if (item.scope === 'driver') {
+    return drivers.find((driver) => driver.id === item.driverId)?.name ?? 'Autista'
+  }
+
+  if (item.scope === 'vehicle') {
+    return vehicles.find((vehicle) => vehicle.id === item.vehicleId)?.plate ?? 'Mezzo'
+  }
+
+  return 'Azienda'
+}
+
+function getSortedDeadlines(deadlines) {
+  return deadlines
+    .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
+    .slice()
+    .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
+}
+
+function RelatedDeadlines({ deadlines }) {
+  const visibleDeadlines = getSortedDeadlines(deadlines).slice(0, 4)
+
+  if (!visibleDeadlines.length) {
+    return <Text style={styles.noDeadlinesText}>Nessuna scadenza collegata</Text>
+  }
+
+  return (
+    <View style={styles.deadlineChipList}>
+      {visibleDeadlines.map((item) => {
+        const tone = getDeadlineTone(item)
+        return (
+          <View key={item.id} style={[styles.deadlineChip, styles[`${tone}Chip`]]}>
+            <Text numberOfLines={1} style={styles.deadlineChipTitle}>{item.type}</Text>
+            <Text style={[styles.deadlineChipMeta, styles[`${tone}Text`]]}>{formatDate(item.dueDate)}</Text>
+          </View>
+        )
+      })}
+    </View>
+  )
 }
 
 function Chip({ active, label, onPress }) {
@@ -81,6 +143,7 @@ function AttachmentButton({ file, label, onPress, onRemove }) {
 
 export function CompanyManagementScreen({
   context,
+  initialSection = 'drivers',
   onCreateDeadline,
   onCreateDriver,
   onCreateVehicle,
@@ -88,8 +151,9 @@ export function CompanyManagementScreen({
   const drivers = context?.drivers ?? []
   const vehicles = context?.vehicles ?? []
   const deadlines = context?.complianceItems ?? []
-  const activeVehicles = vehicles.filter((vehicle) => vehicle.status !== 'Archiviato')
+  const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
   const [activeForm, setActiveForm] = useState('driver')
+  const [activeList, setActiveList] = useState(initialSection)
   const [driverForm, setDriverForm] = useState({
     adrDueDate: '',
     depot: '',
@@ -137,7 +201,10 @@ export function CompanyManagementScreen({
     .filter((item) => item.dueDate)
     .slice()
     .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
-    .slice(0, 5)
+
+  useEffect(() => {
+    if (initialSection) setActiveList(initialSection)
+  }, [initialSection])
 
   function updateDriverForm(field, value) {
     setDriverForm((currentForm) => ({ ...currentForm, [field]: value }))
@@ -467,49 +534,73 @@ export function CompanyManagementScreen({
         </Panel>
       ) : null}
 
-      <Panel kicker="Autisti" title="Elenco">
-        {drivers.slice(0, 8).map((driver) => (
-          <View key={driver.id} style={styles.listRow}>
-            <View style={styles.listIcon}>
-              <Ionicons color={colors.cyanDark} name="person-outline" size={18} />
-            </View>
-            <View style={styles.listCopy}>
-              <Text style={styles.listTitle}>{driver.name}</Text>
-              <Text style={styles.listMeta}>{driver.username} · {driver.phone || 'telefono mancante'}</Text>
-            </View>
-          </View>
-        ))}
-        {!drivers.length ? <Text style={styles.emptyText}>Nessun autista presente.</Text> : null}
-      </Panel>
+      <Panel kicker="Archivio" title="Dati azienda">
+        <View style={styles.archiveTabs}>
+          <Chip active={activeList === 'drivers'} label="Autisti" onPress={() => setActiveList('drivers')} />
+          <Chip active={activeList === 'vehicles'} label="Flotta" onPress={() => setActiveList('vehicles')} />
+          <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
+        </View>
 
-      <Panel kicker="Flotta" title="Mezzi">
-        {activeVehicles.slice(0, 8).map((vehicle) => (
-          <View key={vehicle.id} style={styles.listRow}>
-            <View style={styles.listIcon}>
-              <Ionicons color={colors.cyanDark} name="bus-outline" size={18} />
-            </View>
-            <View style={styles.listCopy}>
-              <Text style={styles.listTitle}>{vehicle.plate}</Text>
-              <Text style={styles.listMeta}>{vehicle.model || 'Modello mancante'} · {vehicle.fleetType || 'mezzo'}</Text>
-            </View>
+        {activeList === 'drivers' ? (
+          <View style={styles.archiveList}>
+            {drivers.map((driver) => (
+              <View key={driver.id} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIcon}>
+                    <Ionicons color={colors.cyanDark} name="person-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{driver.name}</Text>
+                    <Text style={styles.listMeta}>{driver.username} · {driver.phone || 'telefono mancante'}</Text>
+                  </View>
+                </View>
+                <RelatedDeadlines deadlines={deadlines.filter((item) => item.driverId === driver.id)} />
+              </View>
+            ))}
+            {!drivers.length ? <Text style={styles.emptyText}>Nessun autista presente.</Text> : null}
           </View>
-        ))}
-        {!activeVehicles.length ? <Text style={styles.emptyText}>Nessun mezzo presente.</Text> : null}
-      </Panel>
+        ) : null}
 
-      <Panel kicker="Scadenze" title="Prossime">
-        {nextDeadlines.map((item) => (
-          <View key={item.id} style={styles.listRow}>
-            <View style={styles.listIcon}>
-              <Ionicons color={colors.cyanDark} name="calendar-outline" size={18} />
-            </View>
-            <View style={styles.listCopy}>
-              <Text style={styles.listTitle}>{item.type}</Text>
-              <Text style={styles.listMeta}>{formatDate(item.dueDate)}</Text>
-            </View>
+        {activeList === 'vehicles' ? (
+          <View style={styles.archiveList}>
+            {activeVehicles.map((vehicle) => (
+              <View key={vehicle.id} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIcon}>
+                    <Ionicons color={colors.cyanDark} name="bus-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{vehicle.plate}</Text>
+                    <Text style={styles.listMeta}>{vehicle.model || 'Modello mancante'} · {vehicle.fleetType || 'mezzo'}</Text>
+                  </View>
+                </View>
+                <RelatedDeadlines deadlines={deadlines.filter((item) => item.vehicleId === vehicle.id)} />
+              </View>
+            ))}
+            {!activeVehicles.length ? <Text style={styles.emptyText}>Nessun mezzo presente.</Text> : null}
           </View>
-        ))}
-        {!nextDeadlines.length ? <Text style={styles.emptyText}>Nessuna scadenza caricata.</Text> : null}
+        ) : null}
+
+        {activeList === 'deadlines' ? (
+          <View style={styles.archiveList}>
+            {nextDeadlines.map((item) => {
+              const tone = getDeadlineTone(item)
+              return (
+                <View key={item.id} style={styles.deadlineRow}>
+                  <View style={[styles.deadlineStatusDot, styles[`${tone}Dot`]]} />
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{item.type}</Text>
+                    <Text style={styles.listMeta}>
+                      {getDeadlineSubject(item, drivers, activeVehicles)} · {formatDate(item.dueDate)} · {getDeadlineStatusLabel(item)}
+                    </Text>
+                    {item.filePath ? <Text style={styles.fileMeta}>Allegato presente</Text> : null}
+                  </View>
+                </View>
+              )
+            })}
+            {!nextDeadlines.length ? <Text style={styles.emptyText}>Nessuna scadenza caricata.</Text> : null}
+          </View>
+        ) : null}
       </Panel>
     </ScrollView>
   )
@@ -547,6 +638,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  archiveList: {
+    gap: 10,
+  },
+  archiveTabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
   chip: {
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
@@ -579,6 +679,52 @@ const styles = StyleSheet.create({
     padding: layout.screenPadding,
     paddingBottom: 28,
   },
+  dangerChip: {
+    backgroundColor: '#fee2e2',
+  },
+  dangerDot: {
+    backgroundColor: colors.danger,
+  },
+  dangerText: {
+    color: colors.danger,
+  },
+  deadlineChip: {
+    borderRadius: 12,
+    minWidth: '46%',
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  deadlineChipList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  deadlineChipMeta: {
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  deadlineChipTitle: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  deadlineRow: {
+    alignItems: 'center',
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  deadlineStatusDot: {
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
   emptyText: {
     color: colors.muted,
     fontSize: 13,
@@ -587,6 +733,12 @@ const styles = StyleSheet.create({
   },
   field: {
     marginBottom: 10,
+  },
+  fileMeta: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 5,
   },
   formTabs: {
     flexDirection: 'row',
@@ -666,6 +818,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
+  infoChip: {
+    backgroundColor: '#e0f2fe',
+  },
+  infoDot: {
+    backgroundColor: colors.cyan,
+  },
+  infoText: {
+    color: colors.cyanDark,
+  },
+  noDeadlinesText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 10,
+  },
+  registryCard: {
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+  },
+  registryHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
   selectorList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -702,5 +881,14 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 19,
     fontWeight: '900',
+  },
+  warningChip: {
+    backgroundColor: '#fef3c7',
+  },
+  warningDot: {
+    backgroundColor: colors.warning,
+  },
+  warningText: {
+    color: colors.warning,
   },
 })

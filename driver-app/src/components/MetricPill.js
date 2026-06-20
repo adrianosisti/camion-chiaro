@@ -1,12 +1,20 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { colors } from '../theme'
 
-export function MetricPill({ label, tone = 'info', value }) {
-  return (
+export function MetricPill({ label, onPress, tone = 'info', value }) {
+  const content = (
     <View style={[styles.pill, styles[tone]]}>
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.label}>{label}</Text>
     </View>
+  )
+
+  if (!onPress) return content
+
+  return (
+    <Pressable onPress={onPress} style={styles.pressable}>
+      {content}
+    </Pressable>
   )
 }
 
@@ -27,6 +35,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 76,
     padding: 12,
+  },
+  pressable: {
+    flex: 1,
   },
   success: {
     backgroundColor: '#dcfce7',

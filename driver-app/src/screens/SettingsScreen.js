@@ -16,10 +16,12 @@ const languages = [
 export function SettingsScreen({
   accountType = 'driver',
   chatSoundEnabled = true,
+  chatDiagnostics = null,
   language = 'it',
   onChatSoundChange,
   onLanguageChange,
   onRefresh,
+  onResetChatBadge,
   onSignOut,
 }) {
   return (
@@ -64,6 +66,19 @@ export function SettingsScreen({
         </View>
       </Panel>
 
+      {accountType === 'driver' ? (
+        <Panel kicker="Chat" title="Diagnostica badge">
+          <Text style={styles.helper}>
+            Badge: {chatDiagnostics?.badgeCount ?? 0} | Non letti raw: {chatDiagnostics?.rawUnreadCount ?? 0} | Messaggi: {chatDiagnostics?.messageCount ?? 0}
+          </Text>
+          <Text style={styles.diagnosticLine}>Ultimo azienda: {chatDiagnostics?.latestCompanyAt || 'nessuno'}</Text>
+          <Text style={styles.diagnosticLine}>Letto fino a: {chatDiagnostics?.readWatermark || 'mai'}</Text>
+          <Text style={styles.diagnosticLine}>Ultimo letto server: {chatDiagnostics?.latestCompanyReadAt || 'vuoto'}</Text>
+          <View style={styles.buttonGap} />
+          <PrimaryButton onPress={onResetChatBadge} title="Reset badge chat" tone="light" />
+        </Panel>
+      ) : null}
+
       <Panel kicker="Sessione" title="Account">
         <PrimaryButton onPress={onRefresh} title="Aggiorna dati" tone="light" />
         <View style={styles.buttonGap} />
@@ -86,6 +101,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
+  },
+  diagnosticLine: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 16,
+    marginTop: 4,
   },
   languageButton: {
     alignItems: 'center',

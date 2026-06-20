@@ -178,6 +178,10 @@ export default function App() {
   const driverName = getDriverName(context)
   const headerSubtitle = accountType === 'company' ? 'Area azienda' : driverName
   const selectedCompanyDriver = companyContext?.drivers?.find((currentDriver) => currentDriver.id === selectedCompanyDriverId) ?? null
+  const rawUnreadDriverMessages = useMemo(
+    () => chatMessages.filter((message) => message.senderRole === 'company' && !message.readByDriverAt),
+    [chatMessages],
+  )
   const unreadCompanyMessages = useMemo(() => {
     if (accountType !== 'driver' || activeTab === 'chat') return 0
     return countUnreadDriverMessages(chatMessages, driverChatReadWatermark)
@@ -186,6 +190,21 @@ export default function App() {
   const chatBadgeCount = accountType === 'company'
     ? unreadDriverMessages
     : activeTab === 'chat' ? 0 : unreadCompanyMessages
+  const driverChatDiagnostics = useMemo(() => {
+    const companyMessages = chatMessages.filter((message) => message.senderRole === 'company')
+    const latestCompanyMessage = companyMessages.reduce((latestMessage, message) => (
+      getMessageTime(message) > getMessageTime(latestMessage) ? message : latestMessage
+    ), null)
+
+    return {
+      badgeCount: unreadCompanyMessages,
+      latestCompanyAt: latestCompanyMessage?.createdAt ?? '',
+      latestCompanyReadAt: latestCompanyMessage?.readByDriverAt ?? '',
+      messageCount: chatMessages.length,
+      rawUnreadCount: rawUnreadDriverMessages.length,
+      readWatermark: driverChatReadWatermark ? new Date(driverChatReadWatermark).toISOString() : '',
+    }
+  }, [chatMessages, driverChatReadWatermark, rawUnreadDriverMessages.length, unreadCompanyMessages])
 
   function clearDriverUnreadMessages(messages = chatMessages) {
     const latestCompanyMessageTime = messages
@@ -198,6 +217,13 @@ export default function App() {
     if (driver?.id) {
       void AsyncStorage.setItem(getDriverChatReadStorageKey(driver.id), String(readWatermark))
     }
+  }
+
+  function markDriverChatReadLocally(messages = chatMessages) {
+    const nextMessages = markMessagesReadLocally(messages, 'driver')
+    clearDriverUnreadMessages(nextMessages)
+    setChatMessages(nextMessages)
+    return nextMessages
   }
 
   async function loadAssetUrls(nextContext) {
@@ -636,6 +662,27 @@ export default function App() {
     return true
   }
 
+  function openDriverChat() {
+    markDriverChatReadLocally()
+    setActiveTab('chat')
+
+    if (driver?.companyId && driver?.id) {
+      void loadDriverChatData(driver, { markAsRead: true })
+    }
+  }
+
+  function resetDriverChatBadge() {
+    markDriverChatReadLocally()
+
+    if (chatThread?.id) {
+      void markChatMessagesRead(chatThread.id, 'driver')
+    }
+
+    if (driver?.companyId && driver?.id) {
+      void loadDriverChatData(driver, { markAsRead: true })
+    }
+  }
+
   async function handleSendChatMessage(body, attachment = null) {
     if (!driver || (!body.trim() && !attachment?.uri)) return false
 
@@ -1045,10 +1092,12 @@ export default function App() {
         <SettingsScreen
           accountType="driver"
           chatSoundEnabled={chatSoundEnabled}
+          chatDiagnostics={driverChatDiagnostics}
           language={language}
           onChatSoundChange={setChatSoundEnabled}
           onLanguageChange={setLanguage}
           onRefresh={() => loadDriverData()}
+          onResetChatBadge={resetDriverChatBadge}
           onSignOut={handleSignOut}
         />
       )
@@ -1061,7 +1110,7 @@ export default function App() {
         driverProfileUrl={driverProfileUrl}
         logoUrl={logoUrl}
         driverName={driverName}
-        onOpenChat={() => setActiveTab('chat')}
+        onOpenChat={openDriverChat}
         onOpenDocuments={() => setActiveTab('documents')}
         onOpenOperations={() => setActiveTab('operations')}
         onOpenSettings={() => setActiveTab('settings')}
@@ -1077,6 +1126,7 @@ export default function App() {
     chatSoundEnabled,
     chatMessages,
     chatThread?.id,
+    driverChatDiagnostics,
     companyContext,
     companyChatMessages,
     companyChatThread?.id,
@@ -1153,7 +1203,14 @@ export default function App() {
             <Pressable
               accessibilityLabel={tab.label}
               key={tab.id}
-              onPress={() => setActiveTab(tab.id)}
+              onPress={() => {
+                if (accountType === 'driver' && tab.id === 'chat') {
+                  openDriverChat()
+                  return
+                }
+
+                setActiveTab(tab.id)
+              }}
               style={[styles.tabButton, isActive && styles.tabButtonActive]}
             >
               <Ionicons

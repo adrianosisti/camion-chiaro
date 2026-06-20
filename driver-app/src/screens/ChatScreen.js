@@ -834,6 +834,10 @@ export function ChatScreen({
     await onReactToMessage?.(message, currentUserRole, nextReaction)
   }
 
+  function closeActionMenu() {
+    setActionMessage(null)
+  }
+
   return (
     <View style={styles.screen}>
       <View style={styles.chatHeader}>
@@ -941,9 +945,9 @@ export function ChatScreen({
         )}
       </View>
 
-      <Modal animationType="fade" transparent visible={Boolean(actionMessage)} onRequestClose={() => setActionMessage(null)}>
-        <Pressable onPress={() => setActionMessage(null)} style={styles.modalBackdrop}>
-          <Pressable style={styles.actionSheet}>
+      <Modal animationType="fade" transparent visible={Boolean(actionMessage)} onRequestClose={closeActionMenu}>
+        <Pressable onPress={closeActionMenu} style={styles.modalBackdrop}>
+          <Pressable onPress={(event) => event?.stopPropagation?.()} style={styles.actionSheet}>
             <Text style={styles.actionTitle}>Messaggio</Text>
             <View style={styles.reactionPicker}>
               {reactionOptions.map((reaction) => (
@@ -962,8 +966,8 @@ export function ChatScreen({
             <Pressable onPress={() => copyMessage(actionMessage)} style={styles.actionRow}>
               <Text style={styles.actionRowText}>Copia</Text>
             </Pressable>
-            <Pressable onPress={() => setActionMessage(null)} style={styles.actionRow}>
-              <Text style={styles.actionRowText}>Annulla</Text>
+            <Pressable hitSlop={8} onPress={closeActionMenu} style={styles.actionRow}>
+              <Text style={styles.actionRowText}>Chiudi</Text>
             </Pressable>
           </Pressable>
         </Pressable>

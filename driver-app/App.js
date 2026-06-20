@@ -134,6 +134,7 @@ export default function App() {
   const [companyContext, setCompanyContext] = useState(null)
   const [companyDriverPhotoUrls, setCompanyDriverPhotoUrls] = useState({})
   const [context, setContext] = useState(null)
+  const [driverUnreadMessages, setDriverUnreadMessages] = useState(0)
   const [driverProfileUrl, setDriverProfileUrl] = useState('')
   const [isBooting, setIsBooting] = useState(true)
   const [isCompanyOnline, setIsCompanyOnline] = useState(false)
@@ -148,6 +149,7 @@ export default function App() {
   const [settingsReady, setSettingsReady] = useState(false)
   const presenceRef = useRef(null)
   const typingTimeoutRef = useRef(null)
+  const activeTabRef = useRef(activeTab)
 
   const driver = context?.drivers?.[0] ?? null
   const visibleTabs = accountType === 'company' ? companyTabs : driverTabs
@@ -158,9 +160,7 @@ export default function App() {
   const driverName = getDriverName(context)
   const headerSubtitle = accountType === 'company' ? 'Area azienda' : driverName
   const selectedCompanyDriver = companyContext?.drivers?.find((currentDriver) => currentDriver.id === selectedCompanyDriverId) ?? null
-  const unreadCompanyMessages = chatMessages.filter(
-    (message) => message.senderRole === 'company' && !message.readByDriverAt,
-  ).length
+  const unreadCompanyMessages = activeTab === 'chat' ? 0 : driverUnreadMessages
   const unreadDriverMessages = companyContext?.unreadDriverMessages ?? 0
   const chatBadgeCount = accountType === 'company'
     ? unreadDriverMessages
@@ -193,6 +193,7 @@ export default function App() {
 
   async function loadDriverChatData(targetDriver = driver, { markAsRead = activeTab === 'chat' } = {}) {
     if (!targetDriver?.companyId || !targetDriver?.id) return false
+    const shouldMarkAsRead = markAsRead || activeTabRef.current === 'chat'
 
     const chatResult = await fetchDriverChat({
       companyId: targetDriver.companyId,
@@ -202,7 +203,7 @@ export default function App() {
     if (chatResult.data) {
       let nextMessages = chatResult.data.messages
 
-      if (markAsRead && chatResult.data.thread?.id) {
+      if (shouldMarkAsRead && chatResult.data.thread?.id) {
         const unreadCount = countUnreadMessagesForRole(nextMessages, 'driver')
         if (unreadCount) {
           nextMessages = markMessagesReadLocally(nextMessages, 'driver')
@@ -216,6 +217,7 @@ export default function App() {
 
       setChatMessages(nextMessages)
       setChatThread(chatResult.data.thread)
+      setDriverUnreadMessages(shouldMarkAsRead ? 0 : countUnreadMessagesForRole(nextMessages, 'driver'))
       return true
     }
 
@@ -375,6 +377,13 @@ export default function App() {
     if (!settingsReady) return
     AsyncStorage.setItem(settingsStorageKey, JSON.stringify({ chatSoundEnabled, language }))
   }, [chatSoundEnabled, language, settingsReady])
+
+  useEffect(() => {
+    activeTabRef.current = activeTab
+    if (accountType === 'driver' && activeTab === 'chat') {
+      setDriverUnreadMessages(0)
+    }
+  }, [accountType, activeTab])
 
   useEffect(() => {
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
@@ -537,6 +546,7 @@ export default function App() {
     setActiveTab('home')
     setChatMessages([])
     setChatThread(null)
+    setDriverUnreadMessages(0)
     setCompanyChatMessages([])
     setCompanyChatThread(null)
     setCompanyContext(null)
@@ -578,6 +588,7 @@ export default function App() {
     if (result.data?.thread && !chatThread) setChatThread(result.data.thread)
     if (result.data?.message) {
       setChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
+      setDriverUnreadMessages(0)
     }
 
     return true
@@ -1017,6 +1028,7 @@ export default function App() {
     selectedCompanyDriver,
     selectedCompanyDriverId,
     selectedDailyVehicleId,
+    unreadCompanyMessages,
   ])
 
   if (isBooting) {

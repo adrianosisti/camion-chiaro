@@ -630,7 +630,7 @@ export function CompanyManagementScreen({
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.dueDate)) {
-      Alert.alert('Data non valida', 'Scrivi la data nel formato YYYY-MM-DD.')
+      Alert.alert('Data non valida', 'Scegli una data dal calendario.')
       return
     }
 

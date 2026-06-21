@@ -848,9 +848,7 @@ export async function fetchCompanyContext() {
     complianceResult.error,
     unreadMessagesResult.error,
     chatThreadsResult.error,
-    teamChatThreadsResult.error,
     chatMessagesResult.error,
-    isMissingWorkforceSchemaError(teamChatMessagesResult.error) ? null : teamChatMessagesResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -880,10 +878,10 @@ export async function fetchCompanyContext() {
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       membership: membershipResult.data,
       people: workforceSchemaReady ? (peopleResult.data ?? []).map(mapCompanyPerson) : [],
-      teamChatMessages: isMissingWorkforceSchemaError(teamChatMessagesResult.error)
+      teamChatMessages: teamChatMessagesResult.error
         ? []
         : (teamChatMessagesResult.data ?? []).map(mapTeamChatMessage),
-      teamChatThreads: teamChatThreadsResult.data ?? [],
+      teamChatThreads: teamChatThreadsResult.error ? [] : (teamChatThreadsResult.data ?? []),
       unreadDriverMessages: unreadMessagesResult.count ?? 0,
       unreadDriverMessagesByDriverId,
       vehicleChecks: (checksResult.data ?? []).map(mapVehicleCheck),

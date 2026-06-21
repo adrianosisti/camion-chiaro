@@ -4926,7 +4926,7 @@ function App() {
         checksResult.error || faultsResult.error ? 'Check e guasti non caricati.' : 'Check e guasti caricati.',
       )
       setChatSyncStatus(
-        chatThreadsResult.error || chatMessagesResult.error || teamChatThreadsResult.error || teamChatMessagesResult.error
+        chatThreadsResult.error || chatMessagesResult.error
           ? 'Chat non attiva. Esegui SQL parte 14 e poi riprova.'
           : 'Chat caricata.',
       )

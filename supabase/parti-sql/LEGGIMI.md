@@ -132,3 +132,24 @@ Il file `31_personale_reparti_gruppi.sql` prepara la piattaforma per:
 - dettaglio preciso di chi ha letto e chi non ha letto ogni messaggio di gruppo.
 
 Eseguilo dopo `30_native_push_tokens.sql`, quando vuoi attivare la nuova struttura reparti/gruppi.
+
+Se Supabase non ti fa incollare il file `31` intero, usa questi file separati:
+
+1. `31A_personale_reparti_base.sql`
+2. `31B_chat_gruppi_tabelle.sql`
+3. `31C_funzioni_persone_autisti.sql`
+4. `31D_funzioni_chat_gruppi.sql`
+5. `31E_policy_realtime_gruppi.sql`
+
+Se anche `31D_funzioni_chat_gruppi.sql` risulta troppo lungo, usa questi file ancora piu piccoli al posto di `31D`:
+
+1. `31D1_funzioni_thread_gruppi.sql`
+2. `31D2_trigger_chat_gruppi.sql`
+3. `31D3_lettura_messaggi_gruppi.sql`
+4. `31D4_ricevute_permessi_gruppi.sql`
+
+Se anche `31E_policy_realtime_gruppi.sql` risulta troppo lungo, usa questi file ancora piu piccoli al posto di `31E`:
+
+1. `31E1_policy_persone_attrezzature.sql`
+2. `31E2_policy_chat_gruppi.sql`
+3. `31E3_realtime_gruppi.sql`

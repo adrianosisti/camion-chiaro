@@ -64,9 +64,15 @@ function formatAudioTime(value = 0) {
   return `${minutes}:${seconds}`
 }
 
+function padDatePart(value) {
+  return String(value).padStart(2, '0')
+}
+
 function formatMessageTime(value) {
   if (!value) return ''
-  return new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return ''
+  return `${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`
 }
 
 function base64Encode(value) {

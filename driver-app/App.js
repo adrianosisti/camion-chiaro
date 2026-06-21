@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Component, useEffect, useMemo, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   ActivityIndicator,
@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import * as Haptics from 'expo-haptics'
 import { useShareIntent } from 'expo-share-intent'
 import { Ionicons } from '@expo/vector-icons'
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AuthScreen } from './src/screens/AuthScreen'
 import { CompanyChatScreen } from './src/screens/CompanyChatScreen'
 import { CompanyHomeScreen } from './src/screens/CompanyHomeScreen'
@@ -68,6 +68,42 @@ import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
 
+class ScreenErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidUpdate(previousProps) {
+    if (previousProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null })
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={styles.screenError}>
+          <Ionicons color={colors.danger} name="warning-outline" size={30} />
+          <Text style={styles.screenErrorTitle}>Schermata non caricata</Text>
+          <Text style={styles.screenErrorText}>
+            Chiudi questa sezione e riaprila. Se ricapita, segnami questa frase:
+          </Text>
+          <Text selectable style={styles.screenErrorCode}>
+            {String(this.state.error?.message ?? this.state.error ?? 'Errore sconosciuto')}
+          </Text>
+        </View>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 function getNativePushPromptStorageKey(accountType, companyId, driverId = '') {
   return `camion-chiaro-native-push-prompt:${accountType}:${companyId}:${driverId || 'company'}`
 }
@@ -110,6 +146,15 @@ const companyTabs = [
 ]
 
 const camionChiaroIcon = require('./assets/brand/icon.png')
+
+function getAndroidTopInset(topInset) {
+  if (Platform.OS !== 'android') return topInset
+  return Math.max(topInset, StatusBar.currentHeight ?? 0)
+}
+
+function getBottomInset(bottomInset) {
+  return Math.max(bottomInset, Platform.OS === 'android' ? 24 : 16)
+}
 
 function getDriverName(context) {
   return context?.drivers?.[0]?.name || context?.currentPerson?.name || 'Persona'
@@ -248,6 +293,17 @@ function createIncomingSharePayload(shareIntent) {
 }
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <CamionChiaroApp />
+    </SafeAreaProvider>
+  )
+}
+
+function CamionChiaroApp() {
+  const safeInsets = useSafeAreaInsets()
+  const headerSafeTop = getAndroidTopInset(safeInsets.top)
+  const footerSafeBottom = getBottomInset(safeInsets.bottom)
   const shareIntentOptions = useMemo(() => ({
     resetOnBackground: false,
     scheme: 'camionchiaro',
@@ -852,6 +908,12 @@ export default function App() {
       onMessage: async (message) => {
         if (!isActive) return
 
+        setCompanyContext((currentContext) => (
+          currentContext
+            ? { ...currentContext, chatMessages: mergeChatMessage(currentContext.chatMessages ?? [], message) }
+            : currentContext
+        ))
+
         const hasOpenSelectedChat = activeTab === 'chat' && selectedCompanyDriverId && (
           !companyChatThread?.id || message.threadId === companyChatThread.id
         )
@@ -884,6 +946,12 @@ export default function App() {
       companyId,
       onMessage: async (message) => {
         if (!isActive) return
+
+        setCompanyContext((currentContext) => (
+          currentContext
+            ? { ...currentContext, teamChatMessages: mergeChatMessage(currentContext.teamChatMessages ?? [], message) }
+            : currentContext
+        ))
 
         if (activeTab === 'chat' && selectedCompanyTeamThreadId && message?.threadId === selectedCompanyTeamThreadId) {
           await loadCompanyTeamChatData(selectedCompanyTeamThread)
@@ -1441,6 +1509,7 @@ export default function App() {
 
         return {
           ...currentContext,
+          chatMessages: mergeChatMessage(currentContext.chatMessages ?? [], result.data.message),
           chatThreads: hasThread
             ? currentThreads.map((thread) => (thread.id === nextThread.id ? { ...thread, ...nextThread } : thread))
             : [nextThread, ...currentThreads],
@@ -1484,6 +1553,7 @@ export default function App() {
         if (!currentContext) return currentContext
         return {
           ...currentContext,
+          teamChatMessages: mergeChatMessage(currentContext.teamChatMessages ?? [], result.data.message),
           teamChatThreads: (currentContext.teamChatThreads ?? []).map((thread) => (
             thread.id === selectedCompanyTeamThread.id
               ? { ...thread, lastMessageAt: result.data.message.createdAt }
@@ -1872,6 +1942,8 @@ export default function App() {
             selectedDriverTyping={isSelectedDriverTyping}
             selectedTeamThread={selectedCompanyTeamThread}
             soundEnabled={chatSoundEnabled}
+            auditMessages={companyContext?.chatMessages ?? []}
+            auditTeamMessages={companyContext?.teamChatMessages ?? []}
             teamMessages={companyTeamChatMessages}
             teamThreads={companyContext?.teamChatThreads ?? []}
             unreadByDriverId={companyContext?.unreadDriverMessagesByDriverId ?? {}}
@@ -2094,17 +2166,17 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={styles.shell}>
-      <ExpoStatusBar style="light" />
-      <StatusBar barStyle="light-content" />
-      <View style={styles.header}>
-          <View style={styles.headerIdentity}>
-            <View style={styles.headerLogo}>
+    <View style={styles.shell}>
+      <ExpoStatusBar backgroundColor="#020617" style="light" translucent={false} />
+      <StatusBar backgroundColor="#020617" barStyle="light-content" translucent={false} />
+      <View style={[styles.header, { paddingTop: headerSafeTop + 10 }]}>
+        <View style={styles.headerIdentity}>
+          <View style={styles.headerLogo}>
             <Image source={logoUrl ? { uri: logoUrl } : camionChiaroIcon} style={styles.headerLogoImage} />
           </View>
-          <View>
-            <Text style={styles.companyName}>{companyName}</Text>
-            <Text style={styles.driverName}>{headerSubtitle}</Text>
+          <View style={styles.headerTextWrap}>
+            <Text numberOfLines={1} style={styles.companyName}>{companyName}</Text>
+            <Text numberOfLines={1} style={styles.driverName}>{headerSubtitle}</Text>
           </View>
         </View>
       </View>
@@ -2116,10 +2188,21 @@ export default function App() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         style={styles.content}
       >
-        {activeScreen}
+        <ScreenErrorBoundary
+          resetKey={[
+            accountType,
+            activeTab,
+            selectedCompanyDriverId,
+            selectedCompanyTeamThreadId,
+            driverChatMode,
+            selectedDriverTeamThreadId,
+          ].join(':')}
+        >
+          {activeScreen}
+        </ScreenErrorBoundary>
       </KeyboardAvoidingView>
 
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { paddingBottom: footerSafeBottom }]}>
         {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id
           const hasBadge = tab.id === 'chat' && chatBadgeCount > 0
@@ -2152,7 +2235,7 @@ export default function App() {
           )
         })}
       </View>
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -2214,6 +2297,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  headerTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
   loadingScreen: {
     alignItems: 'center',
     backgroundColor: colors.ink,
@@ -2233,6 +2320,38 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontWeight: '900',
     marginTop: 18,
+  },
+  screenError: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  screenErrorCode: {
+    backgroundColor: '#fee2e2',
+    borderRadius: 12,
+    color: '#991b1b',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginTop: 12,
+    padding: 12,
+    textAlign: 'center',
+  },
+  screenErrorText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  screenErrorTitle: {
+    color: colors.ink,
+    fontSize: 19,
+    fontWeight: '900',
+    marginTop: 12,
   },
   shell: {
     backgroundColor: '#020617',

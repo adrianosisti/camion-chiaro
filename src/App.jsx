@@ -11062,13 +11062,21 @@ function getTeamAudienceLabel(value = '') {
 }
 
 function getTeamThreadKindLabel(thread = {}) {
-  if (thread.threadType === 'direct' || thread.audienceType === 'direct') return 'Diretta'
+  if (isTeamDirectThread(thread)) return 'Diretta'
   if (['drivers', 'office', 'warehouse'].includes(thread.audienceType)) return 'Reparto'
   return 'Gruppo'
 }
 
+function isTeamDirectThread(thread = {}) {
+  return thread.threadType === 'direct' || thread.audienceType === 'direct'
+}
+
+function isCompanyDirectTeamThread(thread = {}) {
+  return isTeamDirectThread(thread) && String(thread.directKey ?? '').startsWith('company:')
+}
+
 function getTeamThreadIcon(thread = {}) {
-  if (thread.threadType === 'direct' || thread.audienceType === 'direct') return <UserRound size={18} />
+  if (isTeamDirectThread(thread)) return <UserRound size={18} />
   if (thread.audienceType === 'drivers') return <Truck size={18} />
   if (thread.audienceType === 'office') return <Building2 size={18} />
   if (thread.audienceType === 'warehouse') return <ShieldCheck size={18} />
@@ -11186,6 +11194,7 @@ function ChatWorkspace({
   const [isCompanyRecordingAudio, setIsCompanyRecordingAudio] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [isCompanyChatOpen, setIsCompanyChatOpen] = useState(false)
+  const [chatListMode, setChatListMode] = useState('direct')
   const [replyToMessage, setReplyToMessage] = useState(null)
   const [copiedMessageId, setCopiedMessageId] = useState('')
   const [highlightedMessageId, setHighlightedMessageId] = useState('')
@@ -11239,6 +11248,18 @@ function ChatWorkspace({
         }),
     [teamChatThreads, teamMessagesByThread],
   )
+  const allDirectTeamThreads = useMemo(
+    () => visibleTeamThreads.filter((thread) => isTeamDirectThread(thread)),
+    [visibleTeamThreads],
+  )
+  const directTeamThreads = useMemo(
+    () => allDirectTeamThreads.filter((thread) => isCompanyDirectTeamThread(thread)),
+    [allDirectTeamThreads],
+  )
+  const groupTeamThreads = useMemo(
+    () => visibleTeamThreads.filter((thread) => thread.threadType !== 'direct' && thread.audienceType !== 'direct'),
+    [visibleTeamThreads],
+  )
   const conversationDrivers = useMemo(
     () =>
       availableDrivers
@@ -11290,6 +11311,66 @@ function ChatWorkspace({
         .some((value) => String(value).toLowerCase().includes(query))
     ))
   }, [availableDrivers, newChatQuery])
+  const teamThreadById = useMemo(
+    () => new Map(visibleTeamThreads.map((thread) => [thread.id, thread])),
+    [visibleTeamThreads],
+  )
+  const auditEntries = useMemo(() => {
+    const teamEntries = teamChatMessages
+      .filter((message) => message.senderRole !== 'company')
+      .map((message) => {
+        const thread = teamThreadById.get(message.threadId)
+        if (!thread || isCompanyDirectTeamThread(thread)) return null
+
+        return {
+          channel: thread?.title ?? 'Gruppo',
+          createdAt: message.createdAt,
+          id: `team-${message.id}`,
+          kind: isTeamDirectThread(thread) ? 'Privata' : getTeamThreadKindLabel(thread),
+          message,
+          onOpen: null,
+          sender: getTeamMessageSenderLabel(message),
+          text: getChatMessageText(message, t('chat.photoAttached')),
+        }
+      })
+
+    return teamEntries
+      .filter(Boolean)
+      .filter((entry) => entry.createdAt)
+      .sort((firstEntry, secondEntry) => new Date(secondEntry.createdAt) - new Date(firstEntry.createdAt))
+      .slice(0, 120)
+  }, [t, teamChatMessages, teamThreadById])
+  const directConversationCount = conversationDrivers.length + directTeamThreads.length
+  const groupConversationCount = groupTeamThreads.length
+  const auditConversationCount = auditEntries.length
+  const activeChatModeLabel = chatListMode === 'audit'
+    ? 'Controllo interno'
+    : chatListMode === 'groups'
+      ? 'Gruppi e reparti'
+      : 'Chat singole'
+  const chatModeCards = [
+    {
+      count: directConversationCount,
+      icon: UserRound,
+      id: 'direct',
+      label: 'Chat singole',
+      subtitle: 'Autisti, ufficio, magazzino',
+    },
+    {
+      count: groupConversationCount,
+      icon: Users,
+      id: 'groups',
+      label: 'Gruppi azienda',
+      subtitle: 'Dove il titolare scrive',
+    },
+    {
+      count: auditConversationCount,
+      icon: ShieldCheck,
+      id: 'audit',
+      label: 'Controllo interno',
+      subtitle: 'Solo lettura dipendenti',
+    },
+  ]
   const selectedTeamThread = visibleTeamThreads.find((thread) => thread.id === selectedTeamThreadId) ?? null
   const selectedDriver = selectedTeamThread
     ? null
@@ -11382,6 +11463,7 @@ function ChatWorkspace({
   function selectDriverChat(driverId) {
     setSelectedDriverId(driverId)
     setSelectedTeamThreadId('')
+    setChatListMode('direct')
     setIsStartingNewChat(false)
     setNewChatQuery('')
     setIsCompanyChatOpen(true)
@@ -11390,8 +11472,10 @@ function ChatWorkspace({
   }
 
   function selectTeamChat(threadId) {
+    const thread = teamThreadById.get(threadId)
     setSelectedTeamThreadId(threadId)
     setSelectedDriverId('')
+    setChatListMode(isTeamDirectThread(thread) ? 'direct' : 'groups')
     setIsStartingNewChat(false)
     setNewChatQuery('')
     setIsCompanyChatOpen(true)
@@ -11401,13 +11485,19 @@ function ChatWorkspace({
 
   function getCompanyMessageSenderLabel(message) {
     if (message.senderRole === 'company') return t('chat.company')
+    if (selectedTeamThread) return getTeamMessageSenderLabel(message)
+    if (message.senderRole === 'driver') return selectedDriver?.name ?? t('chat.driver')
+    return getTeamMessageSenderLabel(message)
+  }
+
+  function getTeamMessageSenderLabel(message) {
+    if (message.senderRole === 'company') return t('chat.company')
     const senderPerson = personRecords.find((person) => person.id === message.senderPersonId)
     if (senderPerson?.name) return senderPerson.name
     if (message.senderRole === 'office') return 'Ufficio'
     if (message.senderRole === 'warehouse') return 'Magazzino'
-    if (message.senderRole === 'driver') return selectedDriver?.name ?? 'Autista'
-    if (!selectedTeamThread) return selectedDriver?.name ?? t('chat.driver')
-    return selectedTeamThread.title
+    if (message.senderRole === 'driver') return 'Autista'
+    return 'Persona'
   }
 
   function startReplyToMessage(message) {
@@ -11528,14 +11618,51 @@ function ChatWorkspace({
             <p className="overline">{t('chat.messages')}</p>
             <h2>{t('chat.companyTitle')}</h2>
           </div>
-          <button
-            className={isStartingNewChat ? 'secondary-button compact-button is-active' : 'secondary-button compact-button'}
-            onClick={() => setIsStartingNewChat((currentValue) => !currentValue)}
-            type="button"
-          >
-            {isStartingNewChat ? <Mail size={17} /> : <Plus size={17} />}
-            {isStartingNewChat ? t('chat.showConversations') : t('chat.newChat')}
-          </button>
+          {chatListMode === 'direct' && (
+            <button
+              className={isStartingNewChat ? 'secondary-button compact-button is-active' : 'secondary-button compact-button'}
+              onClick={() => {
+                setIsStartingNewChat((currentValue) => !currentValue)
+              }}
+              type="button"
+            >
+              {isStartingNewChat ? <Mail size={17} /> : <Plus size={17} />}
+              {isStartingNewChat ? t('chat.showConversations') : 'Nuova singola'}
+            </button>
+          )}
+        </div>
+        <div className="chat-mode-cards" role="tablist" aria-label="Tipo chat">
+          {chatModeCards.map((card) => {
+            const Icon = card.icon
+            const isActive = chatListMode === card.id
+
+            return (
+              <button
+                aria-selected={isActive}
+                className={isActive ? 'chat-mode-card is-active' : 'chat-mode-card'}
+                key={card.id}
+                onClick={() => {
+                  setChatListMode(card.id)
+                  setIsStartingNewChat(false)
+                }}
+                role="tab"
+                type="button"
+              >
+                <span className="chat-mode-card-icon">
+                  <Icon size={18} />
+                </span>
+                <span className="chat-mode-card-copy">
+                  <strong>{card.label}</strong>
+                  <small>{card.subtitle}</small>
+                </span>
+                <em>{card.count}</em>
+              </button>
+            )
+          })}
+        </div>
+        <div className="chat-mode-current">
+          <span>Stai vedendo</span>
+          <strong>{activeChatModeLabel}</strong>
         </div>
         {isStartingNewChat && (
           <div className="new-chat-panel">
@@ -11549,7 +11676,7 @@ function ChatWorkspace({
               />
             </label>
             <div className="new-chat-list">
-              {visibleTeamThreads.map((thread) => (
+              {(chatListMode === 'groups' ? groupTeamThreads : directTeamThreads).map((thread) => (
                 <button
                   className={getTeamThreadRowClassName('new-chat-driver', thread)}
                   key={thread.id}
@@ -11566,7 +11693,7 @@ function ChatWorkspace({
                   <ChevronRight size={17} />
                 </button>
               ))}
-              {newChatDrivers.map((driver) => (
+              {chatListMode !== 'groups' && newChatDrivers.map((driver) => (
                 <button className="new-chat-driver" key={driver.id} onClick={() => selectDriverChat(driver.id)} type="button">
                   <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
                   <span>
@@ -11576,15 +11703,16 @@ function ChatWorkspace({
                   <ChevronRight size={17} />
                 </button>
               ))}
-              {newChatDrivers.length === 0 && <p className="new-chat-empty">{t('chat.noDriverMatches')}</p>}
+              {chatListMode !== 'groups' && newChatDrivers.length === 0 && <p className="new-chat-empty">{t('chat.noDriverMatches')}</p>}
+              {chatListMode === 'groups' && groupTeamThreads.length === 0 && <p className="new-chat-empty">Nessun gruppo disponibile.</p>}
             </div>
           </div>
         )}
         <div className="chat-driver-list">
-          {conversationDrivers.length > 0 && (
-            <div className="chat-list-section-label">Chat autisti</div>
+          {chatListMode === 'direct' && conversationDrivers.length > 0 && (
+            <div className="chat-list-section-label">Chat singole con autisti</div>
           )}
-          {conversationDrivers.map((driver) => {
+          {chatListMode === 'direct' && conversationDrivers.map((driver) => {
             const lastMessage = getLastDriverMessage(driver.id)
             const isSelected = selectedDriver?.id === driver.id
             const driverThread = getDriverThread(driver.id)
@@ -11626,10 +11754,10 @@ function ChatWorkspace({
               </button>
             )
           })}
-          {visibleTeamThreads.length > 0 && (
-            <div className="chat-list-section-label">Gruppi e reparti</div>
+          {chatListMode === 'direct' && directTeamThreads.length > 0 && (
+            <div className="chat-list-section-label">Chat singole con ufficio e magazzino</div>
           )}
-          {visibleTeamThreads.map((thread) => {
+          {chatListMode === 'direct' && directTeamThreads.map((thread) => {
             const lastMessage = getLastTeamMessage(thread.id)
             const isSelected = selectedTeamThread?.id === thread.id
 
@@ -11658,12 +11786,80 @@ function ChatWorkspace({
               </button>
             )
           })}
-          {conversationDrivers.length === 0 && visibleTeamThreads.length === 0 && (
+          {chatListMode === 'groups' && groupTeamThreads.length > 0 && (
+            <div className="chat-list-section-label">Gruppi aziendali</div>
+          )}
+          {chatListMode === 'groups' && groupTeamThreads.map((thread) => {
+            const lastMessage = getLastTeamMessage(thread.id)
+            const isSelected = selectedTeamThread?.id === thread.id
+
+            return (
+              <button
+                className={getTeamThreadRowClassName('chat-driver-row', thread, isSelected)}
+                key={thread.id}
+                onClick={() => selectTeamChat(thread.id)}
+                type="button"
+              >
+                <span className="team-chat-row-icon">
+                  {getTeamThreadIcon(thread)}
+                </span>
+                <span>
+                  <strong>{thread.title}</strong>
+                  <small>
+                    {lastMessage
+                      ? `${getCompanyMessageSenderLabel(lastMessage)}: ${getChatMessageText(lastMessage, t('chat.photoAttached'))}`
+                      : `${getTeamThreadKindLabel(thread)} · ${getTeamAudienceLabel(thread.audienceType)}`}
+                  </small>
+                </span>
+                <span className="chat-row-meta">
+                  <strong className="chat-kind-badge">{getTeamThreadKindLabel(thread)}</strong>
+                  {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
+                </span>
+              </button>
+            )
+          })}
+          {chatListMode === 'audit' && (
+            <>
+              <div className="chat-list-section-label">Registro messaggi aziendali</div>
+              <div className="chat-audit-list">
+                {auditEntries.map((entry) => (
+                  <button
+                    className="chat-audit-row"
+                    disabled={!entry.onOpen}
+                    key={entry.id}
+                    onClick={() => entry.onOpen?.()}
+                    type="button"
+                  >
+                    <span className="chat-audit-row-head">
+                      <strong>{entry.channel}</strong>
+                      <em>{formatShortDateTime(entry.createdAt)}</em>
+                    </span>
+                    <span className="chat-audit-row-meta">
+                      <small>{entry.kind}</small>
+                      <b>{entry.sender}</b>
+                    </span>
+                    <span className="chat-audit-row-body">{entry.text || t('chat.photoAttached')}</span>
+                  </button>
+                ))}
+                {auditEntries.length === 0 && <p className="new-chat-empty">Nessun messaggio da controllare.</p>}
+              </div>
+            </>
+          )}
+          {chatListMode === 'direct' && conversationDrivers.length === 0 && directTeamThreads.length === 0 && (
             <div className="empty-state-row">
               <Users size={20} />
               <div>
                 <strong>{availableDrivers.length === 0 ? t('chat.noDrivers') : t('chat.noConversations')}</strong>
                 <span>{availableDrivers.length === 0 ? t('chat.noDriversHint') : t('chat.noConversationsHint')}</span>
+              </div>
+            </div>
+          )}
+          {chatListMode === 'groups' && groupTeamThreads.length === 0 && (
+            <div className="empty-state-row">
+              <Users size={20} />
+              <div>
+                <strong>Nessun gruppo</strong>
+                <span>Crea persone e reparti per vedere le chat di gruppo.</span>
               </div>
             </div>
           )}

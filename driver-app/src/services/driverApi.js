@@ -48,7 +48,7 @@ const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
 const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
-const teamChatThreadSelect = 'id, company_id, thread_type, audience_type, title, status, last_message_at, created_at'
+const teamChatThreadSelect = 'id, company_id, thread_type, audience_type, direct_key, title, status, last_message_at, created_at'
 const teamChatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, created_at'
 const vehicleCheckSelect =
@@ -764,6 +764,8 @@ export async function fetchCompanyContext() {
     unreadMessagesResult,
     chatThreadsResult,
     teamChatThreadsResult,
+    chatMessagesResult,
+    teamChatMessagesResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -820,6 +822,18 @@ export async function fetchCompanyContext() {
       .eq('context_type', 'general')
       .order('last_message_at', { ascending: false, nullsFirst: false }),
     fetchTeamChatThreads(companyId),
+    supabase
+      .from('chat_messages')
+      .select(chatMessageSelect)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(120),
+    supabase
+      .from('team_chat_messages')
+      .select(teamChatMessageSelect)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(120),
   ])
 
   const firstError = [
@@ -835,6 +849,8 @@ export async function fetchCompanyContext() {
     unreadMessagesResult.error,
     chatThreadsResult.error,
     teamChatThreadsResult.error,
+    chatMessagesResult.error,
+    isMissingWorkforceSchemaError(teamChatMessagesResult.error) ? null : teamChatMessagesResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -856,6 +872,7 @@ export async function fetchCompanyContext() {
     data: {
       companyProfile: mapCompanyProfile(companyResult.data),
       assets: workforceSchemaReady ? (assetsResult.data ?? []).map(mapCompanyAsset) : [],
+      chatMessages: (chatMessagesResult.data ?? []).map(mapChatMessage),
       chatThreads: (chatThreadsResult.data ?? []).map(mapChatThread),
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
       documents: (documentsResult.data ?? []).map(mapDriverDocument),
@@ -863,6 +880,9 @@ export async function fetchCompanyContext() {
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       membership: membershipResult.data,
       people: workforceSchemaReady ? (peopleResult.data ?? []).map(mapCompanyPerson) : [],
+      teamChatMessages: isMissingWorkforceSchemaError(teamChatMessagesResult.error)
+        ? []
+        : (teamChatMessagesResult.data ?? []).map(mapTeamChatMessage),
       teamChatThreads: teamChatThreadsResult.data ?? [],
       unreadDriverMessages: unreadMessagesResult.count ?? 0,
       unreadDriverMessagesByDriverId,

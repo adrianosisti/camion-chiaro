@@ -1,16 +1,18 @@
+import { useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ChatScreen } from './ChatScreen'
 import { colors, layout } from '../theme'
 
+function padDatePart(value) {
+  return String(value).padStart(2, '0')
+}
+
 function formatLastMessageDate(value) {
   if (!value) return 'Nessun messaggio'
-  return new Intl.DateTimeFormat('it-IT', {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: '2-digit',
-  }).format(new Date(value))
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return 'Nessun messaggio'
+  return `${padDatePart(date.getDate())}/${padDatePart(date.getMonth() + 1)} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`
 }
 
 function getAudienceLabel(value = '') {
@@ -74,7 +76,8 @@ function HeaderBar({ onBack, subtitle, title }) {
   return (
     <View style={styles.selectedBar}>
       <Pressable onPress={onBack} style={styles.backButton}>
-        <Text style={styles.backText}>Chat</Text>
+        <Ionicons color={colors.ink} name="arrow-back" size={17} />
+        <Text style={styles.backText}>Indietro</Text>
       </Pressable>
       <View style={styles.selectedTitleWrap}>
         <Text numberOfLines={1} style={styles.selectedTitle}>{title}</Text>
@@ -114,6 +117,7 @@ export function DriverChatHubScreen({
   teamThreads = [],
   unreadCompanyMessages = 0,
 }) {
+  const [chatListMode, setChatListMode] = useState('direct')
   const currentUserRole = 'me'
   const normalizedTeamMessages = teamMessages.map((message) => ({
     ...message,
@@ -123,6 +127,12 @@ export function DriverChatHubScreen({
   const visibleTeamThreads = teamThreads.filter((thread) => (
     !(isDirectThread(thread) && [currentPerson?.name, companyName].filter(Boolean).includes(thread.title))
   ))
+  const directTeamThreads = visibleTeamThreads.filter((thread) => isDirectThread(thread))
+  const groupTeamThreads = visibleTeamThreads.filter((thread) => !isDirectThread(thread))
+  const hasDirectRows = Boolean(companyName) || directTeamThreads.length || visiblePeople.length
+  const hasGroupRows = groupTeamThreads.length > 0
+  const directCount = (companyName ? 1 : 0) + directTeamThreads.length + visiblePeople.length
+  const groupCount = groupTeamThreads.length
 
   if (selectedMode === 'company') {
     return (
@@ -184,43 +194,68 @@ export function DriverChatHubScreen({
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Chat</Text>
-        <Text style={styles.heroText}>Scrivi all azienda, ai reparti o ai gruppi disponibili.</Text>
+        <Text style={styles.heroText}>Chat singole e gruppi aziendali.</Text>
       </View>
 
-      <ChatRow
-        badge={unreadCompanyMessages}
-        imageUrl={companyLogoUrl}
-        kindLabel="Diretta"
-        onPress={onOpenCompanyChat}
-        subtitle={chatThread?.lastMessageAt ? formatLastMessageDate(chatThread.lastMessageAt) : 'Canale principale'}
-        title={companyName}
-        tone="direct"
+      <View style={styles.modeLead}>
+        <Text style={styles.modeLeadLabel}>Stai vedendo</Text>
+        <Text style={styles.modeLeadTitle}>{chatListMode === 'groups' ? 'Gruppi e reparti' : 'Chat singole'}</Text>
+      </View>
+
+      <ChatModeCards
+        counts={{ direct: directCount, groups: groupCount }}
+        mode={chatListMode}
+        onChange={setChatListMode}
       />
 
-      {visibleTeamThreads.length ? (
-        <View style={styles.groupBlock}>
-          <Text style={styles.groupTitle}>Gruppi, reparti e dirette</Text>
-          {visibleTeamThreads.map((thread) => {
-            const isDirect = isDirectThread(thread)
+      {chatListMode === 'direct' ? (
+        <>
+          <ChatRow
+            badge={unreadCompanyMessages}
+            imageUrl={companyLogoUrl}
+            kindLabel="Diretta"
+            onPress={onOpenCompanyChat}
+            subtitle={chatThread?.lastMessageAt ? formatLastMessageDate(chatThread.lastMessageAt) : 'Canale principale'}
+            title={companyName}
+            tone="direct"
+          />
+          {directTeamThreads.length ? (
+            <View style={styles.groupBlock}>
+              <Text style={styles.groupTitle}>Chat singole</Text>
+              {directTeamThreads.map((thread) => (
+                <ChatRow
+                  icon="person-circle-outline"
+                  key={thread.id}
+                  kindLabel={getThreadKindLabel(thread)}
+                  onPress={() => onOpenTeamChat?.(thread)}
+                  subtitle={`${getAudienceLabel(thread.audienceType)} · ${formatLastMessageDate(thread.lastMessageAt)}`}
+                  title={thread.title}
+                  tone="direct"
+                />
+              ))}
+            </View>
+          ) : null}
+        </>
+      ) : null}
 
-            return (
+      {chatListMode === 'groups' && groupTeamThreads.length ? (
+        <View style={styles.groupBlock}>
+          <Text style={styles.groupTitle}>Gruppi e reparti</Text>
+          {groupTeamThreads.map((thread) => (
             <ChatRow
-              icon={isDirect ? 'person-circle-outline' : getGroupIcon(thread.audienceType)}
+              icon={getGroupIcon(thread.audienceType)}
               key={thread.id}
               kindLabel={getThreadKindLabel(thread)}
               onPress={() => onOpenTeamChat?.(thread)}
               subtitle={`${getAudienceLabel(thread.audienceType)} · ${formatLastMessageDate(thread.lastMessageAt)}`}
               title={thread.title}
-              tone={isDirect ? 'direct' : 'normal'}
+              tone="normal"
             />
-            )
-          })}
+          ))}
         </View>
-      ) : (
-        <Text style={styles.emptyText}>Nessun gruppo disponibile. L azienda deve aggiornare le anagrafiche.</Text>
-      )}
+      ) : null}
 
-      {visiblePeople.length ? (
+      {chatListMode === 'direct' && visiblePeople.length ? (
         <View style={styles.groupBlock}>
           <Text style={styles.groupTitle}>Persone</Text>
           {visiblePeople.map((person) => (
@@ -236,7 +271,54 @@ export function DriverChatHubScreen({
           ))}
         </View>
       ) : null}
+
+      {chatListMode === 'direct' && !hasDirectRows ? (
+        <Text style={styles.emptyText}>Nessuna chat singola disponibile.</Text>
+      ) : null}
+      {chatListMode === 'groups' && !hasGroupRows ? (
+        <Text style={styles.emptyText}>Nessun gruppo disponibile. L azienda deve aggiornare le anagrafiche.</Text>
+      ) : null}
     </ScrollView>
+  )
+}
+
+function ChatModeCards({ counts = {}, mode, onChange }) {
+  const items = [
+    {
+      count: counts.direct ?? 0,
+      id: 'direct',
+      icon: 'person-circle-outline',
+      label: 'Chat singole',
+      subtitle: 'Azienda e persone',
+    },
+    {
+      count: counts.groups ?? 0,
+      id: 'groups',
+      icon: 'people-outline',
+      label: 'Gruppi e reparti',
+      subtitle: 'Canali aziendali',
+    },
+  ]
+
+  return (
+    <View style={styles.modeCards}>
+      {items.map((item) => {
+        const isActive = mode === item.id
+
+        return (
+          <Pressable key={item.id} onPress={() => onChange?.(item.id)} style={[styles.modeCard, isActive && styles.modeCardActive]}>
+            <View style={[styles.modeIconShell, isActive && styles.modeIconShellActive]}>
+              <Ionicons color={isActive ? colors.ink : colors.white} name={item.icon} size={21} />
+            </View>
+            <View style={styles.modeCardCopy}>
+              <Text numberOfLines={1} style={styles.modeCardTitle}>{item.label}</Text>
+              <Text numberOfLines={1} style={styles.modeCardSubtitle}>{item.subtitle}</Text>
+            </View>
+            <Text style={[styles.modeCount, isActive && styles.modeCountActive]}>{item.count}</Text>
+          </Pressable>
+        )
+      })}
+    </View>
   )
 }
 
@@ -287,8 +369,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   backButton: {
+    alignItems: 'center',
     backgroundColor: '#e0f2fe',
     borderRadius: 999,
+    flexDirection: 'row',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -349,6 +434,134 @@ const styles = StyleSheet.create({
   kindBadgeGroup: {
     backgroundColor: '#cffafe',
     color: colors.ink,
+  },
+  modeCard: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#cfe8f3',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 72,
+    padding: 12,
+  },
+  modeCardActive: {
+    backgroundColor: '#ecfeff',
+    borderColor: colors.cyan,
+    borderWidth: 2,
+  },
+  modeCardCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  modeCardSubtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  modeCardTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  modeCards: {
+    gap: 9,
+    marginBottom: 12,
+  },
+  modeCount: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    color: colors.cyanDark,
+    fontSize: 13,
+    fontWeight: '900',
+    minWidth: 32,
+    overflow: 'hidden',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    textAlign: 'center',
+  },
+  modeCountActive: {
+    backgroundColor: colors.cyan,
+    color: colors.ink,
+  },
+  modeIconShell: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 16,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  modeIconShellActive: {
+    backgroundColor: colors.cyan,
+  },
+  modeLead: {
+    backgroundColor: '#f8fdff',
+    borderColor: '#d7f2fb',
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+    padding: 12,
+  },
+  modeLeadLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  modeLeadTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  modeTab: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 8,
+  },
+  modeTabActive: {
+    backgroundColor: '#cffafe',
+    borderColor: colors.cyan,
+  },
+  modeTabCount: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    minWidth: 24,
+    overflow: 'hidden',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    textAlign: 'center',
+  },
+  modeTabCountActive: {
+    backgroundColor: colors.cyan,
+    color: colors.ink,
+  },
+  modeTabText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  modeTabTextActive: {
+    color: colors.ink,
+  },
+  modeTabs: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
   },
   hero: {
     backgroundColor: colors.ink,

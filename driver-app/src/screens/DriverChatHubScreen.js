@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ChatScreen } from './ChatScreen'
@@ -116,13 +116,20 @@ export function DriverChatHubScreen({
   teamMessages = [],
   teamThreads = [],
   unreadCompanyMessages = 0,
+  unreadTeamByThreadId = {},
 }) {
   const [chatListMode, setChatListMode] = useState('direct')
   const currentUserRole = 'me'
-  const normalizedTeamMessages = teamMessages.map((message) => ({
-    ...message,
-    senderRole: message.senderPersonId && message.senderPersonId === currentPerson?.id ? 'me' : 'team',
-  }))
+  const personById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
+  const normalizedTeamMessages = useMemo(
+    () => teamMessages.map((message) => ({
+      ...message,
+      senderAvatarUrl: message.senderPersonId === currentPerson?.id ? driverProfileUrl : '',
+      senderName: getTeamMessageSenderName(message, personById, companyName),
+      senderRole: message.senderPersonId && message.senderPersonId === currentPerson?.id ? 'me' : 'team',
+    })),
+    [companyName, currentPerson?.id, driverProfileUrl, personById, teamMessages],
+  )
   const visiblePeople = people.filter((person) => person.id !== currentPerson?.id && person.status !== 'archived')
   const visibleTeamThreads = teamThreads.filter((thread) => (
     !(isDirectThread(thread) && [currentPerson?.name, companyName].filter(Boolean).includes(thread.title))
@@ -133,6 +140,8 @@ export function DriverChatHubScreen({
   const hasGroupRows = groupTeamThreads.length > 0
   const directCount = (companyName ? 1 : 0) + directTeamThreads.length + visiblePeople.length
   const groupCount = groupTeamThreads.length
+  const directUnreadCount = unreadCompanyMessages + directTeamThreads.reduce((total, thread) => total + Number(unreadTeamByThreadId[thread.id] ?? 0), 0)
+  const groupUnreadCount = groupTeamThreads.reduce((total, thread) => total + Number(unreadTeamByThreadId[thread.id] ?? 0), 0)
 
   if (selectedMode === 'company') {
     return (
@@ -184,6 +193,7 @@ export function DriverChatHubScreen({
           ownAvatarUrl={driverProfileUrl}
           participantAvatarUrl={companyLogoUrl}
           participantName={selectedTeamThread.title}
+          showSenderNames={!isDirectThread(selectedTeamThread)}
           soundEnabled={soundEnabled}
         />
       </View>
@@ -206,6 +216,7 @@ export function DriverChatHubScreen({
         counts={{ direct: directCount, groups: groupCount }}
         mode={chatListMode}
         onChange={setChatListMode}
+        unreadCounts={{ direct: directUnreadCount, groups: groupUnreadCount }}
       />
 
       {chatListMode === 'direct' ? (
@@ -231,6 +242,7 @@ export function DriverChatHubScreen({
                   subtitle={`${getAudienceLabel(thread.audienceType)} · ${formatLastMessageDate(thread.lastMessageAt)}`}
                   title={thread.title}
                   tone="direct"
+                  badge={unreadTeamByThreadId[thread.id] ?? 0}
                 />
               ))}
             </View>
@@ -250,6 +262,7 @@ export function DriverChatHubScreen({
               subtitle={`${getAudienceLabel(thread.audienceType)} · ${formatLastMessageDate(thread.lastMessageAt)}`}
               title={thread.title}
               tone="normal"
+              badge={unreadTeamByThreadId[thread.id] ?? 0}
             />
           ))}
         </View>
@@ -282,7 +295,7 @@ export function DriverChatHubScreen({
   )
 }
 
-function ChatModeCards({ counts = {}, mode, onChange }) {
+function ChatModeCards({ counts = {}, mode, onChange, unreadCounts = {} }) {
   const items = [
     {
       count: counts.direct ?? 0,
@@ -314,7 +327,11 @@ function ChatModeCards({ counts = {}, mode, onChange }) {
               <Text numberOfLines={1} style={styles.modeCardTitle}>{item.label}</Text>
               <Text numberOfLines={1} style={styles.modeCardSubtitle}>{item.subtitle}</Text>
             </View>
-            <Text style={[styles.modeCount, isActive && styles.modeCountActive]}>{item.count}</Text>
+            {unreadCounts[item.id] > 0 ? (
+              <Text style={styles.modeUnreadCount}>{unreadCounts[item.id]}</Text>
+            ) : (
+              <Text style={[styles.modeCount, isActive && styles.modeCountActive]}>{item.count}</Text>
+            )}
           </Pressable>
         )
       })}
@@ -336,6 +353,18 @@ function getPersonDepartmentLabel(value = '') {
   if (value === 'warehouse') return 'Magazzino'
   if (value === 'office') return 'Ufficio'
   if (value === 'drivers') return 'Autista'
+  return 'Persona'
+}
+
+function getTeamMessageSenderName(message = {}, peopleById = new Map(), companyName = '') {
+  if (message.senderRole === 'company') return companyName || 'Azienda'
+  if (message.senderPersonId && peopleById.has(message.senderPersonId)) {
+    return peopleById.get(message.senderPersonId).name
+  }
+  if (message.senderName) return message.senderName
+  if (message.senderRole === 'driver') return 'Autista'
+  if (message.senderRole === 'warehouse') return 'Magazzino'
+  if (message.senderRole === 'office') return 'Ufficio'
   return 'Persona'
 }
 
@@ -485,6 +514,18 @@ const styles = StyleSheet.create({
   modeCountActive: {
     backgroundColor: colors.cyan,
     color: colors.ink,
+  },
+  modeUnreadCount: {
+    backgroundColor: colors.danger,
+    borderRadius: 999,
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '900',
+    minWidth: 32,
+    overflow: 'hidden',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    textAlign: 'center',
   },
   modeIconShell: {
     alignItems: 'center',

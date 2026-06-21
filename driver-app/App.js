@@ -46,6 +46,9 @@ import {
   getCurrentSession,
   getSessionAccountType,
   markChatMessagesRead,
+  markTeamThreadRead,
+  renewDriverDocument,
+  renewCompanyComplianceItem,
   saveNativePushToken,
   sendChatMessage,
   sendCompanyChatMessage,
@@ -328,6 +331,7 @@ function CamionChiaroApp() {
   const [context, setContext] = useState(null)
   const [driverChatMode, setDriverChatMode] = useState('list')
   const [driverChatReadWatermark, setDriverChatReadWatermark] = useState(0)
+  const [documentFocusId, setDocumentFocusId] = useState('')
   const [driverProfileUrl, setDriverProfileUrl] = useState('')
   const [driverTeamChatMessages, setDriverTeamChatMessages] = useState([])
   const [isBooting, setIsBooting] = useState(true)
@@ -380,9 +384,12 @@ function CamionChiaroApp() {
     return countUnreadDriverMessages(chatMessages, driverChatReadWatermark)
   }, [accountType, activeTab, chatMessages, driverChatReadWatermark])
   const unreadDriverMessages = companyContext?.unreadDriverMessages ?? 0
+  const unreadTeamMessages = accountType === 'company'
+    ? companyContext?.unreadTeamMessages ?? 0
+    : context?.unreadTeamMessages ?? 0
   const chatBadgeCount = accountType === 'company'
-    ? unreadDriverMessages
-    : activeTab === 'chat' ? 0 : unreadCompanyMessages
+    ? unreadDriverMessages + unreadTeamMessages
+    : activeTab === 'chat' ? 0 : unreadCompanyMessages + unreadTeamMessages
   const driverChatDiagnostics = useMemo(() => {
     const companyMessages = chatMessages.filter((message) => message.senderRole === 'company')
     const latestCompanyMessage = companyMessages.reduce((latestMessage, message) => (
@@ -417,6 +424,23 @@ function CamionChiaroApp() {
     clearDriverUnreadMessages(nextMessages)
     setChatMessages(nextMessages)
     return nextMessages
+  }
+
+  function clearTeamUnreadLocally(setContextState, threadId) {
+    if (!threadId) return
+
+    setContextState((currentContext) => {
+      if (!currentContext) return currentContext
+      const unreadByThreadId = { ...(currentContext.unreadTeamMessagesByThreadId ?? {}) }
+      const previousCount = Number(unreadByThreadId[threadId] ?? 0)
+      unreadByThreadId[threadId] = 0
+
+      return {
+        ...currentContext,
+        unreadTeamMessages: Math.max(0, Number(currentContext.unreadTeamMessages ?? 0) - previousCount),
+        unreadTeamMessagesByThreadId: unreadByThreadId,
+      }
+    })
   }
 
   async function loadAssetUrls(nextContext) {
@@ -492,6 +516,10 @@ function CamionChiaroApp() {
 
     if (chatResult.data) {
       setDriverTeamChatMessages(chatResult.data.messages)
+      clearTeamUnreadLocally(setContext, targetThread.id)
+      void markTeamThreadRead(targetThread.id).then((readResult) => {
+        if (!readResult?.error) clearTeamUnreadLocally(setContext, targetThread.id)
+      })
       return true
     }
 
@@ -616,6 +644,10 @@ function CamionChiaroApp() {
 
     if (chatResult.data) {
       setCompanyTeamChatMessages(chatResult.data.messages)
+      clearTeamUnreadLocally(setCompanyContext, targetThread.id)
+      void markTeamThreadRead(targetThread.id).then((readResult) => {
+        if (!readResult?.error) clearTeamUnreadLocally(setCompanyContext, targetThread.id)
+      })
       return true
     }
 
@@ -1396,7 +1428,7 @@ function CamionChiaroApp() {
         tag: `team-chat-${selectedDriverTeamThread.id}`,
         targetRole: 'team',
         threadId: selectedDriverTeamThread.id,
-        title: `${actorName} · ${actorPerson?.jobTitle || driver?.role || 'Personale'}`,
+        title: `${selectedDriverTeamThread.title} · ${actorName}`,
         url: '/?view=chat',
       })
       setContext((currentContext) => {
@@ -1546,7 +1578,7 @@ function CamionChiaroApp() {
         tag: `team-chat-${selectedCompanyTeamThread.id}`,
         targetRole: 'team',
         threadId: selectedCompanyTeamThread.id,
-        title: companyName,
+        title: `${selectedCompanyTeamThread.title} · ${companyName}`,
         url: '/?view=chat',
       })
       setCompanyContext((currentContext) => {
@@ -1672,6 +1704,30 @@ function CamionChiaroApp() {
 
     if (result.error) {
       Alert.alert('File non caricato', result.error.message)
+      return false
+    }
+
+    await loadDriverData({ silent: true })
+    return true
+  }
+
+  async function handleRenewDocument(document, payload) {
+    if (!driver || !document?.id) return false
+
+    const result = await renewDriverDocument({
+      companyId: driver.companyId,
+      document,
+      driverId: driver.id,
+      file: payload?.file ?? null,
+      updates: {
+        documentNumber: payload?.documentNumber ?? '',
+        expiresAt: payload?.expiresAt ?? null,
+        type: payload?.type ?? document.type,
+      },
+    })
+
+    if (result.error) {
+      Alert.alert('Rinnovo non salvato', result.error.message)
       return false
     }
 
@@ -1846,6 +1902,26 @@ function CamionChiaroApp() {
     return result.data
   }
 
+  async function handleRenewCompanyDeadline(item, payload, file = null) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !item?.id) return null
+
+    const result = await renewCompanyComplianceItem({
+      companyId,
+      file,
+      item,
+      updates: payload,
+    })
+
+    if (result.error) {
+      Alert.alert('Scadenza non aggiornata', result.error.message)
+      return null
+    }
+
+    await loadCompanyData({ silent: true })
+    return result.data
+  }
+
   async function handleResolveCompanyFault(reportId) {
     if (!reportId) return false
 
@@ -1947,6 +2023,7 @@ function CamionChiaroApp() {
             teamMessages={companyTeamChatMessages}
             teamThreads={companyContext?.teamChatThreads ?? []}
             unreadByDriverId={companyContext?.unreadDriverMessagesByDriverId ?? {}}
+            unreadTeamByThreadId={companyContext?.unreadTeamMessagesByThreadId ?? {}}
           />
         )
       }
@@ -1979,6 +2056,7 @@ function CamionChiaroApp() {
             onCreatePerson={handleCreateCompanyPerson}
             onCreateVehicle={handleCreateCompanyVehicle}
             onCreateWarehouseAsset={handleCreateCompanyWarehouseAsset}
+            onRenewDeadline={handleRenewCompanyDeadline}
           />
         )
       }
@@ -2029,6 +2107,7 @@ function CamionChiaroApp() {
           teamMessages={driverTeamChatMessages}
           teamThreads={context?.teamChatThreads ?? []}
           unreadCompanyMessages={unreadCompanyMessages}
+          unreadTeamByThreadId={context?.unreadTeamMessagesByThreadId ?? {}}
         />
       )
     }
@@ -2036,9 +2115,11 @@ function CamionChiaroApp() {
     if (activeTab === 'documents') {
       return (
         <DocumentsScreen
+          focusDocumentId={documentFocusId}
           documents={context?.documents ?? []}
           language={language}
           onCreateDocument={handleCreateDocument}
+          onRenewDocument={handleRenewDocument}
           onUploadDocument={handleUploadDocument}
         />
       )
@@ -2098,7 +2179,10 @@ function CamionChiaroApp() {
         language={language}
         logoUrl={logoUrl}
         onOpenChat={() => openDriverChat('company')}
-        onOpenDocuments={() => setActiveTab('documents')}
+        onOpenDocuments={(nextDocumentId = '') => {
+          setDocumentFocusId(nextDocumentId || '')
+          setActiveTab('documents')
+        }}
         onOpenOperations={() => setActiveTab('operations')}
         onOpenSettings={() => setActiveTab('settings')}
         onSelectDailyVehicle={handleSelectDailyVehicle}
@@ -2121,6 +2205,7 @@ function CamionChiaroApp() {
     companyTeamChatMessages,
     companyName,
     context,
+    documentFocusId,
     driver,
     driverName,
     driverTeamChatMessages,

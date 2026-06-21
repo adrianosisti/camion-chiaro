@@ -194,6 +194,11 @@ function createReplyReference(message, sender) {
   }
 }
 
+function getVisibleSenderName(message = {}, currentUserRole = '', fallbackName = '') {
+  if (message.senderRole === currentUserRole) return 'Tu'
+  return message.senderName || fallbackName || 'Mittente'
+}
+
 function getReactionEmoji(value) {
   const legacyReactionMap = {
     Cuore: '❤️',
@@ -541,18 +546,39 @@ function ChatInfoModal({
   )
 }
 
-function MessageBubble({ currentUserRole, message, onAvatarPress, onLongPress, onOpenImage, ownAvatarUrl, participantAvatarUrl, participantName }) {
+function MessageBubble({
+  currentUserRole,
+  message,
+  onAvatarPress,
+  onLongPress,
+  onOpenImage,
+  ownAvatarUrl,
+  participantAvatarUrl,
+  participantName,
+  senderAvatarUrl,
+  senderName,
+  showSenderNames = false,
+}) {
   const isOwn = message.senderRole === currentUserRole
   const readAt = currentUserRole === 'driver' ? message.readByCompanyAt : message.readByDriverAt
   const isRead = Boolean(readAt)
+  const groupReadCount = Number(message.readCount ?? 0)
   const display = getMessageDisplay(message)
   const messageText = String(display.text ?? '').trim()
   const visibleReactions = Object.entries(message.reactions ?? {}).filter(([, reaction]) => reaction)
+  const visibleSenderName = senderName || (isOwn ? 'Tu' : participantName)
+  const participantInitials = showSenderNames ? getInitials(visibleSenderName) : getInitials(participantName)
+  const participantAvatar = showSenderNames ? senderAvatarUrl || (message.senderRole === 'company' ? participantAvatarUrl : '') : participantAvatarUrl
 
   return (
     <View style={[styles.messageRow, isOwn && styles.messageRowDriver]}>
-      {!isOwn ? <Avatar initials={getInitials(participantName)} onPress={() => onAvatarPress?.(participantAvatarUrl, participantName)} uri={participantAvatarUrl} /> : null}
+      {!isOwn ? <Avatar initials={participantInitials} onPress={() => onAvatarPress?.(participantAvatar, visibleSenderName)} uri={participantAvatar} /> : null}
       <Pressable onLongPress={() => onLongPress?.(message)} style={[styles.bubble, isOwn ? styles.driverBubble : styles.companyBubble]}>
+        {showSenderNames ? (
+          <Text numberOfLines={1} style={[styles.messageSenderName, isOwn && styles.messageSenderNameOwn]}>
+            {visibleSenderName}
+          </Text>
+        ) : null}
         {display.reply ? (
           <View style={styles.replyQuote}>
             <Text numberOfLines={1} style={styles.replyQuoteSender}>{display.reply.sender || 'Risposta'}</Text>
@@ -563,11 +589,12 @@ function MessageBubble({ currentUserRole, message, onAvatarPress, onLongPress, o
         {messageText ? <Text style={styles.bubbleText}>{messageText}</Text> : null}
         <View style={styles.bubbleMeta}>
           <Text style={styles.bubbleTime}>{formatMessageTime(message.createdAt)}</Text>
-          {isOwn && isRead ? <Text style={styles.readAtText}>Letto {formatMessageTime(readAt)}</Text> : null}
+          {isOwn && groupReadCount > 0 ? <Text style={styles.readAtText}>Letti {groupReadCount}</Text> : null}
+          {isOwn && !groupReadCount && isRead ? <Text style={styles.readAtText}>Letto {formatMessageTime(readAt)}</Text> : null}
           {isOwn ? (
-            <View accessibilityLabel={isRead ? 'Letto' : 'Consegnato'} style={styles.readReceipt}>
-              <Text style={[styles.checkMark, isRead && styles.checkMarkRead]}>✓</Text>
-              <Text style={[styles.checkMark, styles.checkMarkSecond, isRead && styles.checkMarkRead]}>✓</Text>
+            <View accessibilityLabel={isRead || groupReadCount > 0 ? 'Letto' : 'Consegnato'} style={styles.readReceipt}>
+              <Text style={[styles.checkMark, (isRead || groupReadCount > 0) && styles.checkMarkRead]}>✓</Text>
+              <Text style={[styles.checkMark, styles.checkMarkSecond, (isRead || groupReadCount > 0) && styles.checkMarkRead]}>✓</Text>
             </View>
           ) : null}
         </View>
@@ -637,6 +664,7 @@ export function ChatScreen({
   onReactToMessage,
   onSend,
   onTyping,
+  showSenderNames = false,
   soundEnabled = true,
 }) {
   const [actionMessage, setActionMessage] = useState(null)
@@ -1092,7 +1120,7 @@ export function ChatScreen({
   }
 
   function replyToSelectedMessage(message) {
-    const sender = message.senderRole === currentUserRole ? 'Tu' : chatPartnerName
+    const sender = getVisibleSenderName(message, currentUserRole, chatPartnerName)
     setReplyToMessage(createReplyReference(message, sender))
     setActionMessage(null)
   }
@@ -1150,6 +1178,9 @@ export function ChatScreen({
             ownAvatarUrl={chatOwnAvatarUrl}
             participantAvatarUrl={chatPartnerAvatarUrl}
             participantName={chatPartnerName}
+            senderAvatarUrl={item.senderAvatarUrl}
+            senderName={getVisibleSenderName(item, currentUserRole, chatPartnerName)}
+            showSenderNames={showSenderNames}
           />
         )}
         ListEmptyComponent={
@@ -1416,6 +1447,16 @@ const styles = StyleSheet.create({
   },
   checkMarkSecond: {
     marginLeft: -5,
+  },
+  messageSenderName: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    marginBottom: 5,
+  },
+  messageSenderNameOwn: {
+    color: colors.ink,
+    textAlign: 'right',
   },
   readReceipt: {
     alignItems: 'center',

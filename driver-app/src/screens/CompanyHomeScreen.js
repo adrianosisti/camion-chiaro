@@ -82,15 +82,15 @@ function getDeadlineTone(item) {
   return 'info'
 }
 
-function getDeadlineMeta(item, drivers, vehicles, language) {
-  const subject = getDeadlineSubject(item, drivers, vehicles)
+function getDeadlineMeta(item, drivers, vehicles, people = [], assets = [], language) {
+  const subject = getDeadlineSubject(item, drivers, vehicles, people, assets)
   const days = getDeadlineDays(item.dueDate)
   const when = days < 0 ? `${Math.abs(days)} gg fa` : days === 0 ? 'oggi' : `tra ${days} gg`
 
   return `${subject} · ${formatDate(item.dueDate, language)} · ${when}`
 }
 
-function getDeadlineSubject(item, drivers, vehicles) {
+function getDeadlineSubject(item, drivers, vehicles, people = [], assets = []) {
   if (item.scope === 'driver') {
     const driver = drivers.find((currentDriver) => currentDriver.id === item.driverId)
     return `Persona · ${driver?.name ?? 'Autista'}`
@@ -101,12 +101,20 @@ function getDeadlineSubject(item, drivers, vehicles) {
     return `${getVehicleFleetLabel(vehicle?.fleetType)} · ${vehicle?.plate ?? 'Mezzo'}`
   }
 
-  if (item.scope === 'person') return 'Persona aziendale'
-  if (item.scope === 'asset') return 'Attrezzatura'
+  if (item.scope === 'person') {
+    const person = people.find((currentPerson) => currentPerson.id === item.personId)
+    const label = person?.department === 'warehouse' ? 'Magazzino' : person?.department === 'office' ? 'Ufficio' : 'Persona'
+    return `${label} · ${person?.name ?? 'Persona aziendale'}`
+  }
+
+  if (item.scope === 'asset') {
+    const asset = assets.find((currentAsset) => currentAsset.id === item.assetId)
+    return `Attrezzatura · ${asset?.code ?? 'Attrezzatura'}`
+  }
   return 'Azienda'
 }
 
-function getDeadlineDetail(item, drivers, vehicles) {
+function getDeadlineDetail(item, drivers, vehicles, people = [], assets = []) {
   if (item.scope === 'driver') {
     const driver = drivers.find((currentDriver) => currentDriver.id === item.driverId)
     return driver?.role ?? 'Autista'
@@ -117,8 +125,15 @@ function getDeadlineDetail(item, drivers, vehicles) {
     return [vehicle?.model, vehicle?.type].filter(Boolean).join(' · ') || 'Dettaglio mezzo non indicato'
   }
 
-  if (item.scope === 'person') return item.owner || 'Persona aziendale'
-  if (item.scope === 'asset') return item.owner || 'Attrezzatura aziendale'
+  if (item.scope === 'person') {
+    const person = people.find((currentPerson) => currentPerson.id === item.personId)
+    return [person?.jobTitle, person?.phone].filter(Boolean).join(' · ') || item.owner || 'Persona aziendale'
+  }
+
+  if (item.scope === 'asset') {
+    const asset = assets.find((currentAsset) => currentAsset.id === item.assetId)
+    return [asset?.model, asset?.serialNumber, asset?.location].filter(Boolean).join(' · ') || item.owner || 'Attrezzatura aziendale'
+  }
   return item.owner || 'Documento aziendale'
 }
 
@@ -144,7 +159,7 @@ function DetailRow({ label, value }) {
   )
 }
 
-function DeadlineDetailPanel({ detail, drivers, language = 'it', onClose, onOpenArchive, vehicles }) {
+function DeadlineDetailPanel({ assets = [], detail, drivers, language = 'it', onClose, onOpenArchive, people = [], vehicles }) {
   if (!detail) return null
 
   const days = getDeadlineDays(detail.dueDate)
@@ -165,8 +180,8 @@ function DeadlineDetailPanel({ detail, drivers, language = 'it', onClose, onOpen
 
         <ScrollView contentContainerStyle={styles.detailContent}>
           <Text style={styles.detailTitle}>{detail.type}</Text>
-          <DetailRow label="Soggetto" value={getDeadlineSubject(detail, drivers, vehicles)} />
-          <DetailRow label="Dettaglio" value={getDeadlineDetail(detail, drivers, vehicles)} />
+          <DetailRow label="Soggetto" value={getDeadlineSubject(detail, drivers, vehicles, people, assets)} />
+          <DetailRow label="Dettaglio" value={getDeadlineDetail(detail, drivers, vehicles, people, assets)} />
           <DetailRow label="Data scadenza" value={formatDate(detail.dueDate, language)} />
           <DetailRow label="Stato" value={status} />
           <DetailRow label="Numero documento" value={detail.documentNumber} />
@@ -175,7 +190,7 @@ function DeadlineDetailPanel({ detail, drivers, language = 'it', onClose, onOpen
           {detail.filePath ? <DetailRow label="Allegato" value="Presente" /> : null}
 
           <Pressable onPress={onOpenArchive} style={styles.resolveButton}>
-            <Text style={styles.resolveButtonText}>Apri archivio scadenze</Text>
+            <Text style={styles.resolveButtonText}>Gestisci rinnovo</Text>
           </Pressable>
         </ScrollView>
       </View>
@@ -287,7 +302,9 @@ export function CompanyHomeScreen({
   const [isResolvingDetail, setIsResolvingDetail] = useState(false)
   const company = context?.companyProfile ?? {}
   const drivers = context?.drivers ?? []
+  const people = context?.people ?? []
   const vehicles = context?.vehicles ?? []
+  const assets = context?.assets ?? []
   const checks = context?.vehicleChecks ?? []
   const faults = context?.faultReports ?? []
   const complianceItems = context?.complianceItems ?? []
@@ -350,6 +367,31 @@ export function CompanyHomeScreen({
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>
+
+      {activeDeadlines.length ? (
+        <Pressable
+          onPress={() => onOpenManagement?.('deadlines')}
+          style={[
+            styles.deadlineAlertCard,
+            deadlineTone === 'danger' && styles.deadlineAlertDanger,
+            deadlineTone === 'warning' && styles.deadlineAlertWarning,
+          ]}
+        >
+          <View style={styles.deadlineAlertIcon}>
+            <Text style={styles.deadlineAlertIconText}>!</Text>
+          </View>
+          <View style={styles.deadlineAlertCopy}>
+            <Text style={styles.deadlineAlertKicker}>Scadenze documentali</Text>
+            <Text style={styles.deadlineAlertTitle}>
+              {hasExpiredDeadlines ? 'Scadenze scadute' : hasSoonDeadlines ? 'Scadenze entro 30 giorni' : 'Scadenze sotto controllo'}
+            </Text>
+            <Text numberOfLines={1} style={styles.deadlineAlertMeta}>
+              {nextDeadlines[0]?.type} · {getDeadlineMeta(nextDeadlines[0], drivers, vehicles, people, assets, language)}
+            </Text>
+          </View>
+          <Text style={styles.deadlineAlertCount}>{activeDeadlines.length}</Text>
+        </Pressable>
+      ) : null}
 
       <Panel
         kicker="Flotta"
@@ -418,7 +460,7 @@ export function CompanyHomeScreen({
             <View style={[styles.deadlineDot, styles[`${getDeadlineTone(item)}Dot`]]} />
             <View style={styles.deadlineCopy}>
               <Text style={styles.deadlineTitle}>{item.type}</Text>
-              <Text style={styles.deadlineMeta}>{getDeadlineMeta(item, drivers, vehicles, language)}</Text>
+              <Text style={styles.deadlineMeta}>{getDeadlineMeta(item, drivers, vehicles, people, assets, language)}</Text>
             </View>
             <Text style={[styles.deadlineDate, styles[`${getDeadlineTone(item)}Text`]]}>{formatDate(item.dueDate, language)}</Text>
           </Pressable>
@@ -437,6 +479,7 @@ export function CompanyHomeScreen({
       />
       <DeadlineDetailPanel
         detail={selectedDeadline}
+        assets={assets}
         drivers={drivers}
         language={language}
         onClose={() => setSelectedDeadline(null)}
@@ -444,6 +487,7 @@ export function CompanyHomeScreen({
           setSelectedDeadline(null)
           onOpenManagement?.('deadlines')
         }}
+        people={people}
         vehicles={vehicles}
       />
 
@@ -501,6 +545,72 @@ const styles = StyleSheet.create({
     color: colors.cyanDark,
     fontSize: 12,
     fontWeight: '900',
+  },
+  deadlineAlertCard: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderColor: colors.cyan,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+    padding: 14,
+  },
+  deadlineAlertCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  deadlineAlertCount: {
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '900',
+    minWidth: 42,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    textAlign: 'center',
+  },
+  deadlineAlertDanger: {
+    backgroundColor: '#fee2e2',
+    borderColor: colors.danger,
+  },
+  deadlineAlertIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  deadlineAlertIconText: {
+    color: colors.danger,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  deadlineAlertKicker: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  deadlineAlertMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  deadlineAlertTitle: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  deadlineAlertWarning: {
+    backgroundColor: '#fef3c7',
+    borderColor: colors.warning,
   },
   deadlineCopy: {
     flex: 1,

@@ -171,8 +171,8 @@ export function HomeScreen({
           </Pressable>
         </View>
         <View style={styles.metricRow}>
-          <MetricPill label="Messaggi" tone={unreadCompanyMessages ? 'warning' : 'info'} value={unreadCompanyMessages} />
-          <MetricPill label="Documenti" onPress={onOpenDocuments} tone={documentAlertTone} value={criticalDocuments.length} />
+          <MetricPill label="Messaggi" onPress={onOpenChat} tone={unreadCompanyMessages ? 'warning' : 'info'} value={unreadCompanyMessages} />
+          <MetricPill label="Documenti" onPress={() => onOpenDocuments?.(criticalDocuments[0]?.id ?? '')} tone={documentAlertTone} value={criticalDocuments.length} />
           <MetricPill label={t(language, 'faultsOpen')} tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
         </View>
         <View style={styles.metricRowSecondary}>
@@ -183,7 +183,7 @@ export function HomeScreen({
 
       {criticalDocuments.length ? (
         <Pressable
-          onPress={onOpenDocuments}
+          onPress={() => onOpenDocuments?.(criticalDocuments[0]?.id ?? '')}
           style={[styles.documentAlert, expiredDocuments.length && styles.documentAlertDanger]}
         >
           <View style={styles.documentAlertIcon}>
@@ -215,7 +215,7 @@ export function HomeScreen({
           icon="document-text-outline"
           label={t(language, 'documents')}
           meta={`${documents.length} disponibili`}
-          onPress={onOpenDocuments}
+          onPress={() => onOpenDocuments?.('')}
         />
         <ActionTile
           icon="checkbox-outline"
@@ -319,7 +319,7 @@ export function HomeScreen({
       <Panel
         kicker="Documenti"
         right={
-          <Pressable onPress={onOpenDocuments} style={styles.panelIconButton}>
+          <Pressable onPress={() => onOpenDocuments?.('')} style={styles.panelIconButton}>
             <Ionicons color={colors.ink} name="arrow-forward" size={18} />
           </Pressable>
         }

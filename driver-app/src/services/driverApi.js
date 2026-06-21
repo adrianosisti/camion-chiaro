@@ -50,6 +50,8 @@ const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
 const teamChatThreadSelect = 'id, company_id, thread_type, audience_type, direct_key, title, status, last_message_at, created_at'
 const teamChatMessageSelect =
+  'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, read_by_company_at, created_at'
+const teamChatMessageLegacySelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, created_at'
 const vehicleCheckSelect =
   'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, status, resolved_at, created_at'
@@ -221,6 +223,8 @@ async function registerCompanyStorageFile({
   bucket,
   category = 'other',
   companyId,
+  documentId = null,
+  driverId = null,
   filePath,
   sizeBytes = 0,
 }) {
@@ -232,8 +236,8 @@ async function registerCompanyStorageFile({
     storage_category: category,
     storage_path: filePath,
     target_company_id: companyId,
-    target_document_id: null,
-    target_driver_id: null,
+    target_document_id: documentId,
+    target_driver_id: driverId,
   })
 }
 
@@ -586,6 +590,7 @@ async function fetchDriverContextDirect() {
     personResult,
     peopleResult,
     teamThreadsResult,
+    teamUnreadCountsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -628,6 +633,7 @@ async function fetchDriverContextDirect() {
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
     fetchTeamChatThreads(driver.company_id),
+    fetchTeamUnreadCounts(driver.company_id),
   ])
 
   const firstError = [
@@ -639,6 +645,7 @@ async function fetchDriverContextDirect() {
     personResult.error,
     isMissingWorkforceSchemaError(peopleResult.error) ? null : peopleResult.error,
     teamThreadsResult.error,
+    teamUnreadCountsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -660,6 +667,8 @@ async function fetchDriverContextDirect() {
         ? (personResult.data ? [personResult.data] : [])
         : (peopleResult.data ?? []),
       teamChatThreads: teamThreadsResult.data ?? [],
+      unreadTeamMessages: Object.values(teamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
+      unreadTeamMessagesByThreadId: teamUnreadCountsResult.data ?? {},
       vehicleChecks: checksResult.data ?? [],
       vehicles: vehiclesResult.data ?? [],
     }),
@@ -676,6 +685,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
     peopleResult,
     complianceResult,
     teamThreadsResult,
+    teamUnreadCountsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -696,6 +706,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
       .neq('status', 'archived')
       .order('due_date', { ascending: true }),
     fetchTeamChatThreads(companyId),
+    fetchTeamUnreadCounts(companyId),
   ])
 
   const firstError = [
@@ -703,6 +714,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
     isMissingWorkforceSchemaError(peopleResult.error) ? null : peopleResult.error,
     complianceResult.error,
     teamThreadsResult.error,
+    teamUnreadCountsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -718,6 +730,8 @@ async function fetchCompanyPersonContextDirect(user, person) {
       faultReports: [],
       people: (peopleResult.data ?? []).map(mapContextCompanyPerson),
       teamChatThreads: teamThreadsResult.data ?? [],
+      unreadTeamMessages: Object.values(teamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
+      unreadTeamMessagesByThreadId: teamUnreadCountsResult.data ?? {},
       vehicleChecks: [],
       vehicles: [],
     }),
@@ -766,6 +780,7 @@ export async function fetchCompanyContext() {
     teamChatThreadsResult,
     chatMessagesResult,
     teamChatMessagesResult,
+    teamUnreadCountsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -834,6 +849,7 @@ export async function fetchCompanyContext() {
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .limit(120),
+    fetchTeamUnreadCounts(companyId),
   ])
 
   const firstError = [
@@ -849,6 +865,7 @@ export async function fetchCompanyContext() {
     unreadMessagesResult.error,
     chatThreadsResult.error,
     chatMessagesResult.error,
+    teamUnreadCountsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -884,6 +901,8 @@ export async function fetchCompanyContext() {
       teamChatThreads: teamChatThreadsResult.error ? [] : (teamChatThreadsResult.data ?? []),
       unreadDriverMessages: unreadMessagesResult.count ?? 0,
       unreadDriverMessagesByDriverId,
+      unreadTeamMessages: Object.values(teamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
+      unreadTeamMessagesByThreadId: teamUnreadCountsResult.data ?? {},
       vehicleChecks: (checksResult.data ?? []).map(mapVehicleCheck),
       vehicles: (vehiclesResult.data ?? []).map(mapVehicle),
       workforceSchemaReady,
@@ -1101,7 +1120,7 @@ export async function fetchTeamChat({ companyId, threadId }) {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!companyId || !threadId) return { data: { messages: [], thread: null }, error: null }
 
-  const [threadResult, messageResult] = await Promise.all([
+  const [threadResult, initialMessageResult] = await Promise.all([
     supabase
       .from('team_chat_threads')
       .select(teamChatThreadSelect)
@@ -1115,6 +1134,16 @@ export async function fetchTeamChat({ companyId, threadId }) {
       .eq('thread_id', threadId)
       .order('created_at', { ascending: true }),
   ])
+  let messageResult = initialMessageResult
+
+  if (initialMessageResult.error?.code === '42703' || initialMessageResult.error?.code === 'PGRST204') {
+    messageResult = await supabase
+      .from('team_chat_messages')
+      .select(teamChatMessageLegacySelect)
+      .eq('company_id', companyId)
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true })
+  }
 
   const error = threadResult.error || messageResult.error
   if (isMissingWorkforceSchemaError(error)) {
@@ -1125,13 +1154,77 @@ export async function fetchTeamChat({ companyId, threadId }) {
   }
   if (error) return { data: null, error }
 
+  const messageRows = messageResult.data ?? []
+  let readCountsByMessageId = {}
+
+  if (messageRows.length) {
+    const readsResult = await supabase
+      .from('team_chat_message_reads')
+      .select('message_id')
+      .in('message_id', messageRows.map((message) => message.id))
+
+    if (!isMissingWorkforceSchemaError(readsResult.error) && !readsResult.error) {
+      readCountsByMessageId = (readsResult.data ?? []).reduce((counts, row) => ({
+        ...counts,
+        [row.message_id]: (counts[row.message_id] ?? 0) + 1,
+      }), {})
+    }
+  }
+
   return {
     data: {
-      messages: (messageResult.data ?? []).map(mapTeamChatMessage),
+      messages: messageRows.map((row) => mapTeamChatMessage({
+        ...row,
+        read_count: readCountsByMessageId[row.id] ?? 0,
+      })),
       thread: threadResult.data ? mapTeamChatThread(threadResult.data) : null,
     },
     error: null,
   }
+}
+
+export async function fetchTeamUnreadCounts(companyId) {
+  if (!isSupabaseConfigured || !companyId) return { data: {}, error: null }
+
+  const { data, error } = await supabase.rpc('get_team_thread_unread_counts', {
+    target_company_id: companyId,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return { data: {}, error: null }
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: {}, error: null }
+  }
+
+  if (error) return { data: {}, error }
+
+  return {
+    data: (data ?? []).reduce((counts, row) => ({
+      ...counts,
+      [row.thread_id ?? row.threadId]: Number(row.unread_count ?? row.unreadCount ?? 0),
+    }), {}),
+    error: null,
+  }
+}
+
+export async function markTeamThreadRead(threadId) {
+  if (!isSupabaseConfigured || !threadId) return { data: 0, error: null }
+
+  const { data, error } = await supabase.rpc('mark_team_thread_read', {
+    target_thread_id: threadId,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return { data: 0, error: null }
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: 0, error: null }
+  }
+
+  return { data: Number(data ?? 0), error }
 }
 
 export async function sendTeamChatMessage({
@@ -1162,11 +1255,21 @@ export async function sendTeamChatMessage({
     thread_id: threadId,
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('team_chat_messages')
     .insert(payload)
     .select(teamChatMessageSelect)
     .single()
+
+  if (error?.code === '42703' || error?.code === 'PGRST204') {
+    const fallbackResult = await supabase
+      .from('team_chat_messages')
+      .insert(payload)
+      .select(teamChatMessageLegacySelect)
+      .single()
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   if (error && uploadResult.data) {
     await supabase.storage.from(companyAssetsBucket).remove([uploadResult.data])
@@ -1402,6 +1505,18 @@ export function subscribeToTeamChatMessages({ companyId, onMessage }) {
         filter: `company_id=eq.${companyId}`,
         schema: 'public',
         table: 'team_chat_threads',
+      },
+      (_payload) => {
+        onMessage?.(null, _payload)
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'team_chat_message_reads',
       },
       (_payload) => {
         onMessage?.(null, _payload)
@@ -1768,6 +1883,94 @@ export async function createCompanyComplianceItem({ companyId, file = null, item
   return { data: data ? mapComplianceItem(data) : null, error }
 }
 
+export async function renewCompanyComplianceItem({ companyId, file = null, item, updates }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !item?.id) return { data: null, error: { message: 'Scadenza mancante.' } }
+
+  let filePath = ''
+  let fileBody = null
+
+  if (file?.uri) {
+    const cleanFileName = sanitizeFileName(file.name ?? `scadenza-${Date.now()}`)
+    const subjectId = item.driverId || item.vehicleId || item.personId || item.assetId || 'azienda'
+    filePath = `${companyId}/compliance/${item.scope}/${subjectId}/${Date.now()}-${cleanFileName}`
+    fileBody = await getFileBodyFromUri(file.uri)
+
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
+      cacheControl: '3600',
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    })
+
+    if (uploadError) return { data: null, error: uploadError }
+  }
+
+  const payload = {
+    document_number: updates.documentNumber || null,
+    due_date: updates.dueDate,
+    owner: updates.owner || null,
+    status: 'open',
+    type: updates.type,
+  }
+
+  if (filePath) {
+    payload.file_bucket = companyAssetsBucket
+    payload.file_path = filePath
+  }
+
+  let { data, error } = await supabase
+    .from('compliance_items')
+    .update(payload)
+    .eq('company_id', companyId)
+    .eq('id', item.id)
+    .select('id, type, scope, driver_id, vehicle_id, person_id, asset_id, due_date, document_number, status, file_bucket, file_path')
+    .single()
+
+  if (error?.code === '42703' && filePath) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+    return {
+      data: null,
+      error: { message: 'Manca SQL allegati scadenze. Esegui il file 27_scadenze_file_allegati.sql in Supabase.' },
+    }
+  }
+
+  if (error?.code === 'PGRST204' || error?.code === '42703') {
+    const fallbackPayload = {
+      document_number: updates.documentNumber || null,
+      due_date: updates.dueDate,
+      owner: updates.owner || null,
+      status: 'open',
+      type: updates.type,
+    }
+    const fallbackResult = await supabase
+      .from('compliance_items')
+      .update(fallbackPayload)
+      .eq('company_id', companyId)
+      .eq('id', item.id)
+      .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status')
+      .single()
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
+
+  if (error && filePath) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+  }
+
+  if (!error && filePath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'document',
+      companyId,
+      filePath,
+      sizeBytes: fileBody?.byteLength ?? 0,
+    })
+  }
+
+  return { data: data ? mapComplianceItem(data) : null, error }
+}
+
 export async function uploadDriverDocumentFile({ companyId, documentId, driverId, file }) {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!companyId || !documentId || !driverId || !file?.uri) {
@@ -1793,6 +1996,63 @@ export async function uploadDriverDocumentFile({ companyId, documentId, driverId
 
   if (error) {
     await supabase.storage.from(driverDocumentsBucket).remove([filePath])
+  }
+
+  return { data, error }
+}
+
+export async function renewDriverDocument({ companyId, document, driverId, file = null, updates = {} }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !document?.id || !driverId) {
+    return { data: null, error: { message: 'Documento mancante.' } }
+  }
+
+  let filePath = ''
+  let fileBody = null
+
+  if (file?.uri) {
+    const cleanFileName = sanitizeFileName(file.name ?? `documento-${Date.now()}`)
+    filePath = `${companyId}/${driverId}/${document.id}/${Date.now()}-${cleanFileName}`
+    fileBody = await getFileBodyFromUri(file.uri)
+
+    const { error: uploadError } = await supabase.storage.from(driverDocumentsBucket).upload(filePath, fileBody, {
+      cacheControl: '3600',
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    })
+
+    if (uploadError) return { data: null, error: uploadError }
+  }
+
+  const { data, error } = await supabase.rpc('renew_driver_document', {
+    document_expires_at: updates.expiresAt || null,
+    document_number: updates.documentNumber ?? null,
+    document_type: updates.type ?? null,
+    target_document_id: document.id,
+    uploaded_file_path: filePath || null,
+  })
+
+  if (error && filePath) {
+    await supabase.storage.from(driverDocumentsBucket).remove([filePath])
+  }
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL rinnovo documenti. Esegui il file 37_rinnovo_documenti_autista.sql in Supabase.' },
+    }
+  }
+
+  if (!error && filePath) {
+    await registerCompanyStorageFile({
+      bucket: driverDocumentsBucket,
+      category: 'document',
+      companyId,
+      documentId: document.id,
+      driverId,
+      filePath,
+      sizeBytes: fileBody?.byteLength ?? 0,
+    })
   }
 
   return { data, error }

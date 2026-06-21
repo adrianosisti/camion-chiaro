@@ -67,6 +67,7 @@ export function CompanyChatScreen({
   teamThreads = [],
   people = [],
   unreadByDriverId = {},
+  unreadTeamByThreadId = {},
 }) {
   const [isStartingNewChat, setIsStartingNewChat] = useState(false)
   const [chatListMode, setChatListMode] = useState('direct')
@@ -97,6 +98,14 @@ export function CompanyChatScreen({
     () => new Map(safePeople.map((person) => [person.id, person])),
     [safePeople],
   )
+  const normalizedTeamMessages = useMemo(
+    () => (Array.isArray(teamMessages) ? teamMessages : []).map((message) => ({
+      ...message,
+      senderAvatarUrl: getTeamMessageSenderAvatarUrl(message, personById, driverPhotoUrls),
+      senderName: getTeamMessageSenderName(message, personById, companyName),
+    })),
+    [companyName, driverPhotoUrls, personById, teamMessages],
+  )
   const companyVisibleTeamThreads = safeTeamThreads.filter((thread) => isCompanyVisibleThread(thread))
   const directTeamThreads = companyVisibleTeamThreads.filter((thread) => isDirectThread(thread))
   const companyDirectTeamThreads = directTeamThreads
@@ -125,6 +134,7 @@ export function CompanyChatScreen({
         thread,
         timestamp: getSafeTimestamp(thread.lastMessageAt),
         type: 'team',
+        unreadCount: unreadTeamByThreadId[thread.id] ?? 0,
       })),
     ].sort((firstRow, secondRow) => {
       const dateDiff = secondRow.timestamp - firstRow.timestamp
@@ -132,10 +142,12 @@ export function CompanyChatScreen({
 
       return getDirectRowTitle(firstRow).localeCompare(getDirectRowTitle(secondRow), 'it')
     }),
-    [companyDirectTeamThreads, threadByDriverId, unreadByDriverId, visibleDrivers],
+    [companyDirectTeamThreads, threadByDriverId, unreadByDriverId, unreadTeamByThreadId, visibleDrivers],
   )
   const directConversationCount = conversationDrivers.length + companyDirectTeamThreads.length
   const groupConversationCount = groupTeamThreads.length
+  const directUnreadCount = directChatRows.reduce((total, row) => total + Number(row.unreadCount ?? 0), 0)
+  const groupUnreadCount = groupTeamThreads.reduce((total, thread) => total + Number(unreadTeamByThreadId[thread.id] ?? 0), 0)
   const activeModeTitle = chatListMode === 'groups' ? 'Gruppi' : 'Chat singole'
   const hasVisibleRows = chatListMode === 'groups'
     ? groupTeamThreads.length
@@ -168,7 +180,7 @@ export function CompanyChatScreen({
           companyOnline
           currentUserRole={currentUserRole}
           incomingShare={incomingShare}
-          messages={teamMessages}
+          messages={normalizedTeamMessages}
           offlineLabel="gruppo"
           onIncomingShareConsumed={onIncomingShareConsumed}
           onRefresh={onRefresh}
@@ -177,6 +189,7 @@ export function CompanyChatScreen({
           ownAvatarUrl={companyLogoUrl}
           participantAvatarUrl={companyLogoUrl}
           participantName={selectedTeamThread.title}
+          showSenderNames={!isDirectThread(selectedTeamThread)}
           soundEnabled={soundEnabled}
         />
       </View>
@@ -242,6 +255,7 @@ export function CompanyChatScreen({
           setChatListMode(nextMode)
           setIsStartingNewChat(false)
         }}
+        unreadCounts={{ direct: directUnreadCount, groups: groupUnreadCount }}
       />
 
       <View style={styles.modeLead}>
@@ -305,6 +319,7 @@ export function CompanyChatScreen({
                 }}
                 peopleById={personById}
                 thread={row.thread}
+                unreadCount={row.unreadCount}
               />
             )
           ))}
@@ -323,6 +338,7 @@ export function CompanyChatScreen({
               }}
               peopleById={personById}
               thread={thread}
+              unreadCount={unreadTeamByThreadId[thread.id] ?? 0}
             />
           ))}
         </View>
@@ -385,7 +401,7 @@ function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount =
   )
 }
 
-function TeamChatRow({ onPress, peopleById, thread }) {
+function TeamChatRow({ onPress, peopleById, thread, unreadCount = 0 }) {
   const kind = getThreadKind(thread)
   const isDirect = kind === 'direct'
   const targetPerson = getCompanyDirectPerson(thread, peopleById)
@@ -413,7 +429,7 @@ function TeamChatRow({ onPress, peopleById, thread }) {
         <Text style={[styles.kindBadge, isDirect ? styles.kindBadgeDirect : styles.kindBadgeGroup]}>
           {badgeLabel}
         </Text>
-        <Text style={styles.openText}>Apri</Text>
+        {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Text style={styles.openText}>Apri</Text>}
       </View>
     </Pressable>
   )
@@ -423,6 +439,24 @@ function getPersonDepartmentLabel(value = '') {
   if (value === 'warehouse') return 'Magazzino'
   if (value === 'office') return 'Ufficio'
   return 'Persona'
+}
+
+function getTeamMessageSenderName(message = {}, peopleById = new Map(), companyName = '') {
+  if (message.senderRole === 'company') return companyName || 'Azienda'
+  if (message.senderPersonId && peopleById.has(message.senderPersonId)) {
+    return peopleById.get(message.senderPersonId).name
+  }
+  if (message.senderName) return message.senderName
+  if (message.senderRole === 'driver') return 'Autista'
+  if (message.senderRole === 'warehouse') return 'Magazzino'
+  if (message.senderRole === 'office') return 'Ufficio'
+  return 'Persona'
+}
+
+function getTeamMessageSenderAvatarUrl(message = {}, peopleById = new Map(), driverPhotoUrls = {}) {
+  if (!message.senderPersonId || !peopleById.has(message.senderPersonId)) return ''
+  const person = peopleById.get(message.senderPersonId)
+  return person?.linkedDriverId ? driverPhotoUrls[person.linkedDriverId] ?? '' : ''
 }
 
 function PersonChatRow({ onPress, person }) {
@@ -441,7 +475,7 @@ function PersonChatRow({ onPress, person }) {
   )
 }
 
-function ChatModeCards({ counts = {}, mode, onChange }) {
+function ChatModeCards({ counts = {}, mode, onChange, unreadCounts = {} }) {
   const items = [
     {
       count: counts.direct ?? 0,
@@ -477,7 +511,11 @@ function ChatModeCards({ counts = {}, mode, onChange }) {
               <Text numberOfLines={1} style={styles.modeCardTitle}>{item.label}</Text>
               <Text numberOfLines={1} style={styles.modeCardSubtitle}>{item.subtitle}</Text>
             </View>
-            <Text style={[styles.modeCount, isActive && styles.modeCountActive]}>{item.count}</Text>
+            {unreadCounts[item.id] > 0 ? (
+              <Text style={styles.modeUnreadCount}>{unreadCounts[item.id]}</Text>
+            ) : (
+              <Text style={[styles.modeCount, isActive && styles.modeCountActive]}>{item.count}</Text>
+            )}
           </Pressable>
         )
       })}
@@ -718,6 +756,18 @@ const styles = StyleSheet.create({
   modeCountActive: {
     backgroundColor: colors.cyan,
     color: colors.ink,
+  },
+  modeUnreadCount: {
+    backgroundColor: colors.danger,
+    borderRadius: 999,
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '900',
+    minWidth: 32,
+    overflow: 'hidden',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    textAlign: 'center',
   },
   modeIconShell: {
     alignItems: 'center',

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
@@ -67,6 +67,13 @@ function getFileExtension(path = '') {
   return match?.[1]?.toLowerCase() || 'pdf'
 }
 
+function isValidDateValue(value = '') {
+  if (!value) return true
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsedDate = new Date(value)
+  return Number.isFinite(parsedDate.getTime())
+}
+
 function DocumentPreview({ language, onClose, preview }) {
   if (!preview?.uri) return null
 
@@ -87,10 +94,36 @@ function DocumentPreview({ language, onClose, preview }) {
   )
 }
 
-function DocumentRow({ document, language = 'it', onUploadDocument }) {
+function DocumentRow({ autoOpenRenewal = false, document, highlight = false, language = 'it', onAutoOpenHandled, onRenewDocument, onUploadDocument }) {
   const [isBusy, setIsBusy] = useState(false)
   const [preview, setPreview] = useState(null)
+  const [renewDocumentNumber, setRenewDocumentNumber] = useState(document.documentNumber ?? '')
+  const [renewExpiresAt, setRenewExpiresAt] = useState(document.expiresAt ?? '')
+  const [renewFile, setRenewFile] = useState(null)
+  const [renewModalVisible, setRenewModalVisible] = useState(false)
+  const [renewType, setRenewType] = useState(document.type ?? '')
   const tone = getDocumentTone(document)
+  const needsRenewal = document.filePath || ['expired', 'warning'].includes(tone)
+
+  function openRenewModal() {
+    setRenewType(document.type ?? '')
+    setRenewDocumentNumber(document.documentNumber ?? '')
+    setRenewExpiresAt(document.expiresAt ?? '')
+    setRenewFile(null)
+    setRenewModalVisible(true)
+  }
+
+  useEffect(() => {
+    if (!autoOpenRenewal) return
+    openRenewModal()
+    onAutoOpenHandled?.()
+  }, [autoOpenRenewal, document.id])
+
+  function closeRenewModal() {
+    if (isBusy) return
+    setRenewModalVisible(false)
+    setRenewFile(null)
+  }
 
   async function showDocument() {
     if (!document.filePath) {
@@ -190,8 +223,84 @@ function DocumentRow({ document, language = 'it', onUploadDocument }) {
     ])
   }
 
+  async function pickRenewFile() {
+    const result = await DocumentPicker.getDocumentAsync({
+      copyToCacheDirectory: true,
+      multiple: false,
+      type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    const file = result.assets[0]
+    setRenewFile({
+      name: file.name,
+      type: file.mimeType || 'application/octet-stream',
+      uri: file.uri,
+    })
+  }
+
+  async function takeRenewPhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per fotografare il documento.')
+      return
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      mediaTypes: ['images'],
+      quality: 0.78,
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    const asset = result.assets[0]
+    setRenewFile({
+      name: asset.fileName || `documento-${Date.now()}.jpg`,
+      type: asset.mimeType || 'image/jpeg',
+      uri: asset.uri,
+    })
+  }
+
+  async function saveRenewal() {
+    const cleanType = renewType.trim()
+    const cleanExpiresAt = renewExpiresAt.trim()
+    const cleanNumber = renewDocumentNumber.trim()
+
+    if (!cleanType) {
+      Alert.alert('Tipo documento mancante', 'Inserisci il tipo documento.')
+      return
+    }
+
+    if (!cleanExpiresAt && document.expiresAt) {
+      Alert.alert('Scadenza mancante', 'Inserisci la nuova data di scadenza per togliere la criticita.')
+      return
+    }
+
+    if (!isValidDateValue(cleanExpiresAt)) {
+      Alert.alert('Data non valida', 'Inserisci la data nel formato corretto dal calendario.')
+      return
+    }
+
+    setIsBusy(true)
+    const renewed = await onRenewDocument?.(document, {
+      documentNumber: cleanNumber,
+      expiresAt: cleanExpiresAt || null,
+      file: renewFile,
+      type: cleanType,
+    })
+    setIsBusy(false)
+
+    if (renewed) {
+      setRenewModalVisible(false)
+      setRenewFile(null)
+      Alert.alert('Documento rinnovato', 'Scadenza e file sono stati aggiornati. Se la data e futura, la criticita sparisce.')
+    }
+  }
+
   return (
-    <View style={[styles.documentRow, tone === 'expired' && styles.documentRowExpired, tone === 'warning' && styles.documentRowWarning]}>
+    <View style={[styles.documentRow, highlight && styles.documentRowFocused, tone === 'expired' && styles.documentRowExpired, tone === 'warning' && styles.documentRowWarning]}>
       <View style={[styles.documentIcon, styles[`${tone}Icon`]]}>
         <Text style={styles.documentIconText}>DOC</Text>
       </View>
@@ -206,25 +315,91 @@ function DocumentRow({ document, language = 'it', onUploadDocument }) {
         <Pressable disabled={isBusy} onPress={showDocument} style={styles.actionButton}>
           <Text style={styles.actionText}>{t(language, 'documentShow')}</Text>
         </Pressable>
-        <Pressable disabled={isBusy} onPress={pickDocument} style={[styles.actionButton, styles.actionButtonDark]}>
-          <Text style={styles.actionTextDark}>{document.filePath ? 'Cambia' : t(language, 'documentUpload')}</Text>
+        <Pressable disabled={isBusy} onPress={needsRenewal ? openRenewModal : pickDocument} style={[styles.actionButton, styles.actionButtonDark]}>
+          <Text style={styles.actionTextDark}>{needsRenewal ? 'Rinnova' : t(language, 'documentUpload')}</Text>
         </Pressable>
       </View>
+      <Modal animationType="slide" onRequestClose={closeRenewModal} transparent visible={renewModalVisible}>
+        <View style={styles.renewBackdrop}>
+          <View style={styles.renewSheet}>
+            <View style={styles.renewHeader}>
+              <View style={styles.renewHeaderCopy}>
+                <Text style={styles.renewKicker}>Rinnovo</Text>
+                <Text numberOfLines={1} style={styles.renewTitle}>{document.type}</Text>
+              </View>
+              <Pressable disabled={isBusy} onPress={closeRenewModal} style={styles.previewClose}>
+                <Text style={styles.previewCloseText}>{t(language, 'close')}</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.renewHelp}>
+              Inserisci la nuova scadenza e, se vuoi, sostituisci foto o PDF del documento.
+            </Text>
+            <TextInput
+              onChangeText={setRenewType}
+              placeholder="Tipo documento"
+              placeholderTextColor="#94a3b8"
+              style={styles.input}
+              value={renewType}
+            />
+            <TextInput
+              onChangeText={setRenewDocumentNumber}
+              placeholder="Numero documento opzionale"
+              placeholderTextColor="#94a3b8"
+              style={styles.input}
+              value={renewDocumentNumber}
+            />
+            <DateField
+              label="Nuova scadenza"
+              language={language}
+              onChange={setRenewExpiresAt}
+              placeholder="Nuova scadenza"
+              value={renewExpiresAt}
+            />
+            <View style={styles.renewFileBox}>
+              <View style={styles.renewFileCopy}>
+                <Text style={styles.renewFileTitle}>File documento</Text>
+                <Text numberOfLines={1} style={styles.renewFileMeta}>
+                  {renewFile?.name || (document.filePath ? 'File attuale mantenuto' : 'Nessun file selezionato')}
+                </Text>
+              </View>
+              {renewFile ? (
+                <Pressable disabled={isBusy} onPress={() => setRenewFile(null)} style={styles.clearFileButton}>
+                  <Text style={styles.clearFileText}>Togli</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            <View style={styles.renewActions}>
+              <Pressable disabled={isBusy} onPress={takeRenewPhoto} style={styles.renewActionButton}>
+                <Text style={styles.renewActionText}>Fotocamera</Text>
+              </Pressable>
+              <Pressable disabled={isBusy} onPress={pickRenewFile} style={styles.renewActionButton}>
+                <Text style={styles.renewActionText}>File/Galleria</Text>
+              </Pressable>
+            </View>
+            <PrimaryButton loading={isBusy} onPress={saveRenewal} title="Salva rinnovo" />
+          </View>
+        </View>
+      </Modal>
       <DocumentPreview language={language} onClose={() => setPreview(null)} preview={preview} />
     </View>
   )
 }
 
-export function DocumentsScreen({ documents = [], language = 'it', onCreateDocument, onUploadDocument }) {
+export function DocumentsScreen({ focusDocumentId = '', documents = [], language = 'it', onCreateDocument, onRenewDocument, onUploadDocument }) {
   const [documentNumber, setDocumentNumber] = useState('')
   const [documentType, setDocumentType] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
+  const [renewRequestDocumentId, setRenewRequestDocumentId] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const sortedDocuments = documents
     .slice()
     .sort((first, second) => getDocumentDaysLeft(first) - getDocumentDaysLeft(second))
   const criticalDocuments = sortedDocuments.filter((document) => ['expired', 'warning'].includes(getDocumentTone(document)))
   const expiredDocuments = criticalDocuments.filter((document) => getDocumentTone(document) === 'expired')
+
+  useEffect(() => {
+    if (focusDocumentId) setRenewRequestDocumentId(focusDocumentId)
+  }, [focusDocumentId])
 
   async function createDocument() {
     if (!documentType.trim()) {
@@ -262,7 +437,7 @@ export function DocumentsScreen({ documents = [], language = 'it', onCreateDocum
           title={expiredDocuments.length ? `${expiredDocuments.length} documenti scaduti` : `${criticalDocuments.length} in scadenza`}
         >
           {criticalDocuments.slice(0, 4).map((document) => (
-            <View key={document.id} style={styles.criticalRow}>
+            <Pressable key={document.id} onPress={() => setRenewRequestDocumentId(document.id)} style={styles.criticalRow}>
               <View style={[styles.criticalDot, getDocumentTone(document) === 'expired' ? styles.expiredDot : styles.warningDot]} />
               <View style={styles.criticalCopy}>
                 <Text style={styles.criticalTitle}>{document.type}</Text>
@@ -270,7 +445,8 @@ export function DocumentsScreen({ documents = [], language = 'it', onCreateDocum
                   {getDocumentStatusLabel(document)} · {formatDocumentDate(document.expiresAt, language)}
                 </Text>
               </View>
-            </View>
+              <Text style={styles.criticalOpenText}>Rinnova</Text>
+            </Pressable>
           ))}
         </Panel>
       ) : null}
@@ -312,7 +488,16 @@ export function DocumentsScreen({ documents = [], language = 'it', onCreateDocum
       </Panel>
 
       {sortedDocuments.map((document) => (
-        <DocumentRow document={document} key={document.id} language={language} onUploadDocument={onUploadDocument} />
+        <DocumentRow
+          autoOpenRenewal={renewRequestDocumentId === document.id}
+          document={document}
+          highlight={focusDocumentId === document.id || renewRequestDocumentId === document.id}
+          key={document.id}
+          language={language}
+          onAutoOpenHandled={() => setRenewRequestDocumentId('')}
+          onRenewDocument={onRenewDocument}
+          onUploadDocument={onUploadDocument}
+        />
       ))}
 
       {documents.length === 0 ? (
@@ -344,6 +529,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
   },
+  clearFileButton: {
+    backgroundColor: '#fee2e2',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  clearFileText: {
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: '900',
+  },
   content: {
     padding: layout.screenPadding,
     paddingBottom: 28,
@@ -361,6 +557,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     marginTop: 3,
+  },
+  criticalOpenText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
   },
   criticalRow: {
     alignItems: 'center',
@@ -410,6 +611,10 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
     padding: 12,
+  },
+  documentRowFocused: {
+    borderColor: colors.cyan,
+    borderWidth: 2,
   },
   documentRowExpired: {
     backgroundColor: '#fff7f7',
@@ -545,6 +750,89 @@ const styles = StyleSheet.create({
   },
   readyText: {
     color: colors.success,
+  },
+  renewActionButton: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 12,
+    flex: 1,
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  renewActionText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  renewActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  renewBackdrop: {
+    backgroundColor: 'rgba(2, 6, 23, 0.62)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  renewFileBox: {
+    alignItems: 'center',
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    padding: 12,
+  },
+  renewFileCopy: {
+    flex: 1,
+  },
+  renewFileMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  renewFileTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  renewHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  renewHeaderCopy: {
+    flex: 1,
+  },
+  renewHelp: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  renewKicker: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  renewSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: 16,
+    paddingBottom: 24,
+  },
+  renewTitle: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '900',
   },
   warningIcon: {
     backgroundColor: '#fef3c7',

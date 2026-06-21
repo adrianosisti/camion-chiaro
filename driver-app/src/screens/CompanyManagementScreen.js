@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { DateField } from '../components/DateField'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { getLocale } from '../i18n/native'
+import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
 const fleetTypes = [
@@ -83,6 +84,12 @@ function getDeadlineStatusLabel(item) {
   if (days < 0) return `Scaduta da ${Math.abs(days)} gg`
   if (days === 0) return 'Scade oggi'
   return `Tra ${days} gg`
+}
+
+function isValidDateValue(value = '') {
+  if (!value) return false
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  return Number.isFinite(new Date(value).getTime())
 }
 
 function formatDateTime(value, language = 'it') {
@@ -233,6 +240,160 @@ function AttachmentButton({ file, label, onPress, onRemove }) {
   )
 }
 
+function DeadlineRenewModal({
+  drivers = [],
+  item,
+  language = 'it',
+  onClose,
+  onSave,
+  people = [],
+  vehicles = [],
+  assets = [],
+}) {
+  const [form, setForm] = useState({
+    documentNumber: '',
+    dueDate: '',
+    file: null,
+    owner: '',
+    type: '',
+  })
+  const [isSaving, setIsSaving] = useState(false)
+  const [isOpeningFile, setIsOpeningFile] = useState(false)
+
+  useEffect(() => {
+    if (!item) return
+    setForm({
+      documentNumber: item.documentNumber ?? '',
+      dueDate: item.dueDate ?? '',
+      file: null,
+      owner: item.owner ?? '',
+      type: item.type ?? '',
+    })
+  }, [item?.id])
+
+  if (!item) return null
+
+  function updateField(field, value) {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  async function pickRenewFile() {
+    const result = await DocumentPicker.getDocumentAsync({
+      copyToCacheDirectory: true,
+      multiple: false,
+      type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    const file = result.assets[0]
+    updateField('file', {
+      name: file.name,
+      type: file.mimeType || 'application/octet-stream',
+      uri: file.uri,
+    })
+  }
+
+  async function openCurrentFile() {
+    if (!item.filePath) {
+      Alert.alert('Allegato mancante', 'Questa scadenza non ha ancora un documento allegato.')
+      return
+    }
+
+    setIsOpeningFile(true)
+    const directUrl = /^https?:\/\//i.test(item.filePath) ? item.filePath : ''
+    const result = directUrl ? { data: { signedUrl: directUrl } } : await createCompanyAssetSignedUrl(item.filePath)
+    setIsOpeningFile(false)
+
+    const signedUrl = result.data?.signedUrl
+    if (!signedUrl) {
+      Alert.alert('Documento non disponibile', result.error?.message ?? 'Riprova tra qualche secondo.')
+      return
+    }
+
+    await Linking.openURL(signedUrl)
+  }
+
+  async function saveRenewal() {
+    const cleanType = form.type.trim()
+    const cleanDueDate = form.dueDate.trim()
+
+    if (!cleanType || !cleanDueDate) {
+      Alert.alert('Dati mancanti', 'Inserisci tipo scadenza e nuova data.')
+      return
+    }
+
+    if (!isValidDateValue(cleanDueDate)) {
+      Alert.alert('Data non valida', 'Scegli la data dal calendario.')
+      return
+    }
+
+    setIsSaving(true)
+    const saved = await onSave?.(item, {
+      documentNumber: form.documentNumber.trim(),
+      dueDate: cleanDueDate,
+      owner: form.owner.trim(),
+      type: cleanType,
+    }, form.file)
+    setIsSaving(false)
+
+    if (saved) {
+      Alert.alert('Scadenza aggiornata', 'Nuovo documento e nuova data sono stati salvati.')
+      onClose?.()
+    }
+  }
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} visible>
+      <View style={styles.detailScreen}>
+        <View style={styles.detailHeader}>
+          <Pressable disabled={isSaving} onPress={onClose} style={styles.detailCloseButton}>
+            <Text style={styles.detailCloseText}>‹</Text>
+          </Pressable>
+          <View style={styles.listCopy}>
+            <Text style={styles.detailKicker}>Rinnovo scadenza</Text>
+            <Text numberOfLines={1} style={styles.detailHeaderTitle}>{item.type}</Text>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.detailContent}>
+          <Text style={styles.detailTitle}>{item.type}</Text>
+          <View style={styles.renewSummaryBox}>
+            <Text style={styles.renewSummaryTitle}>{getDeadlineSubject(item, drivers, vehicles, people, assets)}</Text>
+            <Text style={styles.renewSummaryMeta}>
+              Attuale: {formatDate(item.dueDate, language)} · {getDeadlineStatusLabel(item)}
+            </Text>
+          </View>
+
+          <TextField label="Tipo scadenza" onChangeText={(value) => updateField('type', value)} placeholder="Assicurazione, visita medica..." value={form.type} />
+          <DateField label="Nuova data scadenza" language={language} onChange={(value) => updateField('dueDate', value)} value={form.dueDate} />
+          <TextField label="Numero documento" onChangeText={(value) => updateField('documentNumber', value)} placeholder="Opzionale" value={form.documentNumber} />
+          <TextField label="Responsabile" onChangeText={(value) => updateField('owner', value)} placeholder="Opzionale" value={form.owner} />
+
+          <View style={styles.attachmentRenewBox}>
+            <View style={styles.listCopy}>
+              <Text style={styles.attachmentRenewTitle}>Documento attuale</Text>
+              <Text style={styles.attachmentRenewMeta}>{item.filePath ? 'Allegato presente' : 'Nessun allegato presente'}</Text>
+            </View>
+            <Pressable disabled={isOpeningFile || !item.filePath} onPress={openCurrentFile} style={[styles.smallButton, !item.filePath && styles.smallButtonDisabled]}>
+              <Text style={styles.smallButtonText}>{isOpeningFile ? 'Apro...' : 'Apri'}</Text>
+            </Pressable>
+          </View>
+
+          <AttachmentButton
+            file={form.file}
+            label="Carica nuovo PDF o foto"
+            onPress={pickRenewFile}
+            onRemove={() => updateField('file', null)}
+          />
+
+          <PrimaryButton loading={isSaving} onPress={saveRenewal} title="Salva rinnovo" />
+        </ScrollView>
+      </View>
+    </Modal>
+  )
+}
+
 function CreateTypeSelector({ activeForm, onSelect }) {
   const activeIndex = Math.max(0, createFormOptions.findIndex((option) => option.id === activeForm))
   const activeOption = createFormOptions[activeIndex] ?? createFormOptions[0]
@@ -273,6 +434,7 @@ export function CompanyManagementScreen({
   onCreatePerson,
   onCreateVehicle,
   onCreateWarehouseAsset,
+  onRenewDeadline,
 }) {
   const workforceSchemaReady = context?.workforceSchemaReady !== false
   const drivers = context?.drivers ?? []
@@ -302,6 +464,7 @@ export function CompanyManagementScreen({
   const isCreateOnly = initialMode === 'create'
   const [activeForm, setActiveForm] = useState('driver')
   const [activeList, setActiveList] = useState(initialSection)
+  const [selectedDeadline, setSelectedDeadline] = useState(null)
   const [mode, setMode] = useState(initialMode)
   const [driverForm, setDriverForm] = useState({
     adrDueDate: '',
@@ -733,6 +896,18 @@ export function CompanyManagementScreen({
       openArchive('deadlines')
       Alert.alert('Scadenza creata', 'La pratica e stata aggiunta.')
     }
+  }
+
+  async function renewDeadline(item, payload, file = null) {
+    if (!item?.id) return null
+
+    const saved = await onRenewDeadline?.(item, payload, file)
+    if (saved) {
+      setSelectedDeadline(null)
+      openArchive('deadlines')
+    }
+
+    return saved
   }
 
   const formPanelRight = isCreateOnly ? null : (
@@ -1167,7 +1342,7 @@ export function CompanyManagementScreen({
             {nextDeadlines.map((item) => {
               const tone = getDeadlineTone(item)
               return (
-                <View key={item.id} style={styles.deadlineRow}>
+                <Pressable key={item.id} onPress={() => setSelectedDeadline(item)} style={styles.deadlineRow}>
                   <View style={[styles.deadlineStatusDot, styles[`${tone}Dot`]]} />
                   <View style={styles.listCopy}>
                     <Text style={styles.listTitle}>{item.type}</Text>
@@ -1176,7 +1351,8 @@ export function CompanyManagementScreen({
                     </Text>
                     {item.filePath ? <Text style={styles.fileMeta}>Allegato presente</Text> : null}
                   </View>
-                </View>
+                  <Text style={styles.archiveOpenText}>Apri</Text>
+                </Pressable>
               )
             })}
             {!nextDeadlines.length ? <Text style={styles.emptyText}>Nessuna scadenza caricata.</Text> : null}
@@ -1184,6 +1360,16 @@ export function CompanyManagementScreen({
         ) : null}
       </Panel>
       ) : null}
+      <DeadlineRenewModal
+        assets={warehouseAssets}
+        drivers={drivers}
+        item={selectedDeadline}
+        language={language}
+        onClose={() => setSelectedDeadline(null)}
+        onSave={renewDeadline}
+        people={allPeople}
+        vehicles={activeVehicles}
+      />
     </ScrollView>
   )
 }
@@ -1228,6 +1414,33 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
+  },
+  archiveOpenText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  attachmentRenewBox: {
+    alignItems: 'center',
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    padding: 12,
+  },
+  attachmentRenewMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  attachmentRenewTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
   },
   chip: {
     alignItems: 'center',
@@ -1374,6 +1587,57 @@ const styles = StyleSheet.create({
     height: 10,
     width: 10,
   },
+  detailCloseButton: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  detailCloseText: {
+    color: colors.ink,
+    fontSize: 28,
+    fontWeight: '900',
+    lineHeight: 30,
+  },
+  detailContent: {
+    padding: layout.screenPadding,
+    paddingBottom: 36,
+  },
+  detailHeader: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    paddingBottom: 12,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: 48,
+  },
+  detailHeaderTitle: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  detailKicker: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  detailScreen: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+  detailTitle: {
+    color: colors.ink,
+    fontSize: 24,
+    fontWeight: '900',
+    marginBottom: 10,
+    marginTop: 5,
+  },
   emptyText: {
     color: colors.muted,
     fontSize: 13,
@@ -1505,6 +1769,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  renewSummaryBox: {
+    backgroundColor: '#ecfeff',
+    borderColor: colors.cyan,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+    padding: 12,
+  },
+  renewSummaryMeta: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  renewSummaryTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
   selectorList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1528,6 +1811,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     lineHeight: 17,
+  },
+  smallButton: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    justifyContent: 'center',
+    minHeight: 36,
+    paddingHorizontal: 12,
+  },
+  smallButtonDisabled: {
+    opacity: 0.45,
+  },
+  smallButtonText: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '900',
   },
   summaryCard: {
     backgroundColor: colors.white,

@@ -39,8 +39,6 @@ function DriverAvatar({ name, uri }) {
 }
 
 export function CompanyChatScreen({
-  auditMessages = [],
-  auditTeamMessages = [],
   chatThreads = [],
   companyLogoUrl,
   companyName,
@@ -71,8 +69,7 @@ export function CompanyChatScreen({
   unreadByDriverId = {},
 }) {
   const [isStartingNewChat, setIsStartingNewChat] = useState(false)
-  const [chatListMode, setChatListMode] = useState('write')
-  const safeAuditTeamMessages = Array.isArray(auditTeamMessages) ? auditTeamMessages : []
+  const [chatListMode, setChatListMode] = useState('direct')
   const safeChatThreads = Array.isArray(chatThreads) ? chatThreads : []
   const safeDrivers = Array.isArray(drivers) ? drivers : []
   const safePeople = Array.isArray(people) ? people : []
@@ -80,10 +77,6 @@ export function CompanyChatScreen({
   const threadByDriverId = useMemo(
     () => new Map(safeChatThreads.map((thread) => [thread.driverId, thread])),
     [safeChatThreads],
-  )
-  const teamThreadById = useMemo(
-    () => new Map(safeTeamThreads.map((thread) => [thread.id, thread])),
-    [safeTeamThreads],
   )
   const conversationDrivers = useMemo(
     () => safeDrivers
@@ -104,48 +97,22 @@ export function CompanyChatScreen({
     () => new Map(safePeople.map((person) => [person.id, person])),
     [safePeople],
   )
-  const directTeamThreads = safeTeamThreads.filter((thread) => isDirectThread(thread))
+  const companyVisibleTeamThreads = safeTeamThreads.filter((thread) => isCompanyVisibleThread(thread))
+  const directTeamThreads = companyVisibleTeamThreads.filter((thread) => isDirectThread(thread))
   const companyDirectTeamThreads = directTeamThreads
     .filter((thread) => isCompanyDirectThread(thread))
     .sort((firstThread, secondThread) => getSafeTimestamp(secondThread.lastMessageAt) - getSafeTimestamp(firstThread.lastMessageAt))
-  const employeePrivateTeamThreads = directTeamThreads.filter((thread) => !isCompanyDirectThread(thread))
-  const groupTeamThreads = safeTeamThreads
-    .filter((thread) => !isDirectThread(thread))
+  const groupTeamThreads = companyVisibleTeamThreads
+    .filter((thread) => isCompanyGroupThread(thread))
     .sort((firstThread, secondThread) => getSafeTimestamp(secondThread.lastMessageAt) - getSafeTimestamp(firstThread.lastMessageAt))
-  const auditEntries = useMemo(() => {
-    const teamEntries = safeAuditTeamMessages
-      .filter((message) => message.senderRole !== 'company')
-      .map((message) => {
-      const thread = teamThreadById.get(message.threadId)
-      if (!thread || isCompanyDirectThread(thread)) return null
-      const senderPerson = safePeople.find((person) => person.id === message.senderPersonId)
-
-      return {
-        channel: thread?.title ?? 'Gruppo',
-        createdAt: message.createdAt,
-        id: `team-${message.id}`,
-        kind: isDirectThread(thread) ? 'Privata' : getThreadKindLabel(thread),
-        sender: senderPerson?.name ?? getPersonDepartmentLabel(message.senderRole),
-        text: message.body || (message.attachmentPath ? 'Allegato' : 'Messaggio'),
-      }
-    })
-
-    return teamEntries
-      .filter(Boolean)
-      .filter((entry) => entry.createdAt)
-      .sort((firstEntry, secondEntry) => getSafeTimestamp(secondEntry.createdAt) - getSafeTimestamp(firstEntry.createdAt))
-      .slice(0, 120)
-  }, [safeAuditTeamMessages, safePeople, teamThreadById])
   const directConversationCount = conversationDrivers.length + companyDirectTeamThreads.length
   const groupConversationCount = groupTeamThreads.length
-  const writeConversationCount = directConversationCount + groupConversationCount
-  const auditConversationCount = auditEntries.length
-  const activeModeTitle = chatListMode === 'audit' ? 'Controllo interno' : 'Scrivi messaggi'
-  const hasVisibleRows = chatListMode === 'audit'
-    ? auditEntries.length
-    : visibleDrivers.length || companyDirectTeamThreads.length || groupTeamThreads.length || (isStartingNewChat && staffPeople.length)
+  const activeModeTitle = chatListMode === 'groups' ? 'Gruppi azienda' : 'Chat singole'
+  const hasVisibleRows = chatListMode === 'groups'
+    ? groupTeamThreads.length
+    : visibleDrivers.length || companyDirectTeamThreads.length || (isStartingNewChat && staffPeople.length)
 
-  if (selectedTeamThread) {
+  if (selectedTeamThread && isCompanyVisibleThread(selectedTeamThread)) {
     return (
       <View style={styles.chatWrap}>
         <View style={styles.selectedBar}>
@@ -233,20 +200,19 @@ export function CompanyChatScreen({
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Messaggi azienda</Text>
-        <Text style={styles.heroText}>Scrivi nelle chat aziendali oppure controlla, separatamente, le conversazioni interne.</Text>
+        <Text style={styles.heroText}>Chat singole e gruppi dove l azienda partecipa davvero.</Text>
       </View>
 
       <ChatModeCards
         counts={{
-          audit: auditConversationCount,
-          write: writeConversationCount,
+          direct: directConversationCount,
+          groups: groupConversationCount,
         }}
         mode={chatListMode}
         onChange={(nextMode) => {
           setChatListMode(nextMode)
           setIsStartingNewChat(false)
         }}
-        showAudit
       />
 
       <View style={styles.modeLead}>
@@ -254,7 +220,7 @@ export function CompanyChatScreen({
           <Text style={styles.modeLeadLabel}>Stai vedendo</Text>
           <Text style={styles.modeLeadTitle}>{activeModeTitle}</Text>
         </View>
-        {chatListMode === 'write' ? (
+        {chatListMode === 'direct' ? (
           <Pressable
             onPress={() => {
               setIsStartingNewChat((currentValue) => !currentValue)
@@ -269,7 +235,7 @@ export function CompanyChatScreen({
         ) : null}
       </View>
 
-      {chatListMode === 'write' && isStartingNewChat && staffPeople.length ? (
+      {chatListMode === 'direct' && isStartingNewChat && staffPeople.length ? (
         <View style={styles.groupBlock}>
           <Text style={styles.groupBlockTitle}>Nuova singola con ufficio e magazzino</Text>
           {staffPeople.map((person) => (
@@ -285,7 +251,7 @@ export function CompanyChatScreen({
         </View>
       ) : null}
 
-      {chatListMode === 'write' && (visibleDrivers.length || companyDirectTeamThreads.length) ? (
+      {chatListMode === 'direct' && (visibleDrivers.length || companyDirectTeamThreads.length) ? (
         <View style={styles.groupBlock}>
           <Text style={styles.groupBlockTitle}>Chat singole dove l azienda scrive</Text>
           {visibleDrivers.map((driver) => (
@@ -315,7 +281,7 @@ export function CompanyChatScreen({
         </View>
       ) : null}
 
-      {chatListMode === 'write' && groupTeamThreads.length ? (
+      {chatListMode === 'groups' && groupTeamThreads.length ? (
         <View style={styles.groupBlock}>
           <Text style={styles.groupBlockTitle}>Gruppi dove l azienda può scrivere</Text>
           {groupTeamThreads.map((thread) => (
@@ -332,29 +298,15 @@ export function CompanyChatScreen({
         </View>
       ) : null}
 
-      {chatListMode === 'audit' ? (
-        <View style={styles.groupBlock}>
-          <Text style={styles.groupBlockTitle}>Controllo interno solo lettura</Text>
-          {auditEntries.map((entry) => (
-            <AuditChatRow entry={entry} key={entry.id} />
-          ))}
-          {employeePrivateTeamThreads.length > 0 ? (
-            <Text style={styles.auditHint}>
-              Include chat private e gruppi tra dipendenti. L azienda qui legge soltanto.
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
       {!hasVisibleRows ? (
         <Text style={styles.emptyText}>
           {isLoading
             ? 'Carico chat...'
-            : chatListMode === 'audit'
-              ? 'Nessun messaggio interno da controllare.'
             : isStartingNewChat
               ? 'Nessun autista in anagrafica.'
-                : 'Nessuna conversazione presente. Premi Nuova singola o usa un gruppo aziendale.'}
+              : chatListMode === 'groups'
+                ? 'Nessun gruppo aziendale disponibile.'
+                : 'Nessuna conversazione presente. Premi Nuova singola.'}
         </Text>
       ) : null}
     </ScrollView>
@@ -455,23 +407,23 @@ function PersonChatRow({ onPress, person }) {
   )
 }
 
-function ChatModeCards({ counts = {}, mode, onChange, showAudit = false }) {
+function ChatModeCards({ counts = {}, mode, onChange }) {
   const items = [
     {
-      count: counts.write ?? 0,
-      id: 'write',
-      icon: 'chatbubbles-outline',
-      label: 'Scrivi messaggi',
-      subtitle: 'Singole e gruppi aziendali',
+      count: counts.direct ?? 0,
+      id: 'direct',
+      icon: 'person-circle-outline',
+      label: 'Chat singole',
+      subtitle: 'Autisti, ufficio, magazzino',
     },
-    showAudit ? {
-      count: counts.audit ?? 0,
-      id: 'audit',
-      icon: 'shield-checkmark-outline',
-      label: 'Controllo interno',
-      subtitle: 'Solo lettura tra dipendenti',
-    } : null,
-  ].filter(Boolean)
+    {
+      count: counts.groups ?? 0,
+      id: 'groups',
+      icon: 'people-outline',
+      label: 'Gruppi azienda',
+      subtitle: 'Solo gruppi con azienda',
+    },
+  ]
 
   return (
     <View style={styles.modeCards}>
@@ -499,23 +451,6 @@ function ChatModeCards({ counts = {}, mode, onChange, showAudit = false }) {
   )
 }
 
-function AuditChatRow({ entry }) {
-  return (
-    <View style={styles.auditRow}>
-      <View style={styles.auditHead}>
-        <Text numberOfLines={1} style={styles.auditChannel}>{entry.channel}</Text>
-        <Text style={styles.auditDate}>{formatLastMessageDate(entry.createdAt)}</Text>
-      </View>
-      <View style={styles.auditMeta}>
-        <Text style={styles.auditKind}>{entry.kind}</Text>
-        <Text numberOfLines={1} style={styles.auditSender}>{entry.sender}</Text>
-      </View>
-      <Text numberOfLines={2} style={styles.auditText}>{entry.text}</Text>
-      <Text style={styles.auditReadOnly}>Solo lettura</Text>
-    </View>
-  )
-}
-
 function getThreadKind(thread = {}) {
   if (thread.threadType === 'direct' || thread.audienceType === 'direct') return 'direct'
   if (['drivers', 'office', 'warehouse'].includes(thread.audienceType)) return 'department'
@@ -528,6 +463,14 @@ function isDirectThread(thread = {}) {
 
 function isCompanyDirectThread(thread = {}) {
   return isDirectThread(thread) && String(thread.directKey ?? '').startsWith('company:')
+}
+
+function isCompanyGroupThread(thread = {}) {
+  return !isDirectThread(thread) && ['drivers', 'warehouse', 'office', 'all'].includes(thread.audienceType)
+}
+
+function isCompanyVisibleThread(thread = {}) {
+  return isCompanyDirectThread(thread) || isCompanyGroupThread(thread)
 }
 
 function getCompanyDirectPerson(thread = {}, peopleById = new Map()) {
@@ -570,71 +513,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 13,
     fontWeight: '900',
-  },
-  auditChannel: {
-    color: colors.ink,
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  auditDate: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  auditHead: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  auditKind: {
-    backgroundColor: '#cffafe',
-    borderRadius: 999,
-    color: colors.cyanDark,
-    fontSize: 10,
-    fontWeight: '900',
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    textTransform: 'uppercase',
-  },
-  auditMeta: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  auditReadOnly: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 999,
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '900',
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    textTransform: 'uppercase',
-  },
-  auditRow: {
-    backgroundColor: colors.white,
-    borderColor: colors.line,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 7,
-    marginBottom: 10,
-    padding: 12,
-  },
-  auditSender: {
-    color: colors.muted,
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  auditText: {
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
   },
   backButton: {
     alignItems: 'center',
@@ -727,14 +605,6 @@ const styles = StyleSheet.create({
   kindBadgeGroup: {
     backgroundColor: '#cffafe',
     color: colors.ink,
-  },
-  auditHint: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
-    marginTop: 2,
-    textAlign: 'center',
   },
   emptyText: {
     color: colors.muted,

@@ -11075,6 +11075,10 @@ function isCompanyDirectTeamThread(thread = {}) {
   return isTeamDirectThread(thread) && String(thread.directKey ?? '').startsWith('company:')
 }
 
+function isCompanyGroupTeamThread(thread = {}) {
+  return !isTeamDirectThread(thread) && ['drivers', 'warehouse', 'office', 'all'].includes(thread.audienceType)
+}
+
 function getTeamThreadIcon(thread = {}) {
   if (isTeamDirectThread(thread)) return <UserRound size={18} />
   if (thread.audienceType === 'drivers') return <Truck size={18} />
@@ -11257,7 +11261,7 @@ function ChatWorkspace({
     [allDirectTeamThreads],
   )
   const groupTeamThreads = useMemo(
-    () => visibleTeamThreads.filter((thread) => thread.threadType !== 'direct' && thread.audienceType !== 'direct'),
+    () => visibleTeamThreads.filter((thread) => isCompanyGroupTeamThread(thread)),
     [visibleTeamThreads],
   )
   const conversationDrivers = useMemo(
@@ -11312,40 +11316,12 @@ function ChatWorkspace({
     ))
   }, [availableDrivers, newChatQuery])
   const teamThreadById = useMemo(
-    () => new Map(visibleTeamThreads.map((thread) => [thread.id, thread])),
-    [visibleTeamThreads],
+    () => new Map([...directTeamThreads, ...groupTeamThreads].map((thread) => [thread.id, thread])),
+    [directTeamThreads, groupTeamThreads],
   )
-  const auditEntries = useMemo(() => {
-    const teamEntries = teamChatMessages
-      .filter((message) => message.senderRole !== 'company')
-      .map((message) => {
-        const thread = teamThreadById.get(message.threadId)
-        if (!thread || isCompanyDirectTeamThread(thread)) return null
-
-        return {
-          channel: thread?.title ?? 'Gruppo',
-          createdAt: message.createdAt,
-          id: `team-${message.id}`,
-          kind: isTeamDirectThread(thread) ? 'Privata' : getTeamThreadKindLabel(thread),
-          message,
-          onOpen: null,
-          sender: getTeamMessageSenderLabel(message),
-          text: getChatMessageText(message, t('chat.photoAttached')),
-        }
-      })
-
-    return teamEntries
-      .filter(Boolean)
-      .filter((entry) => entry.createdAt)
-      .sort((firstEntry, secondEntry) => new Date(secondEntry.createdAt) - new Date(firstEntry.createdAt))
-      .slice(0, 120)
-  }, [t, teamChatMessages, teamThreadById])
   const directConversationCount = conversationDrivers.length + directTeamThreads.length
   const groupConversationCount = groupTeamThreads.length
-  const auditConversationCount = auditEntries.length
-  const activeChatModeLabel = chatListMode === 'audit'
-    ? 'Controllo interno'
-    : chatListMode === 'groups'
+  const activeChatModeLabel = chatListMode === 'groups'
       ? 'Gruppi e reparti'
       : 'Chat singole'
   const chatModeCards = [
@@ -11363,15 +11339,8 @@ function ChatWorkspace({
       label: 'Gruppi azienda',
       subtitle: 'Dove il titolare scrive',
     },
-    {
-      count: auditConversationCount,
-      icon: ShieldCheck,
-      id: 'audit',
-      label: 'Controllo interno',
-      subtitle: 'Solo lettura dipendenti',
-    },
   ]
-  const selectedTeamThread = visibleTeamThreads.find((thread) => thread.id === selectedTeamThreadId) ?? null
+  const selectedTeamThread = [...directTeamThreads, ...groupTeamThreads].find((thread) => thread.id === selectedTeamThreadId) ?? null
   const selectedDriver = selectedTeamThread
     ? null
     : availableDrivers.find((driver) => driver.id === selectedDriverId) ??
@@ -11818,33 +11787,6 @@ function ChatWorkspace({
               </button>
             )
           })}
-          {chatListMode === 'audit' && (
-            <>
-              <div className="chat-list-section-label">Registro messaggi aziendali</div>
-              <div className="chat-audit-list">
-                {auditEntries.map((entry) => (
-                  <button
-                    className="chat-audit-row"
-                    disabled={!entry.onOpen}
-                    key={entry.id}
-                    onClick={() => entry.onOpen?.()}
-                    type="button"
-                  >
-                    <span className="chat-audit-row-head">
-                      <strong>{entry.channel}</strong>
-                      <em>{formatShortDateTime(entry.createdAt)}</em>
-                    </span>
-                    <span className="chat-audit-row-meta">
-                      <small>{entry.kind}</small>
-                      <b>{entry.sender}</b>
-                    </span>
-                    <span className="chat-audit-row-body">{entry.text || t('chat.photoAttached')}</span>
-                  </button>
-                ))}
-                {auditEntries.length === 0 && <p className="new-chat-empty">Nessun messaggio da controllare.</p>}
-              </div>
-            </>
-          )}
           {chatListMode === 'direct' && conversationDrivers.length === 0 && directTeamThreads.length === 0 && (
             <div className="empty-state-row">
               <Users size={20} />

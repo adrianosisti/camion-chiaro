@@ -8271,6 +8271,7 @@ function DashboardActivityFeed({
 }) {
   const { t } = useI18n()
   const [modalOperationKey, setModalOperationKey] = useState('')
+  const [showAllEvents, setShowAllEvents] = useState(false)
   const operations = useMemo(
     () => [
       ...faultReportRecords.map((report) => ({
@@ -8288,28 +8289,29 @@ function DashboardActivityFeed({
     ],
     [faultReportRecords, vehicleCheckRecords],
   )
-  const events = useMemo(() => {
+  const allEvents = useMemo(() => {
     const deadlineEvents = items
-      .filter((item) => item.dueDate && !['archived', 'done'].includes(item.status) && item.urgency.days <= 30)
+      .filter((item) => item.dueDate)
       .sort((first, second) => first.urgency.days - second.urgency.days)
-      .slice(0, 5)
+      .slice(0, 12)
       .map((item) => ({
         action: () => onOpenDeadline?.(item),
         detail: `${item.assignee} · ${formatDate(item.dueDate)}`,
         icon: CalendarClock,
         id: `deadline-${item.id}`,
+        isActionable: !['archived', 'done'].includes(item.status) && item.urgency.days <= 30,
         priority: ['expired', 'critical'].includes(item.urgency.key) ? 3 : item.urgency.days <= 7 ? 2 : 1,
         sortAt: new Date(item.dueDate).getTime(),
-        status: getUrgencyLabel(item.urgency, t),
+        status: item.status === 'done' ? t('common.archived') : getUrgencyLabel(item.urgency, t),
         title: item.type,
-        tone: item.urgency.tone,
+        tone: item.status === 'done' ? 'info' : item.urgency.tone,
         type: 'Scadenza',
       }))
 
     const operationEvents = operations
       .slice()
       .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))
-      .slice(0, 8)
+      .slice(0, 16)
       .map((operation) => {
         if (operation.kind === 'fault') {
           const report = operation.data
@@ -8323,6 +8325,7 @@ function DashboardActivityFeed({
             detail: `${driver?.name ?? t('common.driverMissing')} · ${vehicle?.plate ?? t('common.vehicleMissing')}`,
             icon: Wrench,
             id: `${operation.kind}-${operation.id}`,
+            isActionable: !isRead,
             priority: isCritical ? 3 : isRead ? 0 : 2,
             sortAt: new Date(report.createdAt).getTime(),
             status: isRead ? t('common.archived') : getFaultSeverityLabel(report.severity, t),
@@ -8343,6 +8346,7 @@ function DashboardActivityFeed({
           detail: `${driver?.name ?? t('common.driverMissing')} · ${vehicle?.plate ?? t('common.vehicleMissing')} · ${formatShortDateTime(check.createdAt)}`,
           icon: ClipboardCheck,
           id: `${operation.kind}-${operation.id}`,
+          isActionable: !isRead,
           priority: isCritical && !isRead ? 3 : isRead ? 0 : 1,
           sortAt: new Date(check.createdAt).getTime(),
           status: isCritical ? t('operations.checkCritical') : 'Tutto ok',
@@ -8357,8 +8361,10 @@ function DashboardActivityFeed({
         if (first.priority !== second.priority) return second.priority - first.priority
         return second.sortAt - first.sortAt
       })
-      .slice(0, 10)
+      .slice(0, 24)
   }, [acknowledgedCheckIds, driverRecords, items, onOpenDeadline, operations, t, vehicleRecords])
+  const actionableEvents = allEvents.filter((event) => event.isActionable)
+  const events = (showAllEvents ? allEvents : actionableEvents).slice(0, showAllEvents ? 24 : 10)
   const modalOperation = operations.find((operation) => `${operation.kind}-${operation.id}` === modalOperationKey)
 
   return (
@@ -8366,9 +8372,14 @@ function DashboardActivityFeed({
       <div className="panel-header compact">
         <div>
           <p className="overline">Registro operativo</p>
-          <h2>Novita da gestire</h2>
+          <h2>{showAllEvents ? 'Storico operativo' : 'Da lavorare'}</h2>
         </div>
-        <Bell size={20} />
+        <div className="activity-feed-header-actions">
+          <span className="status-pill tone-warning">{actionableEvents.length} da lavorare</span>
+          <button className="small-button" onClick={() => setShowAllEvents((currentValue) => !currentValue)} type="button">
+            {showAllEvents ? 'Mostra da lavorare' : 'Mostra tutto'}
+          </button>
+        </div>
       </div>
       <div className="activity-feed-list">
         {events.map((event) => (

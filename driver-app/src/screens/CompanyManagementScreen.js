@@ -85,6 +85,36 @@ function getDeadlineStatusLabel(item) {
   return `Tra ${days} gg`
 }
 
+function formatDateTime(value, language = 'it') {
+  if (!value) return ''
+  return new Intl.DateTimeFormat(getLocale(language), {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: '2-digit',
+  }).format(new Date(value))
+}
+
+function getDriverName(drivers, driverId) {
+  return drivers.find((driver) => driver.id === driverId)?.name ?? 'Autista'
+}
+
+function getVehiclePlate(vehicles, vehicleId) {
+  return vehicles.find((vehicle) => vehicle.id === vehicleId)?.plate ?? 'Mezzo'
+}
+
+function isCheckResolved(check = {}) {
+  return ['resolved', 'archived', 'done', 'closed'].includes(check.status)
+}
+
+function getCheckIssues(check = {}) {
+  return [
+    check.lightsOk ? null : 'Luci',
+    check.tiresOk ? null : 'Pneumatici',
+    check.documentsOnBoard ? null : 'Documenti a bordo',
+  ].filter(Boolean)
+}
+
 function getAssetTypeLabel(value = '') {
   return assetTypes.find((entry) => entry.id === value)?.label ?? 'Attrezzatura'
 }
@@ -250,7 +280,11 @@ export function CompanyManagementScreen({
   const vehicles = context?.vehicles ?? []
   const assets = context?.assets ?? []
   const deadlines = context?.complianceItems ?? []
+  const faults = context?.faultReports ?? []
+  const checks = context?.vehicleChecks ?? []
   const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
+  const archivedFaults = faults.filter((fault) => ['closed', 'archived'].includes(fault.status))
+  const archivedChecks = checks.filter(isCheckResolved)
   const fallbackDriverPeople = drivers.map((driver) => ({
     department: 'drivers',
     id: `driver-${driver.id}`,
@@ -942,6 +976,8 @@ export function CompanyManagementScreen({
             <Chip active={activeList === 'warehouse'} label="Magazzino" onPress={() => setActiveList('warehouse')} />
             <Chip active={activeList === 'drivers'} label="Autisti" onPress={() => setActiveList('drivers')} />
             <Chip active={activeList === 'vehicles'} label="Flotta" onPress={() => setActiveList('vehicles')} />
+            <Chip active={activeList === 'faults'} label="Guasti" onPress={() => setActiveList('faults')} />
+            <Chip active={activeList === 'checks'} label="Check" onPress={() => setActiveList('checks')} />
             <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
           </View>
 
@@ -1062,6 +1098,58 @@ export function CompanyManagementScreen({
               </View>
             ))}
             {!activeVehicles.length ? <Text style={styles.emptyText}>Nessun mezzo presente.</Text> : null}
+          </View>
+        ) : null}
+
+        {activeList === 'faults' ? (
+          <View style={styles.archiveList}>
+            {archivedFaults.map((fault) => (
+              <View key={fault.id} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIconMuted}>
+                    <Ionicons color={colors.muted} name="construct-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{fault.title}</Text>
+                    <Text style={styles.listMeta}>
+                      {getDriverName(drivers, fault.driverId)} · {getVehiclePlate(vehicles, fault.vehicleId)} · {formatDateTime(fault.createdAt, language)}
+                    </Text>
+                    <Text style={styles.listMeta}>{fault.description || 'Nessuna descrizione'} · risolto</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+            {!archivedFaults.length ? <Text style={styles.emptyText}>Nessun guasto archiviato.</Text> : null}
+          </View>
+        ) : null}
+
+        {activeList === 'checks' ? (
+          <View style={styles.archiveList}>
+            {archivedChecks.map((check) => {
+              const issues = getCheckIssues(check)
+
+              return (
+                <View key={check.id} style={styles.registryCard}>
+                  <View style={styles.registryHeader}>
+                    <View style={issues.length ? styles.listIconWarning : styles.listIconMuted}>
+                      <Ionicons color={issues.length ? colors.warning : colors.muted} name="checkbox-outline" size={18} />
+                    </View>
+                    <View style={styles.listCopy}>
+                      <Text style={styles.listTitle}>
+                        {issues.length ? 'Check risolto' : 'Check ok'} · {getVehiclePlate(vehicles, check.tractorId)}
+                      </Text>
+                      <Text style={styles.listMeta}>
+                        {getDriverName(drivers, check.driverId)} · {formatDateTime(check.createdAt, language)}
+                      </Text>
+                      <Text style={styles.listMeta}>
+                        {issues.length ? `Anomalie: ${issues.join(', ')}` : 'Nessuna anomalia'} · archiviato
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )
+            })}
+            {!archivedChecks.length ? <Text style={styles.emptyText}>Nessun check archiviato.</Text> : null}
           </View>
         ) : null}
 
@@ -1341,6 +1429,22 @@ const styles = StyleSheet.create({
   listIcon: {
     alignItems: 'center',
     backgroundColor: '#e0f2fe',
+    borderRadius: 13,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  listIconMuted: {
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 13,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  listIconWarning: {
+    alignItems: 'center',
+    backgroundColor: '#fff7ed',
     borderRadius: 13,
     height: 42,
     justifyContent: 'center',

@@ -293,9 +293,7 @@ export function CompanyHomeScreen({
   const complianceItems = context?.complianceItems ?? []
   const unreadMessages = context?.unreadDriverMessages ?? 0
   const openFaults = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
-  const archivedFaults = faults.filter((fault) => ['closed', 'archived'].includes(fault.status))
   const activeChecks = checks.filter((check) => !isCheckResolved(check))
-  const archivedChecks = checks.filter(isCheckResolved)
   const criticalChecks = checks.filter(isCheckCritical)
   const recentChecks = activeChecks.slice(0, 4)
   const activeDeadlines = complianceItems
@@ -404,44 +402,6 @@ export function CompanyHomeScreen({
           )
         })}
         {!recentChecks.length ? <Text style={styles.emptyText}>I check archiviati restano nello storico, qui arrivano quelli nuovi da vedere.</Text> : null}
-      </Panel>
-
-      <Panel kicker="Archivio guasti" title={archivedFaults.length ? `${archivedFaults.length} risolti` : 'Nessun guasto archiviato'}>
-        {archivedFaults.slice(0, 3).map((fault) => (
-          <Pressable key={fault.id} onPress={() => setSelectedDetail({ item: fault, type: 'fault' })} style={styles.listRow}>
-            <View style={styles.statusDotArchive} />
-            <View style={styles.listCopy}>
-              <Text style={styles.listTitle}>{fault.title}</Text>
-              <Text style={styles.listMeta}>
-                {getDriverName(drivers, fault.driverId)} · {getVehiclePlate(vehicles, fault.vehicleId)} · {formatDateTime(fault.createdAt, language)}
-              </Text>
-            </View>
-            <Text style={styles.archiveOpenText}>Vedi</Text>
-          </Pressable>
-        ))}
-        {!archivedFaults.length ? <Text style={styles.emptyText}>Quando chiudi un guasto, lo ritrovi qui.</Text> : null}
-      </Panel>
-
-      <Panel kicker="Archivio check" title={archivedChecks.length ? `${archivedChecks.length} archiviati` : 'Nessun check archiviato'}>
-        {archivedChecks.slice(0, 3).map((check) => {
-          const checkIssues = getCheckIssues(check)
-
-          return (
-            <Pressable key={check.id} onPress={() => setSelectedDetail({ item: check, type: 'check' })} style={styles.listRow}>
-              <View style={checkIssues.length ? styles.statusDotDangerMuted : styles.statusDotArchive} />
-              <View style={styles.listCopy}>
-                <Text style={styles.listTitle}>
-                  {checkIssues.length ? 'Check risolto' : 'Check ok'} · {getVehiclePlate(vehicles, check.tractorId)}
-                </Text>
-                <Text style={styles.listMeta}>
-                  {getDriverName(drivers, check.driverId)} · {formatDateTime(check.createdAt, language)}
-                </Text>
-              </View>
-              <Text style={styles.archiveOpenText}>Vedi</Text>
-            </Pressable>
-          )
-        })}
-        {!archivedChecks.length ? <Text style={styles.emptyText}>Quando archivi o risolvi un check, lo ritrovi qui.</Text> : null}
       </Panel>
 
       <Panel

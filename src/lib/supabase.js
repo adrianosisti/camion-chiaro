@@ -896,6 +896,55 @@ export async function fetchVehicleChecks(companyId = configuredCompanyId) {
   return { data: data?.map(mapVehicleCheck) ?? null, error }
 }
 
+export async function updateVehicleCheckStatus(checkId, status) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !checkId) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id ?? null
+  const payload = {
+    resolved_at: status === 'resolved' ? new Date().toISOString() : null,
+    resolved_by: status === 'resolved' ? userId : null,
+    status,
+  }
+
+  const { data, error } = await supabase
+    .from('vehicle_checks')
+    .update(payload)
+    .eq('id', checkId)
+    .select(
+      `
+        id,
+        company_id,
+        driver_id,
+        tractor_id,
+        semitrailer_id,
+        odometer_km,
+        lights_ok,
+        tires_ok,
+        documents_on_board,
+        notes,
+        status,
+        resolved_at,
+        resolved_by,
+        created_at
+      `,
+    )
+    .single()
+
+  if (error?.code === '42703') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL stato check. Esegui il file 29_stato_check_risolti.sql in Supabase.' },
+    }
+  }
+
+  return { data: data ? mapVehicleCheck(data) : null, error }
+}
+
 export async function fetchFaultReports(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 

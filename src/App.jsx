@@ -108,6 +108,7 @@ import {
   updateChatMessageReaction as updateSupabaseChatMessageReaction,
   updateCompanyProfile as updateSupabaseCompanyProfile,
   updateFaultReportStatus as updateSupabaseFaultReportStatus,
+  updateVehicleCheckStatus as updateSupabaseVehicleCheckStatus,
   updateVehicleRecord as updateSupabaseVehicle,
 } from './lib/supabase'
 import {
@@ -334,8 +335,8 @@ const translations = {
     'onboarding.deadlinesBody': 'Inserisci almeno una patente, visita, revisione o assicurazione da ricordare.',
     'onboarding.deadlinesTitle': 'Aggiungi una scadenza',
     'onboarding.done': 'Fatto',
-    'onboarding.driversBody': 'Crea il primo autista con nome utente e telefono.',
-    'onboarding.driversTitle': 'Aggiungi autista',
+    'onboarding.driversBody': 'Crea autisti, ufficio o magazzino con i dati corretti.',
+    'onboarding.driversTitle': 'Aggiungi persone',
     'onboarding.fleetBody': 'Registra furgoni, motrici, trattori o semirimorchi.',
     'onboarding.fleetTitle': 'Aggiungi mezzo',
     'onboarding.notificationsBody': 'Attiva notifiche su telefono per chat, guasti e check critici.',
@@ -440,8 +441,8 @@ const translations = {
     'onboarding.deadlinesBody': 'Add at least one licence, medical check, inspection or insurance deadline.',
     'onboarding.deadlinesTitle': 'Add a deadline',
     'onboarding.done': 'Done',
-    'onboarding.driversBody': 'Create the first driver with username and phone.',
-    'onboarding.driversTitle': 'Add driver',
+    'onboarding.driversBody': 'Create drivers, office or warehouse people with the right details.',
+    'onboarding.driversTitle': 'Add people',
     'onboarding.fleetBody': 'Register vans, rigids, tractors or semi-trailers.',
     'onboarding.fleetTitle': 'Add vehicle',
     'onboarding.notificationsBody': 'Enable phone notifications for chat, faults and critical checks.',
@@ -546,8 +547,8 @@ const translations = {
     'onboarding.deadlinesBody': 'Añade al menos un permiso, revision medica, inspeccion o seguro.',
     'onboarding.deadlinesTitle': 'Añadir vencimiento',
     'onboarding.done': 'Hecho',
-    'onboarding.driversBody': 'Crea el primer conductor con usuario y telefono.',
-    'onboarding.driversTitle': 'Añadir conductor',
+    'onboarding.driversBody': 'Crea conductores, oficina o almacen con los datos correctos.',
+    'onboarding.driversTitle': 'Añadir personas',
     'onboarding.fleetBody': 'Registra furgonetas, rigidos, tractoras o semirremolques.',
     'onboarding.fleetTitle': 'Añadir vehiculo',
     'onboarding.notificationsBody': 'Activa avisos en telefono para chat, averias y checks criticos.',
@@ -652,8 +653,8 @@ const translations = {
     'onboarding.deadlinesBody': 'Ajoute au moins un permis, visite medicale, controle ou assurance.',
     'onboarding.deadlinesTitle': 'Ajouter echeance',
     'onboarding.done': 'Fait',
-    'onboarding.driversBody': 'Cree le premier chauffeur avec utilisateur et telephone.',
-    'onboarding.driversTitle': 'Ajouter chauffeur',
+    'onboarding.driversBody': 'Cree chauffeurs, bureau ou entrepot avec les bonnes donnees.',
+    'onboarding.driversTitle': 'Ajouter personnes',
     'onboarding.fleetBody': 'Enregistre fourgons, porteurs, tracteurs ou semi-remorques.',
     'onboarding.fleetTitle': 'Ajouter vehicule',
     'onboarding.notificationsBody': 'Active les alertes telephone pour chat, pannes et checks critiques.',
@@ -758,8 +759,8 @@ const translations = {
     'onboarding.deadlinesBody': 'Mindestens eine Lizenz, Untersuchung, Prufung oder Versicherung eintragen.',
     'onboarding.deadlinesTitle': 'Frist hinzufugen',
     'onboarding.done': 'Erledigt',
-    'onboarding.driversBody': 'Ersten Fahrer mit Benutzername und Telefon erstellen.',
-    'onboarding.driversTitle': 'Fahrer hinzufugen',
+    'onboarding.driversBody': 'Fahrer, Buro oder Lager mit korrekten Daten erstellen.',
+    'onboarding.driversTitle': 'Personen hinzufugen',
     'onboarding.fleetBody': 'Transporter, Lkw, Sattelzugmaschinen oder Auflieger erfassen.',
     'onboarding.fleetTitle': 'Fahrzeug hinzufugen',
     'onboarding.notificationsBody': 'Telefon-Hinweise fur Chat, Schaden und kritische Checks aktivieren.',
@@ -2766,7 +2767,7 @@ const regionalTranslations = {
     'onboarding.completed': '{count}/{total} completate',
     'onboarding.deadlinesTitle': 'Adauga o scadenta',
     'onboarding.done': 'Gata',
-    'onboarding.driversTitle': 'Adauga sofer',
+    'onboarding.driversTitle': 'Adauga persoane',
     'onboarding.fleetTitle': 'Adauga vehicul',
     'onboarding.notificationsTitle': 'Activeaza notificari',
     'onboarding.overline': 'Primii pasi',
@@ -2815,7 +2816,7 @@ const regionalTranslations = {
     'onboarding.completed': '{count}/{total} gotowe',
     'onboarding.deadlinesTitle': 'Dodaj termin',
     'onboarding.done': 'Gotowe',
-    'onboarding.driversTitle': 'Dodaj kierowce',
+    'onboarding.driversTitle': 'Dodaj osoby',
     'onboarding.fleetTitle': 'Dodaj pojazd',
     'onboarding.notificationsTitle': 'Wlacz powiadomienia',
     'onboarding.overline': 'Pierwsze kroki',
@@ -3796,6 +3797,10 @@ function getCheckIssues(check, t) {
 
 function hasCheckIssues(check) {
   return getCheckIssues(check).length > 0
+}
+
+function isVehicleCheckArchived(check, acknowledgedCheckIds = []) {
+  return ['resolved', 'archived', 'done', 'closed'].includes(check?.status) || acknowledgedCheckIds.includes(check?.id)
 }
 
 function formatMissingFields(fields, t) {
@@ -6104,12 +6109,49 @@ function App() {
     return true
   }
 
-  function acknowledgeCheck(checkId) {
+  async function acknowledgeCheck(checkId) {
+    const currentCheck = vehicleCheckRecords.find((check) => check.id === checkId)
     setAcknowledgedCheckIds((currentIds) => (currentIds.includes(checkId) ? currentIds : [...currentIds, checkId]))
+
+    if (hasCompanyDataConnection && session?.role === 'company' && currentCheck?.status !== 'resolved') {
+      const result = await updateSupabaseVehicleCheckStatus(checkId, 'resolved')
+
+      if (result.error) {
+        setOperationsSyncStatus(`Check archiviato solo su questo dispositivo. Supabase: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setVehicleCheckRecords((currentChecks) =>
+          currentChecks.map((check) => (check.id === checkId ? { ...check, ...result.data, status: 'resolved' } : check)),
+        )
+      }
+    }
+
+    setOperationsSyncStatus('Check archiviato.')
+    return true
   }
 
-  function markCheckUnread(checkId) {
+  async function markCheckUnread(checkId) {
     setAcknowledgedCheckIds((currentIds) => currentIds.filter((id) => id !== checkId))
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      const result = await updateSupabaseVehicleCheckStatus(checkId, 'open')
+
+      if (result.error) {
+        setOperationsSyncStatus(`Check rimesso da leggere solo su questo dispositivo. Supabase: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setVehicleCheckRecords((currentChecks) =>
+          currentChecks.map((check) => (check.id === checkId ? { ...check, ...result.data, status: 'open' } : check)),
+        )
+      }
+    }
+
+    setOperationsSyncStatus('Check rimesso da leggere.')
+    return true
   }
 
   const sendChatTyping = useCallback((typingState) => {
@@ -6225,9 +6267,9 @@ function App() {
     return () => window.clearInterval(timerId)
   }, [])
 
-  const unreadCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id)).length
+  const unreadCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds)).length
   const openFaultCount = visibleFaultReportRecords.filter(isFaultUnread).length
-  const criticalCheckCount = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id) && hasCheckIssues(check)).length
+  const criticalCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds) && hasCheckIssues(check)).length
   const notificationCount = unreadCheckCount + openFaultCount
   const companyUnreadChatCount = chatMessageRecords.filter(
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
@@ -6310,6 +6352,8 @@ function App() {
   const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
+  const activePeopleCount =
+    activeDriverCount + personRecords.filter((person) => !['archived', 'Archiviato'].includes(person.status)).length
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
   if (!companyLicenseActive) {
@@ -6532,13 +6576,14 @@ function App() {
               />
               <OnboardingPanel
                 activeDriverCount={activeDriverCount}
+                activePeopleCount={activePeopleCount}
                 activeVehicleCount={activeVehicleCount}
                 companyProfile={companyProfile}
                 complianceItemCount={items.length + documentRecords.length}
                 notificationEnabled={phoneNotificationEnabled}
                 onAddDeadline={openNewDeadlinePanel}
                 onOpenDocuments={() => openRecords('documents')}
-                onOpenDrivers={() => openRecords('drivers')}
+                onOpenDrivers={() => openRecords('people')}
                 onOpenFleet={() => openRecords('fleet')}
                 onOpenSettings={() => setActiveView('settings')}
                 t={t}
@@ -7465,7 +7510,7 @@ function TopbarNotifications({
     const check = operation.data
     const driver = driverRecords.find((entry) => entry.id === check.driverId)
     const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
-    const isRead = acknowledgedCheckIds.includes(check.id)
+    const isRead = isVehicleCheckArchived(check, acknowledgedCheckIds)
     const isCritical = hasCheckIssues(check) && !isRead
 
     return {
@@ -8064,6 +8109,7 @@ function DailyMotivation({ role, t }) {
 
 function OnboardingPanel({
   activeDriverCount,
+  activePeopleCount = activeDriverCount,
   activeVehicleCount,
   companyProfile,
   complianceItemCount,
@@ -8091,7 +8137,7 @@ function OnboardingPanel({
     {
       action: onOpenDrivers,
       body: t('onboarding.driversBody'),
-      done: activeDriverCount > 0,
+      done: activePeopleCount > 0,
       icon: Users,
       title: t('onboarding.driversTitle'),
     },
@@ -8338,7 +8384,7 @@ function DashboardActivityFeed({
         const check = operation.data
         const driver = driverRecords.find((entry) => entry.id === check.driverId)
         const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
-        const isRead = acknowledgedCheckIds.includes(check.id) || check.status === 'resolved'
+        const isRead = isVehicleCheckArchived(check, acknowledgedCheckIds)
         const isCritical = hasCheckIssues(check)
 
         return {
@@ -8462,7 +8508,7 @@ function RecordsWorkspace({
   const archivedDrivers = driverRecords.filter((driver) => driver.status === 'Archiviato')
   const archivedVehicles = vehicleRecords.filter((vehicle) => vehicle.status === 'Archiviato')
   const archivedFaults = faultReportRecords.filter(isFaultArchived)
-  const archivedChecks = vehicleCheckRecords.filter((check) => acknowledgedCheckIds.includes(check.id) || check.status === 'resolved')
+  const archivedChecks = vehicleCheckRecords.filter((check) => isVehicleCheckArchived(check, acknowledgedCheckIds))
   const tabs = [
     {
       count: staffPeople.length + activeAssets.length,
@@ -8605,7 +8651,7 @@ function ArchiveWorkspace({
   const archivedDrivers = driverRecords.filter((driver) => driver.status === 'Archiviato')
   const archivedVehicles = vehicleRecords.filter((vehicle) => vehicle.status === 'Archiviato')
   const archivedFaults = faultReportRecords.filter(isFaultArchived)
-  const archivedChecks = vehicleCheckRecords.filter((check) => acknowledgedCheckIds.includes(check.id) || check.status === 'resolved')
+  const archivedChecks = vehicleCheckRecords.filter((check) => isVehicleCheckArchived(check, acknowledgedCheckIds))
   const archivedOperations = [
     ...archivedFaults.map((report) => ({
       createdAt: report.updatedAt || report.createdAt,
@@ -8838,7 +8884,7 @@ function ArchiveDetailPanel({
       <div className="operation-detail-body">
         <DetailLine
           label={t('common.status')}
-          value={check.status === 'resolved' || acknowledgedCheckIds.includes(check.id) ? t('common.archived') : t('operations.inbox')}
+          value={isVehicleCheckArchived(check, acknowledgedCheckIds) ? t('common.archived') : t('operations.inbox')}
         />
         <DetailLine label={t('common.driver')} value={driver?.name ?? t('common.driverMissing')} />
         <DetailLine label={t('common.vehicle')} value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : t('common.vehicleMissing')} />
@@ -10201,8 +10247,8 @@ function OperationsWorkspace({
   const isCriticalFault = (report) => ['high', 'stop_vehicle'].includes(report.severity) && !isFaultArchived(report)
   const newFaults = faultReportRecords.filter(isFaultUnread)
   const archivedFaults = faultReportRecords.filter(isFaultArchived)
-  const unreadChecks = vehicleCheckRecords.filter((check) => !acknowledgedCheckIds.includes(check.id))
-  const archivedChecks = vehicleCheckRecords.filter((check) => acknowledgedCheckIds.includes(check.id))
+  const unreadChecks = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds))
+  const archivedChecks = vehicleCheckRecords.filter((check) => isVehicleCheckArchived(check, acknowledgedCheckIds))
   const criticalChecks = unreadChecks.filter(hasCheckIssues)
   const criticalFaults = faultReportRecords.filter(isCriticalFault)
   const allOperations = [
@@ -10224,26 +10270,26 @@ function OperationsWorkspace({
       if (filter === 'inbox') {
         return (
           (operation.kind === 'fault' && isFaultUnread(operation.data)) ||
-          (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id))
+          (operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds))
         )
       }
       if (filter === 'critical') {
         return (
           (operation.kind === 'fault' && isCriticalFault(operation.data)) ||
-          (operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id) && hasCheckIssues(operation.data))
+          (operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds) && hasCheckIssues(operation.data))
         )
       }
       if (filter === 'critical_checks') {
-        return operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id) && hasCheckIssues(operation.data)
+        return operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds) && hasCheckIssues(operation.data)
       }
       if (filter === 'archive') {
         return (
           (operation.kind === 'fault' && isFaultArchived(operation.data)) ||
-          (operation.kind === 'check' && acknowledgedCheckIds.includes(operation.id))
+          (operation.kind === 'check' && isVehicleCheckArchived(operation.data, acknowledgedCheckIds))
         )
       }
       if (filter === 'faults') return operation.kind === 'fault' && isFaultUnread(operation.data)
-      if (filter === 'checks') return operation.kind === 'check' && !acknowledgedCheckIds.includes(operation.id)
+      if (filter === 'checks') return operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds)
       return false
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -10331,7 +10377,7 @@ function OperationsWorkspace({
                 onMarkRead={() => onAcknowledgeCheck(operation.id)}
                 onMarkUnread={() => onMarkCheckUnread(operation.id)}
                 onOpen={() => openOperation(operation)}
-                read={acknowledgedCheckIds.includes(operation.id)}
+                read={isVehicleCheckArchived(operation.data, acknowledgedCheckIds)}
                 selected={detailOperation?.kind === 'check' && detailOperation.id === operation.id}
                 trailer={vehicleRecords.find((vehicle) => vehicle.id === operation.data.semitrailerId)}
                 vehicle={vehicleRecords.find((vehicle) => vehicle.id === operation.data.tractorId)}
@@ -11686,7 +11732,7 @@ function OperationDetailShell({
   const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
   const trailer = vehicleRecords.find((entry) => entry.id === check.semitrailerId)
   const issueText = getCheckIssues(check, t)
-  const isRead = acknowledgedCheckIds.includes(check.id)
+  const isRead = isVehicleCheckArchived(check, acknowledgedCheckIds)
 
   return (
     <Shell className={shellClassName} {...shellProps}>

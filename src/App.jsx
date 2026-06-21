@@ -11581,38 +11581,6 @@ function ChatWorkspace({
           </div>
         )}
         <div className="chat-driver-list">
-          {visibleTeamThreads.length > 0 && (
-            <div className="chat-list-section-label">Gruppi e reparti</div>
-          )}
-          {visibleTeamThreads.map((thread) => {
-            const lastMessage = getLastTeamMessage(thread.id)
-            const isSelected = selectedTeamThread?.id === thread.id
-
-            return (
-              <button
-                className={getTeamThreadRowClassName('chat-driver-row', thread, isSelected)}
-                key={thread.id}
-                onClick={() => selectTeamChat(thread.id)}
-                type="button"
-              >
-                <span className="team-chat-row-icon">
-                  {getTeamThreadIcon(thread)}
-                </span>
-                <span>
-                  <strong>{thread.title}</strong>
-                  <small>
-                    {lastMessage
-                      ? `${getCompanyMessageSenderLabel(lastMessage)}: ${getChatMessageText(lastMessage, t('chat.photoAttached'))}`
-                      : `${getTeamThreadKindLabel(thread)} · ${getTeamAudienceLabel(thread.audienceType)}`}
-                  </small>
-                </span>
-                <span className="chat-row-meta">
-                  <strong className="chat-kind-badge">{getTeamThreadKindLabel(thread)}</strong>
-                  {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
-                </span>
-              </button>
-            )
-          })}
           {conversationDrivers.length > 0 && (
             <div className="chat-list-section-label">Chat autisti</div>
           )}
@@ -11653,6 +11621,38 @@ function ChatWorkspace({
                 <span className="chat-row-meta">
                   {driverIsOnline && <span className="chat-online-badge">{t('chat.online')}</span>}
                   {unreadMessageCount > 0 && <strong className="chat-unread-badge">{unreadMessageCount}</strong>}
+                  {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
+                </span>
+              </button>
+            )
+          })}
+          {visibleTeamThreads.length > 0 && (
+            <div className="chat-list-section-label">Gruppi e reparti</div>
+          )}
+          {visibleTeamThreads.map((thread) => {
+            const lastMessage = getLastTeamMessage(thread.id)
+            const isSelected = selectedTeamThread?.id === thread.id
+
+            return (
+              <button
+                className={getTeamThreadRowClassName('chat-driver-row', thread, isSelected)}
+                key={thread.id}
+                onClick={() => selectTeamChat(thread.id)}
+                type="button"
+              >
+                <span className="team-chat-row-icon">
+                  {getTeamThreadIcon(thread)}
+                </span>
+                <span>
+                  <strong>{thread.title}</strong>
+                  <small>
+                    {lastMessage
+                      ? `${getCompanyMessageSenderLabel(lastMessage)}: ${getChatMessageText(lastMessage, t('chat.photoAttached'))}`
+                      : `${getTeamThreadKindLabel(thread)} · ${getTeamAudienceLabel(thread.audienceType)}`}
+                  </small>
+                </span>
+                <span className="chat-row-meta">
+                  <strong className="chat-kind-badge">{getTeamThreadKindLabel(thread)}</strong>
                   {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
                 </span>
               </button>

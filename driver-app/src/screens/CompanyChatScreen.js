@@ -511,11 +511,7 @@ function ChatModeCards({ counts = {}, mode, onChange, unreadCounts = {} }) {
               <Text numberOfLines={1} style={styles.modeCardTitle}>{item.label}</Text>
               <Text numberOfLines={1} style={styles.modeCardSubtitle}>{item.subtitle}</Text>
             </View>
-            {unreadCounts[item.id] > 0 ? (
-              <Text style={styles.modeUnreadCount}>{unreadCounts[item.id]}</Text>
-            ) : (
-              <Text style={[styles.modeCount, isActive && styles.modeCountActive]}>{item.count}</Text>
-            )}
+            {unreadCounts[item.id] > 0 ? <Text style={styles.modeUnreadCount}>{unreadCounts[item.id]}</Text> : null}
           </Pressable>
         )
       })}

@@ -83,17 +83,52 @@ function mapVehicle(row) {
 
 function mapComplianceItem(row) {
   return {
+    assetId: row.asset_id ?? '',
     id: row.id,
     documentNumber: row.document_number,
     driverId: row.driver_id,
     dueDate: row.due_date,
+    fileBucket: row.file_bucket ?? '',
+    filePath: row.file_path ?? '',
     lastReminderAt: row.last_reminder_at,
     owner: row.owner,
+    personId: row.person_id ?? '',
     reminderDays: row.reminder_days,
     scope: row.scope,
     status: row.status,
     type: row.type,
     vehicleId: row.vehicle_id,
+  }
+}
+
+function mapCompanyPerson(row) {
+  return {
+    authEmail: row.auth_email ?? '',
+    companyId: row.company_id,
+    department: row.department ?? 'drivers',
+    depot: row.depot ?? '',
+    email: row.email ?? '',
+    id: row.id,
+    jobTitle: row.job_title ?? '',
+    linkedDriverId: row.linked_driver_id ?? '',
+    name: row.full_name ?? '',
+    personType: row.person_type ?? 'office',
+    phone: row.phone ?? '',
+    status: row.status ?? 'active',
+    username: row.username ?? '',
+  }
+}
+
+function mapCompanyAsset(row) {
+  return {
+    assetType: row.asset_type ?? 'forklift',
+    code: row.code ?? '',
+    companyId: row.company_id,
+    id: row.id,
+    location: row.location ?? '',
+    model: row.model ?? '',
+    serialNumber: row.serial_number ?? '',
+    status: row.status ?? 'active',
   }
 }
 
@@ -338,6 +373,10 @@ const chatMessageSelectColumnsWithoutReactions = `
 
 function isMissingReactionsColumn(error) {
   return error?.code === '42703' && String(error.message ?? '').includes('reactions')
+}
+
+function isMissingWorkforceSchemaError(error) {
+  return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error?.code)
 }
 
 function toDriverPayload(driver, companyId = configuredCompanyId) {
@@ -678,6 +717,48 @@ export async function fetchVehicles(companyId = configuredCompanyId) {
   return { data: data?.map(mapVehicle) ?? null, error }
 }
 
+export async function fetchCompanyPeople(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('company_people')
+    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('full_name', { ascending: true })
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data ? data.map(mapCompanyPerson) : [], error }
+}
+
+export async function fetchCompanyAssets(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('company_assets')
+    .select('id, company_id, asset_type, code, model, serial_number, location, status')
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('code', { ascending: true })
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data ? data.map(mapCompanyAsset) : [], error }
+}
+
 export async function fetchComplianceItems(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -685,7 +766,7 @@ export async function fetchComplianceItems(companyId = configuredCompanyId) {
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from('compliance_items')
     .select(
       `
@@ -694,17 +775,46 @@ export async function fetchComplianceItems(companyId = configuredCompanyId) {
         scope,
         driver_id,
         vehicle_id,
+        person_id,
+        asset_id,
         due_date,
         reminder_days,
         owner,
         status,
         document_number,
-        last_reminder_at
+        last_reminder_at,
+        file_bucket,
+        file_path
       `,
     )
     .eq('company_id', companyId)
     .neq('status', 'archived')
     .order('due_date', { ascending: true })
+
+  if (isMissingWorkforceSchemaError(result.error)) {
+    result = await supabase
+      .from('compliance_items')
+      .select(
+        `
+          id,
+          type,
+          scope,
+          driver_id,
+          vehicle_id,
+          due_date,
+          reminder_days,
+          owner,
+          status,
+          document_number,
+          last_reminder_at
+        `,
+      )
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('due_date', { ascending: true })
+  }
+
+  const { data, error } = result
 
   return { data: data?.map(mapComplianceItem) ?? null, error }
 }

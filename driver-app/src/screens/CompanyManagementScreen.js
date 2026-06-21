@@ -21,6 +21,36 @@ const scopes = [
   { id: 'company', label: 'Azienda' },
 ]
 
+const workforceScopes = [
+  ...scopes,
+  { id: 'person', label: 'Persona' },
+  { id: 'asset', label: 'Attrezzatura' },
+]
+
+const departmentOptions = [
+  { id: 'office', label: 'Ufficio' },
+  { id: 'warehouse', label: 'Magazzino' },
+]
+
+const personTypeOptions = {
+  office: [
+    { id: 'office', label: 'Impiegato ufficio' },
+    { id: 'manager', label: 'Responsabile ufficio' },
+  ],
+  warehouse: [
+    { id: 'forklift_operator', label: 'Carrellista' },
+    { id: 'warehouse_worker', label: 'Magazziniere' },
+    { id: 'manager', label: 'Responsabile magazzino' },
+  ],
+}
+
+const assetTypes = [
+  { id: 'forklift', label: 'Muletto' },
+  { id: 'pallet_truck', label: 'Transpallet' },
+  { id: 'warehouse_equipment', label: 'Attrezzatura' },
+  { id: 'other', label: 'Altro' },
+]
+
 function formatDate(value, language = 'it') {
   if (!value) return 'Senza data'
   return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
@@ -47,13 +77,35 @@ function getDeadlineStatusLabel(item) {
   return `Tra ${days} gg`
 }
 
-function getDeadlineSubject(item, drivers, vehicles) {
+function getAssetTypeLabel(value = '') {
+  return assetTypes.find((entry) => entry.id === value)?.label ?? 'Attrezzatura'
+}
+
+function getDepartmentLabel(value = '') {
+  return departmentOptions.find((entry) => entry.id === value)?.label ?? 'Persone'
+}
+
+function getPersonTypeLabel(value = '') {
+  return Object.values(personTypeOptions)
+    .flat()
+    .find((entry) => entry.id === value)?.label ?? 'Persona'
+}
+
+function getDeadlineSubject(item, drivers, vehicles, people = [], assets = []) {
   if (item.scope === 'driver') {
     return drivers.find((driver) => driver.id === item.driverId)?.name ?? 'Autista'
   }
 
   if (item.scope === 'vehicle') {
     return vehicles.find((vehicle) => vehicle.id === item.vehicleId)?.plate ?? 'Mezzo'
+  }
+
+  if (item.scope === 'person') {
+    return people.find((person) => person.id === item.personId)?.name ?? 'Persona'
+  }
+
+  if (item.scope === 'asset') {
+    return assets.find((asset) => asset.id === item.assetId)?.code ?? 'Attrezzatura'
   }
 
   return 'Azienda'
@@ -149,12 +201,31 @@ export function CompanyManagementScreen({
   language = 'it',
   onCreateDeadline,
   onCreateDriver,
+  onCreatePerson,
   onCreateVehicle,
+  onCreateWarehouseAsset,
 }) {
+  const workforceSchemaReady = context?.workforceSchemaReady !== false
   const drivers = context?.drivers ?? []
+  const people = context?.people ?? []
   const vehicles = context?.vehicles ?? []
+  const assets = context?.assets ?? []
   const deadlines = context?.complianceItems ?? []
   const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
+  const fallbackDriverPeople = drivers.map((driver) => ({
+    department: 'drivers',
+    id: `driver-${driver.id}`,
+    jobTitle: driver.role || 'Autista',
+    linkedDriverId: driver.id,
+    name: driver.name,
+    personType: 'driver',
+    phone: driver.phone,
+    username: driver.username,
+  }))
+  const allPeople = workforceSchemaReady ? people : fallbackDriverPeople
+  const officePeople = allPeople.filter((person) => person.department === 'office')
+  const warehousePeople = allPeople.filter((person) => person.department === 'warehouse')
+  const warehouseAssets = assets.filter((asset) => !['Archiviato', 'archived'].includes(asset.status))
   const [activeForm, setActiveForm] = useState('driver')
   const [activeList, setActiveList] = useState(initialSection)
   const [mode, setMode] = useState('archive')
@@ -170,6 +241,27 @@ export function CompanyManagementScreen({
     role: 'Autista',
     tachographCardDueDate: '',
     username: '',
+  })
+  const [personForm, setPersonForm] = useState({
+    department: 'office',
+    depot: '',
+    email: '',
+    forkliftLicenseDueDate: '',
+    jobTitle: 'Impiegato ufficio',
+    medicalDueDate: '',
+    name: '',
+    personType: 'office',
+    phone: '',
+    safetyTrainingDueDate: '',
+    username: '',
+  })
+  const [assetForm, setAssetForm] = useState({
+    assetType: 'forklift',
+    code: '',
+    location: '',
+    maintenanceDueDate: '',
+    model: '',
+    serialNumber: '',
   })
   const [vehicleForm, setVehicleForm] = useState({
     insuranceDueDate: '',
@@ -196,11 +288,14 @@ export function CompanyManagementScreen({
     type: '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const currentScopes = workforceSchemaReady ? workforceScopes : scopes
   const deadlineAssignees = useMemo(() => {
     if (deadlineForm.scope === 'driver') return drivers
     if (deadlineForm.scope === 'vehicle') return activeVehicles
+    if (deadlineForm.scope === 'person') return allPeople
+    if (deadlineForm.scope === 'asset') return warehouseAssets
     return []
-  }, [activeVehicles, deadlineForm.scope, drivers])
+  }, [activeVehicles, allPeople, deadlineForm.scope, drivers, warehouseAssets])
   const nextDeadlines = deadlines
     .filter((item) => item.dueDate)
     .slice()
@@ -225,6 +320,32 @@ export function CompanyManagementScreen({
 
   function updateDriverForm(field, value) {
     setDriverForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  function updatePersonForm(field, value) {
+    setPersonForm((currentForm) => {
+      if (field === 'department') {
+        const nextPersonType = value === 'warehouse' ? 'forklift_operator' : 'office'
+        const nextLabel = personTypeOptions[value]?.find((entry) => entry.id === nextPersonType)?.label ?? ''
+        return {
+          ...currentForm,
+          department: value,
+          jobTitle: nextLabel,
+          personType: nextPersonType,
+        }
+      }
+
+      if (field === 'personType') {
+        const nextLabel = personTypeOptions[currentForm.department]?.find((entry) => entry.id === value)?.label ?? currentForm.jobTitle
+        return { ...currentForm, jobTitle: nextLabel, personType: value }
+      }
+
+      return { ...currentForm, [field]: value }
+    })
+  }
+
+  function updateAssetForm(field, value) {
+    setAssetForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
   function updateVehicleForm(field, value) {
@@ -307,6 +428,118 @@ export function CompanyManagementScreen({
       })
       openArchive('drivers')
       Alert.alert('Autista creato', `Username: ${payload.username}\nPassword: ${password}`)
+    }
+  }
+
+  async function submitPerson() {
+    if (!workforceSchemaReady) {
+      Alert.alert('Da attivare', 'Per creare ufficio e magazzino devi prima eseguire il file SQL 31 in Supabase.')
+      return
+    }
+
+    const payload = {
+      department: personForm.department,
+      depot: personForm.depot.trim(),
+      email: personForm.email.trim(),
+      jobTitle: personForm.jobTitle.trim() || getPersonTypeLabel(personForm.personType),
+      name: personForm.name.trim(),
+      personType: personForm.personType,
+      phone: personForm.phone.trim(),
+      username: personForm.username.trim(),
+    }
+
+    if (!payload.name || !payload.department || !payload.personType) {
+      Alert.alert('Dati mancanti', 'Compila nome, reparto e ruolo.')
+      return
+    }
+
+    setIsSaving(true)
+    const savedPerson = await onCreatePerson?.(payload)
+
+    if (savedPerson?.id) {
+      const initialDeadlines = [
+        { dueDate: personForm.medicalDueDate.trim(), type: 'Visita medica' },
+        { dueDate: personForm.safetyTrainingDueDate.trim(), type: 'Formazione sicurezza' },
+        personForm.personType === 'forklift_operator'
+          ? { dueDate: personForm.forkliftLicenseDueDate.trim(), type: 'Patentino carrello' }
+          : null,
+      ].filter((item) => item?.dueDate)
+
+      for (const item of initialDeadlines) {
+        await onCreateDeadline?.({
+          assigneeId: savedPerson.id,
+          dueDate: item.dueDate,
+          scope: 'person',
+          type: item.type,
+        })
+      }
+    }
+
+    setIsSaving(false)
+
+    if (savedPerson) {
+      setPersonForm({
+        department: 'office',
+        depot: '',
+        email: '',
+        forkliftLicenseDueDate: '',
+        jobTitle: 'Impiegato ufficio',
+        medicalDueDate: '',
+        name: '',
+        personType: 'office',
+        phone: '',
+        safetyTrainingDueDate: '',
+        username: '',
+      })
+      openArchive(savedPerson.department === 'warehouse' ? 'warehouse' : 'office')
+      Alert.alert('Persona creata', `${savedPerson.name} e stata aggiunta.`)
+    }
+  }
+
+  async function submitWarehouseAsset() {
+    if (!workforceSchemaReady) {
+      Alert.alert('Da attivare', 'Per creare muletti e attrezzature devi prima eseguire il file SQL 31 in Supabase.')
+      return
+    }
+
+    const payload = {
+      assetType: assetForm.assetType,
+      code: assetForm.code.trim(),
+      location: assetForm.location.trim(),
+      model: assetForm.model.trim(),
+      serialNumber: assetForm.serialNumber.trim(),
+    }
+
+    if (!payload.code) {
+      Alert.alert('Dati mancanti', 'Inserisci almeno codice o matricola interna.')
+      return
+    }
+
+    setIsSaving(true)
+    const savedAsset = await onCreateWarehouseAsset?.(payload)
+
+    if (savedAsset?.id && assetForm.maintenanceDueDate.trim()) {
+      await onCreateDeadline?.({
+        assigneeId: savedAsset.id,
+        dueDate: assetForm.maintenanceDueDate.trim(),
+        scope: 'asset',
+        type: 'Manutenzione attrezzatura',
+      })
+    }
+
+    setIsSaving(false)
+
+    if (savedAsset) {
+      setAssetForm({
+        assetType: 'forklift',
+        code: '',
+        location: '',
+        maintenanceDueDate: '',
+        model: '',
+        serialNumber: '',
+      })
+      openArchive('warehouse')
+      Alert.alert('Attrezzatura creata', `${savedAsset.code} e stata aggiunta al magazzino.`)
     }
   }
 
@@ -429,13 +662,22 @@ export function CompanyManagementScreen({
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Anagrafiche</Text>
-        <Text style={styles.heroMeta}>Autisti, flotta e scadenze</Text>
+        <Text style={styles.heroMeta}>Persone, reparti, flotta e scadenze</Text>
         <View style={styles.summaryGrid}>
-          <SummaryCard icon="people-outline" label="Autisti" value={drivers.length} />
-          <SummaryCard icon="bus-outline" label="Mezzi" value={activeVehicles.length} />
-          <SummaryCard icon="calendar-outline" label="Scadenze" value={deadlines.length} />
+          <SummaryCard icon="people-outline" label="Persone" value={allPeople.length} />
+          <SummaryCard icon="briefcase-outline" label="Ufficio" value={officePeople.length} />
+          <SummaryCard icon="cube-outline" label="Magazzino" value={warehousePeople.length + warehouseAssets.length} />
         </View>
       </View>
+
+      {!workforceSchemaReady ? (
+        <View style={styles.schemaNotice}>
+          <Ionicons color={colors.warning} name="alert-circle-outline" size={18} />
+          <Text style={styles.schemaNoticeText}>
+            Reparti, ufficio, magazzino e attrezzature si attivano eseguendo in Supabase il file SQL 31.
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.modeBar}>
         <Pressable onPress={() => openArchive(activeList)} style={[styles.modeButton, mode === 'archive' && styles.modeButtonActive]}>
@@ -451,6 +693,8 @@ export function CompanyManagementScreen({
       {mode === 'create' ? (
         <View style={styles.formTabs}>
           <Chip active={activeForm === 'driver'} label="Autista" onPress={() => setActiveForm('driver')} />
+          <Chip active={activeForm === 'person'} label="Persona" onPress={() => setActiveForm('person')} />
+          <Chip active={activeForm === 'asset'} label="Attrezzatura" onPress={() => setActiveForm('asset')} />
           <Chip active={activeForm === 'vehicle'} label="Mezzo" onPress={() => setActiveForm('vehicle')} />
           <Chip active={activeForm === 'deadline'} label="Scadenza" onPress={() => setActiveForm('deadline')} />
         </View>
@@ -479,6 +723,85 @@ export function CompanyManagementScreen({
           <DateField label="Tessera tachigrafica" language={language} onChange={(value) => updateDriverForm('tachographCardDueDate', value)} value={driverForm.tachographCardDueDate} />
           <DateField label="Visita medica" language={language} onChange={(value) => updateDriverForm('medicalDueDate', value)} value={driverForm.medicalDueDate} />
           <PrimaryButton loading={isSaving} onPress={submitDriver} title="Crea autista" />
+        </Panel>
+      ) : null}
+
+      {mode === 'create' && activeForm === 'person' ? (
+        <Panel
+          kicker="Nuova"
+          right={
+            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
+              <Text style={styles.closeFormText}>Chiudi</Text>
+            </Pressable>
+          }
+          title="Aggiungi persona"
+        >
+          <TextField label="Nome e cognome" onChangeText={(value) => updatePersonForm('name', value)} placeholder="Paola Rossi" value={personForm.name} />
+          <Text style={styles.label}>Reparto</Text>
+          <View style={styles.chipGrid}>
+            {departmentOptions.map((item) => (
+              <Chip
+                active={personForm.department === item.id}
+                key={item.id}
+                label={item.label}
+                onPress={() => updatePersonForm('department', item.id)}
+              />
+            ))}
+          </View>
+          <Text style={styles.label}>Ruolo</Text>
+          <View style={styles.chipGrid}>
+            {(personTypeOptions[personForm.department] ?? []).map((item) => (
+              <Chip
+                active={personForm.personType === item.id}
+                key={item.id}
+                label={item.label}
+                onPress={() => updatePersonForm('personType', item.id)}
+              />
+            ))}
+          </View>
+          <TextField label="Mansione libera" onChangeText={(value) => updatePersonForm('jobTitle', value)} placeholder="Es. ufficio traffico, carrellista..." value={personForm.jobTitle} />
+          <TextField label="Telefono" keyboardType="phone-pad" onChangeText={(value) => updatePersonForm('phone', value)} placeholder="+39..." value={personForm.phone} />
+          <TextField label="Email" keyboardType="email-address" onChangeText={(value) => updatePersonForm('email', value)} placeholder="nome@azienda.it" value={personForm.email} />
+          <TextField label="Username futuro" onChangeText={(value) => updatePersonForm('username', value)} placeholder="paola.rossi" value={personForm.username} />
+          <TextField label="Sede o reparto" onChangeText={(value) => updatePersonForm('depot', value)} placeholder="Ufficio Verona, Magazzino 1..." value={personForm.depot} />
+          <Text style={styles.groupTitle}>Scadenze iniziali</Text>
+          <DateField label="Visita medica" language={language} onChange={(value) => updatePersonForm('medicalDueDate', value)} value={personForm.medicalDueDate} />
+          <DateField label="Formazione sicurezza" language={language} onChange={(value) => updatePersonForm('safetyTrainingDueDate', value)} value={personForm.safetyTrainingDueDate} />
+          {personForm.personType === 'forklift_operator' ? (
+            <DateField label="Patentino carrello" language={language} onChange={(value) => updatePersonForm('forkliftLicenseDueDate', value)} value={personForm.forkliftLicenseDueDate} />
+          ) : null}
+          <PrimaryButton loading={isSaving} onPress={submitPerson} title="Aggiungi persona" />
+        </Panel>
+      ) : null}
+
+      {mode === 'create' && activeForm === 'asset' ? (
+        <Panel
+          kicker="Nuova"
+          right={
+            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
+              <Text style={styles.closeFormText}>Chiudi</Text>
+            </Pressable>
+          }
+          title="Aggiungi attrezzatura"
+        >
+          <Text style={styles.label}>Tipo</Text>
+          <View style={styles.chipGrid}>
+            {assetTypes.map((item) => (
+              <Chip
+                active={assetForm.assetType === item.id}
+                key={item.id}
+                label={item.label}
+                onPress={() => updateAssetForm('assetType', item.id)}
+              />
+            ))}
+          </View>
+          <TextField label="Codice interno" onChangeText={(value) => updateAssetForm('code', value)} placeholder="MUL-01" value={assetForm.code} />
+          <TextField label="Modello" onChangeText={(value) => updateAssetForm('model', value)} placeholder="Still, Toyota..." value={assetForm.model} />
+          <TextField label="Matricola" onChangeText={(value) => updateAssetForm('serialNumber', value)} placeholder="Opzionale" value={assetForm.serialNumber} />
+          <TextField label="Posizione" onChangeText={(value) => updateAssetForm('location', value)} placeholder="Magazzino 1, ribalta..." value={assetForm.location} />
+          <Text style={styles.groupTitle}>Scadenze iniziali</Text>
+          <DateField label="Manutenzione programmata" language={language} onChange={(value) => updateAssetForm('maintenanceDueDate', value)} value={assetForm.maintenanceDueDate} />
+          <PrimaryButton loading={isSaving} onPress={submitWarehouseAsset} title="Aggiungi attrezzatura" />
         </Panel>
       ) : null}
 
@@ -553,7 +876,7 @@ export function CompanyManagementScreen({
           <TextField label="Tipo scadenza" onChangeText={(value) => updateDeadlineForm('type', value)} placeholder="Revisione, assicurazione, CQC..." value={deadlineForm.type} />
           <Text style={styles.label}>Categoria</Text>
           <View style={styles.chipGrid}>
-            {scopes.map((item) => (
+            {currentScopes.map((item) => (
               <Chip
                 active={deadlineForm.scope === item.id}
                 key={item.id}
@@ -570,11 +893,27 @@ export function CompanyManagementScreen({
                   <Chip
                     active={deadlineForm.assigneeId === item.id}
                     key={item.id}
-                    label={deadlineForm.scope === 'driver' ? item.name : item.plate}
+                    label={deadlineForm.scope === 'driver'
+                      ? item.name
+                      : deadlineForm.scope === 'vehicle'
+                        ? item.plate
+                        : deadlineForm.scope === 'asset'
+                          ? item.code
+                          : item.name}
                     onPress={() => updateDeadlineForm('assigneeId', item.id)}
                   />
                 ))}
-                {!deadlineAssignees.length ? <Text style={styles.emptyText}>Aggiungi prima {deadlineForm.scope === 'driver' ? 'un autista' : 'un mezzo'}.</Text> : null}
+                {!deadlineAssignees.length ? (
+                  <Text style={styles.emptyText}>
+                    Aggiungi prima {deadlineForm.scope === 'driver'
+                      ? 'un autista'
+                      : deadlineForm.scope === 'vehicle'
+                        ? 'un mezzo'
+                        : deadlineForm.scope === 'asset'
+                          ? "un'attrezzatura"
+                          : 'una persona'}.
+                  </Text>
+                ) : null}
               </View>
             </>
           ) : null}
@@ -593,6 +932,9 @@ export function CompanyManagementScreen({
 
       <Panel kicker="Archivio" title="Dati azienda">
         <View style={styles.archiveTabs}>
+          <Chip active={activeList === 'people'} label="Persone" onPress={() => setActiveList('people')} />
+          <Chip active={activeList === 'office'} label="Ufficio" onPress={() => setActiveList('office')} />
+          <Chip active={activeList === 'warehouse'} label="Magazzino" onPress={() => setActiveList('warehouse')} />
           <Chip active={activeList === 'drivers'} label="Autisti" onPress={() => setActiveList('drivers')} />
           <Chip active={activeList === 'vehicles'} label="Flotta" onPress={() => setActiveList('vehicles')} />
           <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
@@ -603,6 +945,14 @@ export function CompanyManagementScreen({
               <Ionicons color={colors.ink} name="person-add-outline" size={17} />
               <Text style={styles.quickCreateText}>Autista</Text>
             </Pressable>
+            <Pressable onPress={() => openCreateForm('person')} style={styles.quickCreateButton}>
+              <Ionicons color={colors.ink} name="people-outline" size={17} />
+              <Text style={styles.quickCreateText}>Persona</Text>
+            </Pressable>
+            <Pressable onPress={() => openCreateForm('asset')} style={styles.quickCreateButton}>
+              <Ionicons color={colors.ink} name="cube-outline" size={17} />
+              <Text style={styles.quickCreateText}>Attrez.</Text>
+            </Pressable>
             <Pressable onPress={() => openCreateForm('vehicle')} style={styles.quickCreateButton}>
               <Ionicons color={colors.ink} name="bus-outline" size={17} />
               <Text style={styles.quickCreateText}>Mezzo</Text>
@@ -611,6 +961,86 @@ export function CompanyManagementScreen({
               <Ionicons color={colors.ink} name="calendar-outline" size={17} />
               <Text style={styles.quickCreateText}>Scadenza</Text>
             </Pressable>
+          </View>
+        ) : null}
+
+        {activeList === 'people' ? (
+          <View style={styles.archiveList}>
+            {allPeople.map((person) => (
+              <View key={person.id} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIcon}>
+                    <Ionicons color={colors.cyanDark} name="people-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{person.name}</Text>
+                    <Text style={styles.listMeta}>
+                      {getDepartmentLabel(person.department)} · {person.jobTitle || getPersonTypeLabel(person.personType)}
+                    </Text>
+                    <Text style={styles.listMeta}>{person.phone || person.email || person.username || 'contatto mancante'}</Text>
+                  </View>
+                </View>
+                <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id || item.driverId === person.linkedDriverId)} language={language} />
+              </View>
+            ))}
+            {!allPeople.length ? <Text style={styles.emptyText}>Nessuna persona presente.</Text> : null}
+          </View>
+        ) : null}
+
+        {activeList === 'office' ? (
+          <View style={styles.archiveList}>
+            {officePeople.map((person) => (
+              <View key={person.id} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIcon}>
+                    <Ionicons color={colors.cyanDark} name="briefcase-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{person.name}</Text>
+                    <Text style={styles.listMeta}>{person.jobTitle || 'Ufficio'} · {person.phone || person.email || 'contatto mancante'}</Text>
+                  </View>
+                </View>
+                <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id)} language={language} />
+              </View>
+            ))}
+            {!officePeople.length ? <Text style={styles.emptyText}>Nessuna persona ufficio presente.</Text> : null}
+          </View>
+        ) : null}
+
+        {activeList === 'warehouse' ? (
+          <View style={styles.archiveList}>
+            {warehousePeople.map((person) => (
+              <View key={person.id} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIcon}>
+                    <Ionicons color={colors.cyanDark} name="person-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{person.name}</Text>
+                    <Text style={styles.listMeta}>{person.jobTitle || getPersonTypeLabel(person.personType)} · {person.phone || 'contatto mancante'}</Text>
+                  </View>
+                </View>
+                <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id)} language={language} />
+              </View>
+            ))}
+            {warehouseAssets.map((asset) => (
+              <View key={asset.id} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIcon}>
+                    <Ionicons color={colors.cyanDark} name="cube-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{asset.code}</Text>
+                    <Text style={styles.listMeta}>
+                      {getAssetTypeLabel(asset.assetType)} · {asset.model || 'modello non indicato'} · {asset.location || 'posizione non indicata'}
+                    </Text>
+                    {asset.serialNumber ? <Text style={styles.listMeta}>Matricola {asset.serialNumber}</Text> : null}
+                  </View>
+                </View>
+                <RelatedDeadlines deadlines={deadlines.filter((item) => item.assetId === asset.id)} language={language} />
+              </View>
+            ))}
+            {!warehousePeople.length && !warehouseAssets.length ? <Text style={styles.emptyText}>Nessun dato magazzino presente.</Text> : null}
           </View>
         ) : null}
 
@@ -664,7 +1094,7 @@ export function CompanyManagementScreen({
                   <View style={styles.listCopy}>
                     <Text style={styles.listTitle}>{item.type}</Text>
                     <Text style={styles.listMeta}>
-                      {getDeadlineSubject(item, drivers, activeVehicles)} · {formatDate(item.dueDate, language)} · {getDeadlineStatusLabel(item)}
+                      {getDeadlineSubject(item, drivers, activeVehicles, allPeople, warehouseAssets)} · {formatDate(item.dueDate, language)} · {getDeadlineStatusLabel(item)}
                     </Text>
                     {item.filePath ? <Text style={styles.fileMeta}>Allegato presente</Text> : null}
                   </View>
@@ -963,7 +1393,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.cyan,
     borderRadius: 14,
-    flex: 1,
+    flexBasis: '30%',
+    flexGrow: 1,
     flexDirection: 'row',
     gap: 6,
     justifyContent: 'center',
@@ -972,6 +1403,7 @@ const styles = StyleSheet.create({
   },
   quickCreateRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },
@@ -985,6 +1417,24 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 10,
+  },
+  schemaNotice: {
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    borderColor: '#f59e0b',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    padding: 12,
+  },
+  schemaNoticeText: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
   },
   summaryCard: {
     backgroundColor: colors.white,

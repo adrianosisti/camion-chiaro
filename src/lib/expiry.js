@@ -48,24 +48,54 @@ function getVehicleFleetLabel(value = '') {
 }
 
 export function decorateCompliance(items, drivers, vehicles, now = new Date()) {
+  return decorateComplianceWithWorkforce(items, drivers, vehicles, [], [], now)
+}
+
+export function decorateComplianceWithWorkforce(items, drivers, vehicles, people = [], assets = [], now = new Date()) {
   return items
     .map((item) => {
       const driver = drivers.find((entry) => entry.id === item.driverId)
       const vehicle = vehicles.find((entry) => entry.id === item.vehicleId)
+      const person = people.find((entry) => entry.id === item.personId || entry.linkedDriverId === item.driverId)
+      const asset = assets.find((entry) => entry.id === item.assetId)
       const urgency = getUrgency(item, now)
       const vehicleLabel = getVehicleFleetLabel(vehicle?.fleetType)
+      const personDepartment = person?.department === 'warehouse'
+        ? 'Magazzino'
+        : person?.department === 'office'
+          ? 'Ufficio'
+          : 'Persona'
+      const assetLabel = asset?.assetType === 'forklift'
+        ? 'Muletto'
+        : asset?.assetType === 'pallet_truck'
+          ? 'Transpallet'
+          : 'Attrezzatura'
 
       return {
         ...item,
+        asset,
         driver,
+        person,
         vehicle,
-        assignee: driver ? `Persona · ${driver.name}` : vehicle ? `${vehicleLabel} · ${vehicle.plate}` : 'Azienda',
+        assignee: driver
+          ? `Autista · ${driver.name}`
+          : vehicle
+            ? `${vehicleLabel} · ${vehicle.plate}`
+            : person
+              ? `${personDepartment} · ${person.name}`
+              : asset
+                ? `${assetLabel} · ${asset.code}`
+                : 'Azienda',
         detail: driver
           ? driver.role || 'Autista'
           : vehicle
             ? [vehicle.model, vehicle.type].filter(Boolean).join(' · ') || 'Dettaglio mezzo non indicato'
-            : 'Documento aziendale',
-        subjectKind: driver ? 'Persona' : vehicle ? vehicleLabel : 'Azienda',
+            : person
+              ? [person.jobTitle, person.depot].filter(Boolean).join(' · ') || personDepartment
+              : asset
+                ? [asset.model, asset.location].filter(Boolean).join(' · ') || assetLabel
+                : 'Documento aziendale',
+        subjectKind: driver ? 'Autista' : vehicle ? vehicleLabel : person ? personDepartment : asset ? assetLabel : 'Azienda',
         urgency,
       }
     })

@@ -357,13 +357,19 @@ function AudioAttachment({ signedUrl }) {
   )
 }
 
-function AttachmentPreview({ path }) {
+function AttachmentPreview({ onOpenImage, path }) {
   const [signedUrl, setSignedUrl] = useState('')
+  const directUrl = isPreviewableImageUri(path) ? String(path).trim() : ''
 
   useEffect(() => {
     let isActive = true
 
     async function loadSignedUrl() {
+      if (directUrl) {
+        setSignedUrl(directUrl)
+        return
+      }
+
       const result = await createCompanyAssetSignedUrl(path)
       if (isActive) setSignedUrl(result.data?.signedUrl ?? '')
     }
@@ -373,7 +379,7 @@ function AttachmentPreview({ path }) {
     return () => {
       isActive = false
     }
-  }, [path])
+  }, [directUrl, path])
 
   if (!path) return null
 
@@ -382,7 +388,14 @@ function AttachmentPreview({ path }) {
   }
 
   if (isImagePath(path)) {
-    return signedUrl ? <Image source={{ uri: signedUrl }} style={styles.imageAttachment} /> : <View style={styles.imageSkeleton} />
+    return signedUrl ? (
+      <Pressable
+        onLongPress={() => saveImageToGallery(signedUrl, path)}
+        onPress={() => onOpenImage?.(signedUrl, getAttachmentTitle(path), path)}
+      >
+        <Image source={{ uri: signedUrl }} style={styles.imageAttachment} />
+      </Pressable>
+    ) : <View style={styles.imageSkeleton} />
   }
 
   return (
@@ -503,7 +516,7 @@ function ChatInfoModal({
   )
 }
 
-function MessageBubble({ currentUserRole, message, onAvatarPress, onLongPress, ownAvatarUrl, participantAvatarUrl, participantName }) {
+function MessageBubble({ currentUserRole, message, onAvatarPress, onLongPress, onOpenImage, ownAvatarUrl, participantAvatarUrl, participantName }) {
   const isOwn = message.senderRole === currentUserRole
   const readAt = currentUserRole === 'driver' ? message.readByCompanyAt : message.readByDriverAt
   const isRead = Boolean(readAt)
@@ -521,7 +534,7 @@ function MessageBubble({ currentUserRole, message, onAvatarPress, onLongPress, o
             <Text numberOfLines={2} style={styles.replyQuoteText}>{display.reply.text}</Text>
           </View>
         ) : null}
-        <AttachmentPreview path={message.attachmentPath} />
+        <AttachmentPreview onOpenImage={onOpenImage} path={message.attachmentPath} />
         {messageText ? <Text style={styles.bubbleText}>{messageText}</Text> : null}
         <View style={styles.bubbleMeta}>
           <Text style={styles.bubbleTime}>{formatMessageTime(message.createdAt)}</Text>
@@ -605,6 +618,7 @@ export function ChatScreen({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [optimisticMessages, setOptimisticMessages] = useState([])
   const [pendingAttachments, setPendingAttachments] = useState([])
   const cancelRecordingRef = useRef(false)
   const isPressingMicRef = useRef(false)
@@ -621,10 +635,11 @@ export function ChatScreen({
   const recorderState = useAudioRecorderState(audioRecorder, 250)
   const receiveSoundPlayer = useAudioPlayer(chatReceiveSound, { keepAudioSessionActive: true })
   const sendSoundPlayer = useAudioPlayer(chatSendSound, { keepAudioSessionActive: true })
-  const listMessages = useMemo(() => [...messages].reverse(), [messages])
+  const renderedMessages = useMemo(() => [...messages, ...optimisticMessages], [messages, optimisticMessages])
+  const listMessages = useMemo(() => [...renderedMessages].reverse(), [renderedMessages])
   const mediaMessages = useMemo(
-    () => messages.filter((message) => ['image', 'video'].includes(getAttachmentKind(message.attachmentPath))),
-    [messages],
+    () => renderedMessages.filter((message) => ['image', 'video'].includes(getAttachmentKind(message.attachmentPath))),
+    [renderedMessages],
   )
   const chatPartnerName = participantName || companyName
   const chatPartnerAvatarUrl = participantAvatarUrl ?? (currentUserRole === 'driver' ? companyLogoUrl : driverProfileUrl)
@@ -709,6 +724,26 @@ export function ChatScreen({
     }
   }
 
+  function createOptimisticMessage({ attachment = null, body: messageBody }) {
+    return {
+      attachmentPath: attachment?.uri ?? '',
+      body: messageBody,
+      companyId: '',
+      createdAt: new Date().toISOString(),
+      id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      reactions: {},
+      readByCompanyAt: '',
+      readByDriverAt: '',
+      senderRole: currentUserRole,
+      threadId: '',
+    }
+  }
+
+  function removeOptimisticMessages(messageIds = []) {
+    if (!messageIds.length) return
+    setOptimisticMessages((currentMessages) => currentMessages.filter((message) => !messageIds.includes(message.id)))
+  }
+
   async function handleSendComposer() {
     const cleanBody = body.trim()
     const attachmentsToSend = pendingAttachments
@@ -722,6 +757,19 @@ export function ChatScreen({
     setIsSending(true)
 
     let failedIndex = -1
+    const optimisticBatch = attachmentsToSend.length
+      ? attachmentsToSend.map((attachment, index) => createOptimisticMessage({
+          attachment,
+          body: composeChatMessageBody(
+            (index === 0 ? cleanBody : '') || getAttachmentDefaultText(attachment),
+            index === 0 ? currentReply : null,
+          ),
+        }))
+      : [createOptimisticMessage({ body: composeChatMessageBody(cleanBody, currentReply) })]
+    const optimisticIds = optimisticBatch.map((message) => message.id)
+
+    setOptimisticMessages((currentMessages) => [...currentMessages, ...optimisticBatch])
+    setTimeout(() => listRef.current?.scrollToOffset?.({ animated: false, offset: 0 }), 20)
 
     if (attachmentsToSend.length) {
       for (let index = 0; index < attachmentsToSend.length; index += 1) {
@@ -743,6 +791,7 @@ export function ChatScreen({
     }
 
     setIsSending(false)
+    removeOptimisticMessages(optimisticIds)
 
     if (failedIndex >= 0) {
       if (attachmentsToSend.length) {
@@ -781,7 +830,7 @@ export function ChatScreen({
       allowsMultipleSelection: true,
       mediaTypes: ['images', 'videos'],
       orderedSelection: true,
-      quality: 0.72,
+      quality: 0.45,
       selectionLimit: 10,
     })
 
@@ -802,7 +851,7 @@ export function ChatScreen({
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: false,
       mediaTypes: ['images', 'videos'],
-      quality: 0.72,
+      quality: 0.45,
       videoMaxDuration: 60,
     })
 
@@ -1049,6 +1098,7 @@ export function ChatScreen({
             message={item}
             onAvatarPress={openAvatarPreview}
             onLongPress={setActionMessage}
+            onOpenImage={openMediaPreview}
             ownAvatarUrl={chatOwnAvatarUrl}
             participantAvatarUrl={chatPartnerAvatarUrl}
             participantName={chatPartnerName}

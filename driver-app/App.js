@@ -29,7 +29,9 @@ import {
   createCompanyAssetSignedUrl,
   createCompanyComplianceItem,
   createCompanyDriverAccount,
+  createCompanyPerson,
   createCompanyVehicle,
+  createCompanyWarehouseAsset,
   createDriverDocument,
   createFaultReport,
   createVehicleCheck,
@@ -1277,6 +1279,42 @@ export default function App() {
     return result.data
   }
 
+  async function handleCreateCompanyPerson(payload) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+
+    const result = await createCompanyPerson({
+      companyId,
+      person: payload,
+    })
+
+    if (result.error) {
+      Alert.alert('Persona non creata', result.error.message)
+      return null
+    }
+
+    await loadCompanyData({ silent: true })
+    return result.data
+  }
+
+  async function handleCreateCompanyWarehouseAsset(payload) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+
+    const result = await createCompanyWarehouseAsset({
+      asset: payload,
+      companyId,
+    })
+
+    if (result.error) {
+      Alert.alert('Attrezzatura non creata', result.error.message)
+      return null
+    }
+
+    await loadCompanyData({ silent: true })
+    return result.data
+  }
+
   async function handleCreateCompanyDeadline(payload, file = null) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId) return null
@@ -1407,7 +1445,9 @@ export default function App() {
             language={language}
             onCreateDeadline={handleCreateCompanyDeadline}
             onCreateDriver={handleCreateCompanyDriver}
+            onCreatePerson={handleCreateCompanyPerson}
             onCreateVehicle={handleCreateCompanyVehicle}
+            onCreateWarehouseAsset={handleCreateCompanyWarehouseAsset}
           />
         )
       }

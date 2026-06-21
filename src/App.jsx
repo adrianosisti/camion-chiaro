@@ -50,7 +50,7 @@ import VolumeX from 'lucide-react/dist/esm/icons/volume-x.mjs'
 import Wrench from 'lucide-react/dist/esm/icons/wrench.mjs'
 import X from 'lucide-react/dist/esm/icons/x.mjs'
 import { company, complianceItems, driverDocuments, drivers, vehicles } from './data/sampleData'
-import { daysUntil, decorateCompliance, formatDate, getSummary } from './lib/expiry'
+import { daysUntil, decorateComplianceWithWorkforce, formatDate, getSummary } from './lib/expiry'
 import {
   archiveDriverRecord as archiveSupabaseDriver,
   archiveVehicleRecord as archiveSupabaseVehicle,
@@ -59,6 +59,7 @@ import {
   createBillingCheckoutSession,
   createBillingPortalSession,
   createCompanyInvoiceSignedUrl,
+  fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
   createChatThreadRecord as createSupabaseChatThread,
   createDriverDocumentSignedUrl,
@@ -76,6 +77,7 @@ import {
   fetchChatThreads,
   fetchComplianceItems,
   fetchCompanyInvoices,
+  fetchCompanyPeople,
   fetchCompanyStorageSummary,
   fetchDriverDocuments,
   fetchDriverSessionData,
@@ -3621,6 +3623,40 @@ function getFleetTypeLabel(value, t) {
   return t ? translatedValue(t, fleetTypeTranslationKeys, value, fallback) : fallback
 }
 
+function getWorkforceDepartmentLabel(value = '') {
+  const labels = {
+    drivers: 'Autisti',
+    management: 'Direzione',
+    office: 'Ufficio',
+    warehouse: 'Magazzino',
+  }
+
+  return labels[value] ?? 'Persone'
+}
+
+function getWorkforceRoleLabel(value = '') {
+  const labels = {
+    driver: 'Autista',
+    forklift_operator: 'Carrellista',
+    manager: 'Responsabile',
+    office: 'Impiegato ufficio',
+    warehouse_worker: 'Magazziniere',
+  }
+
+  return labels[value] ?? 'Persona'
+}
+
+function getWorkforceAssetLabel(value = '') {
+  const labels = {
+    forklift: 'Muletto',
+    other: 'Altro',
+    pallet_truck: 'Transpallet',
+    warehouse_equipment: 'Attrezzatura',
+  }
+
+  return labels[value] ?? 'Attrezzatura'
+}
+
 function getFaultSeverityLabel(value, t) {
   const fallback = faultSeverityOptions.find((option) => option.value === value)?.label ?? value
   return t ? translatedValue(t, faultSeverityTranslationKeys, value, fallback) : fallback
@@ -4089,6 +4125,8 @@ function App() {
   const [items, setItems] = useState(complianceItems)
   const [documentRecords, setDocumentRecords] = useState(driverDocuments)
   const [driverRecords, setDriverRecords] = useState(drivers)
+  const [personRecords, setPersonRecords] = useState([])
+  const [assetRecords, setAssetRecords] = useState([])
   const [vehicleRecords, setVehicleRecords] = useState(vehicles)
   const [vehicleCheckRecords, setVehicleCheckRecords] = useState([])
   const [faultReportRecords, setFaultReportRecords] = useState([])
@@ -4152,7 +4190,10 @@ function App() {
     }),
     [language, t],
   )
-  const decoratedItems = useMemo(() => decorateCompliance(items, driverRecords, vehicleRecords), [driverRecords, items, vehicleRecords])
+  const decoratedItems = useMemo(
+    () => decorateComplianceWithWorkforce(items, driverRecords, vehicleRecords, personRecords, assetRecords),
+    [assetRecords, driverRecords, items, personRecords, vehicleRecords],
+  )
   const summary = useMemo(() => getSummary(decoratedItems), [decoratedItems])
   const hasCompanyDataConnection = Boolean(isSupabaseConfigured && activeCompanyId)
   const visibleFaultReportRecords = useMemo(
@@ -4283,6 +4324,8 @@ function App() {
     setItems([])
     setDocumentRecords([])
     setDriverRecords([])
+    setPersonRecords([])
+    setAssetRecords([])
     setVehicleRecords([])
     setVehicleCheckRecords([])
     setFaultReportRecords([])
@@ -4774,6 +4817,8 @@ function App() {
       setCompanyProfile(companyResult.data)
       const [
         driversResult,
+        peopleResult,
+        assetsResult,
         vehiclesResult,
         complianceResult,
         documentsResult,
@@ -4786,6 +4831,8 @@ function App() {
         storageSummaryResult,
       ] = await Promise.all([
         fetchDrivers(companyId),
+        fetchCompanyPeople(companyId),
+        fetchCompanyAssets(companyId),
         fetchVehicles(companyId),
         fetchComplianceItems(companyId),
         fetchDriverDocuments(companyId),
@@ -4800,7 +4847,7 @@ function App() {
 
       if (!isMounted) return
 
-      if (driversResult.error || vehiclesResult.error || complianceResult.error || documentsResult.error) {
+      if (driversResult.error || peopleResult.error || assetsResult.error || vehiclesResult.error || complianceResult.error || documentsResult.error) {
         setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
         setDocumentsSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i documenti locali.')
         setFleetSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
@@ -4809,6 +4856,8 @@ function App() {
       }
 
       if (driversResult.data) setDriverRecords(driversResult.data)
+      if (peopleResult.data) setPersonRecords(peopleResult.data)
+      if (assetsResult.data) setAssetRecords(assetsResult.data)
       if (vehiclesResult.data) setVehicleRecords(vehiclesResult.data)
       if (complianceResult.data) setItems(complianceResult.data)
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
@@ -5094,6 +5143,8 @@ function App() {
     setItems(complianceItems)
     setDocumentRecords(driverDocuments)
     setDriverRecords(drivers)
+    setPersonRecords([])
+    setAssetRecords([])
     setVehicleRecords(vehicles)
     setVehicleCheckRecords([])
     setFaultReportRecords([])
@@ -6362,6 +6413,7 @@ function App() {
           <RecordsWorkspace
             assetPreviewUrl={getAssetPreviewUrl}
             activeTab={recordsTab}
+            assetRecords={assetRecords}
             documentEvents={documentEventRecords}
             documentRecords={documentRecords}
             driverRecords={driverRecords}
@@ -6383,6 +6435,8 @@ function App() {
             onUpdateVehicle={updateVehicleRecord}
             driversSyncStatus={driversSyncStatus}
             fleetSyncStatus={fleetSyncStatus}
+            itemRecords={items}
+            personRecords={personRecords}
             t={t}
             vehicleRecords={vehicleRecords}
           />
@@ -8216,6 +8270,7 @@ function HeroPanel({
 function RecordsWorkspace({
   activeTab,
   assetPreviewUrl,
+  assetRecords = [],
   documentEvents,
   documentRecords,
   driverRecords,
@@ -8237,12 +8292,24 @@ function RecordsWorkspace({
   onUpdateDocument,
   onUpdateDriver,
   onUpdateVehicle,
+  itemRecords = [],
+  personRecords = [],
   t,
   vehicleRecords,
 }) {
   const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
   const activeVehicles = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato')
+  const activePeople = personRecords.filter((person) => !['archived', 'Archiviato'].includes(person.status))
+  const activeAssets = assetRecords.filter((asset) => !['archived', 'Archiviato'].includes(asset.status))
+  const staffPeople = activePeople.filter((person) => person.department !== 'drivers')
   const tabs = [
+    {
+      count: staffPeople.length + activeAssets.length,
+      icon: Building2,
+      id: 'people',
+      label: 'Persone',
+      text: 'Ufficio, magazzino, muletti e reparti',
+    },
     {
       count: activeDrivers.length,
       icon: Users,
@@ -8297,7 +8364,13 @@ function RecordsWorkspace({
         </div>
       </div>
 
-      {activeTab === 'documents' ? (
+      {activeTab === 'people' ? (
+        <PeopleWorkspace
+          assetRecords={assetRecords}
+          itemRecords={itemRecords}
+          personRecords={personRecords}
+        />
+      ) : activeTab === 'documents' ? (
         <DocumentsWorkspace
           documentEvents={documentEvents}
           documentRecords={documentRecords}
@@ -8334,6 +8407,159 @@ function RecordsWorkspace({
         />
       )}
     </section>
+  )
+}
+
+function getUpcomingWorkforceDeadlines(itemRecords, matcher) {
+  return itemRecords
+    .filter((item) => item.dueDate && !['archived', 'done'].includes(item.status) && matcher(item))
+    .slice()
+    .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
+    .slice(0, 3)
+}
+
+function PeopleWorkspace({ assetRecords = [], itemRecords = [], personRecords = [] }) {
+  const officePeople = personRecords.filter((person) => person.department === 'office')
+  const warehousePeople = personRecords.filter((person) => person.department === 'warehouse')
+  const warehouseAssets = assetRecords.filter((asset) => !['archived', 'Archiviato'].includes(asset.status))
+  const activeStaffCount = officePeople.length + warehousePeople.length
+  const upcomingStaffDeadlines = itemRecords.filter((item) => (
+    item.dueDate
+      && !['archived', 'done'].includes(item.status)
+      && ['person', 'asset'].includes(item.scope)
+      && daysUntil(item.dueDate) <= 30
+  ))
+
+  return (
+    <section className="people-workspace" aria-label="Persone azienda">
+      <div className="people-main">
+        <div className="panel people-panel">
+          <div className="panel-header">
+            <div>
+              <p className="overline">Anagrafiche</p>
+              <h2>Persone e reparti</h2>
+            </div>
+            <div className="drivers-count">
+              <strong>{activeStaffCount}</strong>
+              <span>persone</span>
+            </div>
+          </div>
+          <div className="people-summary-grid">
+            <div>
+              <strong>{officePeople.length}</strong>
+              <span>Ufficio</span>
+            </div>
+            <div>
+              <strong>{warehousePeople.length}</strong>
+              <span>Magazzino</span>
+            </div>
+            <div>
+              <strong>{warehouseAssets.length}</strong>
+              <span>Attrezzature</span>
+            </div>
+            <div>
+              <strong>{upcomingStaffDeadlines.length}</strong>
+              <span>Scadenze 30 gg</span>
+            </div>
+          </div>
+          <div className="people-section-list">
+            <PeopleDepartmentBlock
+              emptyText="Nessuna persona ufficio caricata."
+              icon={Building2}
+              itemRecords={itemRecords}
+              people={officePeople}
+              title="Ufficio"
+            />
+            <PeopleDepartmentBlock
+              emptyText="Nessun magazziniere caricato."
+              icon={Users}
+              itemRecords={itemRecords}
+              people={warehousePeople}
+              title="Magazzino"
+            />
+          </div>
+        </div>
+      </div>
+      <WarehouseAssetsPanel assetRecords={warehouseAssets} itemRecords={itemRecords} />
+    </section>
+  )
+}
+
+function PeopleDepartmentBlock({ emptyText, icon: Icon, itemRecords, people, title }) {
+  return (
+    <section className="people-section">
+      <div className="people-section-title">
+        <Icon size={17} />
+        <strong>{title}</strong>
+      </div>
+      {people.map((person) => {
+        const deadlines = getUpcomingWorkforceDeadlines(itemRecords, (item) => item.personId === person.id)
+
+        return (
+          <article className="people-row" key={person.id}>
+            <div>
+              <strong>{person.name}</strong>
+              <span>{person.jobTitle || getWorkforceRoleLabel(person.personType)} · {getWorkforceDepartmentLabel(person.department)}</span>
+              <small>{[person.phone, person.email, person.depot].filter(Boolean).join(' · ') || 'Contatto non indicato'}</small>
+            </div>
+            <WorkforceDeadlineMiniList deadlines={deadlines} />
+          </article>
+        )
+      })}
+      {people.length === 0 && <p className="archive-note">{emptyText}</p>}
+    </section>
+  )
+}
+
+function WarehouseAssetsPanel({ assetRecords, itemRecords }) {
+  return (
+    <aside className="panel people-assets-panel">
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">Magazzino</p>
+          <h2>Muletti e attrezzature</h2>
+        </div>
+        <Wrench size={20} />
+      </div>
+      <div className="people-assets-list">
+        {assetRecords.map((asset) => {
+          const deadlines = getUpcomingWorkforceDeadlines(itemRecords, (item) => item.assetId === asset.id)
+
+          return (
+            <article className="people-asset-row" key={asset.id}>
+              <div>
+                <strong>{asset.code}</strong>
+                <span>{getWorkforceAssetLabel(asset.assetType)} · {asset.model || 'modello non indicato'}</span>
+                <small>{[asset.serialNumber && `Matricola ${asset.serialNumber}`, asset.location].filter(Boolean).join(' · ') || 'Posizione non indicata'}</small>
+              </div>
+              <WorkforceDeadlineMiniList deadlines={deadlines} />
+            </article>
+          )
+        })}
+        {assetRecords.length === 0 && <p className="archive-note">Nessun muletto o attrezzatura caricata.</p>}
+      </div>
+    </aside>
+  )
+}
+
+function WorkforceDeadlineMiniList({ deadlines }) {
+  if (!deadlines.length) {
+    return <span className="people-deadline-empty">Nessuna scadenza vicina</span>
+  }
+
+  return (
+    <div className="people-deadline-list">
+      {deadlines.map((deadline) => {
+        const days = daysUntil(deadline.dueDate)
+        const tone = days < 0 || days <= 7 ? 'danger' : days <= 30 ? 'warning' : 'info'
+
+        return (
+          <span className={`people-deadline-pill tone-${tone}`} key={deadline.id}>
+            {deadline.type} · {formatDate(deadline.dueDate)}
+          </span>
+        )
+      })}
+    </div>
   )
 }
 
@@ -11718,7 +11944,7 @@ function DriverMobile({
     if (isDriverChatOpen && driverChatThread?.id && hasUnreadCompanyMessages) {
       void onMarkChatRead?.(driverChatThread.id, 'driver')
     }
-  }, [driverChatThread?.id, unreadCompanyMessageCount, isDriverChatOpen, onMarkChatRead])
+  }, [driverChatThread?.id, hasUnreadCompanyMessages, isDriverChatOpen, onMarkChatRead])
 
   function openDriverChat() {
     setIsDriverChatOpen(true)

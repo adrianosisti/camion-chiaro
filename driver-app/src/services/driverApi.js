@@ -32,6 +32,14 @@ function notConfiguredError() {
   return { data: null, error: { message: 'Configura le chiavi Supabase in driver-app/.env.' } }
 }
 
+function isMissingWorkforceSchemaError(error) {
+  return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error?.code)
+}
+
+function workforceSchemaError() {
+  return { message: 'Per usare reparti, ufficio e magazzino esegui prima il file 31_personale_reparti_gruppi.sql in Supabase.' }
+}
+
 const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_message_at'
 const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
@@ -54,16 +62,49 @@ function mapCompanyProfile(row = {}) {
 
 function mapComplianceItem(row = {}) {
   return {
+    assetId: row.asset_id ?? '',
     documentNumber: row.document_number ?? '',
     driverId: row.driver_id ?? '',
     dueDate: row.due_date ?? '',
     fileBucket: row.file_bucket ?? row.fileBucket ?? '',
     filePath: row.file_path ?? row.filePath ?? '',
     id: row.id,
+    personId: row.person_id ?? '',
     scope: row.scope ?? '',
     status: row.status ?? 'open',
     type: row.type ?? 'Scadenza',
     vehicleId: row.vehicle_id ?? '',
+  }
+}
+
+function mapCompanyPerson(row = {}) {
+  return {
+    authEmail: row.auth_email ?? '',
+    companyId: row.company_id ?? '',
+    department: row.department ?? 'drivers',
+    depot: row.depot ?? '',
+    email: row.email ?? '',
+    id: row.id,
+    jobTitle: row.job_title ?? '',
+    linkedDriverId: row.linked_driver_id ?? '',
+    name: row.full_name ?? 'Persona',
+    personType: row.person_type ?? 'office',
+    phone: row.phone ?? '',
+    status: row.status ?? 'active',
+    username: row.username ?? '',
+  }
+}
+
+function mapCompanyAsset(row = {}) {
+  return {
+    assetType: row.asset_type ?? 'forklift',
+    code: row.code ?? '',
+    companyId: row.company_id ?? '',
+    id: row.id,
+    location: row.location ?? '',
+    model: row.model ?? '',
+    serialNumber: row.serial_number ?? '',
+    status: row.status ?? 'active',
   }
 }
 
@@ -80,6 +121,29 @@ function toCompanyVehiclePayload(vehicle, companyId) {
 }
 
 function toComplianceItemPayload(item, companyId) {
+  const payload = {
+    asset_id: item.scope === 'asset' ? item.assigneeId : null,
+    company_id: companyId,
+    document_number: item.documentNumber || null,
+    driver_id: item.scope === 'driver' ? item.assigneeId : null,
+    due_date: item.dueDate,
+    owner: item.owner || null,
+    person_id: item.scope === 'person' ? item.assigneeId : null,
+    scope: item.scope,
+    status: 'open',
+    type: item.type,
+    vehicle_id: item.scope === 'vehicle' ? item.assigneeId : null,
+  }
+
+  if (item.filePath) {
+    payload.file_bucket = companyAssetsBucket
+    payload.file_path = item.filePath
+  }
+
+  return payload
+}
+
+function toLegacyComplianceItemPayload(item, companyId) {
   const payload = {
     company_id: companyId,
     document_number: item.documentNumber || null,
@@ -98,6 +162,35 @@ function toComplianceItemPayload(item, companyId) {
   }
 
   return payload
+}
+
+function toCompanyPersonPayload(person, companyId) {
+  const cleanName = String(person.name ?? '').trim()
+
+  return {
+    company_id: companyId,
+    department: person.department || 'office',
+    depot: person.depot || null,
+    email: person.email || null,
+    full_name: cleanName,
+    job_title: person.jobTitle || null,
+    person_type: person.personType || 'office',
+    phone: person.phone || null,
+    status: person.status || 'active',
+    username: person.username ? normalizeUsername(person.username) : null,
+  }
+}
+
+function toCompanyAssetPayload(asset, companyId) {
+  return {
+    asset_type: asset.assetType || 'forklift',
+    code: String(asset.code ?? '').trim().toUpperCase(),
+    company_id: companyId,
+    location: asset.location || null,
+    model: asset.model || null,
+    serial_number: asset.serialNumber || null,
+    status: asset.status || 'active',
+  }
 }
 
 function sanitizeFileName(value = 'file') {
@@ -174,6 +267,28 @@ async function fetchVehicleChecksForCompany(companyId, limit = 30) {
       .select(vehicleCheckLegacySelect)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
+      .limit(limit)
+  }
+
+  return result
+}
+
+async function fetchCompanyComplianceItems(companyId, limit = 50) {
+  let result = await supabase
+    .from('compliance_items')
+    .select('id, type, scope, driver_id, vehicle_id, person_id, asset_id, due_date, document_number, status, file_bucket, file_path')
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('due_date', { ascending: true })
+    .limit(limit)
+
+  if (isMissingWorkforceSchemaError(result.error)) {
+    result = await supabase
+      .from('compliance_items')
+      .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('due_date', { ascending: true })
       .limit(limit)
   }
 
@@ -460,6 +575,8 @@ export async function fetchCompanyContext() {
     companyResult,
     driversResult,
     vehiclesResult,
+    peopleResult,
+    assetsResult,
     documentsResult,
     checksResult,
     faultsResult,
@@ -485,6 +602,18 @@ export async function fetchCompanyContext() {
       .neq('status', 'archived')
       .order('plate', { ascending: true }),
     supabase
+      .from('company_people')
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
+    supabase
+      .from('company_assets')
+      .select('id, company_id, asset_type, code, model, serial_number, location, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('code', { ascending: true }),
+    supabase
       .from('driver_documents')
       .select('id, driver_id, type, document_number, expires_at, file_path, status, visible_to_driver')
       .eq('company_id', companyId)
@@ -496,13 +625,7 @@ export async function fetchCompanyContext() {
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .limit(30),
-    supabase
-      .from('compliance_items')
-      .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status')
-      .eq('company_id', companyId)
-      .neq('status', 'archived')
-      .order('due_date', { ascending: true })
-      .limit(50),
+    fetchCompanyComplianceItems(companyId, 50),
     supabase
       .from('chat_messages')
       .select('thread_id', { count: 'exact' })
@@ -521,6 +644,8 @@ export async function fetchCompanyContext() {
     companyResult.error,
     driversResult.error,
     vehiclesResult.error,
+    isMissingWorkforceSchemaError(peopleResult.error) ? null : peopleResult.error,
+    isMissingWorkforceSchemaError(assetsResult.error) ? null : assetsResult.error,
     documentsResult.error,
     checksResult.error,
     faultsResult.error,
@@ -530,6 +655,7 @@ export async function fetchCompanyContext() {
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
+  const workforceSchemaReady = !isMissingWorkforceSchemaError(peopleResult.error) && !isMissingWorkforceSchemaError(assetsResult.error)
 
   const driverIdByThreadId = new Map(
     (chatThreadsResult.data ?? []).map((thread) => [thread.id, thread.driver_id]),
@@ -546,16 +672,19 @@ export async function fetchCompanyContext() {
   return {
     data: {
       companyProfile: mapCompanyProfile(companyResult.data),
+      assets: workforceSchemaReady ? (assetsResult.data ?? []).map(mapCompanyAsset) : [],
       chatThreads: (chatThreadsResult.data ?? []).map(mapChatThread),
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
       documents: (documentsResult.data ?? []).map(mapDriverDocument),
       drivers: (driversResult.data ?? []).map(mapDriver),
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       membership: membershipResult.data,
+      people: workforceSchemaReady ? (peopleResult.data ?? []).map(mapCompanyPerson) : [],
       unreadDriverMessages: unreadMessagesResult.count ?? 0,
       unreadDriverMessagesByDriverId,
       vehicleChecks: (checksResult.data ?? []).map(mapVehicleCheck),
       vehicles: (vehiclesResult.data ?? []).map(mapVehicle),
+      workforceSchemaReady,
     },
     error: null,
   }
@@ -1134,6 +1263,46 @@ export async function createCompanyVehicle({ companyId, vehicle }) {
   return { data: data ? mapVehicle(data) : null, error }
 }
 
+export async function createCompanyPerson({ companyId, person }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
+
+  const payload = toCompanyPersonPayload(person, companyId)
+  if (!payload.full_name) return { data: null, error: { message: 'Nome persona obbligatorio.' } }
+
+  const { data, error } = await supabase
+    .from('company_people')
+    .insert(payload)
+    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: workforceSchemaError() }
+  }
+
+  return { data: data ? mapCompanyPerson(data) : null, error }
+}
+
+export async function createCompanyWarehouseAsset({ asset, companyId }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
+
+  const payload = toCompanyAssetPayload(asset, companyId)
+  if (!payload.code) return { data: null, error: { message: 'Codice attrezzatura obbligatorio.' } }
+
+  const { data, error } = await supabase
+    .from('company_assets')
+    .insert(payload)
+    .select('id, company_id, asset_type, code, model, serial_number, location, status')
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: workforceSchemaError() }
+  }
+
+  return { data: data ? mapCompanyAsset(data) : null, error }
+}
+
 export async function createCompanyComplianceItem({ companyId, file = null, item }) {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
@@ -1159,8 +1328,24 @@ export async function createCompanyComplianceItem({ companyId, file = null, item
   let { data, error } = await supabase
     .from('compliance_items')
     .insert(toComplianceItemPayload({ ...item, filePath }, companyId))
-    .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status, file_bucket, file_path')
+    .select('id, type, scope, driver_id, vehicle_id, person_id, asset_id, due_date, document_number, status, file_bucket, file_path')
     .single()
+
+  if (isMissingWorkforceSchemaError(error) && ['person', 'asset'].includes(item.scope)) {
+    if (filePath) await supabase.storage.from(companyAssetsBucket).remove([filePath])
+    return { data: null, error: workforceSchemaError() }
+  }
+
+  if (error?.code === 'PGRST204') {
+    const fallbackResult = await supabase
+      .from('compliance_items')
+      .insert(toLegacyComplianceItemPayload({ ...item, filePath }, companyId))
+      .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status, file_bucket, file_path')
+      .single()
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   if (error?.code === '42703') {
     if (filePath) {
@@ -1173,7 +1358,7 @@ export async function createCompanyComplianceItem({ companyId, file = null, item
 
     const fallbackResult = await supabase
       .from('compliance_items')
-      .insert(toComplianceItemPayload(item, companyId))
+      .insert(toLegacyComplianceItemPayload(item, companyId))
       .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status')
       .single()
 

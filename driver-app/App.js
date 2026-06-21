@@ -2067,6 +2067,7 @@ function CamionChiaroApp() {
           isRefreshing={isRefreshing}
           language={language}
           logoUrl={logoUrl}
+          onOpenChat={() => setActiveTab('chat')}
           onOpenManagement={openCompanyManagement}
           onOpenSettings={() => setActiveTab('settings')}
           onRefresh={() => loadCompanyData()}

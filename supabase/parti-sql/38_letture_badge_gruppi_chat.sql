@@ -6,7 +6,7 @@ add column if not exists read_by_company_at timestamptz;
 
 create index if not exists team_chat_messages_company_unread_idx
 on public.team_chat_messages (company_id, thread_id, read_by_company_at)
-where sender_role <> 'company';
+where sender_role <> 'company' or sender_person_id is not null;
 
 create or replace function public.mark_team_thread_read(target_thread_id uuid)
 returns integer
@@ -36,7 +36,7 @@ begin
     update public.team_chat_messages
     set read_by_company_at = now()
     where thread_id = target_thread.id
-      and sender_role <> 'company'
+      and (sender_role <> 'company' or sender_person_id is not null)
       and read_by_company_at is null;
 
     get diagnostics marked_count = row_count;
@@ -105,7 +105,7 @@ begin
     from public.team_chat_threads t
     left join public.team_chat_messages m
       on m.thread_id = t.id
-     and m.sender_role <> 'company'
+     and (m.sender_role <> 'company' or m.sender_person_id is not null)
      and m.read_by_company_at is null
     where t.company_id = target_company_id
       and t.status = 'open'

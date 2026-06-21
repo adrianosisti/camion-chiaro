@@ -292,6 +292,7 @@ export function CompanyHomeScreen({
   isRefreshing = false,
   language = 'it',
   logoUrl,
+  onOpenChat,
   onOpenManagement,
   onRefresh,
   onResolveCheck,
@@ -308,7 +309,7 @@ export function CompanyHomeScreen({
   const checks = context?.vehicleChecks ?? []
   const faults = context?.faultReports ?? []
   const complianceItems = context?.complianceItems ?? []
-  const unreadMessages = context?.unreadDriverMessages ?? 0
+  const unreadMessages = Number(context?.unreadDriverMessages ?? 0) + Number(context?.unreadTeamMessages ?? 0)
   const openFaults = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
   const activeChecks = checks.filter((check) => !isCheckResolved(check))
   const criticalChecks = checks.filter(isCheckCritical)
@@ -363,7 +364,7 @@ export function CompanyHomeScreen({
         </View>
         <View style={styles.metricRow}>
           <MetricPill label={t(language, 'deadlines')} onPress={() => onOpenManagement?.('deadlines')} tone={deadlineTone} value={activeDeadlines.length} />
-          <MetricPill label="Chat" tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
+          <MetricPill label="Chat" onPress={onOpenChat} tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>

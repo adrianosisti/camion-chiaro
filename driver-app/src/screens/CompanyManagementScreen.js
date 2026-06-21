@@ -229,26 +229,6 @@ function CreateTypeSelector({ activeForm, onSelect }) {
           <Ionicons color={colors.ink} name="chevron-forward" size={20} />
         </Pressable>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.formTabsScroll}>
-        <View style={styles.formTabsRow}>
-          {createFormOptions.map((option) => (
-            <Pressable
-              key={option.id}
-              onPress={() => onSelect(option.id)}
-              style={[styles.createTypeChip, activeForm === option.id && styles.createTypeChipActive]}
-            >
-              <Ionicons
-                color={activeForm === option.id ? colors.ink : colors.cyanDark}
-                name={option.icon}
-                size={16}
-              />
-              <Text style={[styles.createTypeChipText, activeForm === option.id && styles.createTypeChipTextActive]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </ScrollView>
     </View>
   )
 }
@@ -285,6 +265,7 @@ export function CompanyManagementScreen({
   const officePeople = allPeople.filter((person) => person.department === 'office')
   const warehousePeople = allPeople.filter((person) => person.department === 'warehouse')
   const warehouseAssets = assets.filter((asset) => !['Archiviato', 'archived'].includes(asset.status))
+  const isCreateOnly = initialMode === 'create'
   const [activeForm, setActiveForm] = useState('driver')
   const [activeList, setActiveList] = useState(initialSection)
   const [mode, setMode] = useState(initialMode)
@@ -367,14 +348,9 @@ export function CompanyManagementScreen({
     setMode(initialMode)
   }, [initialMode, initialSection])
 
-  function openCreateForm(formType) {
-    setActiveForm(formType)
-    setMode('create')
-  }
-
   function openArchive(section = activeList) {
     setActiveList(section)
-    setMode('archive')
+    if (!isCreateOnly) setMode('archive')
   }
 
   function updateDriverForm(field, value) {
@@ -717,11 +693,19 @@ export function CompanyManagementScreen({
     }
   }
 
+  const formPanelRight = isCreateOnly ? null : (
+    <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
+      <Text style={styles.closeFormText}>Chiudi</Text>
+    </Pressable>
+  )
+
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>Anagrafiche</Text>
-        <Text style={styles.heroMeta}>Persone, reparti, flotta e scadenze</Text>
+        <Text style={styles.heroTitle}>{mode === 'create' ? 'Anagrafiche' : 'Archivio'}</Text>
+        <Text style={styles.heroMeta}>
+          {mode === 'create' ? 'Aggiungi autisti, persone, mezzi e scadenze' : 'Consulta persone, flotta e scadenze'}
+        </Text>
         <View style={styles.summaryGrid}>
           <SummaryCard icon="people-outline" label="Persone" value={allPeople.length} />
           <SummaryCard icon="briefcase-outline" label="Ufficio" value={officePeople.length} />
@@ -738,27 +722,12 @@ export function CompanyManagementScreen({
         </View>
       ) : null}
 
-      <View style={styles.modeBar}>
-        <Pressable onPress={() => openArchive(activeList)} style={[styles.modeButton, mode === 'archive' && styles.modeButtonActive]}>
-          <Ionicons color={mode === 'archive' ? colors.white : colors.cyanDark} name="albums-outline" size={18} />
-          <Text style={[styles.modeButtonText, mode === 'archive' && styles.modeButtonTextActive]}>Archivio</Text>
-        </Pressable>
-        <Pressable onPress={() => openCreateForm(activeForm)} style={[styles.modeButton, mode === 'create' && styles.modeButtonActive]}>
-          <Ionicons color={mode === 'create' ? colors.white : colors.cyanDark} name="add-circle-outline" size={18} />
-          <Text style={[styles.modeButtonText, mode === 'create' && styles.modeButtonTextActive]}>Nuovo</Text>
-        </Pressable>
-      </View>
-
       {mode === 'create' ? <CreateTypeSelector activeForm={activeForm} onSelect={setActiveForm} /> : null}
 
       {mode === 'create' && activeForm === 'driver' ? (
         <Panel
           kicker="Nuovo"
-          right={
-            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
-              <Text style={styles.closeFormText}>Chiudi</Text>
-            </Pressable>
-          }
+          right={formPanelRight}
           title="Crea autista"
         >
           <TextField label="Nome e cognome" onChangeText={(value) => updateDriverForm('name', value)} placeholder="Marco Bianchi" value={driverForm.name} />
@@ -780,11 +749,7 @@ export function CompanyManagementScreen({
       {mode === 'create' && activeForm === 'person' ? (
         <Panel
           kicker="Nuova"
-          right={
-            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
-              <Text style={styles.closeFormText}>Chiudi</Text>
-            </Pressable>
-          }
+          right={formPanelRight}
           title="Aggiungi persona"
         >
           <TextField label="Nome e cognome" onChangeText={(value) => updatePersonForm('name', value)} placeholder="Paola Rossi" value={personForm.name} />
@@ -828,11 +793,7 @@ export function CompanyManagementScreen({
       {mode === 'create' && activeForm === 'asset' ? (
         <Panel
           kicker="Nuova"
-          right={
-            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
-              <Text style={styles.closeFormText}>Chiudi</Text>
-            </Pressable>
-          }
+          right={formPanelRight}
           title="Aggiungi attrezzatura"
         >
           <Text style={styles.label}>Tipo</Text>
@@ -859,11 +820,7 @@ export function CompanyManagementScreen({
       {mode === 'create' && activeForm === 'vehicle' ? (
         <Panel
           kicker="Nuovo"
-          right={
-            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
-              <Text style={styles.closeFormText}>Chiudi</Text>
-            </Pressable>
-          }
+          right={formPanelRight}
           title="Aggiungi mezzo"
         >
           <TextField label="Targa" onChangeText={(value) => updateVehicleForm('plate', value)} placeholder="AB123CD" value={vehicleForm.plate} />
@@ -917,11 +874,7 @@ export function CompanyManagementScreen({
       {mode === 'create' && activeForm === 'deadline' ? (
         <Panel
           kicker="Nuova"
-          right={
-            <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
-              <Text style={styles.closeFormText}>Chiudi</Text>
-            </Pressable>
-          }
+          right={formPanelRight}
           title="Aggiungi scadenza"
         >
           <TextField label="Tipo scadenza" onChangeText={(value) => updateDeadlineForm('type', value)} placeholder="Revisione, assicurazione, CQC..." value={deadlineForm.type} />
@@ -981,39 +934,16 @@ export function CompanyManagementScreen({
         </Panel>
       ) : null}
 
-      <Panel kicker="Archivio" title="Dati azienda">
-        <View style={styles.archiveTabs}>
-          <Chip active={activeList === 'people'} label="Persone" onPress={() => setActiveList('people')} />
-          <Chip active={activeList === 'office'} label="Ufficio" onPress={() => setActiveList('office')} />
-          <Chip active={activeList === 'warehouse'} label="Magazzino" onPress={() => setActiveList('warehouse')} />
-          <Chip active={activeList === 'drivers'} label="Autisti" onPress={() => setActiveList('drivers')} />
-          <Chip active={activeList === 'vehicles'} label="Flotta" onPress={() => setActiveList('vehicles')} />
-          <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
-        </View>
-        {mode === 'archive' ? (
-          <View style={styles.quickCreateRow}>
-            <Pressable onPress={() => openCreateForm('driver')} style={styles.quickCreateButton}>
-              <Ionicons color={colors.ink} name="person-add-outline" size={17} />
-              <Text style={styles.quickCreateText}>Autista</Text>
-            </Pressable>
-            <Pressable onPress={() => openCreateForm('person')} style={styles.quickCreateButton}>
-              <Ionicons color={colors.ink} name="people-outline" size={17} />
-              <Text style={styles.quickCreateText}>Persona</Text>
-            </Pressable>
-            <Pressable onPress={() => openCreateForm('asset')} style={styles.quickCreateButton}>
-              <Ionicons color={colors.ink} name="cube-outline" size={17} />
-              <Text style={styles.quickCreateText}>Attrez.</Text>
-            </Pressable>
-            <Pressable onPress={() => openCreateForm('vehicle')} style={styles.quickCreateButton}>
-              <Ionicons color={colors.ink} name="bus-outline" size={17} />
-              <Text style={styles.quickCreateText}>Mezzo</Text>
-            </Pressable>
-            <Pressable onPress={() => openCreateForm('deadline')} style={styles.quickCreateButton}>
-              <Ionicons color={colors.ink} name="calendar-outline" size={17} />
-              <Text style={styles.quickCreateText}>Scadenza</Text>
-            </Pressable>
+      {mode === 'archive' ? (
+        <Panel kicker="Archivio" title="Dati azienda">
+          <View style={styles.archiveTabs}>
+            <Chip active={activeList === 'people'} label="Persone" onPress={() => setActiveList('people')} />
+            <Chip active={activeList === 'office'} label="Ufficio" onPress={() => setActiveList('office')} />
+            <Chip active={activeList === 'warehouse'} label="Magazzino" onPress={() => setActiveList('warehouse')} />
+            <Chip active={activeList === 'drivers'} label="Autisti" onPress={() => setActiveList('drivers')} />
+            <Chip active={activeList === 'vehicles'} label="Flotta" onPress={() => setActiveList('vehicles')} />
+            <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
           </View>
-        ) : null}
 
         {activeList === 'people' ? (
           <View style={styles.archiveList}>
@@ -1156,6 +1086,7 @@ export function CompanyManagementScreen({
           </View>
         ) : null}
       </Panel>
+      ) : null}
     </ScrollView>
   )
 }
@@ -1253,31 +1184,6 @@ const styles = StyleSheet.create({
     height: 46,
     justifyContent: 'center',
     width: 46,
-  },
-  createTypeChip: {
-    alignItems: 'center',
-    backgroundColor: '#f8fbff',
-    borderColor: colors.line,
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 6,
-    height: 38,
-    justifyContent: 'center',
-    minWidth: 104,
-    paddingHorizontal: 12,
-  },
-  createTypeChipActive: {
-    backgroundColor: colors.cyan,
-    borderColor: '#67e8f9',
-  },
-  createTypeChipText: {
-    color: colors.cyanDark,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  createTypeChipTextActive: {
-    color: colors.ink,
   },
   createTypeIcon: {
     alignItems: 'center',
@@ -1386,44 +1292,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 5,
   },
-  formTabsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingRight: 4,
-  },
-  formTabsScroll: {
-    marginTop: 10,
-  },
-  modeBar: {
-    backgroundColor: '#dff7fb',
-    borderColor: colors.line,
-    borderRadius: 18,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-    padding: 5,
-  },
-  modeButton: {
-    alignItems: 'center',
-    borderRadius: 14,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 7,
-    justifyContent: 'center',
-    minHeight: 42,
-  },
-  modeButtonActive: {
-    backgroundColor: colors.ink,
-  },
-  modeButtonText: {
-    color: colors.cyanDark,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  modeButtonTextActive: {
-    color: colors.white,
-  },
   groupTitle: {
     color: colors.cyanDark,
     fontSize: 12,
@@ -1523,29 +1391,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
-  },
-  quickCreateButton: {
-    alignItems: 'center',
-    backgroundColor: colors.cyan,
-    borderRadius: 14,
-    flexBasis: '30%',
-    flexGrow: 1,
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
-    minHeight: 42,
-    paddingHorizontal: 8,
-  },
-  quickCreateRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  quickCreateText: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '900',
   },
   selectorList: {
     flexDirection: 'row',

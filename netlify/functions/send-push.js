@@ -93,7 +93,7 @@ async function getTeamRecipientUserIds(serviceClient, senderContext, threadId) {
 
   const { data: thread, error: threadError } = await serviceClient
     .from('team_chat_threads')
-    .select('id, company_id')
+    .select('id, company_id, thread_type')
     .eq('company_id', senderContext.companyId)
     .eq('id', threadId)
     .maybeSingle()
@@ -114,23 +114,29 @@ async function getTeamRecipientUserIds(serviceClient, senderContext, threadId) {
     if (!participant) return { data: null, error: { message: 'Non puoi scrivere in questo gruppo.' } }
   }
 
-  const [participantsResult, membersResult] = await Promise.all([
-    serviceClient
-      .from('team_chat_participants')
-      .select('person_id')
-      .eq('thread_id', threadId)
-      .is('left_at', null),
-    serviceClient
-      .from('company_members')
-      .select('user_id')
-      .eq('company_id', senderContext.companyId)
-      .in('role', ['owner', 'admin', 'operator']),
-  ])
+  const participantsResult = await serviceClient
+    .from('team_chat_participants')
+    .select('person_id')
+    .eq('thread_id', threadId)
+    .is('left_at', null)
 
   if (participantsResult.error) return { data: null, error: participantsResult.error }
-  if (membersResult.error) return { data: null, error: membersResult.error }
 
   const personIds = (participantsResult.data ?? []).map((participant) => participant.person_id).filter(Boolean)
+  const shouldIncludeCompanyMembers =
+    senderContext.role === 'company' ||
+    thread.thread_type !== 'direct' ||
+    personIds.length <= 1
+  const membersResult = shouldIncludeCompanyMembers
+    ? await serviceClient
+        .from('company_members')
+        .select('user_id')
+        .eq('company_id', senderContext.companyId)
+        .in('role', ['owner', 'admin', 'operator'])
+    : { data: [], error: null }
+
+  if (membersResult.error) return { data: null, error: membersResult.error }
+
   let personUserIds = []
 
   if (personIds.length) {

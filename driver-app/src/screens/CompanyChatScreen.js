@@ -34,6 +34,7 @@ export function CompanyChatScreen({
   onReactToMessage,
   onRefresh,
   onSelectDriver,
+  onSelectPerson,
   onSelectTeamThread,
   onSend,
   onSendTeamMessage,
@@ -45,6 +46,7 @@ export function CompanyChatScreen({
   soundEnabled = true,
   teamMessages = [],
   teamThreads = [],
+  people = [],
   unreadByDriverId = {},
 }) {
   const [isStartingNewChat, setIsStartingNewChat] = useState(false)
@@ -66,6 +68,11 @@ export function CompanyChatScreen({
     [drivers, threadByDriverId, unreadByDriverId],
   )
   const visibleDrivers = isStartingNewChat ? drivers : conversationDrivers
+  const staffPeople = people.filter((person) => person.department !== 'drivers')
+  const visibleTeamThreads = isStartingNewChat
+    ? teamThreads.filter((thread) => thread.threadType === 'group')
+    : teamThreads
+  const hasVisibleRows = visibleDrivers.length || visibleTeamThreads.length || (isStartingNewChat && staffPeople.length)
 
   if (selectedTeamThread) {
     return (
@@ -82,7 +89,9 @@ export function CompanyChatScreen({
           </Pressable>
           <View style={styles.selectedTitleWrap}>
             <Text numberOfLines={1} style={styles.selectedTitle}>{selectedTeamThread.title}</Text>
-            <Text numberOfLines={1} style={styles.selectedSubtitle}>{getAudienceLabel(selectedTeamThread.audienceType)}</Text>
+            <Text numberOfLines={1} style={styles.selectedSubtitle}>
+              {getThreadKindLabel(selectedTeamThread)} · {getAudienceLabel(selectedTeamThread.audienceType)}
+            </Text>
           </View>
         </View>
         <ChatScreen
@@ -165,10 +174,10 @@ export function CompanyChatScreen({
         </View>
       </View>
 
-      {teamThreads.length ? (
+      {visibleTeamThreads.length ? (
         <View style={styles.groupBlock}>
-          <Text style={styles.groupBlockTitle}>Gruppi e reparti</Text>
-          {teamThreads.map((thread) => (
+          <Text style={styles.groupBlockTitle}>{isStartingNewChat ? 'Gruppi reparto' : 'Gruppi, reparti e dirette'}</Text>
+          {visibleTeamThreads.map((thread) => (
             <TeamChatRow
               key={thread.id}
               onPress={() => {
@@ -176,6 +185,22 @@ export function CompanyChatScreen({
                 onSelectTeamThread?.(thread)
               }}
               thread={thread}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {isStartingNewChat && staffPeople.length ? (
+        <View style={styles.groupBlock}>
+          <Text style={styles.groupBlockTitle}>Persone ufficio e magazzino</Text>
+          {staffPeople.map((person) => (
+            <PersonChatRow
+              key={person.id}
+              onPress={() => {
+                setIsStartingNewChat(false)
+                onSelectPerson?.(person)
+              }}
+              person={person}
             />
           ))}
         </View>
@@ -195,7 +220,7 @@ export function CompanyChatScreen({
         />
       ))}
 
-      {!visibleDrivers.length ? (
+      {!hasVisibleRows ? (
         <Text style={styles.emptyText}>
           {isLoading
             ? 'Carico chat...'
@@ -245,18 +270,63 @@ function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount =
 }
 
 function TeamChatRow({ onPress, thread }) {
+  const kind = getThreadKind(thread)
+  const isDirect = kind === 'direct'
+
   return (
-    <Pressable onPress={onPress} style={styles.driverRow}>
-      <View style={styles.groupAvatar}>
-        <Ionicons color={colors.ink} name={getGroupIcon(thread.audienceType)} size={22} />
+    <Pressable onPress={onPress} style={[styles.driverRow, isDirect && styles.directRow]}>
+      <View style={[styles.groupAvatar, isDirect && styles.directAvatar]}>
+        <Ionicons color={isDirect ? colors.white : colors.ink} name={isDirect ? 'person-circle-outline' : getGroupIcon(thread.audienceType)} size={22} />
       </View>
       <View style={styles.driverCopy}>
         <Text style={styles.driverName}>{thread.title}</Text>
         <Text style={styles.driverMeta}>{getAudienceLabel(thread.audienceType)} · {formatLastMessageDate(thread.lastMessageAt)}</Text>
       </View>
-      <Text style={styles.openText}>Apri</Text>
+      <View style={styles.rowActions}>
+        <Text style={[styles.kindBadge, isDirect ? styles.kindBadgeDirect : styles.kindBadgeGroup]}>
+          {getThreadKindLabel(thread)}
+        </Text>
+        <Text style={styles.openText}>Apri</Text>
+      </View>
     </Pressable>
   )
+}
+
+function getPersonDepartmentLabel(value = '') {
+  if (value === 'warehouse') return 'Magazzino'
+  if (value === 'office') return 'Ufficio'
+  return 'Persona'
+}
+
+function PersonChatRow({ onPress, person }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.driverRow, styles.directRow]}>
+      <View style={[styles.groupAvatar, styles.directAvatar]}>
+        <Ionicons color={colors.white} name={person.department === 'warehouse' ? 'cube-outline' : 'briefcase-outline'} size={22} />
+      </View>
+      <View style={styles.driverCopy}>
+        <Text style={styles.driverName}>{person.name}</Text>
+        <Text style={styles.driverMeta}>{getPersonDepartmentLabel(person.department)} · {person.jobTitle || 'Operatore'}</Text>
+      </View>
+      <View style={styles.rowActions}>
+        <Text style={[styles.kindBadge, styles.kindBadgeDirect]}>Diretta</Text>
+        <Text style={styles.openText}>Scrivi</Text>
+      </View>
+    </Pressable>
+  )
+}
+
+function getThreadKind(thread = {}) {
+  if (thread.threadType === 'direct' || thread.audienceType === 'direct') return 'direct'
+  if (['drivers', 'office', 'warehouse'].includes(thread.audienceType)) return 'department'
+  return 'group'
+}
+
+function getThreadKindLabel(thread = {}) {
+  const kind = getThreadKind(thread)
+  if (kind === 'direct') return 'Diretta'
+  if (kind === 'department') return 'Reparto'
+  return 'Gruppo'
 }
 
 function getGroupIcon(value = '') {
@@ -307,6 +377,13 @@ const styles = StyleSheet.create({
   driverCopy: {
     flex: 1,
   },
+  directAvatar: {
+    backgroundColor: colors.ink,
+  },
+  directRow: {
+    borderColor: '#9ccfea',
+    borderWidth: 1.5,
+  },
   driverMeta: {
     color: colors.muted,
     fontSize: 12,
@@ -346,6 +423,23 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 8,
     marginLeft: 2,
+  },
+  kindBadge: {
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: '900',
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    textTransform: 'uppercase',
+  },
+  kindBadgeDirect: {
+    backgroundColor: colors.ink,
+    color: colors.white,
+  },
+  kindBadgeGroup: {
+    backgroundColor: '#cffafe',
+    color: colors.ink,
   },
   emptyText: {
     color: colors.muted,
@@ -399,6 +493,10 @@ const styles = StyleSheet.create({
     color: colors.cyanDark,
     fontSize: 12,
     fontWeight: '900',
+  },
+  rowActions: {
+    alignItems: 'flex-end',
+    gap: 5,
   },
   unreadBadge: {
     backgroundColor: colors.cyan,

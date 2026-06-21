@@ -549,10 +549,30 @@ async function fetchDriverContextDirect() {
 
   if (driverResult.error) return { data: null, error: driverResult.error }
   if (!driverResult.data) {
-    return {
-      data: null,
-      error: { message: 'Autista non collegato. Apri l anagrafica azienda e controlla che l account autista sia attivo.' },
+    const personResult = await supabase
+      .from('company_people')
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('user_id', user.id)
+      .neq('status', 'archived')
+      .limit(1)
+      .maybeSingle()
+
+    if (isMissingWorkforceSchemaError(personResult.error)) {
+      return {
+        data: null,
+        error: { message: 'Autista non collegato. Apri l anagrafica azienda e controlla che l account sia attivo.' },
+      }
     }
+
+    if (personResult.error) return { data: null, error: personResult.error }
+    if (!personResult.data) {
+      return {
+        data: null,
+        error: { message: 'Account non collegato. Apri l anagrafica azienda e controlla che l account sia attivo.' },
+      }
+    }
+
+    return fetchCompanyPersonContextDirect(user, mapContextCompanyPerson(personResult.data))
   }
 
   const driver = driverResult.data
@@ -564,6 +584,7 @@ async function fetchDriverContextDirect() {
     checksResult,
     faultsResult,
     personResult,
+    peopleResult,
     teamThreadsResult,
   ] = await Promise.all([
     supabase
@@ -600,6 +621,12 @@ async function fetchDriverContextDirect() {
       .order('created_at', { ascending: false })
       .limit(50),
     fetchCurrentCompanyPerson(driver.company_id, user.id, driver.id),
+    supabase
+      .from('company_people')
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('company_id', driver.company_id)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
     fetchTeamChatThreads(driver.company_id),
   ])
 
@@ -610,6 +637,7 @@ async function fetchDriverContextDirect() {
     checksResult.error,
     faultsResult.error,
     personResult.error,
+    isMissingWorkforceSchemaError(peopleResult.error) ? null : peopleResult.error,
     teamThreadsResult.error,
   ].find(Boolean)
 
@@ -628,10 +656,70 @@ async function fetchDriverContextDirect() {
       documents: documentsResult.data ?? [],
       drivers: [driver],
       faultReports: faultsResult.data ?? [],
-      people: personResult.data ? [personResult.data] : [],
+      people: isMissingWorkforceSchemaError(peopleResult.error)
+        ? (personResult.data ? [personResult.data] : [])
+        : (peopleResult.data ?? []),
       teamChatThreads: teamThreadsResult.data ?? [],
       vehicleChecks: checksResult.data ?? [],
       vehicles: vehiclesResult.data ?? [],
+    }),
+    error: null,
+  }
+}
+
+async function fetchCompanyPersonContextDirect(user, person) {
+  const companyId = person?.companyId
+  if (!companyId || !user?.id) return { data: null, error: { message: 'Persona aziendale non collegata.' } }
+
+  const [
+    companyResult,
+    peopleResult,
+    complianceResult,
+    teamThreadsResult,
+  ] = await Promise.all([
+    supabase
+      .from('companies')
+      .select('id, name, vat_number, headquarters, logo_path')
+      .eq('id', companyId)
+      .maybeSingle(),
+    supabase
+      .from('company_people')
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
+    supabase
+      .from('compliance_items')
+      .select('id, type, scope, driver_id, vehicle_id, person_id, asset_id, due_date, document_number, status')
+      .eq('company_id', companyId)
+      .eq('person_id', person.id)
+      .neq('status', 'archived')
+      .order('due_date', { ascending: true }),
+    fetchTeamChatThreads(companyId),
+  ])
+
+  const firstError = [
+    companyResult.error,
+    isMissingWorkforceSchemaError(peopleResult.error) ? null : peopleResult.error,
+    complianceResult.error,
+    teamThreadsResult.error,
+  ].find(Boolean)
+
+  if (firstError) return { data: null, error: firstError }
+
+  return {
+    data: mapDriverContext({
+      companyId,
+      companyProfile: companyResult.data ? mapCompanyProfile(companyResult.data) : { id: companyId, logoPath: '', name: 'Azienda' },
+      complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
+      currentPerson: person,
+      documents: [],
+      drivers: [],
+      faultReports: [],
+      people: (peopleResult.data ?? []).map(mapContextCompanyPerson),
+      teamChatThreads: teamThreadsResult.data ?? [],
+      vehicleChecks: [],
+      vehicles: [],
     }),
     error: null,
   }
@@ -1492,6 +1580,37 @@ export async function createCompanyPerson({ companyId, person }) {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
 
+  const password = String(person.password ?? '').trim()
+  if (apiBaseUrl && password) {
+    const accessToken = await getAccessToken()
+    if (!accessToken) {
+      return { data: null, error: { message: 'Sessione azienda scaduta. Fai login.' } }
+    }
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/.netlify/functions/create-person`, {
+        body: JSON.stringify({ companyId, password, person }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      })
+      const payload = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        return { data: null, error: { message: payload.error ?? 'Creazione persona non riuscita.' } }
+      }
+
+      return { data: payload.person ? mapCompanyPerson(payload.person) : null, error: null }
+    } catch {
+      return {
+        data: null,
+        error: { message: 'Server Camion Chiaro non raggiungibile. Controlla il deploy Netlify.' },
+      }
+    }
+  }
+
   const payload = toCompanyPersonPayload(person, companyId)
   if (!payload.full_name) return { data: null, error: { message: 'Nome persona obbligatorio.' } }
 
@@ -1506,6 +1625,29 @@ export async function createCompanyPerson({ companyId, person }) {
   }
 
   return { data: data ? mapCompanyPerson(data) : null, error }
+}
+
+export async function ensureDirectTeamThread({ companyId, personId }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !personId) return { data: null, error: { message: 'Persona mancante.' } }
+
+  const { data, error } = await supabase.rpc('ensure_direct_team_thread', {
+    target_company_id: companyId,
+    target_person_id: personId,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL chat dirette personale. Esegui il file 32_chat_dirette_personale.sql in Supabase.' },
+    }
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: workforceSchemaError() }
+  }
+
+  return { data: data ? mapTeamChatThread(data) : null, error }
 }
 
 export async function createCompanyWarehouseAsset({ asset, companyId }) {

@@ -122,6 +122,7 @@ function mapTeamChatThread(row = {}) {
     audienceType: row.audience_type ?? 'custom',
     companyId: row.company_id ?? '',
     createdAt: row.created_at ?? '',
+    directKey: row.direct_key ?? '',
     id: row.id,
     lastMessageAt: row.last_message_at ?? '',
     status: row.status ?? 'open',
@@ -274,6 +275,109 @@ async function findDriver(serviceClient, authUser) {
   return { data: null, error: null }
 }
 
+async function findCompanyPerson(serviceClient, authUser) {
+  const username = normalizeDriverUsername(
+    authUser.user_metadata?.username ?? authUser.email?.replace(/@.+$/, '') ?? '',
+  )
+  const candidates = [
+    { column: 'user_id', value: authUser.id },
+    { column: 'auth_email', value: authUser.email },
+    { column: 'username', value: username },
+  ].filter((candidate) => candidate.value)
+
+  for (const candidate of candidates) {
+    const { data, error } = await serviceClient
+      .from('company_people')
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq(candidate.column, candidate.value)
+      .neq('status', 'archived')
+      .maybeSingle()
+
+    if (error && !['42P01', '42703'].includes(error.code)) {
+      return { data: null, error }
+    }
+
+    if (data) {
+      return { data, error: null }
+    }
+  }
+
+  return { data: null, error: null }
+}
+
+async function fetchCompanyPersonContext(serviceClient, person) {
+  const companyId = person.company_id
+  const currentPerson = mapCompanyPerson(person)
+
+  const participantResult = await serviceClient
+    .from('team_chat_participants')
+    .select('thread_id')
+    .eq('company_id', companyId)
+    .eq('person_id', person.id)
+    .is('left_at', null)
+
+  if (participantResult.error && !['42P01', '42703'].includes(participantResult.error.code)) {
+    return { data: null, error: participantResult.error }
+  }
+
+  const teamThreadIds = (participantResult.data ?? []).map((entry) => entry.thread_id).filter(Boolean)
+
+  const [
+    companyResult,
+    peopleResult,
+    complianceResult,
+    teamThreadsResult,
+  ] = await Promise.all([
+    fetchCompanyProfile(serviceClient, companyId),
+    serviceClient
+      .from('company_people')
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
+    serviceClient
+      .from('compliance_items')
+      .select('id, type, scope, driver_id, vehicle_id, due_date, reminder_days, owner, status, document_number, last_reminder_at')
+      .eq('company_id', companyId)
+      .eq('person_id', person.id)
+      .neq('status', 'archived')
+      .order('due_date', { ascending: true }),
+    teamThreadIds.length
+      ? serviceClient
+          .from('team_chat_threads')
+          .select('id, company_id, thread_type, audience_type, title, status, last_message_at, created_at')
+          .in('id', teamThreadIds)
+          .neq('status', 'archived')
+          .order('last_message_at', { ascending: false, nullsFirst: false })
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  const error =
+    companyResult.error ||
+    peopleResult.error ||
+    complianceResult.error ||
+    teamThreadsResult.error
+
+  if (error) return { data: null, error }
+
+  return {
+    data: {
+      companyId,
+      companyProfile: companyResult.data ? mapCompanyProfile(companyResult.data) : null,
+      complianceItems: complianceResult.data.map(mapComplianceItem),
+      currentPerson,
+      documents: [],
+      drivers: [],
+      faultReports: [],
+      people: peopleResult.data.map(mapCompanyPerson),
+      teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),
+      vehicleChecks: [],
+      vehicles: [],
+    },
+    error: null,
+  }
+}
+
 async function fetchDriverContext(serviceClient, driver) {
   const personResult = await serviceClient
     .from('company_people')
@@ -308,6 +412,7 @@ async function fetchDriverContext(serviceClient, driver) {
     documentsResult,
     checksResult,
     faultsResult,
+    peopleResult,
     teamThreadsResult,
   ] = await Promise.all([
     fetchCompanyProfile(serviceClient, driver.company_id),
@@ -339,6 +444,12 @@ async function fetchDriverContext(serviceClient, driver) {
       .eq('driver_id', driver.id)
       .order('created_at', { ascending: false })
       .limit(50),
+    serviceClient
+      .from('company_people')
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('company_id', driver.company_id)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
     teamThreadIds.length
       ? serviceClient
           .from('team_chat_threads')
@@ -357,6 +468,7 @@ async function fetchDriverContext(serviceClient, driver) {
     documentsResult.error ||
     checksResult.error ||
     faultsResult.error ||
+    (peopleResult.error && !['42P01', '42703'].includes(peopleResult.error.code) ? peopleResult.error : null) ||
     teamThreadsResult.error
 
   if (error) {
@@ -372,7 +484,7 @@ async function fetchDriverContext(serviceClient, driver) {
       documents: documentsResult.data.map(mapDriverDocument),
       drivers: [mapDriver(driver)],
       faultReports: faultsResult.data.map(mapFaultReport),
-      people: currentPerson ? [currentPerson] : [],
+      people: peopleResult.error ? (currentPerson ? [currentPerson] : []) : peopleResult.data.map(mapCompanyPerson),
       teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),
       vehicleChecks: checksResult.data.map(mapVehicleCheck),
       vehicles: vehiclesResult.data.map(mapVehicle),
@@ -428,9 +540,46 @@ export async function handler(event) {
   }
 
   if (!driverResult.data) {
-    return jsonResponse(404, {
-      error: 'Autista non collegato. Ricrea l autista dal pannello azienda o controlla username e password.',
-    })
+    const personResult = await findCompanyPerson(serviceClient, authData.user)
+
+    if (personResult.error) {
+      return jsonResponse(500, { error: personResult.error.message })
+    }
+
+    if (!personResult.data) {
+      return jsonResponse(404, {
+        error: 'Account non collegato. Ricrea l utente dal pannello azienda o controlla username e password.',
+      })
+    }
+
+    if (personResult.data.user_id && personResult.data.user_id !== authData.user.id) {
+      return jsonResponse(403, { error: 'Questo accesso non corrisponde all anagrafica persona.' })
+    }
+
+    let person = personResult.data
+
+    if (!person.user_id) {
+      const { data, error } = await serviceClient
+        .from('company_people')
+        .update({ user_id: authData.user.id })
+        .eq('id', person.id)
+        .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+        .single()
+
+      if (error) {
+        return jsonResponse(500, { error: error.message })
+      }
+
+      person = data
+    }
+
+    const personContextResult = await fetchCompanyPersonContext(serviceClient, person)
+
+    if (personContextResult.error) {
+      return jsonResponse(500, { error: personContextResult.error.message })
+    }
+
+    return jsonResponse(200, personContextResult.data)
   }
 
   if (driverResult.data.user_id && driverResult.data.user_id !== authData.user.id) {

@@ -324,6 +324,7 @@ export function CompanyManagementScreen({
     jobTitle: 'Impiegato ufficio',
     medicalDueDate: '',
     name: '',
+    password: '',
     personType: 'office',
     phone: '',
     safetyTrainingDueDate: '',
@@ -512,13 +513,19 @@ export function CompanyManagementScreen({
       email: personForm.email.trim(),
       jobTitle: personForm.jobTitle.trim() || getPersonTypeLabel(personForm.personType),
       name: personForm.name.trim(),
+      password: personForm.password.trim(),
       personType: personForm.personType,
       phone: personForm.phone.trim(),
       username: personForm.username.trim(),
     }
 
-    if (!payload.name || !payload.department || !payload.personType) {
-      Alert.alert('Dati mancanti', 'Compila nome, reparto e ruolo.')
+    if (!payload.name || !payload.department || !payload.personType || !payload.username || !payload.password) {
+      Alert.alert('Dati mancanti', 'Compila nome, reparto, ruolo, username e password temporanea.')
+      return
+    }
+
+    if (payload.password.length < 8) {
+      Alert.alert('Password breve', 'La password temporanea deve avere almeno 8 caratteri.')
       return
     }
 
@@ -555,13 +562,14 @@ export function CompanyManagementScreen({
         jobTitle: 'Impiegato ufficio',
         medicalDueDate: '',
         name: '',
+        password: '',
         personType: 'office',
         phone: '',
         safetyTrainingDueDate: '',
         username: '',
       })
       openArchive(savedPerson.department === 'warehouse' ? 'warehouse' : 'office')
-      Alert.alert('Persona creata', `${savedPerson.name} e stata aggiunta.`)
+      Alert.alert('Persona creata', `Username: ${payload.username}\nPassword: ${payload.password}`)
     }
   }
 
@@ -812,7 +820,8 @@ export function CompanyManagementScreen({
           <TextField label="Mansione libera" onChangeText={(value) => updatePersonForm('jobTitle', value)} placeholder="Es. ufficio traffico, carrellista..." value={personForm.jobTitle} />
           <TextField label="Telefono" keyboardType="phone-pad" onChangeText={(value) => updatePersonForm('phone', value)} placeholder="+39..." value={personForm.phone} />
           <TextField label="Email" keyboardType="email-address" onChangeText={(value) => updatePersonForm('email', value)} placeholder="nome@azienda.it" value={personForm.email} />
-          <TextField label="Username futuro" onChangeText={(value) => updatePersonForm('username', value)} placeholder="paola.rossi" value={personForm.username} />
+          <TextField label="Username app" onChangeText={(value) => updatePersonForm('username', value)} placeholder="paola.rossi" value={personForm.username} />
+          <TextField label="Password temporanea" onChangeText={(value) => updatePersonForm('password', value)} placeholder="minimo 8 caratteri" secureTextEntry value={personForm.password} />
           <TextField label="Sede o reparto" onChangeText={(value) => updatePersonForm('depot', value)} placeholder="Ufficio Verona, Magazzino 1..." value={personForm.depot} />
           <Text style={styles.groupTitle}>Scadenze iniziali</Text>
           <DateField label="Visita medica" language={language} onChange={(value) => updatePersonForm('medicalDueDate', value)} value={personForm.medicalDueDate} />

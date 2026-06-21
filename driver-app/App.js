@@ -25,6 +25,7 @@ import { DriverChatHubScreen } from './src/screens/DriverChatHubScreen'
 import { HomeScreen } from './src/screens/HomeScreen'
 import { OperationsScreen } from './src/screens/OperationsScreen'
 import { SettingsScreen } from './src/screens/SettingsScreen'
+import { WorkforceHomeScreen } from './src/screens/WorkforceHomeScreen'
 import {
   createCompanyAssetSignedUrl,
   createCompanyComplianceItem,
@@ -35,6 +36,7 @@ import {
   createDriverDocument,
   createFaultReport,
   createVehicleCheck,
+  ensureDirectTeamThread,
   fetchCompanyContext,
   fetchCompanyDriverChat,
   fetchDriverChat,
@@ -92,6 +94,12 @@ const driverTabs = [
   { id: 'settings', icon: 'settings-outline', label: 'Menu', labelKey: 'menu' },
 ]
 
+const workforceTabs = [
+  { id: 'home', icon: 'home-outline', label: 'Home', labelKey: 'home' },
+  { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
+  { id: 'settings', icon: 'settings-outline', label: 'Menu', labelKey: 'menu' },
+]
+
 const companyTabs = [
   { id: 'home', icon: 'business-outline', label: 'Home', labelKey: 'home' },
   { id: 'manage', icon: 'add-circle-outline', label: 'Anagraf.' },
@@ -103,7 +111,7 @@ const companyTabs = [
 const camionChiaroIcon = require('./assets/brand/icon.png')
 
 function getDriverName(context) {
-  return context?.drivers?.[0]?.name || 'Autista'
+  return context?.drivers?.[0]?.name || context?.currentPerson?.name || 'Persona'
 }
 
 function getCompanyName(context) {
@@ -146,6 +154,17 @@ function mergeChatMessage(messages, message) {
   }
 
   return [...messages, message].sort((first, second) => new Date(first.createdAt) - new Date(second.createdAt))
+}
+
+function upsertTeamThread(threads = [], thread) {
+  if (!thread?.id) return threads
+  const nextThreads = threads.some((currentThread) => currentThread.id === thread.id)
+    ? threads.map((currentThread) => (currentThread.id === thread.id ? { ...currentThread, ...thread } : currentThread))
+    : [thread, ...threads]
+
+  return nextThreads.sort((first, second) => (
+    new Date(second.lastMessageAt || second.createdAt || 0) - new Date(first.lastMessageAt || first.createdAt || 0)
+  ))
 }
 
 function mergeChatMessageUpdates(messages, updatedMessages = []) {
@@ -230,7 +249,9 @@ export default function App() {
   const nativePushPromptRef = useRef('')
 
   const driver = context?.drivers?.[0] ?? null
-  const visibleTabs = accountType === 'company' ? companyTabs : driverTabs
+  const currentPerson = context?.currentPerson ?? null
+  const isWorkforcePerson = accountType === 'driver' && currentPerson && !driver
+  const visibleTabs = accountType === 'company' ? companyTabs : isWorkforcePerson ? workforceTabs : driverTabs
   const activeCompanyContext = companyContext ?? context
   const companyName = accountType === 'company'
     ? activeCompanyContext?.companyProfile?.name ?? 'Azienda'
@@ -352,7 +373,7 @@ export default function App() {
   }
 
   async function loadDriverTeamChatData(targetThread = selectedDriverTeamThread) {
-    const companyId = driver?.companyId || context?.companyProfile?.id
+    const companyId = driver?.companyId ?? currentPerson?.companyId ?? context?.companyProfile?.id
     if (!companyId || !targetThread?.id) return false
 
     const chatResult = await fetchTeamChat({
@@ -560,8 +581,8 @@ export default function App() {
 
     const companyId = accountType === 'company'
       ? companyContext?.companyProfile?.id
-      : driver?.companyId
-    const driverId = accountType === 'driver' ? driver?.id : ''
+      : driver?.companyId ?? currentPerson?.companyId
+    const driverId = accountType === 'driver' ? driver?.id ?? currentPerson?.id : ''
 
     if (!companyId || (accountType === 'driver' && !driverId)) return undefined
 
@@ -611,6 +632,8 @@ export default function App() {
   }, [
     accountType,
     companyContext?.companyProfile?.id,
+    currentPerson?.companyId,
+    currentPerson?.id,
     driver?.companyId,
     driver?.id,
     isBooting,
@@ -669,11 +692,13 @@ export default function App() {
   }, [accountType, activeTab, driver?.companyId, driver?.id, driverChatMode])
 
   useEffect(() => {
-    if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
+    const companyId = driver?.companyId ?? currentPerson?.companyId
+    const actorId = currentPerson?.id ?? driver?.id
+    if (accountType !== 'driver' || !companyId || !actorId) return undefined
 
     let isActive = true
     const unsubscribe = subscribeToTeamChatMessages({
-      companyId: driver.companyId,
+      companyId,
       onMessage: async (message) => {
         if (!isActive) return
 
@@ -682,7 +707,7 @@ export default function App() {
           return
         }
 
-        if (message?.senderRole && message.senderRole !== 'driver') {
+        if (message?.senderPersonId && message.senderPersonId !== actorId) {
           triggerHaptic('light')
         }
 
@@ -694,7 +719,7 @@ export default function App() {
       isActive = false
       unsubscribe?.()
     }
-  }, [accountType, activeTab, driver?.companyId, driver?.id, driverChatMode, selectedDriverTeamThread?.id, selectedDriverTeamThreadId])
+  }, [accountType, activeTab, currentPerson?.companyId, currentPerson?.id, driver?.companyId, driver?.id, driverChatMode, selectedDriverTeamThread?.id, selectedDriverTeamThreadId])
 
   useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
@@ -997,7 +1022,7 @@ export default function App() {
   async function handleEnableNativeNotifications() {
     const companyId = accountType === 'company'
       ? companyContext?.companyProfile?.id
-      : driver?.companyId
+      : driver?.companyId ?? currentPerson?.companyId
 
     if (!companyId) {
       const message = 'Apri l account e attendi il caricamento dati, poi riprova.'
@@ -1037,7 +1062,7 @@ export default function App() {
   async function notifyPhone(payload) {
     const companyId = accountType === 'company'
       ? companyContext?.companyProfile?.id
-      : driver?.companyId
+      : driver?.companyId ?? currentPerson?.companyId
 
     if (!companyId || !payload?.targetRole) {
       return { data: null, error: { message: 'Azienda o destinatario notifica mancante.' } }
@@ -1131,21 +1156,64 @@ export default function App() {
     await loadDriverTeamChatData(nextThread)
   }
 
-  async function handleSendDriverTeamChatMessage(body, attachment = null) {
-    if (!driver || !selectedDriverTeamThread || (!body.trim() && !attachment?.uri)) return false
+  async function handleSelectDriverPerson(nextPerson, displayTitle = '') {
+    const companyId = driver?.companyId ?? currentPerson?.companyId
+    if (!companyId || !nextPerson?.id) return false
 
-    const currentPerson = context?.currentPerson
-    const senderRole = currentPerson?.department === 'warehouse'
+    const result = await ensureDirectTeamThread({
+      companyId,
+      personId: nextPerson.id,
+    })
+
+    if (result.error) {
+      Alert.alert('Chat diretta non pronta', result.error.message)
+      return false
+    }
+
+    const nextThread = displayTitle ? { ...result.data, title: displayTitle } : result.data
+    if (!nextThread?.id) return false
+
+    setContext((currentContext) => {
+      if (!currentContext) return currentContext
+      return {
+        ...currentContext,
+        teamChatThreads: upsertTeamThread(currentContext.teamChatThreads ?? [], nextThread),
+      }
+    })
+    setDriverChatMode('team')
+    setSelectedDriverTeamThreadId(nextThread.id)
+    setDriverTeamChatMessages([])
+    setActiveTab('chat')
+    await loadDriverTeamChatData(nextThread)
+    return true
+  }
+
+  async function handleOpenWorkforceCompanyChat() {
+    if (!isWorkforcePerson || !currentPerson?.id) {
+      openDriverChat('company')
+      return true
+    }
+
+    return handleSelectDriverPerson(currentPerson, companyName)
+  }
+
+  async function handleSendDriverTeamChatMessage(body, attachment = null) {
+    const actorPerson = context?.currentPerson
+    const companyId = driver?.companyId ?? actorPerson?.companyId
+    if (!companyId || !actorPerson?.id || !selectedDriverTeamThread || (!body.trim() && !attachment?.uri)) return false
+
+    const senderRole = actorPerson?.department === 'warehouse'
       ? 'warehouse'
-      : currentPerson?.department === 'office'
+      : actorPerson?.department === 'office'
         ? 'office'
         : 'driver'
+    const actorName = driver?.name ?? actorPerson?.name ?? 'Persona'
 
     const result = await sendTeamChatMessage({
       attachment,
       body,
-      companyId: driver.companyId,
-      senderPersonId: currentPerson?.id ?? '',
+      companyId,
+      senderPersonId: actorPerson.id,
       senderRole,
       threadId: selectedDriverTeamThread.id,
     })
@@ -1164,7 +1232,7 @@ export default function App() {
         tag: `team-chat-${selectedDriverTeamThread.id}`,
         targetRole: 'team',
         threadId: selectedDriverTeamThread.id,
-        title: `${driver.name} · ${currentPerson?.jobTitle || driver.role || 'Autista'}`,
+        title: `${actorName} · ${actorPerson?.jobTitle || driver?.role || 'Personale'}`,
         url: '/?view=chat',
       })
       setContext((currentContext) => {
@@ -1198,6 +1266,39 @@ export default function App() {
     setCompanyChatMessages([])
     setCompanyChatThread(null)
     await loadCompanyTeamChatData(nextThread)
+  }
+
+  async function handleSelectCompanyPerson(nextPerson) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !nextPerson?.id) return false
+
+    const result = await ensureDirectTeamThread({
+      companyId,
+      personId: nextPerson.id,
+    })
+
+    if (result.error) {
+      Alert.alert('Chat diretta non pronta', result.error.message)
+      return false
+    }
+
+    const nextThread = result.data
+    if (!nextThread?.id) return false
+
+    setCompanyContext((currentContext) => {
+      if (!currentContext) return currentContext
+      return {
+        ...currentContext,
+        teamChatThreads: upsertTeamThread(currentContext.teamChatThreads ?? [], nextThread),
+      }
+    })
+    setSelectedCompanyTeamThreadId(nextThread.id)
+    setSelectedCompanyDriverId('')
+    setCompanyChatMessages([])
+    setCompanyChatThread(null)
+    setCompanyTeamChatMessages([])
+    await loadCompanyTeamChatData(nextThread)
+    return true
   }
 
   async function handleSendCompanyChatMessage(body, attachment = null) {
@@ -1658,10 +1759,12 @@ export default function App() {
             onReactToMessage={handleReactToCompanyMessage}
             onRefresh={() => (selectedCompanyTeamThread ? loadCompanyTeamChatData() : loadCompanyChatData())}
             onSelectDriver={handleSelectCompanyDriver}
+            onSelectPerson={handleSelectCompanyPerson}
             onSelectTeamThread={handleSelectCompanyTeamThread}
             onSend={handleSendCompanyChatMessage}
             onSendTeamMessage={handleSendCompanyTeamChatMessage}
             onTyping={handleCompanyTyping}
+            people={companyContext?.people ?? []}
             selectedDriver={selectedCompanyDriver}
             selectedDriverOnline={selectedCompanyDriverOnline}
             selectedDriverTyping={isSelectedDriverTyping}
@@ -1734,7 +1837,8 @@ export default function App() {
           driverName={driverName}
           messages={chatMessages}
           onBackToList={closeDriverChatDetail}
-          onOpenCompanyChat={() => openDriverChat('company')}
+          onOpenCompanyChat={handleOpenWorkforceCompanyChat}
+          onOpenPersonChat={handleSelectDriverPerson}
           onOpenTeamChat={handleSelectDriverTeamThread}
           onReactToMessage={handleReactToMessage}
           onRefreshCompanyChat={() => loadDriverChatData(driver, { markAsRead: true })}
@@ -1745,6 +1849,7 @@ export default function App() {
           selectedMode={driverChatMode}
           selectedTeamThread={selectedDriverTeamThread}
           soundEnabled={chatSoundEnabled}
+          people={context?.people ?? []}
           teamMessages={driverTeamChatMessages}
           teamThreads={context?.teamChatThreads ?? []}
           unreadCompanyMessages={unreadCompanyMessages}
@@ -1796,6 +1901,18 @@ export default function App() {
       )
     }
 
+    if (isWorkforcePerson) {
+      return (
+        <WorkforceHomeScreen
+          companyName={companyName}
+          context={context}
+          language={language}
+          onOpenChat={() => openDriverChat('list')}
+          onOpenSettings={() => setActiveTab('settings')}
+        />
+      )
+    }
+
     return (
       <HomeScreen
         companyName={companyName}
@@ -1825,14 +1942,17 @@ export default function App() {
     companyChatMessages,
     companyChatThread?.id,
     companyDriverPhotoUrls,
+    companyTeamChatMessages,
     companyName,
     context,
     driver,
     driverName,
+    driverTeamChatMessages,
     driverProfileUrl,
     isCompanyOnline,
     isCompanyTyping,
     isSelectedDriverTyping,
+    isWorkforcePerson,
     isRefreshing,
     language,
     logoUrl,
@@ -1842,7 +1962,9 @@ export default function App() {
     selectedCompanyDriver,
     selectedCompanyDriverId,
     selectedCompanyDriverOnline,
+    selectedCompanyTeamThread,
     selectedDailyVehicleId,
+    selectedDriverTeamThread,
     unreadCompanyMessages,
   ])
 

@@ -42,21 +42,30 @@ function getInitials(value = 'A') {
     .join('') || 'A'
 }
 
-function ChatRow({ badge = 0, icon, imageUrl, onPress, subtitle, title }) {
+function ChatRow({ badge = 0, icon, imageUrl, kindLabel = '', onPress, subtitle, title, tone = 'normal' }) {
+  const isDirect = tone === 'direct'
+
   return (
-    <Pressable onPress={onPress} style={styles.row}>
-      <View style={styles.avatar}>
+    <Pressable onPress={onPress} style={[styles.row, isDirect && styles.directRow]}>
+      <View style={[styles.avatar, isDirect && styles.directAvatar]}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.avatarImage} />
         ) : (
-          icon ? <Ionicons color={colors.ink} name={icon} size={22} /> : <Text style={styles.avatarText}>{getInitials(title)}</Text>
+          icon ? <Ionicons color={isDirect ? colors.white : colors.ink} name={icon} size={22} /> : <Text style={[styles.avatarText, isDirect && styles.directAvatarText]}>{getInitials(title)}</Text>
         )}
       </View>
       <View style={styles.rowCopy}>
         <Text numberOfLines={1} style={styles.rowTitle}>{title}</Text>
         <Text numberOfLines={1} style={styles.rowSubtitle}>{subtitle}</Text>
       </View>
-      {badge > 0 ? <Text style={styles.badge}>{badge}</Text> : <Text style={styles.openText}>Apri</Text>}
+      <View style={styles.rowActions}>
+        {kindLabel ? (
+          <Text style={[styles.kindBadge, isDirect ? styles.kindBadgeDirect : styles.kindBadgeGroup]}>
+            {kindLabel}
+          </Text>
+        ) : null}
+        {badge > 0 ? <Text style={styles.badge}>{badge}</Text> : <Text style={styles.openText}>Apri</Text>}
+      </View>
     </Pressable>
   )
 }
@@ -87,6 +96,7 @@ export function DriverChatHubScreen({
   messages = [],
   onBackToList,
   onOpenCompanyChat,
+  onOpenPersonChat,
   onOpenTeamChat,
   onReactToMessage,
   onRefreshCompanyChat,
@@ -97,6 +107,7 @@ export function DriverChatHubScreen({
   selectedMode = 'list',
   selectedTeamThread,
   soundEnabled = true,
+  people = [],
   teamMessages = [],
   teamThreads = [],
   unreadCompanyMessages = 0,
@@ -106,6 +117,10 @@ export function DriverChatHubScreen({
     ...message,
     senderRole: message.senderPersonId && message.senderPersonId === currentPerson?.id ? 'me' : 'team',
   }))
+  const visiblePeople = people.filter((person) => person.id !== currentPerson?.id && person.status !== 'archived')
+  const visibleTeamThreads = teamThreads.filter((thread) => (
+    !(isDirectThread(thread) && [currentPerson?.name, companyName].filter(Boolean).includes(thread.title))
+  ))
 
   if (selectedMode === 'company') {
     return (
@@ -135,7 +150,7 @@ export function DriverChatHubScreen({
       <View style={styles.chatWrap}>
         <HeaderBar
           onBack={onBackToList}
-          subtitle={getAudienceLabel(selectedTeamThread.audienceType)}
+          subtitle={`${getThreadKindLabel(selectedTeamThread)} · ${getAudienceLabel(selectedTeamThread.audienceType)}`}
           title={selectedTeamThread.title}
         />
         <ChatScreen
@@ -169,29 +184,71 @@ export function DriverChatHubScreen({
       <ChatRow
         badge={unreadCompanyMessages}
         imageUrl={companyLogoUrl}
+        kindLabel="Diretta"
         onPress={onOpenCompanyChat}
         subtitle={chatThread?.lastMessageAt ? formatLastMessageDate(chatThread.lastMessageAt) : 'Canale principale'}
         title={companyName}
+        tone="direct"
       />
 
-      {teamThreads.length ? (
+      {visibleTeamThreads.length ? (
         <View style={styles.groupBlock}>
-          <Text style={styles.groupTitle}>Gruppi e reparti</Text>
-          {teamThreads.map((thread) => (
+          <Text style={styles.groupTitle}>Gruppi, reparti e dirette</Text>
+          {visibleTeamThreads.map((thread) => {
+            const isDirect = isDirectThread(thread)
+
+            return (
             <ChatRow
-              icon={getGroupIcon(thread.audienceType)}
+              icon={isDirect ? 'person-circle-outline' : getGroupIcon(thread.audienceType)}
               key={thread.id}
+              kindLabel={getThreadKindLabel(thread)}
               onPress={() => onOpenTeamChat?.(thread)}
               subtitle={`${getAudienceLabel(thread.audienceType)} · ${formatLastMessageDate(thread.lastMessageAt)}`}
               title={thread.title}
+              tone={isDirect ? 'direct' : 'normal'}
             />
-          ))}
+            )
+          })}
         </View>
       ) : (
         <Text style={styles.emptyText}>Nessun gruppo disponibile. L azienda deve aggiornare le anagrafiche.</Text>
       )}
+
+      {visiblePeople.length ? (
+        <View style={styles.groupBlock}>
+          <Text style={styles.groupTitle}>Persone</Text>
+          {visiblePeople.map((person) => (
+            <ChatRow
+              icon={person.department === 'warehouse' ? 'cube-outline' : person.department === 'office' ? 'briefcase-outline' : 'person-outline'}
+              key={person.id}
+              kindLabel="Diretta"
+              onPress={() => onOpenPersonChat?.(person)}
+              subtitle={`${getPersonDepartmentLabel(person.department)} · ${person.jobTitle || 'Operatore'}`}
+              title={person.name}
+              tone="direct"
+            />
+          ))}
+        </View>
+      ) : null}
     </ScrollView>
   )
+}
+
+function isDirectThread(thread = {}) {
+  return thread.threadType === 'direct' || thread.audienceType === 'direct'
+}
+
+function getThreadKindLabel(thread = {}) {
+  if (isDirectThread(thread)) return 'Diretta'
+  if (['drivers', 'office', 'warehouse'].includes(thread.audienceType)) return 'Reparto'
+  return 'Gruppo'
+}
+
+function getPersonDepartmentLabel(value = '') {
+  if (value === 'warehouse') return 'Magazzino'
+  if (value === 'office') return 'Ufficio'
+  if (value === 'drivers') return 'Autista'
+  return 'Persona'
 }
 
 const styles = StyleSheet.create({
@@ -212,6 +269,16 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 13,
     fontWeight: '900',
+  },
+  directAvatar: {
+    backgroundColor: colors.ink,
+  },
+  directAvatarText: {
+    color: colors.white,
+  },
+  directRow: {
+    borderColor: '#9ccfea',
+    borderWidth: 1.5,
   },
   backButton: {
     backgroundColor: '#e0f2fe',
@@ -260,6 +327,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 2,
   },
+  kindBadge: {
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: '900',
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    textTransform: 'uppercase',
+  },
+  kindBadgeDirect: {
+    backgroundColor: colors.ink,
+    color: colors.white,
+  },
+  kindBadgeGroup: {
+    backgroundColor: '#cffafe',
+    color: colors.ink,
+  },
   hero: {
     backgroundColor: colors.ink,
     borderRadius: 20,
@@ -293,6 +377,10 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
     padding: 12,
+  },
+  rowActions: {
+    alignItems: 'flex-end',
+    gap: 5,
   },
   rowCopy: {
     flex: 1,

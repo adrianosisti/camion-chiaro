@@ -112,6 +112,7 @@ export function mapTeamChatThread(row = {}) {
     audienceType: row.audience_type ?? row.audienceType ?? 'custom',
     companyId: row.company_id ?? row.companyId ?? '',
     createdAt: row.created_at ?? row.createdAt ?? '',
+    directKey: row.direct_key ?? row.directKey ?? '',
     id: row.id,
     lastMessageAt: row.last_message_at ?? row.lastMessageAt ?? '',
     status: row.status ?? 'open',

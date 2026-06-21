@@ -107,6 +107,55 @@ export function mapChatThread(row = {}) {
   }
 }
 
+export function mapTeamChatThread(row = {}) {
+  return {
+    audienceType: row.audience_type ?? row.audienceType ?? 'custom',
+    companyId: row.company_id ?? row.companyId ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    id: row.id,
+    lastMessageAt: row.last_message_at ?? row.lastMessageAt ?? '',
+    status: row.status ?? 'open',
+    threadType: row.thread_type ?? row.threadType ?? 'group',
+    title: row.title ?? 'Gruppo',
+  }
+}
+
+export function mapTeamChatMessage(row = {}) {
+  return {
+    attachmentPath: row.attachment_path ?? row.attachmentPath ?? '',
+    body: row.body ?? '',
+    companyId: row.company_id ?? row.companyId ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    driverId: row.sender_person_id ?? row.senderPersonId ?? '',
+    id: row.id,
+    readByCompanyAt: '',
+    readByDriverAt: '',
+    reactions: row.reactions ?? {},
+    senderName: row.sender_name ?? row.senderName ?? '',
+    senderPersonId: row.sender_person_id ?? row.senderPersonId ?? '',
+    senderRole: row.sender_role ?? row.senderRole ?? 'company',
+    threadId: row.thread_id ?? row.threadId ?? '',
+  }
+}
+
+export function mapCompanyPerson(row = {}) {
+  return {
+    authEmail: row.auth_email ?? row.authEmail ?? '',
+    companyId: row.company_id ?? row.companyId ?? '',
+    department: row.department ?? 'drivers',
+    depot: row.depot ?? '',
+    email: row.email ?? '',
+    id: row.id,
+    jobTitle: row.job_title ?? row.jobTitle ?? '',
+    linkedDriverId: row.linked_driver_id ?? row.linkedDriverId ?? '',
+    name: row.full_name ?? row.name ?? 'Persona',
+    personType: row.person_type ?? row.personType ?? 'office',
+    phone: row.phone ?? '',
+    status: row.status ?? 'active',
+    username: row.username ?? '',
+  }
+}
+
 export function mapDriverContext(data = {}) {
   return {
     ...data,
@@ -118,6 +167,9 @@ export function mapDriverContext(data = {}) {
     })),
     drivers: (data.drivers ?? []).map(mapDriver),
     faultReports: (data.faultReports ?? []).map(mapFaultReport),
+    currentPerson: data.currentPerson ? mapCompanyPerson(data.currentPerson) : null,
+    people: (data.people ?? []).map(mapCompanyPerson),
+    teamChatThreads: (data.teamChatThreads ?? []).map(mapTeamChatThread),
     vehicleChecks: (data.vehicleChecks ?? []).map(mapVehicleCheck),
     vehicles: (data.vehicles ?? []).map(mapVehicle),
   }

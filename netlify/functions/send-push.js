@@ -14,7 +14,7 @@ function jsonResponse(statusCode, body) {
 }
 
 async function getSenderContext(serviceClient, userId, companyId) {
-  const [membershipResult, driverResult] = await Promise.all([
+  const [membershipResult, driverResult, personResult] = await Promise.all([
     serviceClient
       .from('company_members')
       .select('role')
@@ -28,16 +28,27 @@ async function getSenderContext(serviceClient, userId, companyId) {
       .eq('user_id', userId)
       .neq('status', 'archived')
       .maybeSingle(),
+    serviceClient
+      .from('company_people')
+      .select('id, company_id, full_name, department, person_type')
+      .eq('company_id', companyId)
+      .eq('user_id', userId)
+      .neq('status', 'archived')
+      .maybeSingle(),
   ])
 
   if (membershipResult.error) return { data: null, error: membershipResult.error }
   if (driverResult.error) return { data: null, error: driverResult.error }
+  if (personResult.error && !['42P01', '42703'].includes(personResult.error.code)) {
+    return { data: null, error: personResult.error }
+  }
 
   if (membershipResult.data) {
     return {
       data: {
         companyId,
         driverId: null,
+        personId: null,
         role: 'company',
       },
       error: null,
@@ -49,7 +60,26 @@ async function getSenderContext(serviceClient, userId, companyId) {
       data: {
         companyId,
         driverId: driverResult.data.id,
+        personId: personResult.data?.id ?? null,
         role: 'driver',
+      },
+      error: null,
+    }
+  }
+
+  if (personResult.data) {
+    const departmentRole = personResult.data.department === 'warehouse'
+      ? 'warehouse'
+      : personResult.data.department === 'office'
+        ? 'office'
+        : 'driver'
+
+    return {
+      data: {
+        companyId,
+        driverId: null,
+        personId: personResult.data.id,
+        role: departmentRole,
       },
       error: null,
     }
@@ -58,7 +88,73 @@ async function getSenderContext(serviceClient, userId, companyId) {
   return { data: null, error: null }
 }
 
-async function getRecipientUserIds(serviceClient, senderContext, targetRole, driverId) {
+async function getTeamRecipientUserIds(serviceClient, senderContext, threadId) {
+  if (!threadId) return { data: null, error: { message: 'Gruppo chat mancante.' } }
+
+  const { data: thread, error: threadError } = await serviceClient
+    .from('team_chat_threads')
+    .select('id, company_id')
+    .eq('company_id', senderContext.companyId)
+    .eq('id', threadId)
+    .maybeSingle()
+
+  if (threadError) return { data: null, error: threadError }
+  if (!thread) return { data: null, error: { message: 'Gruppo chat non trovato.' } }
+
+  if (senderContext.role !== 'company') {
+    const { data: participant, error: participantError } = await serviceClient
+      .from('team_chat_participants')
+      .select('person_id')
+      .eq('thread_id', threadId)
+      .eq('person_id', senderContext.personId)
+      .is('left_at', null)
+      .maybeSingle()
+
+    if (participantError) return { data: null, error: participantError }
+    if (!participant) return { data: null, error: { message: 'Non puoi scrivere in questo gruppo.' } }
+  }
+
+  const [participantsResult, membersResult] = await Promise.all([
+    serviceClient
+      .from('team_chat_participants')
+      .select('person_id')
+      .eq('thread_id', threadId)
+      .is('left_at', null),
+    serviceClient
+      .from('company_members')
+      .select('user_id')
+      .eq('company_id', senderContext.companyId)
+      .in('role', ['owner', 'admin', 'operator']),
+  ])
+
+  if (participantsResult.error) return { data: null, error: participantsResult.error }
+  if (membersResult.error) return { data: null, error: membersResult.error }
+
+  const personIds = (participantsResult.data ?? []).map((participant) => participant.person_id).filter(Boolean)
+  let personUserIds = []
+
+  if (personIds.length) {
+    const { data: people, error: peopleError } = await serviceClient
+      .from('company_people')
+      .select('user_id')
+      .eq('company_id', senderContext.companyId)
+      .in('id', personIds)
+      .neq('status', 'archived')
+
+    if (peopleError) return { data: null, error: peopleError }
+    personUserIds = (people ?? []).map((person) => person.user_id).filter(Boolean)
+  }
+
+  return {
+    data: [
+      ...(membersResult.data ?? []).map((member) => member.user_id).filter(Boolean),
+      ...personUserIds,
+    ],
+    error: null,
+  }
+}
+
+async function getRecipientUserIds(serviceClient, senderContext, targetRole, driverId, threadId) {
   if (targetRole === 'company') {
     const { data, error } = await serviceClient
       .from('company_members')
@@ -94,6 +190,10 @@ async function getRecipientUserIds(serviceClient, senderContext, targetRole, dri
       error: null,
       reason: data?.user_id ? '' : 'Autista senza account collegato. Fallo entrare almeno una volta o ricrea l accesso autista.',
     }
+  }
+
+  if (targetRole === 'team') {
+    return getTeamRecipientUserIds(serviceClient, senderContext, threadId)
   }
 
   return { data: null, error: { message: 'Destinatario notifica non valido.' } }
@@ -216,7 +316,7 @@ export async function handler(event) {
   const notificationType = String(body.notificationType ?? '').slice(0, 40)
   const threadId = String(body.threadId ?? '').slice(0, 120)
 
-  if (!companyId || !['company', 'driver'].includes(targetRole)) {
+  if (!companyId || !['company', 'driver', 'team'].includes(targetRole)) {
     return jsonResponse(400, { error: 'Azienda o destinatario non valido.' })
   }
 
@@ -249,6 +349,7 @@ export async function handler(event) {
     senderContextResult.data,
     targetRole,
     driverId,
+    threadId,
   )
 
   if (recipientsResult.error) {
@@ -297,7 +398,9 @@ export async function handler(event) {
       reason:
         targetRole === 'company'
           ? 'Nessun telefono azienda registrato. Entra come azienda dal telefono e premi Abilita notifiche.'
-          : 'Nessun telefono registrato per questo autista. Apri l app autista dal telefono e premi Abilita notifiche.',
+          : targetRole === 'driver'
+            ? 'Nessun telefono registrato per questo autista. Apri l app autista dal telefono e premi Abilita notifiche.'
+            : 'Nessun telefono registrato per i partecipanti del gruppo.',
       sent: 0,
       skipped: true,
     })

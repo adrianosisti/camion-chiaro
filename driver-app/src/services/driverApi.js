@@ -3,10 +3,13 @@ import { apiBaseUrl, driverAuthDomain, isSupabaseConfigured, supabase } from './
 import {
   mapChatMessage,
   mapChatThread,
+  mapCompanyPerson as mapContextCompanyPerson,
   mapDriver,
   mapDriverContext,
   mapDriverDocument,
   mapFaultReport,
+  mapTeamChatMessage,
+  mapTeamChatThread,
   mapVehicle,
   mapVehicleCheck,
 } from './mappers'
@@ -45,6 +48,9 @@ const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
 const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
+const teamChatThreadSelect = 'id, company_id, thread_type, audience_type, title, status, last_message_at, created_at'
+const teamChatMessageSelect =
+  'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, created_at'
 const vehicleCheckSelect =
   'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, status, resolved_at, created_at'
 const vehicleCheckLegacySelect =
@@ -295,6 +301,82 @@ async function fetchCompanyComplianceItems(companyId, limit = 50) {
   return result
 }
 
+async function ensureDefaultTeamThreads(companyId) {
+  if (!companyId) return { data: null, error: null }
+
+  const { data, error } = await supabase.rpc('ensure_default_team_threads', {
+    target_company_id: companyId,
+  })
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: null, missingSchema: true }
+  }
+
+  return { data, error }
+}
+
+async function fetchTeamChatThreads(companyId) {
+  if (!companyId) return { data: [], error: null }
+
+  const { data, error } = await supabase
+    .from('team_chat_threads')
+    .select(teamChatThreadSelect)
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('last_message_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: (data ?? []).map(mapTeamChatThread), error }
+}
+
+async function fetchCurrentCompanyPerson(companyId, userId, driverId = '') {
+  if (!companyId) return { data: null, error: null }
+
+  if (driverId) {
+    const byDriverResult = await supabase
+      .from('company_people')
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('company_id', companyId)
+      .eq('linked_driver_id', driverId)
+      .neq('status', 'archived')
+      .maybeSingle()
+
+    if (isMissingWorkforceSchemaError(byDriverResult.error)) {
+      return { data: null, error: null, missingSchema: true }
+    }
+
+    if (byDriverResult.error || byDriverResult.data) {
+      return {
+        data: byDriverResult.data ? mapContextCompanyPerson(byDriverResult.data) : null,
+        error: byDriverResult.error,
+      }
+    }
+  }
+
+  if (!userId) return { data: null, error: null }
+
+  const byUserResult = await supabase
+    .from('company_people')
+    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .eq('company_id', companyId)
+    .eq('user_id', userId)
+    .neq('status', 'archived')
+    .maybeSingle()
+
+  if (isMissingWorkforceSchemaError(byUserResult.error)) {
+    return { data: null, error: null, missingSchema: true }
+  }
+
+  return {
+    data: byUserResult.data ? mapContextCompanyPerson(byUserResult.data) : null,
+    error: byUserResult.error,
+  }
+}
+
 export async function getCurrentSession() {
   if (!isSupabaseConfigured) return { data: { session: null }, error: null }
   return supabase.auth.getSession()
@@ -481,6 +563,8 @@ async function fetchDriverContextDirect() {
     documentsResult,
     checksResult,
     faultsResult,
+    personResult,
+    teamThreadsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -515,6 +599,8 @@ async function fetchDriverContextDirect() {
       .eq('driver_id', driver.id)
       .order('created_at', { ascending: false })
       .limit(50),
+    fetchCurrentCompanyPerson(driver.company_id, user.id, driver.id),
+    fetchTeamChatThreads(driver.company_id),
   ])
 
   const firstError = [
@@ -523,6 +609,8 @@ async function fetchDriverContextDirect() {
     documentsResult.error,
     checksResult.error,
     faultsResult.error,
+    personResult.error,
+    teamThreadsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -536,9 +624,12 @@ async function fetchDriverContextDirect() {
       companyId: driver.company_id,
       companyProfile,
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
+      currentPerson: personResult.data,
       documents: documentsResult.data ?? [],
       drivers: [driver],
       faultReports: faultsResult.data ?? [],
+      people: personResult.data ? [personResult.data] : [],
+      teamChatThreads: teamThreadsResult.data ?? [],
       vehicleChecks: checksResult.data ?? [],
       vehicles: vehiclesResult.data ?? [],
     }),
@@ -571,6 +662,7 @@ export async function fetchCompanyContext() {
   }
 
   const companyId = membershipResult.data.company_id
+  await ensureDefaultTeamThreads(companyId)
   const [
     companyResult,
     driversResult,
@@ -583,6 +675,7 @@ export async function fetchCompanyContext() {
     complianceResult,
     unreadMessagesResult,
     chatThreadsResult,
+    teamChatThreadsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -638,6 +731,7 @@ export async function fetchCompanyContext() {
       .eq('company_id', companyId)
       .eq('context_type', 'general')
       .order('last_message_at', { ascending: false, nullsFirst: false }),
+    fetchTeamChatThreads(companyId),
   ])
 
   const firstError = [
@@ -652,6 +746,7 @@ export async function fetchCompanyContext() {
     complianceResult.error,
     unreadMessagesResult.error,
     chatThreadsResult.error,
+    teamChatThreadsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -680,6 +775,7 @@ export async function fetchCompanyContext() {
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       membership: membershipResult.data,
       people: workforceSchemaReady ? (peopleResult.data ?? []).map(mapCompanyPerson) : [],
+      teamChatThreads: teamChatThreadsResult.data ?? [],
       unreadDriverMessages: unreadMessagesResult.count ?? 0,
       unreadDriverMessagesByDriverId,
       vehicleChecks: (checksResult.data ?? []).map(mapVehicleCheck),
@@ -895,6 +991,99 @@ export async function sendCompanyChatMessage({ attachment = null, body, companyI
   }
 }
 
+export async function fetchTeamChat({ companyId, threadId }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !threadId) return { data: { messages: [], thread: null }, error: null }
+
+  const [threadResult, messageResult] = await Promise.all([
+    supabase
+      .from('team_chat_threads')
+      .select(teamChatThreadSelect)
+      .eq('company_id', companyId)
+      .eq('id', threadId)
+      .maybeSingle(),
+    supabase
+      .from('team_chat_messages')
+      .select(teamChatMessageSelect)
+      .eq('company_id', companyId)
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true }),
+  ])
+
+  const error = threadResult.error || messageResult.error
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Per usare chat gruppi/reparti esegui il file SQL 31 in Supabase.' },
+    }
+  }
+  if (error) return { data: null, error }
+
+  return {
+    data: {
+      messages: (messageResult.data ?? []).map(mapTeamChatMessage),
+      thread: threadResult.data ? mapTeamChatThread(threadResult.data) : null,
+    },
+    error: null,
+  }
+}
+
+export async function sendTeamChatMessage({
+  attachment = null,
+  body,
+  companyId,
+  senderPersonId = '',
+  senderRole = 'company',
+  threadId,
+}) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !threadId) return { data: null, error: { message: 'Gruppo chat mancante.' } }
+
+  const uploadResult = await uploadChatAttachment({
+    attachment,
+    companyId,
+    threadId,
+  })
+
+  if (uploadResult.error) return { data: null, error: uploadResult.error }
+
+  const payload = {
+    attachment_path: uploadResult.data || null,
+    body,
+    company_id: companyId,
+    sender_person_id: senderPersonId || null,
+    sender_role: senderRole,
+    thread_id: threadId,
+  }
+
+  const { data, error } = await supabase
+    .from('team_chat_messages')
+    .insert(payload)
+    .select(teamChatMessageSelect)
+    .single()
+
+  if (error && uploadResult.data) {
+    await supabase.storage.from(companyAssetsBucket).remove([uploadResult.data])
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Per usare chat gruppi/reparti esegui il file SQL 31 in Supabase.' },
+    }
+  }
+
+  if (error) return { data: null, error }
+
+  return {
+    data: {
+      message: mapTeamChatMessage(data),
+      thread: { companyId, id: threadId },
+    },
+    error: null,
+  }
+}
+
 export async function updateChatMessageReaction(message, actorRole, reaction) {
   if (!isSupabaseConfigured || !message?.id || !['company', 'driver'].includes(actorRole)) {
     return { data: null, error: null }
@@ -1074,6 +1263,42 @@ export function subscribeToDriverChatMessages({ companyId, onMessage }) {
       },
       (payload) => {
         if (payload.new) onMessage?.(mapChatMessage(payload.new), payload)
+      },
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+export function subscribeToTeamChatMessages({ companyId, onMessage }) {
+  if (!isSupabaseConfigured || !companyId) return () => {}
+
+  const channel = supabase
+    .channel(`team-chat-messages-${companyId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'team_chat_messages',
+      },
+      (payload) => {
+        if (payload.new) onMessage?.(mapTeamChatMessage(payload.new), payload)
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'team_chat_threads',
+      },
+      (_payload) => {
+        onMessage?.(null, _payload)
       },
     )
     .subscribe()

@@ -25,6 +25,7 @@ export function CompanyChatScreen({
   chatThreads = [],
   companyLogoUrl,
   companyName,
+  currentUserRole = 'company',
   driverPhotoUrls = {},
   drivers = [],
   isLoading = false,
@@ -33,12 +34,17 @@ export function CompanyChatScreen({
   onReactToMessage,
   onRefresh,
   onSelectDriver,
+  onSelectTeamThread,
   onSend,
+  onSendTeamMessage,
   onTyping,
+  selectedTeamThread,
   selectedDriver,
   selectedDriverOnline = false,
   selectedDriverTyping = false,
   soundEnabled = true,
+  teamMessages = [],
+  teamThreads = [],
   unreadByDriverId = {},
 }) {
   const [isStartingNewChat, setIsStartingNewChat] = useState(false)
@@ -60,6 +66,43 @@ export function CompanyChatScreen({
     [drivers, threadByDriverId, unreadByDriverId],
   )
   const visibleDrivers = isStartingNewChat ? drivers : conversationDrivers
+
+  if (selectedTeamThread) {
+    return (
+      <View style={styles.chatWrap}>
+        <View style={styles.selectedBar}>
+          <Pressable
+            onPress={() => {
+              setIsStartingNewChat(false)
+              onBackToDrivers?.()
+            }}
+            style={styles.backButton}
+          >
+            <Text style={styles.backText}>Chat</Text>
+          </Pressable>
+          <View style={styles.selectedTitleWrap}>
+            <Text numberOfLines={1} style={styles.selectedTitle}>{selectedTeamThread.title}</Text>
+            <Text numberOfLines={1} style={styles.selectedSubtitle}>{getAudienceLabel(selectedTeamThread.audienceType)}</Text>
+          </View>
+        </View>
+        <ChatScreen
+          companyLogoUrl={companyLogoUrl}
+          companyName={selectedTeamThread.title}
+          companyOnline
+          currentUserRole={currentUserRole}
+          messages={teamMessages}
+          offlineLabel="gruppo"
+          onRefresh={onRefresh}
+          onSend={onSendTeamMessage}
+          onTyping={onTyping}
+          ownAvatarUrl={companyLogoUrl}
+          participantAvatarUrl={companyLogoUrl}
+          participantName={selectedTeamThread.title}
+          soundEnabled={soundEnabled}
+        />
+      </View>
+    )
+  }
 
   if (selectedDriver) {
     const driverPhotoUrl = driverPhotoUrls[selectedDriver.id] ?? ''
@@ -103,11 +146,11 @@ export function CompanyChatScreen({
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>Chat autisti</Text>
+        <Text style={styles.heroTitle}>Chat azienda</Text>
         <Text style={styles.heroText}>
           {isStartingNewChat
             ? 'Scegli un autista dall anagrafica e avvia la conversazione.'
-            : 'Qui trovi solo le conversazioni con messaggi gia presenti.'}
+            : 'Conversazioni attive, reparti e gruppi aziendali.'}
         </Text>
         <View style={styles.heroActions}>
           <Pressable
@@ -121,6 +164,22 @@ export function CompanyChatScreen({
           </Pressable>
         </View>
       </View>
+
+      {teamThreads.length ? (
+        <View style={styles.groupBlock}>
+          <Text style={styles.groupBlockTitle}>Gruppi e reparti</Text>
+          {teamThreads.map((thread) => (
+            <TeamChatRow
+              key={thread.id}
+              onPress={() => {
+                setIsStartingNewChat(false)
+                onSelectTeamThread?.(thread)
+              }}
+              thread={thread}
+            />
+          ))}
+        </View>
+      ) : null}
 
       {visibleDrivers.map((driver) => (
         <DriverChatRow
@@ -149,6 +208,19 @@ export function CompanyChatScreen({
   )
 }
 
+function getAudienceLabel(value = '') {
+  const labels = {
+    all: 'Tutta l azienda',
+    custom: 'Gruppo personalizzato',
+    direct: 'Chat diretta',
+    drivers: 'Autisti',
+    office: 'Ufficio',
+    warehouse: 'Magazzino',
+  }
+
+  return labels[value] ?? 'Gruppo'
+}
+
 function formatLastMessageDate(value) {
   if (!value) return 'Nessun messaggio'
   return new Intl.DateTimeFormat('it-IT', {
@@ -170,6 +242,29 @@ function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount =
       {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Text style={styles.openText}>Apri</Text>}
     </Pressable>
   )
+}
+
+function TeamChatRow({ onPress, thread }) {
+  return (
+    <Pressable onPress={onPress} style={styles.driverRow}>
+      <View style={styles.groupAvatar}>
+        <Ionicons color={colors.ink} name={getGroupIcon(thread.audienceType)} size={22} />
+      </View>
+      <View style={styles.driverCopy}>
+        <Text style={styles.driverName}>{thread.title}</Text>
+        <Text style={styles.driverMeta}>{getAudienceLabel(thread.audienceType)} · {formatLastMessageDate(thread.lastMessageAt)}</Text>
+      </View>
+      <Text style={styles.openText}>Apri</Text>
+    </Pressable>
+  )
+}
+
+function getGroupIcon(value = '') {
+  if (value === 'drivers') return 'bus-outline'
+  if (value === 'warehouse') return 'cube-outline'
+  if (value === 'office') return 'briefcase-outline'
+  if (value === 'all') return 'megaphone-outline'
+  return 'people-outline'
 }
 
 const styles = StyleSheet.create({
@@ -233,6 +328,24 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
     padding: 12,
+  },
+  groupAvatar: {
+    alignItems: 'center',
+    backgroundColor: colors.cyan,
+    borderRadius: 16,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  groupBlock: {
+    marginBottom: 14,
+  },
+  groupBlockTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 8,
+    marginLeft: 2,
   },
   emptyText: {
     color: colors.muted,
@@ -311,8 +424,16 @@ const styles = StyleSheet.create({
   },
   selectedTitle: {
     color: colors.ink,
-    flex: 1,
     fontSize: 15,
     fontWeight: '900',
+  },
+  selectedSubtitle: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  selectedTitleWrap: {
+    flex: 1,
   },
 })

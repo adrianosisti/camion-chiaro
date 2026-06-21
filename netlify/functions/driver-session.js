@@ -99,6 +99,37 @@ function mapDriverDocument(row) {
   }
 }
 
+function mapCompanyPerson(row = {}) {
+  return {
+    authEmail: row.auth_email ?? '',
+    companyId: row.company_id ?? '',
+    department: row.department ?? 'drivers',
+    depot: row.depot ?? '',
+    email: row.email ?? '',
+    id: row.id,
+    jobTitle: row.job_title ?? '',
+    linkedDriverId: row.linked_driver_id ?? '',
+    name: row.full_name ?? 'Persona',
+    personType: row.person_type ?? 'office',
+    phone: row.phone ?? '',
+    status: row.status ?? 'active',
+    username: row.username ?? '',
+  }
+}
+
+function mapTeamChatThread(row = {}) {
+  return {
+    audienceType: row.audience_type ?? 'custom',
+    companyId: row.company_id ?? '',
+    createdAt: row.created_at ?? '',
+    id: row.id,
+    lastMessageAt: row.last_message_at ?? '',
+    status: row.status ?? 'open',
+    threadType: row.thread_type ?? 'group',
+    title: row.title ?? 'Gruppo',
+  }
+}
+
 function mapVehicleCheck(row) {
   return {
     companyId: row.company_id,
@@ -244,6 +275,32 @@ async function findDriver(serviceClient, authUser) {
 }
 
 async function fetchDriverContext(serviceClient, driver) {
+  const personResult = await serviceClient
+    .from('company_people')
+    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .eq('company_id', driver.company_id)
+    .eq('linked_driver_id', driver.id)
+    .neq('status', 'archived')
+    .maybeSingle()
+
+  const currentPerson = personResult.data ? mapCompanyPerson(personResult.data) : null
+  let teamThreadIds = []
+
+  if (currentPerson?.id) {
+    const participantResult = await serviceClient
+      .from('team_chat_participants')
+      .select('thread_id')
+      .eq('company_id', driver.company_id)
+      .eq('person_id', currentPerson.id)
+      .is('left_at', null)
+
+    if (participantResult.error && !['42P01', '42703'].includes(participantResult.error.code)) {
+      return { data: null, error: participantResult.error }
+    }
+
+    teamThreadIds = (participantResult.data ?? []).map((entry) => entry.thread_id).filter(Boolean)
+  }
+
   const [
     companyResult,
     vehiclesResult,
@@ -251,6 +308,7 @@ async function fetchDriverContext(serviceClient, driver) {
     documentsResult,
     checksResult,
     faultsResult,
+    teamThreadsResult,
   ] = await Promise.all([
     fetchCompanyProfile(serviceClient, driver.company_id),
     serviceClient
@@ -281,15 +339,25 @@ async function fetchDriverContext(serviceClient, driver) {
       .eq('driver_id', driver.id)
       .order('created_at', { ascending: false })
       .limit(50),
+    teamThreadIds.length
+      ? serviceClient
+          .from('team_chat_threads')
+          .select('id, company_id, thread_type, audience_type, title, status, last_message_at, created_at')
+          .in('id', teamThreadIds)
+          .neq('status', 'archived')
+          .order('last_message_at', { ascending: false, nullsFirst: false })
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   const error =
+    (personResult.error && !['42P01', '42703'].includes(personResult.error.code) ? personResult.error : null) ||
     companyResult.error ||
     vehiclesResult.error ||
     complianceResult.error ||
     documentsResult.error ||
     checksResult.error ||
-    faultsResult.error
+    faultsResult.error ||
+    teamThreadsResult.error
 
   if (error) {
     return { data: null, error }
@@ -300,9 +368,12 @@ async function fetchDriverContext(serviceClient, driver) {
       companyId: driver.company_id,
       companyProfile: companyResult.data ? mapCompanyProfile(companyResult.data) : null,
       complianceItems: complianceResult.data.map(mapComplianceItem),
+      currentPerson,
       documents: documentsResult.data.map(mapDriverDocument),
       drivers: [mapDriver(driver)],
       faultReports: faultsResult.data.map(mapFaultReport),
+      people: currentPerson ? [currentPerson] : [],
+      teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),
       vehicleChecks: checksResult.data.map(mapVehicleCheck),
       vehicles: vehiclesResult.data.map(mapVehicle),
     },

@@ -17,11 +17,11 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { AuthScreen } from './src/screens/AuthScreen'
-import { ChatScreen } from './src/screens/ChatScreen'
 import { CompanyChatScreen } from './src/screens/CompanyChatScreen'
 import { CompanyHomeScreen } from './src/screens/CompanyHomeScreen'
 import { CompanyManagementScreen } from './src/screens/CompanyManagementScreen'
 import { DocumentsScreen } from './src/screens/DocumentsScreen'
+import { DriverChatHubScreen } from './src/screens/DriverChatHubScreen'
 import { HomeScreen } from './src/screens/HomeScreen'
 import { OperationsScreen } from './src/screens/OperationsScreen'
 import { SettingsScreen } from './src/screens/SettingsScreen'
@@ -38,6 +38,7 @@ import {
   fetchCompanyContext,
   fetchCompanyDriverChat,
   fetchDriverChat,
+  fetchTeamChat,
   fetchDriverContext,
   getCurrentSession,
   getSessionAccountType,
@@ -45,9 +46,11 @@ import {
   saveNativePushToken,
   sendChatMessage,
   sendCompanyChatMessage,
+  sendTeamChatMessage,
   sendPushNotification,
   signOutDriver,
   subscribeToDriverChatMessages,
+  subscribeToTeamChatMessages,
   subscribeToOperationalUpdates,
   subscribeToDriverPresence,
   updateChatMessageReaction,
@@ -193,11 +196,14 @@ export default function App() {
   const [chatThread, setChatThread] = useState(null)
   const [companyChatMessages, setCompanyChatMessages] = useState([])
   const [companyChatThread, setCompanyChatThread] = useState(null)
+  const [companyTeamChatMessages, setCompanyTeamChatMessages] = useState([])
   const [companyContext, setCompanyContext] = useState(null)
   const [companyDriverPhotoUrls, setCompanyDriverPhotoUrls] = useState({})
   const [context, setContext] = useState(null)
+  const [driverChatMode, setDriverChatMode] = useState('list')
   const [driverChatReadWatermark, setDriverChatReadWatermark] = useState(0)
   const [driverProfileUrl, setDriverProfileUrl] = useState('')
+  const [driverTeamChatMessages, setDriverTeamChatMessages] = useState([])
   const [isBooting, setIsBooting] = useState(true)
   const [isCompanyOnline, setIsCompanyOnline] = useState(false)
   const [isCompanyTyping, setIsCompanyTyping] = useState(false)
@@ -210,13 +216,16 @@ export default function App() {
   const [onlineDriverIds, setOnlineDriverIds] = useState([])
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
+  const [selectedCompanyTeamThreadId, setSelectedCompanyTeamThreadId] = useState('')
   const [selectedDailyVehicleId, setSelectedDailyVehicleId] = useState('')
+  const [selectedDriverTeamThreadId, setSelectedDriverTeamThreadId] = useState('')
   const [settingsReady, setSettingsReady] = useState(false)
   const companyPresenceRef = useRef(null)
   const companyTypingTimeoutRef = useRef(null)
   const presenceRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const activeTabRef = useRef(activeTab)
+  const driverChatModeRef = useRef(driverChatMode)
   const driverChatReadVersionRef = useRef(0)
   const nativePushPromptRef = useRef('')
 
@@ -229,6 +238,8 @@ export default function App() {
   const driverName = getDriverName(context)
   const headerSubtitle = accountType === 'company' ? t(language, 'accountAreaCompany') : driverName
   const selectedCompanyDriver = companyContext?.drivers?.find((currentDriver) => currentDriver.id === selectedCompanyDriverId) ?? null
+  const selectedCompanyTeamThread = companyContext?.teamChatThreads?.find((thread) => thread.id === selectedCompanyTeamThreadId) ?? null
+  const selectedDriverTeamThread = context?.teamChatThreads?.find((thread) => thread.id === selectedDriverTeamThreadId) ?? null
   const selectedCompanyDriverOnline = Boolean(selectedCompanyDriverId && onlineDriverIds.includes(selectedCompanyDriverId))
   const rawUnreadDriverMessages = useMemo(
     () => chatMessages.filter((message) => message.senderRole === 'company' && !message.readByDriverAt),
@@ -303,10 +314,10 @@ export default function App() {
     setCompanyDriverPhotoUrls(Object.fromEntries(entries))
   }
 
-  async function loadDriverChatData(targetDriver = driver, { markAsRead = activeTab === 'chat' } = {}) {
+  async function loadDriverChatData(targetDriver = driver, { markAsRead = activeTab === 'chat' && driverChatMode === 'company' } = {}) {
     if (!targetDriver?.companyId || !targetDriver?.id) return false
     const requestReadVersion = driverChatReadVersionRef.current
-    const shouldMarkAsRead = markAsRead || activeTabRef.current === 'chat'
+    const shouldMarkAsRead = markAsRead || (activeTabRef.current === 'chat' && driverChatModeRef.current === 'company')
 
     const chatResult = await fetchDriverChat({
       companyId: targetDriver.companyId,
@@ -331,10 +342,31 @@ export default function App() {
 
       setChatMessages(nextMessages)
       setChatThread(chatResult.data.thread)
-      if (driverChatReadVersionRef.current !== requestReadVersion || activeTabRef.current === 'chat') {
+      if (driverChatReadVersionRef.current !== requestReadVersion || (activeTabRef.current === 'chat' && driverChatModeRef.current === 'company')) {
         clearDriverUnreadMessages(nextMessages)
       }
       return true
+    }
+
+    return false
+  }
+
+  async function loadDriverTeamChatData(targetThread = selectedDriverTeamThread) {
+    const companyId = driver?.companyId || context?.companyProfile?.id
+    if (!companyId || !targetThread?.id) return false
+
+    const chatResult = await fetchTeamChat({
+      companyId,
+      threadId: targetThread.id,
+    })
+
+    if (chatResult.data) {
+      setDriverTeamChatMessages(chatResult.data.messages)
+      return true
+    }
+
+    if (chatResult.error) {
+      Alert.alert('Gruppo non caricato', chatResult.error.message)
     }
 
     return false
@@ -358,7 +390,7 @@ export default function App() {
     const loadedDriver = contextResult.data?.drivers?.[0]
 
     if (loadedDriver?.companyId && loadedDriver?.id) {
-      await loadDriverChatData(loadedDriver, { markAsRead: activeTab === 'chat' })
+      await loadDriverChatData(loadedDriver, { markAsRead: activeTab === 'chat' && driverChatMode === 'company' })
     }
 
     setAppStatus('')
@@ -443,6 +475,27 @@ export default function App() {
     return false
   }
 
+  async function loadCompanyTeamChatData(targetThread = selectedCompanyTeamThread) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !targetThread?.id) return false
+
+    const chatResult = await fetchTeamChat({
+      companyId,
+      threadId: targetThread.id,
+    })
+
+    if (chatResult.data) {
+      setCompanyTeamChatMessages(chatResult.data.messages)
+      return true
+    }
+
+    if (chatResult.error) {
+      Alert.alert('Gruppo non caricato', chatResult.error.message)
+    }
+
+    return false
+  }
+
   useEffect(() => {
     let isMounted = true
 
@@ -496,10 +549,11 @@ export default function App() {
 
   useEffect(() => {
     activeTabRef.current = activeTab
-    if (accountType === 'driver' && activeTab === 'chat') {
+    driverChatModeRef.current = driverChatMode
+    if (accountType === 'driver' && activeTab === 'chat' && driverChatMode === 'company') {
       clearDriverUnreadMessages()
     }
-  }, [accountType, activeTab])
+  }, [accountType, activeTab, driverChatMode])
 
   useEffect(() => {
     if (isBooting || !settingsReady || !session) return undefined
@@ -604,7 +658,7 @@ export default function App() {
       companyId: driver.companyId,
       onMessage: async () => {
         if (!isActive) return
-        await loadDriverChatData(driver, { markAsRead: activeTab === 'chat' })
+        await loadDriverChatData(driver, { markAsRead: activeTab === 'chat' && driverChatMode === 'company' })
       },
     })
 
@@ -612,7 +666,35 @@ export default function App() {
       isActive = false
       unsubscribe?.()
     }
-  }, [accountType, activeTab, driver?.companyId, driver?.id])
+  }, [accountType, activeTab, driver?.companyId, driver?.id, driverChatMode])
+
+  useEffect(() => {
+    if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
+
+    let isActive = true
+    const unsubscribe = subscribeToTeamChatMessages({
+      companyId: driver.companyId,
+      onMessage: async (message) => {
+        if (!isActive) return
+
+        if (activeTab === 'chat' && driverChatMode === 'team' && selectedDriverTeamThreadId && message?.threadId === selectedDriverTeamThreadId) {
+          await loadDriverTeamChatData(selectedDriverTeamThread)
+          return
+        }
+
+        if (message?.senderRole && message.senderRole !== 'driver') {
+          triggerHaptic('light')
+        }
+
+        await loadDriverData({ silent: true })
+      },
+    })
+
+    return () => {
+      isActive = false
+      unsubscribe?.()
+    }
+  }, [accountType, activeTab, driver?.companyId, driver?.id, driverChatMode, selectedDriverTeamThread?.id, selectedDriverTeamThreadId])
 
   useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
@@ -676,6 +758,35 @@ export default function App() {
     const companyId = companyContext?.companyProfile?.id
     if (accountType !== 'company' || !companyId) return undefined
 
+    let isActive = true
+    const unsubscribe = subscribeToTeamChatMessages({
+      companyId,
+      onMessage: async (message) => {
+        if (!isActive) return
+
+        if (activeTab === 'chat' && selectedCompanyTeamThreadId && message?.threadId === selectedCompanyTeamThreadId) {
+          await loadCompanyTeamChatData(selectedCompanyTeamThread)
+          return
+        }
+
+        if (message?.senderRole && message.senderRole !== 'company') {
+          triggerHaptic('light')
+        }
+
+        await loadCompanyData({ silent: true })
+      },
+    })
+
+    return () => {
+      isActive = false
+      unsubscribe?.()
+    }
+  }, [accountType, activeTab, companyContext?.companyProfile?.id, selectedCompanyTeamThread?.id, selectedCompanyTeamThreadId])
+
+  useEffect(() => {
+    const companyId = companyContext?.companyProfile?.id
+    if (accountType !== 'company' || !companyId) return undefined
+
     let refreshTimer = null
     function scheduleRefresh() {
       if (refreshTimer) clearTimeout(refreshTimer)
@@ -708,12 +819,12 @@ export default function App() {
   }, [accountType, companyContext?.companyProfile?.id])
 
   useEffect(() => {
-    if (accountType !== 'driver' || activeTab !== 'chat' || !driver?.companyId || !driver?.id) return
+    if (accountType !== 'driver' || activeTab !== 'chat' || driverChatMode !== 'company' || !driver?.companyId || !driver?.id) return
     void loadDriverChatData(driver, { markAsRead: true })
-  }, [accountType, activeTab, driver?.companyId, driver?.id])
+  }, [accountType, activeTab, driver?.companyId, driver?.id, driverChatMode])
 
   useEffect(() => {
-    if (accountType !== 'driver' || activeTab !== 'chat' || !chatThread?.id) return
+    if (accountType !== 'driver' || activeTab !== 'chat' || driverChatMode !== 'company' || !chatThread?.id) return
 
     const unreadCount = countUnreadMessagesForRole(chatMessages, 'driver')
     if (!unreadCount) return
@@ -726,7 +837,7 @@ export default function App() {
         setChatMessages((currentMessages) => mergeChatMessageUpdates(currentMessages, readResult.data))
       }
     })
-  }, [accountType, activeTab, chatMessages, chatThread?.id])
+  }, [accountType, activeTab, chatMessages, chatThread?.id, driverChatMode])
 
   useEffect(() => {
     if (accountType !== 'driver' || !driver?.id) {
@@ -758,9 +869,9 @@ export default function App() {
   }, [context?.vehicles, selectedDailyVehicleId])
 
   useEffect(() => {
-    if (accountType !== 'company' || activeTab !== 'chat' || !selectedCompanyDriver?.id) return
+    if (accountType !== 'company' || activeTab !== 'chat' || selectedCompanyTeamThreadId || !selectedCompanyDriver?.id) return
     void loadCompanyChatData(selectedCompanyDriver, { markAsRead: true })
-  }, [accountType, activeTab, selectedCompanyDriver?.id])
+  }, [accountType, activeTab, selectedCompanyDriver?.id, selectedCompanyTeamThreadId])
 
   useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
@@ -859,11 +970,14 @@ export default function App() {
     setAccountType('driver')
     setActiveTab('home')
     setChatMessages([])
+    setDriverChatMode('list')
     setChatThread(null)
+    setDriverTeamChatMessages([])
     setDriverChatReadWatermark(0)
     clearDriverUnreadMessages()
     setCompanyChatMessages([])
     setCompanyChatThread(null)
+    setCompanyTeamChatMessages([])
     setCompanyContext(null)
     setCompanyDriverPhotoUrls({})
     setContext(null)
@@ -874,7 +988,9 @@ export default function App() {
     setLogoUrl('')
     setOnlineDriverIds([])
     setSelectedCompanyDriverId('')
+    setSelectedCompanyTeamThreadId('')
     setSelectedDailyVehicleId('')
+    setSelectedDriverTeamThreadId('')
     setSession(null)
   }
 
@@ -941,13 +1057,24 @@ export default function App() {
     return true
   }
 
-  function openDriverChat() {
-    markDriverChatReadLocally()
+  function openDriverChat(mode = 'list') {
+    if (mode === 'company') {
+      markDriverChatReadLocally()
+    }
+    setDriverChatMode(mode)
+    setSelectedDriverTeamThreadId('')
+    setDriverTeamChatMessages([])
     setActiveTab('chat')
 
-    if (driver?.companyId && driver?.id) {
+    if (mode === 'company' && driver?.companyId && driver?.id) {
       void loadDriverChatData(driver, { markAsRead: true })
     }
+  }
+
+  function closeDriverChatDetail() {
+    setDriverChatMode('list')
+    setSelectedDriverTeamThreadId('')
+    setDriverTeamChatMessages([])
   }
 
   function resetDriverChatBadge() {
@@ -997,10 +1124,80 @@ export default function App() {
     return true
   }
 
+  async function handleSelectDriverTeamThread(nextThread) {
+    if (!nextThread?.id) return
+    setDriverChatMode('team')
+    setSelectedDriverTeamThreadId(nextThread.id)
+    await loadDriverTeamChatData(nextThread)
+  }
+
+  async function handleSendDriverTeamChatMessage(body, attachment = null) {
+    if (!driver || !selectedDriverTeamThread || (!body.trim() && !attachment?.uri)) return false
+
+    const currentPerson = context?.currentPerson
+    const senderRole = currentPerson?.department === 'warehouse'
+      ? 'warehouse'
+      : currentPerson?.department === 'office'
+        ? 'office'
+        : 'driver'
+
+    const result = await sendTeamChatMessage({
+      attachment,
+      body,
+      companyId: driver.companyId,
+      senderPersonId: currentPerson?.id ?? '',
+      senderRole,
+      threadId: selectedDriverTeamThread.id,
+    })
+
+    if (result.error) {
+      Alert.alert('Messaggio non inviato', result.error.message)
+      return false
+    }
+
+    if (result.data?.message) {
+      setDriverTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
+      triggerHaptic('light')
+      void notifyPhone({
+        body: body.trim() || (attachment?.uri ? 'Allegato nel gruppo.' : 'Nuovo messaggio.'),
+        notificationType: 'team_chat',
+        tag: `team-chat-${selectedDriverTeamThread.id}`,
+        targetRole: 'team',
+        threadId: selectedDriverTeamThread.id,
+        title: `${driver.name} · ${currentPerson?.jobTitle || driver.role || 'Autista'}`,
+        url: '/?view=chat',
+      })
+      setContext((currentContext) => {
+        if (!currentContext) return currentContext
+        return {
+          ...currentContext,
+          teamChatThreads: (currentContext.teamChatThreads ?? []).map((thread) => (
+            thread.id === selectedDriverTeamThread.id
+              ? { ...thread, lastMessageAt: result.data.message.createdAt }
+              : thread
+          )),
+        }
+      })
+    }
+
+    return true
+  }
+
   async function handleSelectCompanyDriver(nextDriver) {
     if (!nextDriver?.id) return
     setSelectedCompanyDriverId(nextDriver.id)
+    setSelectedCompanyTeamThreadId('')
+    setCompanyTeamChatMessages([])
     await loadCompanyChatData(nextDriver)
+  }
+
+  async function handleSelectCompanyTeamThread(nextThread) {
+    if (!nextThread?.id) return
+    setSelectedCompanyTeamThreadId(nextThread.id)
+    setSelectedCompanyDriverId('')
+    setCompanyChatMessages([])
+    setCompanyChatThread(null)
+    await loadCompanyTeamChatData(nextThread)
   }
 
   async function handleSendCompanyChatMessage(body, attachment = null) {
@@ -1050,6 +1247,51 @@ export default function App() {
           chatThreads: hasThread
             ? currentThreads.map((thread) => (thread.id === nextThread.id ? { ...thread, ...nextThread } : thread))
             : [nextThread, ...currentThreads],
+        }
+      })
+    }
+
+    return true
+  }
+
+  async function handleSendCompanyTeamChatMessage(body, attachment = null) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !selectedCompanyTeamThread || (!body.trim() && !attachment?.uri)) return false
+
+    const result = await sendTeamChatMessage({
+      attachment,
+      body,
+      companyId,
+      senderRole: 'company',
+      threadId: selectedCompanyTeamThread.id,
+    })
+
+    if (result.error) {
+      Alert.alert('Messaggio non inviato', result.error.message)
+      return false
+    }
+
+    if (result.data?.message) {
+      setCompanyTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
+      triggerHaptic('light')
+      void notifyPhone({
+        body: body.trim() || (attachment?.uri ? 'Allegato nel gruppo.' : 'Nuovo messaggio.'),
+        notificationType: 'team_chat',
+        tag: `team-chat-${selectedCompanyTeamThread.id}`,
+        targetRole: 'team',
+        threadId: selectedCompanyTeamThread.id,
+        title: companyName,
+        url: '/?view=chat',
+      })
+      setCompanyContext((currentContext) => {
+        if (!currentContext) return currentContext
+        return {
+          ...currentContext,
+          teamChatThreads: (currentContext.teamChatThreads ?? []).map((thread) => (
+            thread.id === selectedCompanyTeamThread.id
+              ? { ...thread, lastMessageAt: result.data.message.createdAt }
+              : thread
+          )),
         }
       })
     }
@@ -1400,25 +1642,33 @@ export default function App() {
             companyLogoUrl={logoUrl}
             companyName={companyName}
             chatThreads={companyContext?.chatThreads ?? []}
+            currentUserRole="company"
             driverPhotoUrls={companyDriverPhotoUrls}
             drivers={companyContext?.drivers ?? []}
             isLoading={isRefreshing}
             messages={companyChatMessages}
             onBackToDrivers={() => {
               setSelectedCompanyDriverId('')
+              setSelectedCompanyTeamThreadId('')
               setIsSelectedDriverTyping(false)
               setCompanyChatMessages([])
               setCompanyChatThread(null)
+              setCompanyTeamChatMessages([])
             }}
             onReactToMessage={handleReactToCompanyMessage}
-            onRefresh={() => loadCompanyChatData()}
+            onRefresh={() => (selectedCompanyTeamThread ? loadCompanyTeamChatData() : loadCompanyChatData())}
             onSelectDriver={handleSelectCompanyDriver}
+            onSelectTeamThread={handleSelectCompanyTeamThread}
             onSend={handleSendCompanyChatMessage}
+            onSendTeamMessage={handleSendCompanyTeamChatMessage}
             onTyping={handleCompanyTyping}
             selectedDriver={selectedCompanyDriver}
             selectedDriverOnline={selectedCompanyDriverOnline}
             selectedDriverTyping={isSelectedDriverTyping}
+            selectedTeamThread={selectedCompanyTeamThread}
             soundEnabled={chatSoundEnabled}
+            teamMessages={companyTeamChatMessages}
+            teamThreads={companyContext?.teamChatThreads ?? []}
             unreadByDriverId={companyContext?.unreadDriverMessagesByDriverId ?? {}}
           />
         )
@@ -1473,20 +1723,31 @@ export default function App() {
 
     if (activeTab === 'chat') {
       return (
-        <ChatScreen
+        <DriverChatHubScreen
+          chatThread={chatThread}
           companyName={companyName}
           companyOnline={isCompanyOnline}
           companyTyping={isCompanyTyping}
           companyLogoUrl={logoUrl}
+          currentPerson={context?.currentPerson}
           driverProfileUrl={driverProfileUrl}
           driverName={driverName}
-          language={language}
           messages={chatMessages}
+          onBackToList={closeDriverChatDetail}
+          onOpenCompanyChat={() => openDriverChat('company')}
+          onOpenTeamChat={handleSelectDriverTeamThread}
           onReactToMessage={handleReactToMessage}
-          onRefresh={() => loadDriverData({ silent: true })}
-          onSend={handleSendChatMessage}
+          onRefreshCompanyChat={() => loadDriverChatData(driver, { markAsRead: true })}
+          onRefreshTeamChat={() => loadDriverTeamChatData()}
+          onSendCompanyMessage={handleSendChatMessage}
+          onSendTeamMessage={handleSendDriverTeamChatMessage}
           onTyping={handleTyping}
+          selectedMode={driverChatMode}
+          selectedTeamThread={selectedDriverTeamThread}
           soundEnabled={chatSoundEnabled}
+          teamMessages={driverTeamChatMessages}
+          teamThreads={context?.teamChatThreads ?? []}
+          unreadCompanyMessages={unreadCompanyMessages}
         />
       )
     }
@@ -1543,7 +1804,7 @@ export default function App() {
         driverProfileUrl={driverProfileUrl}
         language={language}
         logoUrl={logoUrl}
-        onOpenChat={openDriverChat}
+        onOpenChat={() => openDriverChat('company')}
         onOpenDocuments={() => setActiveTab('documents')}
         onOpenOperations={() => setActiveTab('operations')}
         onOpenSettings={() => setActiveTab('settings')}

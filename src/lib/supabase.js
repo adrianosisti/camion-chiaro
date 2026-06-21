@@ -171,7 +171,10 @@ function mapVehicleCheck(row) {
     lightsOk: row.lights_ok,
     notes: row.notes ?? '',
     odometerKm: row.odometer_km,
+    resolvedAt: row.resolved_at ?? '',
+    resolvedBy: row.resolved_by ?? '',
     semitrailerId: row.semitrailer_id,
+    status: row.status ?? 'open',
     tiresOk: row.tires_ok,
     tractorId: row.tractor_id,
   }
@@ -700,19 +703,24 @@ export async function updateCompanyProfile(updates, companyId = configuredCompan
   return { data: data ? mapCompanyProfile(data) : null, error }
 }
 
-export async function fetchVehicles(companyId = configuredCompanyId) {
+export async function fetchVehicles(companyId = configuredCompanyId, options = {}) {
   const supabase = await getSupabaseClient()
 
   if (!supabase || !companyId) {
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('vehicles')
     .select('id, plate, model, type, fleet_type, km, status')
     .eq('company_id', companyId)
-    .neq('status', 'archived')
     .order('plate', { ascending: true })
+
+  if (!options.includeArchived) {
+    query = query.neq('status', 'archived')
+  }
+
+  const { data, error } = await query
 
   return { data: data?.map(mapVehicle) ?? null, error }
 }
@@ -875,6 +883,9 @@ export async function fetchVehicleChecks(companyId = configuredCompanyId) {
         tires_ok,
         documents_on_board,
         notes,
+        status,
+        resolved_at,
+        resolved_by,
         created_at
       `,
     )

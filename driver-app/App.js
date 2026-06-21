@@ -97,6 +97,8 @@ const companyTabs = [
   { id: 'settings', icon: 'settings-outline', label: 'Menu', labelKey: 'menu' },
 ]
 
+const camionChiaroIcon = require('./assets/brand/icon.png')
+
 function getDriverName(context) {
   return context?.drivers?.[0]?.name || 'Autista'
 }
@@ -1608,9 +1610,9 @@ export default function App() {
       <ExpoStatusBar style="light" />
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <View style={styles.headerIdentity}>
-          <View style={styles.headerLogo}>
-            {logoUrl ? <Image source={{ uri: logoUrl }} style={styles.headerLogoImage} /> : <Text style={styles.headerLogoText}>CC</Text>}
+          <View style={styles.headerIdentity}>
+            <View style={styles.headerLogo}>
+            <Image source={logoUrl ? { uri: logoUrl } : camionChiaroIcon} style={styles.headerLogoImage} />
           </View>
           <View>
             <Text style={styles.companyName}>{companyName}</Text>

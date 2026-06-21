@@ -18,7 +18,6 @@ import Download from 'lucide-react/dist/esm/icons/download.mjs'
 import ExternalLink from 'lucide-react/dist/esm/icons/external-link.mjs'
 import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
 import Filter from 'lucide-react/dist/esm/icons/filter.mjs'
-import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
 import Globe2 from 'lucide-react/dist/esm/icons/globe-2.mjs'
 import ImageIcon from 'lucide-react/dist/esm/icons/image.mjs'
 import KeyRound from 'lucide-react/dist/esm/icons/key-round.mjs'
@@ -49,6 +48,7 @@ import Volume2 from 'lucide-react/dist/esm/icons/volume-2.mjs'
 import VolumeX from 'lucide-react/dist/esm/icons/volume-x.mjs'
 import Wrench from 'lucide-react/dist/esm/icons/wrench.mjs'
 import X from 'lucide-react/dist/esm/icons/x.mjs'
+import camionChiaroIconUrl from '../driver-app/assets/brand/icon.png'
 import { company, complianceItems, driverDocuments, drivers, vehicles } from './data/sampleData'
 import { daysUntil, decorateComplianceWithWorkforce, formatDate, getSummary } from './lib/expiry'
 import {
@@ -311,7 +311,7 @@ const translations = {
     'hero.factNotifications': 'notifiche aperte',
     'hero.factVehicles': 'mezzi in flotta',
     'hero.newDeadline': 'Nuova scadenza',
-    'hero.openBell': 'Apri campanella',
+    'hero.openBell': 'Apri notifiche',
     'hero.priorityAria': 'Priorita di oggi',
     'hero.priorityCriticalDetail': 'check con anomalie da aprire',
     'hero.priorityCriticalLabel': 'Check critici',
@@ -4833,7 +4833,7 @@ function App() {
         fetchDrivers(companyId),
         fetchCompanyPeople(companyId),
         fetchCompanyAssets(companyId),
-        fetchVehicles(companyId),
+        fetchVehicles(companyId, { includeArchived: true }),
         fetchComplianceItems(companyId),
         fetchDriverDocuments(companyId),
         fetchDriverDocumentEvents(companyId),
@@ -6329,7 +6329,8 @@ function App() {
   }
 
   function openNewDeadlinePanel() {
-    setActiveView('dashboard')
+    setRecordsTab('documents')
+    setActiveView('records')
     window.setTimeout(() => {
       document.getElementById('new-deadline-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 0)
@@ -6411,6 +6412,7 @@ function App() {
         />
         {activeView === 'records' ? (
           <RecordsWorkspace
+            acknowledgedCheckIds={acknowledgedCheckIds}
             assetPreviewUrl={getAssetPreviewUrl}
             activeTab={recordsTab}
             assetRecords={assetRecords}
@@ -6418,7 +6420,9 @@ function App() {
             documentRecords={documentRecords}
             driverRecords={driverRecords}
             documentsSyncStatus={documentsSyncStatus}
+            faultReportRecords={visibleFaultReportRecords}
             onAddDriver={addDriverRecord}
+            onAddDeadline={addComplianceItem}
             onAddDocument={addDriverDocumentRecord}
             onArchiveDriver={archiveDriverRecord}
             onBackHome={openDashboardHome}
@@ -6438,6 +6442,7 @@ function App() {
             itemRecords={items}
             personRecords={personRecords}
             t={t}
+            vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
           />
         ) : activeView === 'notifications' ? (
@@ -6507,11 +6512,23 @@ function App() {
                 onOpenCriticalChecks={() => openNotifications('critical_checks')}
                 onOpenDeadlineWindow={() => openComplianceFilter('month')}
                 onOpenFaults={() => openNotifications('faults')}
-                onNewDeadline={openNewDeadlinePanel}
                 onOpenNotifications={() => openNotifications('inbox')}
                 openFaultCount={openFaultCount}
                 summary={summary}
                 t={t}
+              />
+              <DashboardActivityFeed
+                acknowledgedCheckIds={acknowledgedCheckIds}
+                assetPreviewUrl={getAssetPreviewUrl}
+                driverRecords={driverRecords}
+                faultReportRecords={visibleFaultReportRecords}
+                items={decoratedItems}
+                onAcknowledgeCheck={acknowledgeCheck}
+                onMarkCheckUnread={markCheckUnread}
+                onOpenDeadline={setSelectedDeadline}
+                onUpdateFaultStatus={updateFaultReportStatus}
+                vehicleCheckRecords={vehicleCheckRecords}
+                vehicleRecords={vehicleRecords}
               />
               <OnboardingPanel
                 activeDriverCount={activeDriverCount}
@@ -6549,12 +6566,6 @@ function App() {
                     markRenewing(itemId)
                     setSelectedDeadline(null)
                   }}
-                />
-                <FleetAndForms
-                  driverRecords={driverRecords}
-                  onAdd={addComplianceItem}
-                  onBackHome={openDashboardHome}
-                  vehicleRecords={vehicleRecords}
                 />
               </div>
             </section>
@@ -7599,24 +7610,7 @@ function TopbarNotifications({
 
 function CamionChiaroMark() {
   return (
-    <svg className="camion-logo-mark" viewBox="0 0 72 72" role="img" aria-label="Camion Chiaro">
-      <rect width="72" height="72" rx="16" fill="#020617" />
-      <path
-        d="M10 50c13-3 17-16 27-20 9-4 17-1 25-8"
-        fill="none"
-        stroke="#12c6df"
-        strokeLinecap="round"
-        strokeWidth="7"
-      />
-      <rect x="13" y="31" width="33" height="15" rx="4" fill="#12c6df" />
-      <path d="M46 34h9l7 8v4H46z" fill="#7dd3fc" />
-      <path d="M18 37h20" stroke="#ffffff" strokeLinecap="round" strokeWidth="3" />
-      <circle cx="24" cy="50" r="5.5" fill="#ffffff" />
-      <circle cx="24" cy="50" r="2.4" fill="#020617" />
-      <circle cx="52" cy="50" r="5.5" fill="#ffffff" />
-      <circle cx="52" cy="50" r="2.4" fill="#020617" />
-      <path d="M54 15l2.1 4.5 4.9 1.6-4.9 1.7L54 28l-2.1-4.2-4.9-1.7 4.9-1.6z" fill="#ffffff" />
-    </svg>
+    <img className="camion-logo-mark" src={camionChiaroIconUrl} alt="Camion Chiaro" />
   )
 }
 
@@ -8173,7 +8167,6 @@ function HeroPanel({
   onOpenCriticalChecks,
   onOpenDeadlineWindow,
   onOpenFaults,
-  onNewDeadline,
   onOpenNotifications,
   openFaultCount,
   summary,
@@ -8233,10 +8226,6 @@ function HeroPanel({
           </div>
         </div>
         <div className="hero-actions">
-          <button className="primary-button" onClick={onNewDeadline} type="button">
-            <Plus size={17} />
-            {t('hero.newDeadline')}
-          </button>
           <button className="ghost-button" onClick={onOpenNotifications} type="button">
             <Bell size={17} />
             {t('hero.openBell')}
@@ -8267,8 +8256,162 @@ function HeroPanel({
   )
 }
 
+function DashboardActivityFeed({
+  acknowledgedCheckIds = [],
+  assetPreviewUrl = () => '',
+  driverRecords = [],
+  faultReportRecords = [],
+  items = [],
+  onAcknowledgeCheck,
+  onMarkCheckUnread,
+  onOpenDeadline,
+  onUpdateFaultStatus,
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+}) {
+  const { t } = useI18n()
+  const [modalOperationKey, setModalOperationKey] = useState('')
+  const operations = useMemo(
+    () => [
+      ...faultReportRecords.map((report) => ({
+        createdAt: report.createdAt,
+        data: report,
+        id: report.id,
+        kind: 'fault',
+      })),
+      ...vehicleCheckRecords.map((check) => ({
+        createdAt: check.createdAt,
+        data: check,
+        id: check.id,
+        kind: 'check',
+      })),
+    ],
+    [faultReportRecords, vehicleCheckRecords],
+  )
+  const events = useMemo(() => {
+    const deadlineEvents = items
+      .filter((item) => item.dueDate && !['archived', 'done'].includes(item.status) && item.urgency.days <= 30)
+      .sort((first, second) => first.urgency.days - second.urgency.days)
+      .slice(0, 5)
+      .map((item) => ({
+        action: () => onOpenDeadline?.(item),
+        detail: `${item.assignee} · ${formatDate(item.dueDate)}`,
+        icon: CalendarClock,
+        id: `deadline-${item.id}`,
+        priority: ['expired', 'critical'].includes(item.urgency.key) ? 3 : item.urgency.days <= 7 ? 2 : 1,
+        sortAt: new Date(item.dueDate).getTime(),
+        status: getUrgencyLabel(item.urgency, t),
+        title: item.type,
+        tone: item.urgency.tone,
+        type: 'Scadenza',
+      }))
+
+    const operationEvents = operations
+      .slice()
+      .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))
+      .slice(0, 8)
+      .map((operation) => {
+        if (operation.kind === 'fault') {
+          const report = operation.data
+          const driver = driverRecords.find((entry) => entry.id === report.driverId)
+          const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
+          const isRead = isFaultArchived(report)
+          const isCritical = ['high', 'stop_vehicle'].includes(report.severity) && !isRead
+
+          return {
+            action: () => setModalOperationKey(`${operation.kind}-${operation.id}`),
+            detail: `${driver?.name ?? t('common.driverMissing')} · ${vehicle?.plate ?? t('common.vehicleMissing')}`,
+            icon: Wrench,
+            id: `${operation.kind}-${operation.id}`,
+            priority: isCritical ? 3 : isRead ? 0 : 2,
+            sortAt: new Date(report.createdAt).getTime(),
+            status: isRead ? t('common.archived') : getFaultSeverityLabel(report.severity, t),
+            title: report.title,
+            tone: isCritical ? 'danger' : isRead ? 'info' : 'warning',
+            type: t('operations.fault'),
+          }
+        }
+
+        const check = operation.data
+        const driver = driverRecords.find((entry) => entry.id === check.driverId)
+        const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
+        const isRead = acknowledgedCheckIds.includes(check.id) || check.status === 'resolved'
+        const isCritical = hasCheckIssues(check)
+
+        return {
+          action: () => setModalOperationKey(`${operation.kind}-${operation.id}`),
+          detail: `${driver?.name ?? t('common.driverMissing')} · ${vehicle?.plate ?? t('common.vehicleMissing')} · ${formatShortDateTime(check.createdAt)}`,
+          icon: ClipboardCheck,
+          id: `${operation.kind}-${operation.id}`,
+          priority: isCritical && !isRead ? 3 : isRead ? 0 : 1,
+          sortAt: new Date(check.createdAt).getTime(),
+          status: isCritical ? t('operations.checkCritical') : 'Tutto ok',
+          title: isCritical ? 'Check con criticita' : 'Check mattutino ricevuto',
+          tone: isCritical ? 'danger' : 'success',
+          type: t('operations.check'),
+        }
+      })
+
+    return [...deadlineEvents, ...operationEvents]
+      .sort((first, second) => {
+        if (first.priority !== second.priority) return second.priority - first.priority
+        return second.sortAt - first.sortAt
+      })
+      .slice(0, 10)
+  }, [acknowledgedCheckIds, driverRecords, items, onOpenDeadline, operations, t, vehicleRecords])
+  const modalOperation = operations.find((operation) => `${operation.kind}-${operation.id}` === modalOperationKey)
+
+  return (
+    <section className="panel activity-feed-panel" aria-label="Registro operativo azienda">
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">Registro operativo</p>
+          <h2>Novita da gestire</h2>
+        </div>
+        <Bell size={20} />
+      </div>
+      <div className="activity-feed-list">
+        {events.map((event) => (
+          <button className="activity-feed-row" key={event.id} onClick={event.action} type="button">
+            <span className={`operation-icon tone-${event.tone}`}>
+              <event.icon size={18} />
+            </span>
+            <span>
+              <small>{event.type}</small>
+              <strong>{event.title}</strong>
+              <em>{event.detail}</em>
+            </span>
+            <b className={`status-pill tone-${event.tone}`}>{event.status}</b>
+          </button>
+        ))}
+        {events.length === 0 && (
+          <div className="empty-state-row">
+            <Bell size={20} />
+            <div>
+              <strong>Nessuna novita operativa</strong>
+              <span>Check, guasti e scadenze importanti compariranno qui.</span>
+            </div>
+          </div>
+        )}
+      </div>
+      <OperationDetailModal
+        acknowledgedCheckIds={acknowledgedCheckIds}
+        assetPreviewUrl={assetPreviewUrl}
+        driverRecords={driverRecords}
+        operation={modalOperation}
+        onAcknowledgeCheck={onAcknowledgeCheck}
+        onClose={() => setModalOperationKey('')}
+        onMarkCheckUnread={onMarkCheckUnread}
+        onUpdateFaultStatus={onUpdateFaultStatus}
+        vehicleRecords={vehicleRecords}
+      />
+    </section>
+  )
+}
+
 function RecordsWorkspace({
   activeTab,
+  acknowledgedCheckIds = [],
   assetPreviewUrl,
   assetRecords = [],
   documentEvents,
@@ -8277,7 +8420,9 @@ function RecordsWorkspace({
   documentsSyncStatus,
   driversSyncStatus,
   fleetSyncStatus,
+  faultReportRecords = [],
   onAddDriver,
+  onAddDeadline,
   onAddDocument,
   onAddVehicle,
   onArchiveDriver,
@@ -8295,6 +8440,7 @@ function RecordsWorkspace({
   itemRecords = [],
   personRecords = [],
   t,
+  vehicleCheckRecords = [],
   vehicleRecords,
 }) {
   const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
@@ -8302,6 +8448,10 @@ function RecordsWorkspace({
   const activePeople = personRecords.filter((person) => !['archived', 'Archiviato'].includes(person.status))
   const activeAssets = assetRecords.filter((asset) => !['archived', 'Archiviato'].includes(asset.status))
   const staffPeople = activePeople.filter((person) => person.department !== 'drivers')
+  const archivedDrivers = driverRecords.filter((driver) => driver.status === 'Archiviato')
+  const archivedVehicles = vehicleRecords.filter((vehicle) => vehicle.status === 'Archiviato')
+  const archivedFaults = faultReportRecords.filter(isFaultArchived)
+  const archivedChecks = vehicleCheckRecords.filter((check) => acknowledgedCheckIds.includes(check.id) || check.status === 'resolved')
   const tabs = [
     {
       count: staffPeople.length + activeAssets.length,
@@ -8330,6 +8480,13 @@ function RecordsWorkspace({
       id: 'documents',
       label: t('records.documentsLabel'),
       text: t('records.documentsText'),
+    },
+    {
+      count: archivedDrivers.length + archivedVehicles.length + archivedFaults.length + archivedChecks.length,
+      icon: Clock3,
+      id: 'archive',
+      label: t('operations.archived'),
+      text: 'Storico consultabile di persone, mezzi, check e guasti',
     },
   ]
 
@@ -8370,18 +8527,31 @@ function RecordsWorkspace({
           itemRecords={itemRecords}
           personRecords={personRecords}
         />
+      ) : activeTab === 'archive' ? (
+        <ArchiveWorkspace
+          acknowledgedCheckIds={acknowledgedCheckIds}
+          documentEvents={documentEvents}
+          documentRecords={documentRecords}
+          driverRecords={driverRecords}
+          faultReportRecords={faultReportRecords}
+          vehicleCheckRecords={vehicleCheckRecords}
+          vehicleRecords={vehicleRecords}
+        />
       ) : activeTab === 'documents' ? (
         <DocumentsWorkspace
           documentEvents={documentEvents}
           documentRecords={documentRecords}
           driverRecords={driverRecords}
+          onAddDeadline={onAddDeadline}
           onAddDocument={onAddDocument}
+          onBackHome={onBackHome}
           onDriverDocumentUpload={onDriverDocumentUpload}
           onOpenDriverDocument={onOpenDriverDocument}
           onRemoveDocument={onRemoveDocument}
           onRemoveDocumentFile={onRemoveDocumentFile}
           onUpdateDocument={onUpdateDocument}
           syncStatus={documentsSyncStatus}
+          vehicleRecords={vehicleRecords}
         />
       ) : activeTab === 'fleet' ? (
         <FleetWorkspace
@@ -8407,6 +8577,287 @@ function RecordsWorkspace({
         />
       )}
     </section>
+  )
+}
+
+function ArchiveWorkspace({
+  acknowledgedCheckIds = [],
+  documentEvents = [],
+  documentRecords = [],
+  driverRecords = [],
+  faultReportRecords = [],
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+}) {
+  const { t } = useI18n()
+  const [selectedArchiveKey, setSelectedArchiveKey] = useState('')
+  const archivedDrivers = driverRecords.filter((driver) => driver.status === 'Archiviato')
+  const archivedVehicles = vehicleRecords.filter((vehicle) => vehicle.status === 'Archiviato')
+  const archivedFaults = faultReportRecords.filter(isFaultArchived)
+  const archivedChecks = vehicleCheckRecords.filter((check) => acknowledgedCheckIds.includes(check.id) || check.status === 'resolved')
+  const archivedOperations = [
+    ...archivedFaults.map((report) => ({
+      createdAt: report.updatedAt || report.createdAt,
+      data: report,
+      id: report.id,
+      kind: 'fault',
+    })),
+    ...archivedChecks.map((check) => ({
+      createdAt: check.resolvedAt || check.createdAt,
+      data: check,
+      id: check.id,
+      kind: 'check',
+    })),
+  ].sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))
+  const selectedArchiveOperation =
+    archivedOperations.find((operation) => `${operation.kind}-${operation.id}` === selectedArchiveKey) ??
+    archivedOperations[0] ??
+    null
+  const recentDocumentEvents = documentEvents.slice(0, 8)
+
+  return (
+    <section className="archive-workspace" aria-label="Archivio azienda">
+      <div className="archive-main">
+        <div className="panel archive-panel">
+          <div className="panel-header">
+            <div>
+              <p className="overline">{t('records.overline')}</p>
+              <h2>{t('operations.archived')}</h2>
+            </div>
+            <Clock3 size={22} />
+          </div>
+          <div className="archive-summary-grid">
+            <div>
+              <strong>{archivedDrivers.length}</strong>
+              <span>Autisti</span>
+            </div>
+            <div>
+              <strong>{archivedVehicles.length}</strong>
+              <span>Mezzi</span>
+            </div>
+            <div>
+              <strong>{archivedFaults.length}</strong>
+              <span>Guasti chiusi</span>
+            </div>
+            <div>
+              <strong>{archivedChecks.length}</strong>
+              <span>Check visti</span>
+            </div>
+          </div>
+
+          <div className="archive-section-grid">
+            <ArchiveListSection title="Autisti archiviati" emptyText="Nessun autista archiviato.">
+              {archivedDrivers.map((driver) => (
+                <article className="archive-list-row" key={driver.id}>
+                  <div>
+                    <strong>{driver.name}</strong>
+                    <span>{[driver.phone, driver.role, driver.depot].filter(Boolean).join(' · ') || 'Dati non indicati'}</span>
+                  </div>
+                  <span className="status-pill tone-info">{t('common.archived')}</span>
+                </article>
+              ))}
+            </ArchiveListSection>
+
+            <ArchiveListSection title="Mezzi archiviati" emptyText="Nessun mezzo archiviato.">
+              {archivedVehicles.map((vehicle) => (
+                <article className="archive-list-row" key={vehicle.id}>
+                  <div>
+                    <strong>{vehicle.plate}</strong>
+                    <span>{[getFleetTypeLabel(vehicle.fleetType, t), vehicle.model, vehicle.type].filter(Boolean).join(' · ') || 'Mezzo'}</span>
+                  </div>
+                  <span className="status-pill tone-info">{t('common.archived')}</span>
+                </article>
+              ))}
+            </ArchiveListSection>
+          </div>
+
+          <ArchiveListSection title="Guasti e check archiviati" emptyText="Nessun guasto o check archiviato.">
+            {archivedOperations.map((operation) => {
+              const isFault = operation.kind === 'fault'
+              const driver = driverRecords.find((entry) => entry.id === operation.data.driverId)
+              const vehicle = vehicleRecords.find((entry) =>
+                entry.id === (isFault ? operation.data.vehicleId : operation.data.tractorId),
+              )
+              const title = isFault ? operation.data.title : t('driverApp.morningCheck')
+              const detail = [
+                driver?.name ?? t('common.driverMissing'),
+                vehicle?.plate ?? t('common.vehicleMissing'),
+                formatShortDateTime(operation.createdAt),
+              ].join(' · ')
+
+              return (
+                <button
+                  className={selectedArchiveOperation?.id === operation.id && selectedArchiveOperation?.kind === operation.kind ? 'archive-operation-row is-active' : 'archive-operation-row'}
+                  key={`${operation.kind}-${operation.id}`}
+                  onClick={() => setSelectedArchiveKey(`${operation.kind}-${operation.id}`)}
+                  type="button"
+                >
+                  <span className={isFault ? 'operation-icon tone-danger' : 'operation-icon tone-info'}>
+                    {isFault ? <Wrench size={17} /> : <ClipboardCheck size={17} />}
+                  </span>
+                  <span>
+                    <strong>{title}</strong>
+                    <small>{detail}</small>
+                  </span>
+                  <ChevronRight size={16} />
+                </button>
+              )
+            })}
+          </ArchiveListSection>
+
+          <ArchiveListSection title="Movimenti documenti" emptyText="Nessun movimento documento registrato.">
+            {recentDocumentEvents.map((event) => {
+              const driver = driverRecords.find((driverRecord) => driverRecord.id === event.driverId)
+
+              return (
+                <article className="archive-list-row" key={event.id}>
+                  <div>
+                    <strong>{getDocumentTypeLabel(event.documentType, t)}</strong>
+                    <span>
+                      {driver?.name ?? t('common.driverMissing')} · {documentEventLabels[event.eventType] ?? event.eventType}
+                    </span>
+                  </div>
+                  <small>{formatShortDateTime(event.createdAt)}</small>
+                </article>
+              )
+            })}
+          </ArchiveListSection>
+        </div>
+      </div>
+      <ArchiveDetailPanel
+        acknowledgedCheckIds={acknowledgedCheckIds}
+        documentRecords={documentRecords}
+        driverRecords={driverRecords}
+        operation={selectedArchiveOperation}
+        vehicleRecords={vehicleRecords}
+      />
+    </section>
+  )
+}
+
+function ArchiveListSection({ children, emptyText, title }) {
+  const hasContent = Boolean(Array.isArray(children) ? children.length : children)
+
+  return (
+    <section className="archive-list-section">
+      <div className="archive-list-title">
+        <strong>{title}</strong>
+      </div>
+      <div className="archive-list">
+        {hasContent ? children : <p className="archive-note">{emptyText}</p>}
+      </div>
+    </section>
+  )
+}
+
+function ArchiveDetailPanel({
+  acknowledgedCheckIds = [],
+  documentRecords = [],
+  driverRecords = [],
+  operation,
+  vehicleRecords = [],
+}) {
+  const { t } = useI18n()
+
+  if (!operation) {
+    return (
+      <aside className="panel archive-detail-panel">
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">{t('operations.detail')}</p>
+            <h2>Archivio</h2>
+          </div>
+          <Clock3 size={20} />
+        </div>
+        <p className="operation-detail-empty">Seleziona un elemento archiviato per rivederne i dettagli.</p>
+      </aside>
+    )
+  }
+
+  if (operation.kind === 'fault') {
+    const report = operation.data
+    const driver = driverRecords.find((entry) => entry.id === report.driverId)
+    const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
+    const trailer = vehicleRecords.find((entry) => entry.id === report.semitrailerId)
+
+    return (
+      <aside className="panel archive-detail-panel">
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">{t('operations.fault')}</p>
+            <h2>{report.title}</h2>
+          </div>
+          <Wrench size={20} />
+        </div>
+        <div className="operation-detail-body">
+          <DetailLine label={t('common.status')} value={getFaultStatusLabel(report.status, t)} />
+          <DetailLine label={t('fault.severity')} value={getFaultSeverityLabel(report.severity, t)} />
+          <DetailLine label={t('common.driver')} value={driver?.name ?? t('common.driverMissing')} />
+          <DetailLine label={t('common.vehicle')} value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : t('common.vehicleMissing')} />
+          {trailer && <DetailLine label={t('common.trailer')} value={`${trailer.plate} · ${trailer.model}`} />}
+          <DetailLine label={t('operations.created')} value={formatShortDateTime(report.createdAt)} />
+          <DetailLine label={t('operations.updated')} value={formatShortDateTime(report.updatedAt)} />
+          {report.description && (
+            <div className="detail-note">
+              <strong>{t('fault.description')}</strong>
+              <p>{report.description}</p>
+            </div>
+          )}
+        </div>
+      </aside>
+    )
+  }
+
+  const check = operation.data
+  const driver = driverRecords.find((entry) => entry.id === check.driverId)
+  const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
+  const trailer = vehicleRecords.find((entry) => entry.id === check.semitrailerId)
+  const issueText = getCheckIssues(check, t)
+  const relatedDocuments = documentRecords.filter((document) => document.driverId === check.driverId).slice(0, 4)
+
+  return (
+    <aside className="panel archive-detail-panel">
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">{t('operations.check')}</p>
+          <h2>{t('driverApp.morningCheck')}</h2>
+        </div>
+        <ClipboardCheck size={20} />
+      </div>
+      <div className="operation-detail-body">
+        <DetailLine
+          label={t('common.status')}
+          value={check.status === 'resolved' || acknowledgedCheckIds.includes(check.id) ? t('common.archived') : t('operations.inbox')}
+        />
+        <DetailLine label={t('common.driver')} value={driver?.name ?? t('common.driverMissing')} />
+        <DetailLine label={t('common.vehicle')} value={vehicle ? `${vehicle.plate} · ${vehicle.model}` : t('common.vehicleMissing')} />
+        {trailer && <DetailLine label={t('common.trailer')} value={`${trailer.plate} · ${trailer.model}`} />}
+        <DetailLine label={t('common.time')} value={formatShortDateTime(check.createdAt)} />
+        {check.resolvedAt && <DetailLine label="Risolto il" value={formatShortDateTime(check.resolvedAt)} />}
+        {check.odometerKm && <DetailLine label="Km" value={`${check.odometerKm.toLocaleString('it-IT')} km`} />}
+        <DetailLine label={t('operations.lights')} value={check.lightsOk ? 'Ok' : t('vehicleStatus.watch')} />
+        <DetailLine label={t('operations.tires')} value={check.tiresOk ? 'Ok' : t('vehicleStatus.watch')} />
+        <DetailLine label={t('operations.documentsOnBoard')} value={check.documentsOnBoard ? t('operations.present') : t('operations.missing')} />
+        {issueText.length > 0 && (
+          <div className="detail-note is-critical">
+            <strong>{t('operations.checkIssues')}</strong>
+            <p>{issueText.join(' · ')}</p>
+          </div>
+        )}
+        {check.notes && (
+          <div className="detail-note">
+            <strong>{t('common.notes')}</strong>
+            <p>{check.notes}</p>
+          </div>
+        )}
+        {relatedDocuments.length > 0 && (
+          <div className="detail-note">
+            <strong>Documenti autista</strong>
+            <p>{relatedDocuments.map((document) => getDocumentTypeLabel(document.type, t)).join(' · ')}</p>
+          </div>
+        )}
+      </div>
+    </aside>
   )
 }
 
@@ -9243,13 +9694,16 @@ function DocumentsWorkspace({
   documentEvents = [],
   documentRecords,
   driverRecords,
+  onAddDeadline,
   onAddDocument,
+  onBackHome,
   onDriverDocumentUpload,
   onOpenDriverDocument,
   onRemoveDocument,
   onRemoveDocumentFile,
   onUpdateDocument,
   syncStatus,
+  vehicleRecords = [],
 }) {
   const { t } = useI18n()
   const [editingId, setEditingId] = useState(null)
@@ -9358,11 +9812,19 @@ function DocumentsWorkspace({
         </div>
         <DocumentHistoryPanel documentEvents={documentEvents} driverRecords={driverRecords} />
       </div>
-      <DocumentCreatePanel
-        driverRecords={driverRecords}
-        onAddDocument={onAddDocument}
-        onDriverDocumentUpload={onDriverDocumentUpload}
-      />
+      <div className="documents-side-column">
+        <DocumentCreatePanel
+          driverRecords={driverRecords}
+          onAddDocument={onAddDocument}
+          onDriverDocumentUpload={onDriverDocumentUpload}
+        />
+        <AddDeadlineForm
+          driverRecords={driverRecords}
+          onAdd={onAddDeadline}
+          onBackHome={onBackHome}
+          vehicleRecords={vehicleRecords}
+        />
+      </div>
     </section>
   )
 }
@@ -11451,76 +11913,6 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onRenew }) {
         </div>
       </section>
     </div>
-  )
-}
-
-function FleetAndForms({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
-  const { t } = useI18n()
-
-  return (
-    <section className="lower-grid" aria-label={t('fleet.managementAria')}>
-      <FleetStatus driverRecords={driverRecords} vehicleRecords={vehicleRecords} />
-      <AddDeadlineForm driverRecords={driverRecords} onAdd={onAdd} onBackHome={onBackHome} vehicleRecords={vehicleRecords} />
-    </section>
-  )
-}
-
-function FleetStatus({ driverRecords, vehicleRecords }) {
-  const { t } = useI18n()
-  const activeVehicleRecords = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato')
-  const fleetGroups = [
-    { label: t('fleetType.furgonePlural'), value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'furgone').length },
-    { label: t('fleetType.motricePlural'), value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'motrice').length },
-    { label: t('fleetType.trattorePlural'), value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'trattore').length },
-    { label: t('fleetType.semirimorchioPlural'), value: activeVehicleRecords.filter((vehicle) => vehicle.fleetType === 'semirimorchio').length },
-  ]
-
-  return (
-    <article className="panel fleet-panel">
-      <div className="panel-header compact">
-        <div>
-          <p className="overline">{t('fleet.title')}</p>
-          <h2>{t('fleet.assignedVehicles')}</h2>
-        </div>
-        <Gauge size={20} />
-      </div>
-      <div className="fleet-type-grid">
-        {fleetGroups.map((group) => (
-          <div key={group.label}>
-            <strong>{group.value}</strong>
-            <span>{group.label}</span>
-          </div>
-        ))}
-      </div>
-      <div className="vehicle-list">
-        {activeVehicleRecords.map((vehicle) => {
-          const assignedDriver = driverRecords.find((driver) => driver.vehicleId === vehicle.id)
-          return (
-            <div className="vehicle-row" key={vehicle.id}>
-              <div>
-                <strong>{vehicle.plate}</strong>
-                <span>
-                  {vehicle.model} · {vehicle.type}
-                </span>
-              </div>
-              <div>
-                <small>{assignedDriver?.name ?? t('drivers.assignedNone')}</small>
-                <small>{vehicle.km.toLocaleString('it-IT')} km</small>
-              </div>
-            </div>
-          )
-        })}
-        {activeVehicleRecords.length === 0 && (
-          <div className="empty-state-row">
-            <Truck size={20} />
-            <div>
-              <strong>{t('fleet.noFleetTitle')}</strong>
-              <span>{t('fleet.empty')}</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </article>
   )
 }
 

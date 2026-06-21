@@ -51,7 +51,32 @@
       "expo-image-picker",
       "expo-media-library",
       "expo-notifications",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsText": true,
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
+            "NSExtensionActivationSupportsImageWithMaxCount": 10,
+            "NSExtensionActivationSupportsMovieWithMaxCount": 5,
+            "NSExtensionActivationSupportsFileWithMaxCount": 10
+          },
+          "iosShareExtensionName": "Camion Chiaro",
+          "androidIntentFilters": [
+            "text/*",
+            "image/*",
+            "video/*",
+            "*/*"
+          ],
+          "androidMultiIntentFilters": [
+            "image/*",
+            "video/*",
+            "*/*"
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {

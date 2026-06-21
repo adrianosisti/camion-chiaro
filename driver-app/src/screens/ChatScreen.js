@@ -232,21 +232,40 @@ function getAttachmentKind(path = '') {
   return path ? 'file' : ''
 }
 
+function getPendingAttachmentKind(asset = {}) {
+  const kind = asset.kind || asset.type
+  const mimeType = String(asset.mimeType ?? asset.type ?? '').toLowerCase()
+  const fileName = String(asset.fileName ?? asset.name ?? asset.uri ?? '').toLowerCase()
+
+  if (kind === 'video' || mimeType.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(fileName)) return 'video'
+  if (kind === 'audio' || mimeType.startsWith('audio/') || /\.(m4a|aac|mp3|mpeg|ogg|opus|wav)$/i.test(fileName)) return 'audio'
+  if (kind === 'image' || mimeType.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(fileName)) return 'image'
+  return 'file'
+}
+
 function createPendingAttachment(asset, index = 0) {
-  const kind = asset.type === 'video' ? 'video' : 'image'
-  const extension = kind === 'video' ? 'mp4' : 'jpg'
+  const kind = getPendingAttachmentKind(asset)
+  const defaultExtensionMap = {
+    audio: 'm4a',
+    file: 'dat',
+    image: 'jpg',
+    video: 'mp4',
+  }
+  const extension = defaultExtensionMap[kind] ?? 'dat'
   const timestamp = Date.now()
 
   return {
     id: `${asset.assetId || asset.uri || timestamp}-${index}`,
     kind,
     name: asset.fileName || `allegato-${timestamp}-${index + 1}.${extension}`,
-    type: asset.mimeType || (kind === 'video' ? 'video/mp4' : 'image/jpeg'),
+    type: asset.mimeType || asset.type || (kind === 'video' ? 'video/mp4' : kind === 'audio' ? 'audio/mp4' : kind === 'image' ? 'image/jpeg' : 'application/octet-stream'),
     uri: asset.uri,
   }
 }
 
 function getAttachmentDefaultText(attachment) {
+  if (attachment?.kind === 'audio') return 'Messaggio vocale'
+  if (attachment?.kind === 'file') return 'File allegato'
   return attachment?.kind === 'video' ? 'Video allegato' : 'Foto allegata'
 }
 
@@ -572,7 +591,11 @@ function PendingAttachmentStrip({ attachments = [], onRemove }) {
                 <Image source={{ uri: attachment.uri }} style={styles.pendingAttachmentImage} />
               ) : (
                 <View style={styles.pendingAttachmentVideo}>
-                  <Ionicons color={colors.white} name="play" size={26} />
+                  <Ionicons
+                    color={colors.white}
+                    name={attachment.kind === 'audio' ? 'mic' : attachment.kind === 'file' ? 'document-text' : 'play'}
+                    size={26}
+                  />
                 </View>
               )}
               <Text style={styles.pendingAttachmentCount}>{index + 1}</Text>
@@ -597,11 +620,13 @@ export function ChatScreen({
   companyTyping = false,
   currentUserRole = 'driver',
   driverProfileUrl,
+  incomingShare,
   messages = [],
   offlineLabel = 'chat azienda',
   ownAvatarUrl,
   participantAvatarUrl,
   participantName,
+  onIncomingShareConsumed,
   onRefresh,
   onReactToMessage,
   onSend,
@@ -695,6 +720,23 @@ export function ChatScreen({
   useEffect(() => {
     isRecordingRef.current = isRecording
   }, [isRecording])
+
+  useEffect(() => {
+    if (!incomingShare?.id) return
+
+    const sharedText = String(incomingShare.text ?? '').trim()
+    if (sharedText) {
+      setBody((currentBody) => (
+        currentBody.trim() ? `${currentBody.trim()}\n${sharedText}` : sharedText
+      ))
+    }
+
+    if (incomingShare.attachments?.length) {
+      addPendingAttachments(incomingShare.attachments)
+    }
+
+    onIncomingShareConsumed?.()
+  }, [incomingShare?.id])
 
   async function handleRefresh() {
     setIsRefreshing(true)

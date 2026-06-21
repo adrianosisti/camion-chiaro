@@ -808,6 +808,10 @@ const workflowTranslations = {
     'chat.noDriversHint': 'Aggiungi un autista prima di aprire una chat.',
     'chat.noMessages': 'Nessun messaggio',
     'chat.noMessagesYet': 'Nessun messaggio ancora',
+    'chat.newChat': 'Nuova chat',
+    'chat.noConversations': 'Nessuna conversazione',
+    'chat.noConversationsHint': 'Premi Nuova chat per scrivere a un autista.',
+    'chat.noDriverMatches': 'Nessun autista trovato.',
     'chat.online': 'Online',
     'chat.firstMessageHint': 'Scrivi il primo messaggio all autista.',
     'chat.createdOnFirstMessage': 'La chat verra creata al primo messaggio.',
@@ -829,6 +833,8 @@ const workflowTranslations = {
     'messageStatus.sent': 'Inviato',
     'chat.open': 'Apri chat',
     'chat.openWithCount': 'Apri chat ({count})',
+    'chat.searchDriver': 'Cerca autista...',
+    'chat.showConversations': 'Conversazioni',
     'chat.emptyDriverHint': 'Scrivi all azienda quando hai bisogno di comunicare velocemente.',
     'chat.typing': 'Sta scrivendo...',
     'common.add': 'Aggiungi',
@@ -1105,6 +1111,10 @@ const workflowTranslations = {
     'chat.noDriversHint': 'Add a driver before opening a chat.',
     'chat.noMessages': 'No messages',
     'chat.noMessagesYet': 'No messages yet',
+    'chat.newChat': 'New chat',
+    'chat.noConversations': 'No conversations',
+    'chat.noConversationsHint': 'Press New chat to message a driver.',
+    'chat.noDriverMatches': 'No driver found.',
     'chat.online': 'Online',
     'chat.firstMessageHint': 'Write the first message to the driver.',
     'chat.createdOnFirstMessage': 'The chat will be created with the first message.',
@@ -1126,6 +1136,8 @@ const workflowTranslations = {
     'messageStatus.sent': 'Sent',
     'chat.open': 'Open chat',
     'chat.openWithCount': 'Open chat ({count})',
+    'chat.searchDriver': 'Search driver...',
+    'chat.showConversations': 'Conversations',
     'chat.emptyDriverHint': 'Write to the company when you need quick communication.',
     'chat.typing': 'Typing...',
     'common.add': 'Add',
@@ -1402,6 +1414,10 @@ const workflowTranslations = {
     'chat.noDriversHint': 'Añade un conductor antes de abrir una chat.',
     'chat.noMessages': 'Ningun mensaje',
     'chat.noMessagesYet': 'Ningun mensaje aun',
+    'chat.newChat': 'Nuevo chat',
+    'chat.noConversations': 'Sin conversaciones',
+    'chat.noConversationsHint': 'Pulsa Nuevo chat para escribir a un conductor.',
+    'chat.noDriverMatches': 'Ningun conductor encontrado.',
     'chat.firstMessageHint': 'Escribe el primer mensaje al conductor.',
     'chat.createdOnFirstMessage': 'La chat se creara con el primer mensaje.',
     'chat.selectDriver': 'Selecciona conductor',
@@ -1422,6 +1438,8 @@ const workflowTranslations = {
     'messageStatus.sent': 'Enviado',
     'chat.open': 'Abrir chat',
     'chat.openWithCount': 'Abrir chat ({count})',
+    'chat.searchDriver': 'Buscar conductor...',
+    'chat.showConversations': 'Conversaciones',
     'chat.emptyDriverHint': 'Escribe a la empresa cuando necesites comunicarte rapido.',
     'common.add': 'Añadir',
     'common.addDocument': 'Añadir documento',
@@ -1697,6 +1715,10 @@ const workflowTranslations = {
     'chat.noDriversHint': 'Ajoute un chauffeur avant d ouvrir une chat.',
     'chat.noMessages': 'Aucun message',
     'chat.noMessagesYet': 'Aucun message encore',
+    'chat.newChat': 'Nouveau chat',
+    'chat.noConversations': 'Aucune conversation',
+    'chat.noConversationsHint': 'Appuie sur Nouveau chat pour ecrire a un chauffeur.',
+    'chat.noDriverMatches': 'Aucun chauffeur trouve.',
     'chat.firstMessageHint': 'Ecris le premier message au chauffeur.',
     'chat.createdOnFirstMessage': 'La chat sera creee au premier message.',
     'chat.selectDriver': 'Selectionner chauffeur',
@@ -1717,6 +1739,8 @@ const workflowTranslations = {
     'messageStatus.sent': 'Envoye',
     'chat.open': 'Ouvrir chat',
     'chat.openWithCount': 'Ouvrir chat ({count})',
+    'chat.searchDriver': 'Chercher chauffeur...',
+    'chat.showConversations': 'Conversations',
     'chat.emptyDriverHint': 'Ecris a l entreprise quand tu dois communiquer rapidement.',
     'common.add': 'Ajouter',
     'common.addDocument': 'Ajouter document',
@@ -1992,6 +2016,10 @@ const workflowTranslations = {
     'chat.noDriversHint': 'Fahrer hinzufugen, bevor ein Chat geoffnet wird.',
     'chat.noMessages': 'Keine Nachrichten',
     'chat.noMessagesYet': 'Noch keine Nachrichten',
+    'chat.newChat': 'Neuer Chat',
+    'chat.noConversations': 'Keine Gesprache',
+    'chat.noConversationsHint': 'Tippe auf Neuer Chat, um einem Fahrer zu schreiben.',
+    'chat.noDriverMatches': 'Kein Fahrer gefunden.',
     'chat.firstMessageHint': 'Schreibe die erste Nachricht an den Fahrer.',
     'chat.createdOnFirstMessage': 'Der Chat wird mit der ersten Nachricht erstellt.',
     'chat.selectDriver': 'Fahrer auswahlen',
@@ -2012,6 +2040,8 @@ const workflowTranslations = {
     'messageStatus.sent': 'Gesendet',
     'chat.open': 'Chat offnen',
     'chat.openWithCount': 'Chat offnen ({count})',
+    'chat.searchDriver': 'Fahrer suchen...',
+    'chat.showConversations': 'Gesprache',
     'chat.emptyDriverHint': 'Schreibe der Firma, wenn du schnell kommunizieren musst.',
     'common.add': 'Hinzufugen',
     'common.addDocument': 'Dokument hinzufugen',
@@ -11004,6 +11034,8 @@ function ChatWorkspace({
     [driverRecords],
   )
   const [selectedDriverId, setSelectedDriverId] = useState('')
+  const [isStartingNewChat, setIsStartingNewChat] = useState(false)
+  const [newChatQuery, setNewChatQuery] = useState('')
   const [messageBody, setMessageBody] = useState('')
   const [attachmentFile, setAttachmentFile] = useState(null)
   const [isCompanyRecordingAudio, setIsCompanyRecordingAudio] = useState(false)
@@ -11034,34 +11066,60 @@ function ChatWorkspace({
 
     return groupedMessages
   }, [chatMessages])
-  const activeDrivers = useMemo(
+  const conversationDrivers = useMemo(
     () =>
-      [...availableDrivers].sort((firstDriver, secondDriver) => {
-        const firstThread = chatThreads.find(
-          (thread) => thread.driverId === firstDriver.id && thread.contextType === 'general',
-        )
-        const secondThread = chatThreads.find(
-          (thread) => thread.driverId === secondDriver.id && thread.contextType === 'general',
-        )
-        const firstMessages = firstThread ? messagesByThread.get(firstThread.id) ?? [] : []
-        const secondMessages = secondThread ? messagesByThread.get(secondThread.id) ?? [] : []
-        const firstLastMessage = firstMessages[firstMessages.length - 1]
-        const secondLastMessage = secondMessages[secondMessages.length - 1]
-        const firstTime = new Date(
-          firstLastMessage?.createdAt ?? firstThread?.lastMessageAt ?? firstThread?.updatedAt ?? firstThread?.createdAt ?? 0,
-        ).getTime()
-        const secondTime = new Date(
-          secondLastMessage?.createdAt ?? secondThread?.lastMessageAt ?? secondThread?.updatedAt ?? secondThread?.createdAt ?? 0,
-        ).getTime()
+      availableDrivers
+        .filter((driver) => {
+          const thread = chatThreads.find(
+            (chatThread) => chatThread.driverId === driver.id && chatThread.contextType === 'general',
+          )
+          const messages = thread ? messagesByThread.get(thread.id) ?? [] : []
+          return messages.length > 0
+        })
+        .sort((firstDriver, secondDriver) => {
+          const firstThread = chatThreads.find(
+            (thread) => thread.driverId === firstDriver.id && thread.contextType === 'general',
+          )
+          const secondThread = chatThreads.find(
+            (thread) => thread.driverId === secondDriver.id && thread.contextType === 'general',
+          )
+          const firstMessages = firstThread ? messagesByThread.get(firstThread.id) ?? [] : []
+          const secondMessages = secondThread ? messagesByThread.get(secondThread.id) ?? [] : []
+          const firstLastMessage = firstMessages[firstMessages.length - 1]
+          const secondLastMessage = secondMessages[secondMessages.length - 1]
+          const firstTime = new Date(
+            firstLastMessage?.createdAt ??
+              firstThread?.lastMessageAt ??
+              firstThread?.updatedAt ??
+              firstThread?.createdAt ??
+              0,
+          ).getTime()
+          const secondTime = new Date(
+            secondLastMessage?.createdAt ??
+              secondThread?.lastMessageAt ??
+              secondThread?.updatedAt ??
+              secondThread?.createdAt ??
+              0,
+          ).getTime()
 
-        if (firstTime !== secondTime) return secondTime - firstTime
-        return firstDriver.name.localeCompare(secondDriver.name)
-      }),
+          if (firstTime !== secondTime) return secondTime - firstTime
+          return firstDriver.name.localeCompare(secondDriver.name)
+        }),
     [availableDrivers, chatThreads, messagesByThread],
   )
+  const newChatDrivers = useMemo(() => {
+    const query = newChatQuery.trim().toLowerCase()
+    if (!query) return availableDrivers
+
+    return availableDrivers.filter((driver) => (
+      [driver.name, driver.role, driver.phone, driver.depot, driver.username]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    ))
+  }, [availableDrivers, newChatQuery])
   const selectedDriver =
-    activeDrivers.find((driver) => driver.id === selectedDriverId) ??
-    activeDrivers[0] ??
+    availableDrivers.find((driver) => driver.id === selectedDriverId) ??
+    conversationDrivers[0] ??
     null
   const selectedThread = selectedDriver
     ? chatThreads.find((thread) => thread.driverId === selectedDriver.id && thread.contextType === 'general')
@@ -11136,6 +11194,8 @@ function ChatWorkspace({
 
   function selectDriverChat(driverId) {
     setSelectedDriverId(driverId)
+    setIsStartingNewChat(false)
+    setNewChatQuery('')
     setIsCompanyChatOpen(true)
     setReplyToMessage(null)
     messageActions.closeMessageActions()
@@ -11255,10 +11315,43 @@ function ChatWorkspace({
             <p className="overline">{t('chat.messages')}</p>
             <h2>{t('chat.companyTitle')}</h2>
           </div>
-          <Mail size={22} />
+          <button
+            className={isStartingNewChat ? 'secondary-button compact-button is-active' : 'secondary-button compact-button'}
+            onClick={() => setIsStartingNewChat((currentValue) => !currentValue)}
+            type="button"
+          >
+            {isStartingNewChat ? <Mail size={17} /> : <Plus size={17} />}
+            {isStartingNewChat ? t('chat.showConversations') : t('chat.newChat')}
+          </button>
         </div>
+        {isStartingNewChat && (
+          <div className="new-chat-panel">
+            <label className="new-chat-search">
+              <Search size={16} />
+              <input
+                autoFocus
+                onChange={(event) => setNewChatQuery(event.target.value)}
+                placeholder={t('chat.searchDriver')}
+                value={newChatQuery}
+              />
+            </label>
+            <div className="new-chat-list">
+              {newChatDrivers.map((driver) => (
+                <button className="new-chat-driver" key={driver.id} onClick={() => selectDriverChat(driver.id)} type="button">
+                  <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
+                  <span>
+                    <strong>{driver.name}</strong>
+                    <small>{driver.role || t('common.driver')} · {driver.phone || t('common.notInserted')}</small>
+                  </span>
+                  <ChevronRight size={17} />
+                </button>
+              ))}
+              {newChatDrivers.length === 0 && <p className="new-chat-empty">{t('chat.noDriverMatches')}</p>}
+            </div>
+          </div>
+        )}
         <div className="chat-driver-list">
-          {activeDrivers.map((driver) => {
+          {conversationDrivers.map((driver) => {
             const lastMessage = getLastDriverMessage(driver.id)
             const isSelected = selectedDriver?.id === driver.id
             const driverThread = getDriverThread(driver.id)
@@ -11300,12 +11393,12 @@ function ChatWorkspace({
               </button>
             )
           })}
-          {activeDrivers.length === 0 && (
+          {conversationDrivers.length === 0 && (
             <div className="empty-state-row">
               <Users size={20} />
               <div>
-                <strong>{t('chat.noDrivers')}</strong>
-                <span>{t('chat.noDriversHint')}</span>
+                <strong>{availableDrivers.length === 0 ? t('chat.noDrivers') : t('chat.noConversations')}</strong>
+                <span>{availableDrivers.length === 0 ? t('chat.noDriversHint') : t('chat.noConversationsHint')}</span>
               </div>
             </div>
           )}

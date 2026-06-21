@@ -93,8 +93,10 @@ export function DriverChatHubScreen({
   currentPerson,
   driverName,
   driverProfileUrl,
+  incomingShare,
   messages = [],
   onBackToList,
+  onIncomingShareConsumed,
   onOpenCompanyChat,
   onOpenPersonChat,
   onOpenTeamChat,
@@ -134,7 +136,9 @@ export function DriverChatHubScreen({
           currentUserRole="driver"
           driverName={driverName}
           driverProfileUrl={driverProfileUrl}
+          incomingShare={incomingShare}
           messages={messages}
+          onIncomingShareConsumed={onIncomingShareConsumed}
           onReactToMessage={onReactToMessage}
           onRefresh={onRefreshCompanyChat}
           onSend={onSendCompanyMessage}
@@ -160,8 +164,10 @@ export function DriverChatHubScreen({
           currentUserRole={currentUserRole}
           driverName={driverName}
           driverProfileUrl={driverProfileUrl}
+          incomingShare={incomingShare}
           messages={normalizedTeamMessages}
           offlineLabel="gruppo"
+          onIncomingShareConsumed={onIncomingShareConsumed}
           onRefresh={onRefreshTeamChat}
           onSend={onSendTeamMessage}
           onTyping={onTyping}

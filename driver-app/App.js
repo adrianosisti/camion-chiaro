@@ -15,6 +15,7 @@ import {
 } from 'react-native'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import * as Haptics from 'expo-haptics'
+import { useShareIntent } from 'expo-share-intent'
 import { Ionicons } from '@expo/vector-icons'
 import { AuthScreen } from './src/screens/AuthScreen'
 import { CompanyChatScreen } from './src/screens/CompanyChatScreen'
@@ -206,7 +207,57 @@ function markMessagesReadLocally(messages, readerRole, readAt = new Date().toISO
   ))
 }
 
+function getShareFileKind(file = {}) {
+  const mimeType = String(file.mimeType ?? '').toLowerCase()
+  const fileName = String(file.fileName ?? file.path ?? '').toLowerCase()
+
+  if (mimeType.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(fileName)) return 'video'
+  if (mimeType.startsWith('audio/') || /\.(m4a|aac|mp3|mpeg|ogg|opus|wav|webm)$/i.test(fileName)) return 'audio'
+  if (mimeType.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(fileName)) return 'image'
+  return 'file'
+}
+
+function createIncomingSharePayload(shareIntent) {
+  if (!shareIntent) return null
+
+  const textParts = [
+    shareIntent.meta?.title,
+    shareIntent.webUrl,
+    shareIntent.text,
+  ]
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+    .filter((value, index, list) => list.indexOf(value) === index)
+  const attachments = (shareIntent.files ?? [])
+    .filter((file) => file?.path)
+    .map((file, index) => ({
+      fileName: file.fileName || `condivisione-${Date.now()}-${index + 1}`,
+      kind: getShareFileKind(file),
+      mimeType: file.mimeType || 'application/octet-stream',
+      type: getShareFileKind(file),
+      uri: file.path,
+    }))
+
+  if (!textParts.length && !attachments.length) return null
+
+  return {
+    attachments,
+    id: `share-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    text: textParts.join('\n'),
+  }
+}
+
 export default function App() {
+  const shareIntentOptions = useMemo(() => ({
+    resetOnBackground: false,
+    scheme: 'camionchiaro',
+  }), [])
+  const {
+    error: shareIntentError,
+    hasShareIntent,
+    resetShareIntent,
+    shareIntent,
+  } = useShareIntent(shareIntentOptions)
   const [accountType, setAccountType] = useState('driver')
   const [activeTab, setActiveTab] = useState('home')
   const [appStatus, setAppStatus] = useState('Caricamento app...')
@@ -228,6 +279,7 @@ export default function App() {
   const [isCompanyTyping, setIsCompanyTyping] = useState(false)
   const [isSelectedDriverTyping, setIsSelectedDriverTyping] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [incomingChatShare, setIncomingChatShare] = useState(null)
   const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
@@ -242,6 +294,7 @@ export default function App() {
   const companyPresenceRef = useRef(null)
   const companyTypingTimeoutRef = useRef(null)
   const presenceRef = useRef(null)
+  const routedShareIdRef = useRef('')
   const typingTimeoutRef = useRef(null)
   const activeTabRef = useRef(activeTab)
   const driverChatModeRef = useRef(driverChatMode)
@@ -575,6 +628,49 @@ export default function App() {
       clearDriverUnreadMessages()
     }
   }, [accountType, activeTab, driverChatMode])
+
+  useEffect(() => {
+    if (!hasShareIntent) return
+
+    const payload = createIncomingSharePayload(shareIntent)
+    resetShareIntent()
+    if (payload) setIncomingChatShare(payload)
+  }, [hasShareIntent])
+
+  useEffect(() => {
+    if (!shareIntentError) return
+    Alert.alert('Condivisione non riuscita', 'Non sono riuscito a leggere il contenuto condiviso. Riprova tra poco.')
+  }, [shareIntentError])
+
+  useEffect(() => {
+    if (!incomingChatShare?.id || !session || isBooting) return
+    if (routedShareIdRef.current === incomingChatShare.id) return
+
+    routedShareIdRef.current = incomingChatShare.id
+    setActiveTab('chat')
+
+    if (accountType === 'company') {
+      const hasSelectedChat = Boolean(selectedCompanyDriverId || selectedCompanyTeamThreadId)
+      if (!hasSelectedChat) {
+        Alert.alert('Condivisione pronta', 'Scegli una chat o un gruppo: il contenuto sara gia pronto da inviare.')
+      }
+      return
+    }
+
+    if (isWorkforcePerson) {
+      void handleOpenWorkforceCompanyChat()
+    } else {
+      openDriverChat('company')
+    }
+  }, [
+    accountType,
+    incomingChatShare?.id,
+    isBooting,
+    isWorkforcePerson,
+    selectedCompanyDriverId,
+    selectedCompanyTeamThreadId,
+    session,
+  ])
 
   useEffect(() => {
     if (isBooting || !settingsReady || !session) return undefined
@@ -1735,6 +1831,10 @@ export default function App() {
     setActiveTab('archive')
   }
 
+  function handleIncomingShareConsumed() {
+    setIncomingChatShare(null)
+  }
+
   const activeScreen = useMemo(() => {
     if (accountType === 'company') {
       if (activeTab === 'chat') {
@@ -1748,6 +1848,7 @@ export default function App() {
             drivers={companyContext?.drivers ?? []}
             isLoading={isRefreshing}
             messages={companyChatMessages}
+            incomingShare={incomingChatShare}
             onBackToDrivers={() => {
               setSelectedCompanyDriverId('')
               setSelectedCompanyTeamThreadId('')
@@ -1757,6 +1858,7 @@ export default function App() {
               setCompanyTeamChatMessages([])
             }}
             onReactToMessage={handleReactToCompanyMessage}
+            onIncomingShareConsumed={handleIncomingShareConsumed}
             onRefresh={() => (selectedCompanyTeamThread ? loadCompanyTeamChatData() : loadCompanyChatData())}
             onSelectDriver={handleSelectCompanyDriver}
             onSelectPerson={handleSelectCompanyPerson}
@@ -1836,7 +1938,9 @@ export default function App() {
           driverProfileUrl={driverProfileUrl}
           driverName={driverName}
           messages={chatMessages}
+          incomingShare={incomingChatShare}
           onBackToList={closeDriverChatDetail}
+          onIncomingShareConsumed={handleIncomingShareConsumed}
           onOpenCompanyChat={handleOpenWorkforceCompanyChat}
           onOpenPersonChat={handleSelectDriverPerson}
           onOpenTeamChat={handleSelectDriverTeamThread}
@@ -1954,6 +2058,7 @@ export default function App() {
     isSelectedDriverTyping,
     isWorkforcePerson,
     isRefreshing,
+    incomingChatShare,
     language,
     logoUrl,
     managementInitialSection,

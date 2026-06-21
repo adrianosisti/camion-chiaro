@@ -9,6 +9,7 @@
     "build:ios:preview": "npx eas-cli build --platform ios --profile preview",
     "build:preview": "npx eas-cli build --platform all --profile preview",
     "ios": "expo run:ios",
+    "postinstall": "node scripts/patch-xcode-share-intent.cjs",
     "start": "expo start",
     "start:clear": "expo start --clear",
     "start:tunnel": "expo start --tunnel"
@@ -25,8 +26,10 @@
     "expo-file-system": "~19.0.23",
     "expo-haptics": "~15.0.8",
     "expo-image-picker": "~17.0.11",
+    "expo-linking": "~8.0.12",
     "expo-media-library": "~18.2.1",
     "expo-notifications": "~0.32.17",
+    "expo-share-intent": "^5.1.1",
     "expo-status-bar": "~3.0.9",
     "expo-updates": "~29.0.18",
     "react": "^19.1.0",

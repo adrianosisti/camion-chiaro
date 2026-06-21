@@ -28,9 +28,11 @@ export function CompanyChatScreen({
   currentUserRole = 'company',
   driverPhotoUrls = {},
   drivers = [],
+  incomingShare,
   isLoading = false,
   messages = [],
   onBackToDrivers,
+  onIncomingShareConsumed,
   onReactToMessage,
   onRefresh,
   onSelectDriver,
@@ -99,8 +101,10 @@ export function CompanyChatScreen({
           companyName={selectedTeamThread.title}
           companyOnline
           currentUserRole={currentUserRole}
+          incomingShare={incomingShare}
           messages={teamMessages}
           offlineLabel="gruppo"
+          onIncomingShareConsumed={onIncomingShareConsumed}
           onRefresh={onRefresh}
           onSend={onSendTeamMessage}
           onTyping={onTyping}
@@ -137,8 +141,10 @@ export function CompanyChatScreen({
           companyTyping={selectedDriverTyping}
           currentUserRole="company"
           driverProfileUrl={driverPhotoUrl}
+          incomingShare={incomingShare}
           messages={messages}
           offlineLabel="chat autista"
+          onIncomingShareConsumed={onIncomingShareConsumed}
           onReactToMessage={onReactToMessage}
           onRefresh={onRefresh}
           onSend={onSend}

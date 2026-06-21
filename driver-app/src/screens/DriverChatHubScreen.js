@@ -15,6 +15,10 @@ function formatLastMessageDate(value) {
   return `${padDatePart(date.getDate())}/${padDatePart(date.getMonth() + 1)} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`
 }
 
+function normalizeIdentity(value = '') {
+  return String(value).trim().toLowerCase()
+}
+
 function getAudienceLabel(value = '') {
   const labels = {
     all: 'Tutta l azienda',
@@ -121,14 +125,19 @@ export function DriverChatHubScreen({
   const [chatListMode, setChatListMode] = useState('direct')
   const currentUserRole = 'me'
   const personById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
+  const currentPersonByName = useMemo(() => {
+    if (currentPerson) return currentPerson
+    if (!driverName) return null
+    return people.find((person) => normalizeIdentity(person.name) === normalizeIdentity(driverName)) ?? null
+  }, [currentPerson, driverName, people])
   const normalizedTeamMessages = useMemo(
     () => teamMessages.map((message) => ({
       ...message,
-      senderAvatarUrl: message.senderPersonId === currentPerson?.id ? driverProfileUrl : '',
+      senderAvatarUrl: message.senderPersonId === currentPersonByName?.id ? driverProfileUrl : '',
       senderName: getTeamMessageSenderName(message, personById, companyName),
-      senderRole: message.senderPersonId && message.senderPersonId === currentPerson?.id ? 'me' : 'team',
+      senderRole: message.senderPersonId && message.senderPersonId === currentPersonByName?.id ? 'me' : 'team',
     })),
-    [companyName, currentPerson?.id, driverProfileUrl, personById, teamMessages],
+    [companyName, currentPersonByName?.id, driverProfileUrl, personById, teamMessages],
   )
   const visiblePeople = people.filter((person) => person.id !== currentPerson?.id && person.status !== 'archived')
   const visibleTeamThreads = teamThreads.filter((thread) => (
@@ -192,6 +201,7 @@ export function DriverChatHubScreen({
           onTyping={onTyping}
           ownAvatarUrl={driverProfileUrl}
           participantAvatarUrl={companyLogoUrl}
+          participantIcon={getGroupIcon(selectedTeamThread.audienceType)}
           participantName={selectedTeamThread.title}
           showSenderNames={!isDirectThread(selectedTeamThread)}
           soundEnabled={soundEnabled}
@@ -360,6 +370,13 @@ function getTeamMessageSenderName(message = {}, peopleById = new Map(), companyN
   if (message.senderPersonId && peopleById.has(message.senderPersonId)) {
     const person = peopleById.get(message.senderPersonId)
     return `${person.name} · ${getPersonRoleLabel(person)}`
+  }
+  if (message.senderPersonId) {
+    if (message.senderName) return message.senderName
+    if (message.senderRole === 'driver') return 'Autista'
+    if (message.senderRole === 'warehouse') return 'Magazzino'
+    if (message.senderRole === 'office') return 'Ufficio'
+    return 'Persona'
   }
   if (message.senderRole === 'company') return companyName || 'Azienda'
   if (message.senderName) return message.senderName

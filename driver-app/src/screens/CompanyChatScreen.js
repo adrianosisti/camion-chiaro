@@ -19,6 +19,10 @@ function getSafeTimestamp(value) {
   return Number.isFinite(timestamp) ? timestamp : 0
 }
 
+function normalizeIdentity(value = '') {
+  return String(value).trim().toLowerCase()
+}
+
 function padDatePart(value) {
   return String(value).padStart(2, '0')
 }
@@ -98,18 +102,22 @@ export function CompanyChatScreen({
     () => new Map(safePeople.map((person) => [person.id, person])),
     [safePeople],
   )
+  const driverByPersonId = useMemo(
+    () => buildDriverByPersonId(safePeople, safeDrivers),
+    [safePeople, safeDrivers],
+  )
   const normalizedTeamMessages = useMemo(
     () => (Array.isArray(teamMessages) ? teamMessages : []).map((message) => {
-      const hasPersonSender = Boolean(message.senderPersonId && personById.has(message.senderPersonId))
+      const hasPersonSender = Boolean(message.senderPersonId)
 
       return {
         ...message,
-        senderAvatarUrl: getTeamMessageSenderAvatarUrl(message, personById, driverPhotoUrls),
+        senderAvatarUrl: getTeamMessageSenderAvatarUrl(message, personById, driverPhotoUrls, driverByPersonId),
         senderName: getTeamMessageSenderName(message, personById, companyName),
         senderRole: hasPersonSender ? 'team' : message.senderRole,
       }
     }),
-    [companyName, driverPhotoUrls, personById, teamMessages],
+    [companyName, driverByPersonId, driverPhotoUrls, personById, teamMessages],
   )
   const companyVisibleTeamThreads = safeTeamThreads.filter((thread) => isCompanyVisibleThread(thread))
   const directTeamThreads = companyVisibleTeamThreads.filter((thread) => isDirectThread(thread))
@@ -193,6 +201,7 @@ export function CompanyChatScreen({
           onTyping={onTyping}
           ownAvatarUrl={companyLogoUrl}
           participantAvatarUrl={companyLogoUrl}
+          participantIcon={getGroupIcon(selectedTeamThread.audienceType)}
           participantName={selectedTeamThread.title}
           showSenderNames={!isDirectThread(selectedTeamThread)}
           soundEnabled={soundEnabled}
@@ -294,6 +303,7 @@ export function CompanyChatScreen({
                 onSelectPerson?.(person)
               }}
               person={person}
+              photoUrl={getPersonAvatarUrl(person, driverPhotoUrls, driverByPersonId)}
             />
           ))}
         </View>
@@ -323,6 +333,8 @@ export function CompanyChatScreen({
                   onSelectTeamThread?.(row.thread)
                 }}
                 peopleById={personById}
+                driverByPersonId={driverByPersonId}
+                driverPhotoUrls={driverPhotoUrls}
                 thread={row.thread}
                 unreadCount={row.unreadCount}
               />
@@ -341,6 +353,8 @@ export function CompanyChatScreen({
                 setIsStartingNewChat(false)
                 onSelectTeamThread?.(thread)
               }}
+              driverByPersonId={driverByPersonId}
+              driverPhotoUrls={driverPhotoUrls}
               peopleById={personById}
               thread={thread}
               unreadCount={unreadTeamByThreadId[thread.id] ?? 0}
@@ -406,7 +420,7 @@ function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount =
   )
 }
 
-function TeamChatRow({ onPress, peopleById, thread, unreadCount = 0 }) {
+function TeamChatRow({ driverByPersonId = new Map(), driverPhotoUrls = {}, onPress, peopleById, thread, unreadCount = 0 }) {
   const kind = getThreadKind(thread)
   const isDirect = kind === 'direct'
   const targetPerson = getCompanyDirectPerson(thread, peopleById)
@@ -420,7 +434,7 @@ function TeamChatRow({ onPress, peopleById, thread, unreadCount = 0 }) {
   return (
     <Pressable onPress={onPress} style={[styles.driverRow, isDirect && styles.directRow]}>
       {targetPerson ? (
-        <DriverAvatar name={targetPerson.name} />
+        <DriverAvatar name={targetPerson.name} uri={getPersonAvatarUrl(targetPerson, driverPhotoUrls, driverByPersonId)} />
       ) : (
         <View style={[styles.groupAvatar, isDirect && styles.directAvatar]}>
           <Ionicons color={isDirect ? colors.white : colors.ink} name={isDirect ? 'person-circle-outline' : getGroupIcon(thread.audienceType)} size={22} />
@@ -456,6 +470,13 @@ function getTeamMessageSenderName(message = {}, peopleById = new Map(), companyN
     const person = peopleById.get(message.senderPersonId)
     return `${person.name} · ${getPersonRoleLabel(person)}`
   }
+  if (message.senderPersonId) {
+    if (message.senderName) return message.senderName
+    if (message.senderRole === 'driver') return 'Autista'
+    if (message.senderRole === 'warehouse') return 'Magazzino'
+    if (message.senderRole === 'office') return 'Ufficio'
+    return 'Persona'
+  }
   if (message.senderRole === 'company') return companyName || 'Azienda'
   if (message.senderName) return message.senderName
   if (message.senderRole === 'driver') return 'Autista'
@@ -464,16 +485,16 @@ function getTeamMessageSenderName(message = {}, peopleById = new Map(), companyN
   return 'Persona'
 }
 
-function getTeamMessageSenderAvatarUrl(message = {}, peopleById = new Map(), driverPhotoUrls = {}) {
+function getTeamMessageSenderAvatarUrl(message = {}, peopleById = new Map(), driverPhotoUrls = {}, driverByPersonId = new Map()) {
   if (!message.senderPersonId || !peopleById.has(message.senderPersonId)) return ''
   const person = peopleById.get(message.senderPersonId)
-  return person?.linkedDriverId ? driverPhotoUrls[person.linkedDriverId] ?? '' : ''
+  return getPersonAvatarUrl(person, driverPhotoUrls, driverByPersonId)
 }
 
-function PersonChatRow({ onPress, person }) {
+function PersonChatRow({ onPress, person, photoUrl = '' }) {
   return (
     <Pressable onPress={onPress} style={[styles.driverRow, styles.directRow]}>
-      <DriverAvatar name={person.name} />
+      <DriverAvatar name={person.name} uri={photoUrl} />
       <View style={styles.driverCopy}>
         <Text style={styles.driverName}>{person.name}</Text>
         <Text style={styles.driverMeta}>{getPersonDepartmentLabel(person.department)} · {person.jobTitle || 'Operatore'}</Text>
@@ -484,6 +505,34 @@ function PersonChatRow({ onPress, person }) {
       </View>
     </Pressable>
   )
+}
+
+function buildDriverByPersonId(people = [], drivers = []) {
+  return new Map(
+    people
+      .map((person) => {
+        const linkedDriver = person.linkedDriverId
+          ? drivers.find((driver) => driver.id === person.linkedDriverId)
+          : null
+        const matchedDriver = linkedDriver || drivers.find((driver) => (
+          normalizeIdentity(driver.username) && normalizeIdentity(driver.username) === normalizeIdentity(person.username)
+        ) || (
+          normalizeIdentity(driver.phone) && normalizeIdentity(driver.phone) === normalizeIdentity(person.phone)
+        ) || (
+          normalizeIdentity(driver.email) && normalizeIdentity(driver.email) === normalizeIdentity(person.email)
+        ) || (
+          normalizeIdentity(driver.name) && normalizeIdentity(driver.name) === normalizeIdentity(person.name)
+        ))
+
+        return matchedDriver ? [person.id, matchedDriver] : null
+      })
+      .filter(Boolean),
+  )
+}
+
+function getPersonAvatarUrl(person = {}, driverPhotoUrls = {}, driverByPersonId = new Map()) {
+  const linkedDriverId = person.linkedDriverId || driverByPersonId.get(person.id)?.id
+  return linkedDriverId ? driverPhotoUrls[linkedDriverId] ?? '' : ''
 }
 
 function ChatModeCards({ counts = {}, mode, onChange, unreadCounts = {} }) {

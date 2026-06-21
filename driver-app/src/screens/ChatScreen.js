@@ -311,15 +311,21 @@ async function saveImageToGallery(signedUrl, path = '') {
   }
 }
 
-function Avatar({ initials, isDriver, onPress, uri }) {
+function Avatar({ icon, initials, isDriver, onPress, uri }) {
   const safeUri = isPreviewableImageUri(uri) ? uri : ''
   const content = (
     <View style={[styles.avatar, isDriver ? styles.driverAvatar : styles.companyAvatar]}>
-      {safeUri ? <Image source={{ uri: safeUri }} style={styles.avatarImage} /> : <Text style={styles.avatarText}>{initials}</Text>}
+      {safeUri ? (
+        <Image source={{ uri: safeUri }} style={styles.avatarImage} />
+      ) : icon ? (
+        <Ionicons color={colors.ink} name={icon} size={20} />
+      ) : (
+        <Text style={styles.avatarText}>{initials}</Text>
+      )}
     </View>
   )
 
-  if (!safeUri || !onPress) return content
+  if ((!safeUri && !icon) || !onPress) return content
 
   return <Pressable onPress={onPress}>{content}</Pressable>
 }
@@ -559,7 +565,9 @@ function MessageBubble({
   senderName,
   showSenderNames = false,
 }) {
-  const isOwn = message.senderRole === currentUserRole
+  const isOwn = message.senderPersonId && currentUserRole === 'company'
+    ? false
+    : message.senderRole === currentUserRole
   const readAt = currentUserRole === 'driver' ? message.readByCompanyAt : message.readByDriverAt
   const isRead = Boolean(readAt)
   const groupReadCount = Number(message.readCount ?? 0)
@@ -658,6 +666,7 @@ export function ChatScreen({
   offlineLabel = 'chat azienda',
   ownAvatarUrl,
   participantAvatarUrl,
+  participantIcon = '',
   participantName,
   onIncomingShareConsumed,
   onRefresh,
@@ -701,7 +710,8 @@ export function ChatScreen({
     [renderedMessages],
   )
   const chatPartnerName = participantName || companyName
-  const chatPartnerAvatarUrl = participantAvatarUrl ?? (currentUserRole === 'driver' ? companyLogoUrl : driverProfileUrl)
+  const chatPartnerAvatarUrl = participantIcon ? '' : participantAvatarUrl ?? (currentUserRole === 'driver' ? companyLogoUrl : driverProfileUrl)
+  const messageParticipantAvatarUrl = participantAvatarUrl ?? (currentUserRole === 'driver' ? companyLogoUrl : driverProfileUrl)
   const chatOwnAvatarUrl = ownAvatarUrl ?? (currentUserRole === 'driver' ? driverProfileUrl : companyLogoUrl)
 
   useEffect(() => () => {
@@ -1139,7 +1149,12 @@ export function ChatScreen({
   return (
     <View style={styles.screen}>
       <View style={styles.chatHeader}>
-        <Avatar initials={getInitials(chatPartnerName)} onPress={() => openAvatarPreview(chatPartnerAvatarUrl, chatPartnerName)} uri={chatPartnerAvatarUrl} />
+        <Avatar
+          icon={participantIcon}
+          initials={getInitials(chatPartnerName)}
+          onPress={() => openAvatarPreview(chatPartnerAvatarUrl, chatPartnerName)}
+          uri={chatPartnerAvatarUrl}
+        />
         <View style={styles.headerCopy}>
           <Text numberOfLines={1} style={styles.chatTitle}>{chatPartnerName}</Text>
           <View style={styles.statusRow}>
@@ -1176,7 +1191,7 @@ export function ChatScreen({
             onLongPress={setActionMessage}
             onOpenImage={openMediaPreview}
             ownAvatarUrl={chatOwnAvatarUrl}
-            participantAvatarUrl={chatPartnerAvatarUrl}
+            participantAvatarUrl={messageParticipantAvatarUrl}
             participantName={chatPartnerName}
             senderAvatarUrl={item.senderAvatarUrl}
             senderName={getVisibleSenderName(item, currentUserRole, chatPartnerName)}

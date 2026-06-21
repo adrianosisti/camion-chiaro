@@ -5,6 +5,7 @@ import { Panel } from '../components/Panel'
 import { getLocale, t } from '../i18n/native'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
+import { DeadlineRenewModal } from './CompanyManagementScreen'
 
 function formatDateTime(value, language = 'it') {
   if (!value) return ''
@@ -295,8 +296,10 @@ export function CompanyHomeScreen({
   onOpenChat,
   onOpenManagement,
   onRefresh,
+  onRenewDeadline,
   onResolveCheck,
   onResolveFault,
+  onSendDeadlineReminder,
 }) {
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedDeadline, setSelectedDeadline] = useState(null)
@@ -478,16 +481,18 @@ export function CompanyHomeScreen({
         onResolve={resolveSelectedDetail}
         vehicles={vehicles}
       />
-      <DeadlineDetailPanel
-        detail={selectedDeadline}
+      <DeadlineRenewModal
+        item={selectedDeadline}
         assets={assets}
         drivers={drivers}
         language={language}
         onClose={() => setSelectedDeadline(null)}
-        onOpenArchive={() => {
-          setSelectedDeadline(null)
-          onOpenManagement?.('deadlines')
+        onSave={async (item, payload, file) => {
+          const saved = await onRenewDeadline?.(item, payload, file)
+          if (saved) setSelectedDeadline(null)
+          return saved
         }}
+        onSendReminder={onSendDeadlineReminder}
         people={people}
         vehicles={vehicles}
       />

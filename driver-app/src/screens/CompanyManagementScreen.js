@@ -240,12 +240,13 @@ function AttachmentButton({ file, label, onPress, onRemove }) {
   )
 }
 
-function DeadlineRenewModal({
+export function DeadlineRenewModal({
   drivers = [],
   item,
   language = 'it',
   onClose,
   onSave,
+  onSendReminder,
   people = [],
   vehicles = [],
   assets = [],
@@ -258,6 +259,7 @@ function DeadlineRenewModal({
     type: '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [isSendingReminder, setIsSendingReminder] = useState(false)
   const [isOpeningFile, setIsOpeningFile] = useState(false)
 
   useEffect(() => {
@@ -343,6 +345,18 @@ function DeadlineRenewModal({
     }
   }
 
+  async function sendReminder() {
+    if (!onSendReminder) return
+
+    setIsSendingReminder(true)
+    const sent = await onSendReminder(item)
+    setIsSendingReminder(false)
+
+    if (sent) {
+      Alert.alert('Sollecito inviato', 'La persona ricevera messaggio in chat e notifica sul telefono.')
+    }
+  }
+
   return (
     <Modal animationType="slide" onRequestClose={onClose} visible>
       <View style={styles.detailScreen}>
@@ -386,6 +400,17 @@ function DeadlineRenewModal({
             onPress={pickRenewFile}
             onRemove={() => updateField('file', null)}
           />
+
+          {onSendReminder ? (
+            <Pressable
+              disabled={isSaving || isSendingReminder}
+              onPress={sendReminder}
+              style={[styles.reminderButton, (isSaving || isSendingReminder) && styles.smallButtonDisabled]}
+            >
+              <Ionicons color={colors.ink} name="notifications-outline" size={18} />
+              <Text style={styles.reminderButtonText}>{isSendingReminder ? 'Invio sollecito...' : 'Sollecita su app'}</Text>
+            </Pressable>
+          ) : null}
 
           <PrimaryButton loading={isSaving} onPress={saveRenewal} title="Salva rinnovo" />
         </ScrollView>
@@ -435,6 +460,7 @@ export function CompanyManagementScreen({
   onCreateVehicle,
   onCreateWarehouseAsset,
   onRenewDeadline,
+  onSendDeadlineReminder,
 }) {
   const workforceSchemaReady = context?.workforceSchemaReady !== false
   const drivers = context?.drivers ?? []
@@ -1367,6 +1393,7 @@ export function CompanyManagementScreen({
         language={language}
         onClose={() => setSelectedDeadline(null)}
         onSave={renewDeadline}
+        onSendReminder={onSendDeadlineReminder}
         people={allPeople}
         vehicles={activeVehicles}
       />
@@ -1786,6 +1813,24 @@ const styles = StyleSheet.create({
   renewSummaryTitle: {
     color: colors.ink,
     fontSize: 15,
+    fontWeight: '900',
+  },
+  reminderButton: {
+    alignItems: 'center',
+    backgroundColor: '#cffafe',
+    borderColor: colors.cyanDark,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    marginBottom: 10,
+    minHeight: 46,
+    paddingHorizontal: 14,
+  },
+  reminderButtonText: {
+    color: colors.ink,
+    fontSize: 13,
     fontWeight: '900',
   },
   selectorList: {

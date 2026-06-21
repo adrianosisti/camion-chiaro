@@ -990,7 +990,7 @@ function CamionChiaroApp() {
           return
         }
 
-        if (message?.senderRole && message.senderRole !== 'company') {
+        if (message?.senderPersonId || (message?.senderRole && message.senderRole !== 'company')) {
           triggerHaptic('light')
         }
 
@@ -1922,6 +1922,103 @@ function CamionChiaroApp() {
     return result.data
   }
 
+  function getCompanyDeadlineTarget(item = {}) {
+    if (item.driverId) {
+      const driverTarget = companyContext?.drivers?.find((entry) => entry.id === item.driverId)
+      if (driverTarget) return { label: driverTarget.name, type: 'driver', value: driverTarget }
+    }
+
+    if (item.personId) {
+      const personTarget = companyContext?.people?.find((entry) => entry.id === item.personId)
+      if (personTarget) return { label: personTarget.name, type: 'person', value: personTarget }
+    }
+
+    return null
+  }
+
+  function formatReminderDate(value) {
+    if (!value) return 'senza data indicata'
+
+    try {
+      return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
+    } catch {
+      return value
+    }
+  }
+
+  async function handleSendCompanyDeadlineReminder(item) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !item?.id) return false
+
+    const target = getCompanyDeadlineTarget(item)
+    if (!target) {
+      Alert.alert('Sollecito non disponibile', 'Questa scadenza non e collegata a un autista o a una persona aziendale.')
+      return false
+    }
+
+    const body = `Sollecito Camion Chiaro: aggiorna ${item.type || 'documento'} entro la scadenza ${formatReminderDate(item.dueDate)} direttamente dall'app. Se hai gia provveduto, carica il nuovo documento o avvisa l'azienda.`
+
+    if (target.type === 'driver') {
+      const result = await sendCompanyChatMessage({
+        body,
+        companyId,
+        driverId: target.value.id,
+      })
+
+      if (result.error) {
+        Alert.alert('Sollecito non inviato', result.error.message)
+        return false
+      }
+
+      void notifyPhone({
+        body,
+        driverId: target.value.id,
+        notificationType: 'deadline_reminder',
+        tag: `deadline-${item.id}`,
+        targetRole: 'driver',
+        threadId: result.data?.thread?.id ?? '',
+        title: companyName,
+        url: '/?view=documents',
+      })
+      await loadCompanyData({ silent: true })
+      return true
+    }
+
+    const threadResult = await ensureDirectTeamThread({
+      companyId,
+      personId: target.value.id,
+    })
+
+    if (threadResult.error) {
+      Alert.alert('Chat non pronta', threadResult.error.message)
+      return false
+    }
+
+    const result = await sendTeamChatMessage({
+      body,
+      companyId,
+      senderRole: 'company',
+      threadId: threadResult.data.id,
+    })
+
+    if (result.error) {
+      Alert.alert('Sollecito non inviato', result.error.message)
+      return false
+    }
+
+    void notifyPhone({
+      body,
+      notificationType: 'deadline_reminder',
+      tag: `deadline-${item.id}`,
+      targetRole: 'team',
+      threadId: threadResult.data.id,
+      title: companyName,
+      url: '/?view=chat',
+    })
+    await loadCompanyData({ silent: true })
+    return true
+  }
+
   async function handleResolveCompanyFault(reportId) {
     if (!reportId) return false
 
@@ -2057,6 +2154,7 @@ function CamionChiaroApp() {
             onCreateVehicle={handleCreateCompanyVehicle}
             onCreateWarehouseAsset={handleCreateCompanyWarehouseAsset}
             onRenewDeadline={handleRenewCompanyDeadline}
+            onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
           />
         )
       }
@@ -2071,8 +2169,10 @@ function CamionChiaroApp() {
           onOpenManagement={openCompanyManagement}
           onOpenSettings={() => setActiveTab('settings')}
           onRefresh={() => loadCompanyData()}
+          onRenewDeadline={handleRenewCompanyDeadline}
           onResolveCheck={handleResolveCompanyCheck}
           onResolveFault={handleResolveCompanyFault}
+          onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
         />
       )
     }
@@ -2179,7 +2279,7 @@ function CamionChiaroApp() {
         driverProfileUrl={driverProfileUrl}
         language={language}
         logoUrl={logoUrl}
-        onOpenChat={() => openDriverChat('company')}
+        onOpenChat={() => openDriverChat('list')}
         onOpenDocuments={(nextDocumentId = '') => {
           setDocumentFocusId(nextDocumentId || '')
           setActiveTab('documents')

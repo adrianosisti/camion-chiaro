@@ -219,6 +219,31 @@ async function getFileBodyFromUri(uri) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
 }
 
+function normalizeComparable(value = '') {
+  return String(value ?? '').trim().toLowerCase()
+}
+
+function getDocumentStatusFromExpiry(expiresAt, filePath = '') {
+  if (expiresAt) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const expiry = new Date(expiresAt)
+    expiry.setHours(0, 0, 0, 0)
+    if (Number.isFinite(expiry.getTime()) && expiry < today) return 'expired'
+  }
+
+  return filePath ? 'uploaded' : 'missing'
+}
+
+function findMatchingDriverDocument(documents = [], item = {}, updates = {}) {
+  const wantedTypes = new Set([item.type, updates.type].map(normalizeComparable).filter(Boolean))
+  const wantedNumbers = new Set([item.documentNumber, updates.documentNumber].map(normalizeComparable).filter(Boolean))
+
+  return documents.find((document) => wantedNumbers.has(normalizeComparable(document.document_number)))
+    || documents.find((document) => wantedTypes.has(normalizeComparable(document.type)))
+    || null
+}
+
 async function registerCompanyStorageFile({
   bucket,
   category = 'other',
@@ -1889,16 +1914,20 @@ export async function renewCompanyComplianceItem({ companyId, file = null, item,
 
   let filePath = ''
   let fileBody = null
+  let uploadedFileName = ''
+  let uploadedFileType = ''
 
   if (file?.uri) {
     const cleanFileName = sanitizeFileName(file.name ?? `scadenza-${Date.now()}`)
+    uploadedFileName = cleanFileName
+    uploadedFileType = file.type || 'application/octet-stream'
     const subjectId = item.driverId || item.vehicleId || item.personId || item.assetId || 'azienda'
     filePath = `${companyId}/compliance/${item.scope}/${subjectId}/${Date.now()}-${cleanFileName}`
     fileBody = await getFileBodyFromUri(file.uri)
 
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
       cacheControl: '3600',
-      contentType: file.type || 'application/octet-stream',
+      contentType: uploadedFileType,
       upsert: false,
     })
 
@@ -1966,6 +1995,84 @@ export async function renewCompanyComplianceItem({ companyId, file = null, item,
       filePath,
       sizeBytes: fileBody?.byteLength ?? 0,
     })
+  }
+
+  if (!error && item.scope === 'driver' && item.driverId) {
+    const documentsResult = await supabase
+      .from('driver_documents')
+      .select('id, type, document_number, expires_at, file_path, status')
+      .eq('company_id', companyId)
+      .eq('driver_id', item.driverId)
+
+    if (documentsResult.error) {
+      return { data: null, error: documentsResult.error }
+    }
+
+    let targetDocument = findMatchingDriverDocument(documentsResult.data ?? [], item, updates)
+    let driverDocumentFilePath = ''
+
+    if (!targetDocument) {
+      const insertResult = await supabase
+        .from('driver_documents')
+        .insert({
+          company_id: companyId,
+          document_number: updates.documentNumber || null,
+          driver_id: item.driverId,
+          expires_at: updates.dueDate || null,
+          status: getDocumentStatusFromExpiry(updates.dueDate, ''),
+          type: updates.type,
+          visible_to_driver: true,
+        })
+        .select('id, type, document_number, expires_at, file_path, status')
+        .single()
+
+      if (insertResult.error) return { data: null, error: insertResult.error }
+      targetDocument = insertResult.data
+    }
+
+    if (file?.uri && fileBody) {
+      driverDocumentFilePath = `${companyId}/${item.driverId}/${targetDocument.id}/${Date.now()}-${uploadedFileName || sanitizeFileName(file.name ?? 'documento')}`
+      const { error: documentUploadError } = await supabase.storage.from(driverDocumentsBucket).upload(driverDocumentFilePath, fileBody, {
+        cacheControl: '3600',
+        contentType: uploadedFileType || file.type || 'application/octet-stream',
+        upsert: false,
+      })
+
+      if (documentUploadError) return { data: null, error: documentUploadError }
+    }
+
+    const nextFilePath = driverDocumentFilePath || targetDocument.file_path || ''
+    const updateResult = await supabase
+      .from('driver_documents')
+      .update({
+        document_number: updates.documentNumber || null,
+        expires_at: updates.dueDate || null,
+        file_path: nextFilePath || null,
+        status: getDocumentStatusFromExpiry(updates.dueDate, nextFilePath),
+        type: updates.type,
+        visible_to_driver: true,
+      })
+      .eq('company_id', companyId)
+      .eq('id', targetDocument.id)
+      .select('id')
+      .single()
+
+    if (updateResult.error) {
+      if (driverDocumentFilePath) await supabase.storage.from(driverDocumentsBucket).remove([driverDocumentFilePath])
+      return { data: null, error: updateResult.error }
+    }
+
+    if (driverDocumentFilePath) {
+      await registerCompanyStorageFile({
+        bucket: driverDocumentsBucket,
+        category: 'document',
+        companyId,
+        documentId: targetDocument.id,
+        driverId: item.driverId,
+        filePath: driverDocumentFilePath,
+        sizeBytes: fileBody?.byteLength ?? 0,
+      })
+    }
   }
 
   return { data: data ? mapComplianceItem(data) : null, error }

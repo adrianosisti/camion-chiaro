@@ -51,6 +51,14 @@ const assetTypes = [
   { id: 'other', label: 'Altro' },
 ]
 
+const createFormOptions = [
+  { icon: 'person-add-outline', id: 'driver', label: 'Autista' },
+  { icon: 'people-outline', id: 'person', label: 'Persona' },
+  { icon: 'cube-outline', id: 'asset', label: 'Attrezzatura' },
+  { icon: 'bus-outline', id: 'vehicle', label: 'Mezzo' },
+  { icon: 'calendar-outline', id: 'deadline', label: 'Scadenza' },
+]
+
 function formatDate(value, language = 'it') {
   if (!value) return 'Senza data'
   return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
@@ -195,9 +203,60 @@ function AttachmentButton({ file, label, onPress, onRemove }) {
   )
 }
 
+function CreateTypeSelector({ activeForm, onSelect }) {
+  const activeIndex = Math.max(0, createFormOptions.findIndex((option) => option.id === activeForm))
+  const activeOption = createFormOptions[activeIndex] ?? createFormOptions[0]
+
+  function move(direction) {
+    const nextIndex = (activeIndex + direction + createFormOptions.length) % createFormOptions.length
+    onSelect(createFormOptions[nextIndex].id)
+  }
+
+  return (
+    <View style={styles.createTypePanel}>
+      <Text style={styles.createTypeLabel}>Cosa vuoi aggiungere</Text>
+      <View style={styles.createTypePicker}>
+        <Pressable accessibilityLabel="Tipo precedente" onPress={() => move(-1)} style={styles.createTypeArrow}>
+          <Ionicons color={colors.ink} name="chevron-back" size={20} />
+        </Pressable>
+        <View style={styles.createTypeSelected}>
+          <View style={styles.createTypeIcon}>
+            <Ionicons color={colors.cyanDark} name={activeOption.icon} size={20} />
+          </View>
+          <Text numberOfLines={1} style={styles.createTypeSelectedText}>{activeOption.label}</Text>
+        </View>
+        <Pressable accessibilityLabel="Tipo successivo" onPress={() => move(1)} style={styles.createTypeArrow}>
+          <Ionicons color={colors.ink} name="chevron-forward" size={20} />
+        </Pressable>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.formTabsScroll}>
+        <View style={styles.formTabsRow}>
+          {createFormOptions.map((option) => (
+            <Pressable
+              key={option.id}
+              onPress={() => onSelect(option.id)}
+              style={[styles.createTypeChip, activeForm === option.id && styles.createTypeChipActive]}
+            >
+              <Ionicons
+                color={activeForm === option.id ? colors.ink : colors.cyanDark}
+                name={option.icon}
+                size={16}
+              />
+              <Text style={[styles.createTypeChipText, activeForm === option.id && styles.createTypeChipTextActive]}>
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  )
+}
+
 export function CompanyManagementScreen({
   context,
   initialSection = 'drivers',
+  initialMode = 'archive',
   language = 'it',
   onCreateDeadline,
   onCreateDriver,
@@ -228,7 +287,7 @@ export function CompanyManagementScreen({
   const warehouseAssets = assets.filter((asset) => !['Archiviato', 'archived'].includes(asset.status))
   const [activeForm, setActiveForm] = useState('driver')
   const [activeList, setActiveList] = useState(initialSection)
-  const [mode, setMode] = useState('archive')
+  const [mode, setMode] = useState(initialMode)
   const [driverForm, setDriverForm] = useState({
     adrDueDate: '',
     depot: '',
@@ -304,9 +363,9 @@ export function CompanyManagementScreen({
   useEffect(() => {
     if (initialSection) {
       setActiveList(initialSection)
-      setMode('archive')
     }
-  }, [initialSection])
+    setMode(initialMode)
+  }, [initialMode, initialSection])
 
   function openCreateForm(formType) {
     setActiveForm(formType)
@@ -690,15 +749,7 @@ export function CompanyManagementScreen({
         </Pressable>
       </View>
 
-      {mode === 'create' ? (
-        <View style={styles.formTabs}>
-          <Chip active={activeForm === 'driver'} label="Autista" onPress={() => setActiveForm('driver')} />
-          <Chip active={activeForm === 'person'} label="Persona" onPress={() => setActiveForm('person')} />
-          <Chip active={activeForm === 'asset'} label="Attrezzatura" onPress={() => setActiveForm('asset')} />
-          <Chip active={activeForm === 'vehicle'} label="Mezzo" onPress={() => setActiveForm('vehicle')} />
-          <Chip active={activeForm === 'deadline'} label="Scadenza" onPress={() => setActiveForm('deadline')} />
-        </View>
-      ) : null}
+      {mode === 'create' ? <CreateTypeSelector activeForm={activeForm} onSelect={setActiveForm} /> : null}
 
       {mode === 'create' && activeForm === 'driver' ? (
         <Panel
@@ -1193,6 +1244,87 @@ const styles = StyleSheet.create({
     padding: layout.screenPadding,
     paddingBottom: 28,
   },
+  createTypeArrow: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderColor: '#a5f3fc',
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  createTypeChip: {
+    alignItems: 'center',
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    height: 38,
+    justifyContent: 'center',
+    minWidth: 104,
+    paddingHorizontal: 12,
+  },
+  createTypeChipActive: {
+    backgroundColor: colors.cyan,
+    borderColor: '#67e8f9',
+  },
+  createTypeChipText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  createTypeChipTextActive: {
+    color: colors.ink,
+  },
+  createTypeIcon: {
+    alignItems: 'center',
+    backgroundColor: '#ecfeff',
+    borderRadius: 13,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  createTypeLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '900',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  createTypePanel: {
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 12,
+    padding: 12,
+  },
+  createTypePicker: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  createTypeSelected: {
+    alignItems: 'center',
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 16,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 50,
+    paddingHorizontal: 12,
+  },
+  createTypeSelectedText: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '900',
+  },
   dangerChip: {
     backgroundColor: '#fee2e2',
   },
@@ -1254,10 +1386,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 5,
   },
-  formTabs: {
+  formTabsRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 12,
+    paddingRight: 4,
+  },
+  formTabsScroll: {
+    marginTop: 10,
   },
   modeBar: {
     backgroundColor: '#dff7fb',

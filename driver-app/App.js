@@ -91,7 +91,8 @@ const driverTabs = [
 
 const companyTabs = [
   { id: 'home', icon: 'business-outline', label: 'Home', labelKey: 'home' },
-  { id: 'manage', icon: 'albums-outline', label: 'Anagraf.', labelKey: 'archive' },
+  { id: 'manage', icon: 'add-circle-outline', label: 'Anagraf.' },
+  { id: 'archive', icon: 'albums-outline', label: 'Archivio', labelKey: 'archive' },
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
   { id: 'settings', icon: 'settings-outline', label: 'Menu', labelKey: 'menu' },
 ]
@@ -1386,7 +1387,7 @@ export default function App() {
 
   function openCompanyManagement(section = 'drivers') {
     setManagementInitialSection(section)
-    setActiveTab('manage')
+    setActiveTab('archive')
   }
 
   const activeScreen = useMemo(() => {
@@ -1437,11 +1438,12 @@ export default function App() {
         )
       }
 
-      if (activeTab === 'manage') {
+      if (activeTab === 'manage' || activeTab === 'archive') {
         return (
           <CompanyManagementScreen
             context={companyContext}
             initialSection={managementInitialSection}
+            initialMode={activeTab === 'manage' ? 'create' : 'archive'}
             language={language}
             onCreateDeadline={handleCreateCompanyDeadline}
             onCreateDriver={handleCreateCompanyDriver}

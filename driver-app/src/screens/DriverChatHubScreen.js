@@ -352,11 +352,16 @@ function getPersonDepartmentLabel(value = '') {
   return 'Persona'
 }
 
+function getPersonRoleLabel(person = {}) {
+  return person.jobTitle || getPersonDepartmentLabel(person.department)
+}
+
 function getTeamMessageSenderName(message = {}, peopleById = new Map(), companyName = '') {
-  if (message.senderRole === 'company') return companyName || 'Azienda'
   if (message.senderPersonId && peopleById.has(message.senderPersonId)) {
-    return peopleById.get(message.senderPersonId).name
+    const person = peopleById.get(message.senderPersonId)
+    return `${person.name} · ${getPersonRoleLabel(person)}`
   }
+  if (message.senderRole === 'company') return companyName || 'Azienda'
   if (message.senderName) return message.senderName
   if (message.senderRole === 'driver') return 'Autista'
   if (message.senderRole === 'warehouse') return 'Magazzino'

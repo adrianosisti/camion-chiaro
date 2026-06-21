@@ -99,11 +99,16 @@ export function CompanyChatScreen({
     [safePeople],
   )
   const normalizedTeamMessages = useMemo(
-    () => (Array.isArray(teamMessages) ? teamMessages : []).map((message) => ({
-      ...message,
-      senderAvatarUrl: getTeamMessageSenderAvatarUrl(message, personById, driverPhotoUrls),
-      senderName: getTeamMessageSenderName(message, personById, companyName),
-    })),
+    () => (Array.isArray(teamMessages) ? teamMessages : []).map((message) => {
+      const hasPersonSender = Boolean(message.senderPersonId && personById.has(message.senderPersonId))
+
+      return {
+        ...message,
+        senderAvatarUrl: getTeamMessageSenderAvatarUrl(message, personById, driverPhotoUrls),
+        senderName: getTeamMessageSenderName(message, personById, companyName),
+        senderRole: hasPersonSender ? 'team' : message.senderRole,
+      }
+    }),
     [companyName, driverPhotoUrls, personById, teamMessages],
   )
   const companyVisibleTeamThreads = safeTeamThreads.filter((thread) => isCompanyVisibleThread(thread))
@@ -436,16 +441,22 @@ function TeamChatRow({ onPress, peopleById, thread, unreadCount = 0 }) {
 }
 
 function getPersonDepartmentLabel(value = '') {
+  if (value === 'drivers') return 'Autista'
   if (value === 'warehouse') return 'Magazzino'
   if (value === 'office') return 'Ufficio'
   return 'Persona'
 }
 
+function getPersonRoleLabel(person = {}) {
+  return person.jobTitle || getPersonDepartmentLabel(person.department)
+}
+
 function getTeamMessageSenderName(message = {}, peopleById = new Map(), companyName = '') {
-  if (message.senderRole === 'company') return companyName || 'Azienda'
   if (message.senderPersonId && peopleById.has(message.senderPersonId)) {
-    return peopleById.get(message.senderPersonId).name
+    const person = peopleById.get(message.senderPersonId)
+    return `${person.name} · ${getPersonRoleLabel(person)}`
   }
+  if (message.senderRole === 'company') return companyName || 'Azienda'
   if (message.senderName) return message.senderName
   if (message.senderRole === 'driver') return 'Autista'
   if (message.senderRole === 'warehouse') return 'Magazzino'

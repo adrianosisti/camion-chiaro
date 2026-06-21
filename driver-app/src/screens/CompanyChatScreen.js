@@ -105,12 +105,41 @@ export function CompanyChatScreen({
   const groupTeamThreads = companyVisibleTeamThreads
     .filter((thread) => isCompanyGroupThread(thread))
     .sort((firstThread, secondThread) => getSafeTimestamp(secondThread.lastMessageAt) - getSafeTimestamp(firstThread.lastMessageAt))
+  const directChatRows = useMemo(
+    () => [
+      ...visibleDrivers.map((driver) => {
+        const thread = threadByDriverId.get(driver.id)
+
+        return {
+          driver,
+          id: `driver-${driver.id}`,
+          lastMessageAt: thread?.lastMessageAt ?? '',
+          timestamp: getSafeTimestamp(thread?.lastMessageAt),
+          type: 'driver',
+          unreadCount: unreadByDriverId[driver.id] ?? 0,
+        }
+      }),
+      ...companyDirectTeamThreads.map((thread) => ({
+        id: `team-${thread.id}`,
+        lastMessageAt: thread.lastMessageAt ?? '',
+        thread,
+        timestamp: getSafeTimestamp(thread.lastMessageAt),
+        type: 'team',
+      })),
+    ].sort((firstRow, secondRow) => {
+      const dateDiff = secondRow.timestamp - firstRow.timestamp
+      if (dateDiff) return dateDiff
+
+      return getDirectRowTitle(firstRow).localeCompare(getDirectRowTitle(secondRow), 'it')
+    }),
+    [companyDirectTeamThreads, threadByDriverId, unreadByDriverId, visibleDrivers],
+  )
   const directConversationCount = conversationDrivers.length + companyDirectTeamThreads.length
   const groupConversationCount = groupTeamThreads.length
-  const activeModeTitle = chatListMode === 'groups' ? 'Gruppi azienda' : 'Chat singole'
+  const activeModeTitle = chatListMode === 'groups' ? 'Gruppi' : 'Chat singole'
   const hasVisibleRows = chatListMode === 'groups'
     ? groupTeamThreads.length
-    : visibleDrivers.length || companyDirectTeamThreads.length || (isStartingNewChat && staffPeople.length)
+    : directChatRows.length || (isStartingNewChat && staffPeople.length)
 
   if (selectedTeamThread && isCompanyVisibleThread(selectedTeamThread)) {
     return (
@@ -200,7 +229,7 @@ export function CompanyChatScreen({
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Messaggi azienda</Text>
-        <Text style={styles.heroText}>Chat singole e gruppi dove l azienda partecipa davvero.</Text>
+        <Text style={styles.heroText}>Chat singole e gruppi aziendali, sempre in ordine di ultimo messaggio.</Text>
       </View>
 
       <ChatModeCards
@@ -251,39 +280,40 @@ export function CompanyChatScreen({
         </View>
       ) : null}
 
-      {chatListMode === 'direct' && (visibleDrivers.length || companyDirectTeamThreads.length) ? (
+      {chatListMode === 'direct' && directChatRows.length ? (
         <View style={styles.groupBlock}>
-          <Text style={styles.groupBlockTitle}>Chat singole dove l azienda scrive</Text>
-          {visibleDrivers.map((driver) => (
-            <DriverChatRow
-              driver={driver}
-              key={driver.id}
-              lastMessageAt={threadByDriverId.get(driver.id)?.lastMessageAt}
-              onPress={() => {
-                setIsStartingNewChat(false)
-                onSelectDriver?.(driver)
-              }}
-              photoUrl={driverPhotoUrls[driver.id]}
-              unreadCount={unreadByDriverId[driver.id] ?? 0}
-            />
-          ))}
-          {companyDirectTeamThreads.map((thread) => (
-            <TeamChatRow
-              key={thread.id}
-              onPress={() => {
-                setIsStartingNewChat(false)
-                onSelectTeamThread?.(thread)
-              }}
-              peopleById={personById}
-              thread={thread}
-            />
+          <Text style={styles.groupBlockTitle}>Chat singole</Text>
+          {directChatRows.map((row) => (
+            row.type === 'driver' ? (
+              <DriverChatRow
+                driver={row.driver}
+                key={row.id}
+                lastMessageAt={row.lastMessageAt}
+                onPress={() => {
+                  setIsStartingNewChat(false)
+                  onSelectDriver?.(row.driver)
+                }}
+                photoUrl={driverPhotoUrls[row.driver.id]}
+                unreadCount={row.unreadCount}
+              />
+            ) : (
+              <TeamChatRow
+                key={row.id}
+                onPress={() => {
+                  setIsStartingNewChat(false)
+                  onSelectTeamThread?.(row.thread)
+                }}
+                peopleById={personById}
+                thread={row.thread}
+              />
+            )
           ))}
         </View>
       ) : null}
 
       {chatListMode === 'groups' && groupTeamThreads.length ? (
         <View style={styles.groupBlock}>
-          <Text style={styles.groupBlockTitle}>Gruppi dove l azienda può scrivere</Text>
+          <Text style={styles.groupBlockTitle}>Gruppi</Text>
           {groupTeamThreads.map((thread) => (
             <TeamChatRow
               key={thread.id}
@@ -331,6 +361,10 @@ function formatLastMessageDate(value) {
   const date = new Date(value)
   if (!Number.isFinite(date.getTime())) return 'Nessun messaggio'
   return `${padDatePart(date.getDate())}/${padDatePart(date.getMonth() + 1)} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`
+}
+
+function getDirectRowTitle(row = {}) {
+  return row.driver?.name ?? row.thread?.title ?? ''
 }
 
 function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount = 0 }) {

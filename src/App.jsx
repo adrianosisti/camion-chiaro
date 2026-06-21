@@ -61,6 +61,7 @@ import {
   createCompanyInvoiceSignedUrl,
   fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
+  createTeamChatMessageRecord as createSupabaseTeamChatMessage,
   createChatThreadRecord as createSupabaseChatThread,
   createDriverDocumentSignedUrl,
   createDriverAccount as createSupabaseDriverAccount,
@@ -73,8 +74,11 @@ import {
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
   fetchDriverDocumentEvents,
   ensureCompanyForCurrentUser,
+  ensureDefaultTeamThreads,
   fetchChatMessages,
   fetchChatThreads,
+  fetchTeamChatMessages,
+  fetchTeamChatThreads,
   fetchComplianceItems,
   fetchCompanyInvoices,
   fetchCompanyPeople,
@@ -100,6 +104,7 @@ import {
   subscribeToChatMessages,
   subscribeToChatPresence,
   subscribeToOperationalUpdates,
+  subscribeToTeamChatMessages,
   uploadCompanyLogoFile as uploadSupabaseCompanyLogoFile,
   uploadDriverDocumentFile as uploadSupabaseDriverDocumentFile,
   uploadDriverProfileImageFile as uploadSupabaseDriverProfileImageFile,
@@ -799,7 +804,7 @@ const translations = {
 
 const workflowTranslations = {
   it: {
-    'chat.companyTitle': 'Chat autisti',
+    'chat.companyTitle': 'Chat azienda',
     'chat.companyAria': 'Chat azienda autisti',
     'chat.conversation': 'Conversazione',
     'chat.gallery': 'Galleria',
@@ -810,7 +815,7 @@ const workflowTranslations = {
     'chat.noMessagesYet': 'Nessun messaggio ancora',
     'chat.newChat': 'Nuova chat',
     'chat.noConversations': 'Nessuna conversazione',
-    'chat.noConversationsHint': 'Premi Nuova chat per scrivere a un autista.',
+    'chat.noConversationsHint': 'Premi Nuova chat per scrivere a un gruppo, reparto o autista.',
     'chat.noDriverMatches': 'Nessun autista trovato.',
     'chat.online': 'Online',
     'chat.firstMessageHint': 'Scrivi il primo messaggio all autista.',
@@ -833,7 +838,7 @@ const workflowTranslations = {
     'messageStatus.sent': 'Inviato',
     'chat.open': 'Apri chat',
     'chat.openWithCount': 'Apri chat ({count})',
-    'chat.searchDriver': 'Cerca autista...',
+    'chat.searchDriver': 'Cerca gruppi, reparti o autisti...',
     'chat.showConversations': 'Conversazioni',
     'chat.emptyDriverHint': 'Scrivi all azienda quando hai bisogno di comunicare velocemente.',
     'chat.typing': 'Sta scrivendo...',
@@ -1102,7 +1107,7 @@ const workflowTranslations = {
     'vehicleStatus.watch': 'Da controllare',
   },
   en: {
-    'chat.companyTitle': 'Driver chat',
+    'chat.companyTitle': 'Company chat',
     'chat.companyAria': 'Company driver chat',
     'chat.conversation': 'Conversation',
     'chat.gallery': 'Gallery',
@@ -1113,7 +1118,7 @@ const workflowTranslations = {
     'chat.noMessagesYet': 'No messages yet',
     'chat.newChat': 'New chat',
     'chat.noConversations': 'No conversations',
-    'chat.noConversationsHint': 'Press New chat to message a driver.',
+    'chat.noConversationsHint': 'Press New chat to message a group, department or driver.',
     'chat.noDriverMatches': 'No driver found.',
     'chat.online': 'Online',
     'chat.firstMessageHint': 'Write the first message to the driver.',
@@ -1136,7 +1141,7 @@ const workflowTranslations = {
     'messageStatus.sent': 'Sent',
     'chat.open': 'Open chat',
     'chat.openWithCount': 'Open chat ({count})',
-    'chat.searchDriver': 'Search driver...',
+    'chat.searchDriver': 'Search groups, departments or drivers...',
     'chat.showConversations': 'Conversations',
     'chat.emptyDriverHint': 'Write to the company when you need quick communication.',
     'chat.typing': 'Typing...',
@@ -1405,7 +1410,7 @@ const workflowTranslations = {
     'vehicleStatus.watch': 'To check',
   },
   es: {
-    'chat.companyTitle': 'Chat conductores',
+    'chat.companyTitle': 'Chat empresa',
     'chat.companyAria': 'Chat empresa conductores',
     'chat.conversation': 'Conversacion',
     'chat.gallery': 'Galeria',
@@ -1416,7 +1421,7 @@ const workflowTranslations = {
     'chat.noMessagesYet': 'Ningun mensaje aun',
     'chat.newChat': 'Nuevo chat',
     'chat.noConversations': 'Sin conversaciones',
-    'chat.noConversationsHint': 'Pulsa Nuevo chat para escribir a un conductor.',
+    'chat.noConversationsHint': 'Pulsa Nuevo chat para escribir a un grupo, departamento o conductor.',
     'chat.noDriverMatches': 'Ningun conductor encontrado.',
     'chat.firstMessageHint': 'Escribe el primer mensaje al conductor.',
     'chat.createdOnFirstMessage': 'La chat se creara con el primer mensaje.',
@@ -1438,7 +1443,7 @@ const workflowTranslations = {
     'messageStatus.sent': 'Enviado',
     'chat.open': 'Abrir chat',
     'chat.openWithCount': 'Abrir chat ({count})',
-    'chat.searchDriver': 'Buscar conductor...',
+    'chat.searchDriver': 'Buscar grupos, departamentos o conductores...',
     'chat.showConversations': 'Conversaciones',
     'chat.emptyDriverHint': 'Escribe a la empresa cuando necesites comunicarte rapido.',
     'common.add': 'Añadir',
@@ -1706,7 +1711,7 @@ const workflowTranslations = {
     'vehicleStatus.watch': 'Por controlar',
   },
   fr: {
-    'chat.companyTitle': 'Chat chauffeurs',
+    'chat.companyTitle': 'Chat entreprise',
     'chat.companyAria': 'Chat entreprise chauffeurs',
     'chat.conversation': 'Conversation',
     'chat.gallery': 'Galerie',
@@ -1717,7 +1722,7 @@ const workflowTranslations = {
     'chat.noMessagesYet': 'Aucun message encore',
     'chat.newChat': 'Nouveau chat',
     'chat.noConversations': 'Aucune conversation',
-    'chat.noConversationsHint': 'Appuie sur Nouveau chat pour ecrire a un chauffeur.',
+    'chat.noConversationsHint': 'Appuie sur Nouveau chat pour ecrire a un groupe, service ou chauffeur.',
     'chat.noDriverMatches': 'Aucun chauffeur trouve.',
     'chat.firstMessageHint': 'Ecris le premier message au chauffeur.',
     'chat.createdOnFirstMessage': 'La chat sera creee au premier message.',
@@ -1739,7 +1744,7 @@ const workflowTranslations = {
     'messageStatus.sent': 'Envoye',
     'chat.open': 'Ouvrir chat',
     'chat.openWithCount': 'Ouvrir chat ({count})',
-    'chat.searchDriver': 'Chercher chauffeur...',
+    'chat.searchDriver': 'Chercher groupes, services ou chauffeurs...',
     'chat.showConversations': 'Conversations',
     'chat.emptyDriverHint': 'Ecris a l entreprise quand tu dois communiquer rapidement.',
     'common.add': 'Ajouter',
@@ -2007,7 +2012,7 @@ const workflowTranslations = {
     'vehicleStatus.watch': 'A controler',
   },
   de: {
-    'chat.companyTitle': 'Fahrerchat',
+    'chat.companyTitle': 'Firmenchat',
     'chat.companyAria': 'Firmenchat mit Fahrern',
     'chat.conversation': 'Unterhaltung',
     'chat.gallery': 'Galerie',
@@ -2018,7 +2023,7 @@ const workflowTranslations = {
     'chat.noMessagesYet': 'Noch keine Nachrichten',
     'chat.newChat': 'Neuer Chat',
     'chat.noConversations': 'Keine Gesprache',
-    'chat.noConversationsHint': 'Tippe auf Neuer Chat, um einem Fahrer zu schreiben.',
+    'chat.noConversationsHint': 'Tippe auf Neuer Chat, um einer Gruppe, Abteilung oder einem Fahrer zu schreiben.',
     'chat.noDriverMatches': 'Kein Fahrer gefunden.',
     'chat.firstMessageHint': 'Schreibe die erste Nachricht an den Fahrer.',
     'chat.createdOnFirstMessage': 'Der Chat wird mit der ersten Nachricht erstellt.',
@@ -2040,7 +2045,7 @@ const workflowTranslations = {
     'messageStatus.sent': 'Gesendet',
     'chat.open': 'Chat offnen',
     'chat.openWithCount': 'Chat offnen ({count})',
-    'chat.searchDriver': 'Fahrer suchen...',
+    'chat.searchDriver': 'Gruppen, Abteilungen oder Fahrer suchen...',
     'chat.showConversations': 'Gesprache',
     'chat.emptyDriverHint': 'Schreibe der Firma, wenn du schnell kommunizieren musst.',
     'common.add': 'Hinzufugen',
@@ -4167,6 +4172,8 @@ function App() {
   const [faultReportRecords, setFaultReportRecords] = useState([])
   const [chatThreadRecords, setChatThreadRecords] = useState([])
   const [chatMessageRecords, setChatMessageRecords] = useState([])
+  const [teamChatThreadRecords, setTeamChatThreadRecords] = useState([])
+  const [teamChatMessageRecords, setTeamChatMessageRecords] = useState([])
   const [chatLiveState, setChatLiveState] = useState(emptyChatLiveState)
   const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
@@ -4850,6 +4857,7 @@ function App() {
       const companyId = companyResult.data.id
       setActiveCompanyId(companyId)
       setCompanyProfile(companyResult.data)
+      await ensureDefaultTeamThreads(companyId)
       const [
         driversResult,
         peopleResult,
@@ -4863,6 +4871,8 @@ function App() {
         faultsResult,
         chatThreadsResult,
         chatMessagesResult,
+        teamChatThreadsResult,
+        teamChatMessagesResult,
         storageSummaryResult,
       ] = await Promise.all([
         fetchDrivers(companyId),
@@ -4877,6 +4887,8 @@ function App() {
         fetchFaultReports(companyId),
         fetchChatThreads(companyId),
         fetchChatMessages(companyId),
+        fetchTeamChatThreads(companyId),
+        fetchTeamChatMessages(companyId),
         fetchCompanyStorageSummary(companyId),
       ])
 
@@ -4904,6 +4916,8 @@ function App() {
       if (chatMessagesResult.data) {
         setChatMessageRecords((currentMessages) => preserveChatReadState(currentMessages, chatMessagesResult.data))
       }
+      if (teamChatThreadsResult.data) setTeamChatThreadRecords(teamChatThreadsResult.data)
+      if (teamChatMessagesResult.data) setTeamChatMessageRecords(teamChatMessagesResult.data)
       if (storageSummaryResult.data) setCompanyStorageSummary(storageSummaryResult.data)
       setDriversSyncStatus('Dati Supabase caricati.')
       setDocumentsSyncStatus('Documenti Supabase caricati.')
@@ -4912,7 +4926,7 @@ function App() {
         checksResult.error || faultsResult.error ? 'Check e guasti non caricati.' : 'Check e guasti caricati.',
       )
       setChatSyncStatus(
-        chatThreadsResult.error || chatMessagesResult.error
+        chatThreadsResult.error || chatMessagesResult.error || teamChatThreadsResult.error || teamChatMessagesResult.error
           ? 'Chat non attiva. Esegui SQL parte 14 e poi riprova.'
           : 'Chat caricata.',
       )
@@ -5015,15 +5029,18 @@ function App() {
 
     let isMounted = true
     let unsubscribeChat = () => {}
+    let unsubscribeTeamChat = () => {}
     let unsubscribeOperations = () => {}
     let chatRefreshTimer = 0
     let documentsRefreshTimer = 0
     let storageRefreshTimer = 0
 
     async function refreshChatRecords() {
-      const [threadsResult, messagesResult] = await Promise.all([
+      const [threadsResult, messagesResult, teamThreadsResult, teamMessagesResult] = await Promise.all([
         fetchChatThreads(activeCompanyId),
         fetchChatMessages(activeCompanyId),
+        fetchTeamChatThreads(activeCompanyId),
+        fetchTeamChatMessages(activeCompanyId),
       ])
 
       if (!isMounted) return
@@ -5032,6 +5049,8 @@ function App() {
       if (messagesResult.data) {
         setChatMessageRecords((currentMessages) => preserveChatReadState(currentMessages, messagesResult.data))
       }
+      if (teamThreadsResult.data) setTeamChatThreadRecords(teamThreadsResult.data)
+      if (teamMessagesResult.data) setTeamChatMessageRecords(teamMessagesResult.data)
     }
 
     async function refreshDriverDocuments() {
@@ -5085,6 +5104,32 @@ function App() {
       unsubscribeChat = cleanup
     })
 
+    subscribeToTeamChatMessages(activeCompanyId, (message, payload) => {
+      if (!isMounted) return
+
+      setTeamChatMessageRecords((currentMessages) => upsertChatMessageRecord(currentMessages, message))
+      if (payload?.eventType === 'INSERT') {
+        setChatSyncStatus('Nuovo messaggio gruppo/reparto.')
+      }
+
+      setTeamChatThreadRecords((currentThreads) => {
+        if (!currentThreads.some((thread) => thread.id === message.threadId)) {
+          fetchTeamChatThreads(activeCompanyId).then((result) => {
+            if (isMounted && result.data) setTeamChatThreadRecords(result.data)
+          })
+          return currentThreads
+        }
+
+        return currentThreads.map((thread) =>
+          thread.id === message.threadId
+            ? { ...thread, lastMessageAt: message.createdAt, updatedAt: message.createdAt }
+            : thread,
+        )
+      })
+    }).then((cleanup) => {
+      unsubscribeTeamChat = cleanup
+    })
+
     subscribeToOperationalUpdates(activeCompanyId, {
       onFaultReport: (report) => {
         if (!isMounted) return
@@ -5128,6 +5173,7 @@ function App() {
       window.clearInterval(documentsRefreshTimer)
       window.clearInterval(storageRefreshTimer)
       unsubscribeChat()
+      unsubscribeTeamChat()
       unsubscribeOperations()
     }
   }, [activeCompanyId, session?.role])
@@ -5998,6 +6044,60 @@ function App() {
     return true
   }
 
+  async function sendTeamChatMessage({ attachmentFile = null, body = '', replyToMessage = null, senderRole = 'company', threadId }) {
+    const cleanBody = String(body ?? '').trim()
+    let uploadAttachmentFile = attachmentFile
+
+    if (!threadId) {
+      setChatSyncStatus('Seleziona un gruppo o reparto prima di inviare.')
+      return false
+    }
+
+    if (!cleanBody && !attachmentFile) {
+      setChatSyncStatus('Scrivi un messaggio o allega un file.')
+      return false
+    }
+
+    if (attachmentFile) {
+      uploadAttachmentFile = await prepareChatAttachmentUploadFile(attachmentFile, setChatSyncStatus)
+      if (!uploadAttachmentFile) return false
+    }
+
+    if (!isSupabaseConfigured || !activeCompanyId) {
+      setChatSyncStatus('Chat gruppo non inviata: azienda non caricata. Riapri e riprova.')
+      return false
+    }
+
+    setChatSyncStatus('Invio messaggio gruppo...')
+    const messageResult = await createSupabaseTeamChatMessage(
+      {
+        attachmentPath: '',
+        body: composeChatMessageBody(cleanBody, replyToMessage),
+        senderRole,
+        threadId,
+      },
+      activeCompanyId,
+      uploadAttachmentFile,
+    )
+
+    if (messageResult.error || !messageResult.data) {
+      setChatSyncStatus(`Errore messaggio gruppo: ${messageResult.error?.message ?? 'messaggio non salvato'}`)
+      return false
+    }
+
+    setTeamChatMessageRecords((currentMessages) => upsertChatMessageRecord(currentMessages, messageResult.data))
+    setTeamChatThreadRecords((currentThreads) =>
+      currentThreads.map((thread) =>
+        thread.id === threadId
+          ? { ...thread, lastMessageAt: messageResult.data.createdAt, updatedAt: messageResult.data.createdAt }
+          : thread,
+      ),
+    )
+    void refreshStorageSummary(activeCompanyId)
+    setChatSyncStatus('Messaggio gruppo inviato.')
+    return true
+  }
+
   async function markChatThreadRead(threadId, readerRole) {
     if (!threadId || !['company', 'driver'].includes(readerRole)) return false
 
@@ -6545,7 +6645,11 @@ function App() {
             onReactToMessage={updateChatMessageReaction}
             onRefreshAssetPreviewUrl={refreshAssetPreviewUrl}
             onSendMessage={sendChatMessage}
+            onSendTeamMessage={sendTeamChatMessage}
             onTyping={sendChatTyping}
+            personRecords={personRecords}
+            teamChatMessages={teamChatMessageRecords}
+            teamChatThreads={teamChatThreadRecords}
           />
         ) : activeView === 'support' ? (
           <SupportWorkspace t={t} />
@@ -10944,6 +11048,42 @@ function DriverMediaSettings({ onPreferenceChange, preference, t }) {
   )
 }
 
+function getTeamAudienceLabel(value = '') {
+  const labels = {
+    all: 'Tutta l azienda',
+    custom: 'Gruppo personalizzato',
+    direct: 'Chat diretta',
+    drivers: 'Autisti',
+    office: 'Ufficio',
+    warehouse: 'Magazzino',
+  }
+
+  return labels[value] ?? 'Gruppo'
+}
+
+function getTeamThreadKindLabel(thread = {}) {
+  if (thread.threadType === 'direct' || thread.audienceType === 'direct') return 'Diretta'
+  if (['drivers', 'office', 'warehouse'].includes(thread.audienceType)) return 'Reparto'
+  return 'Gruppo'
+}
+
+function getTeamThreadIcon(thread = {}) {
+  if (thread.threadType === 'direct' || thread.audienceType === 'direct') return <UserRound size={18} />
+  if (thread.audienceType === 'drivers') return <Truck size={18} />
+  if (thread.audienceType === 'office') return <Building2 size={18} />
+  if (thread.audienceType === 'warehouse') return <ShieldCheck size={18} />
+  return <Users size={18} />
+}
+
+function getTeamThreadRowClassName(baseClassName, thread = {}, isSelected = false) {
+  const audienceType = String(thread.audienceType || 'custom').replace(/[^a-z0-9-]/gi, '-').toLowerCase()
+  const classNames = [baseClassName, 'is-team-chat', `is-team-chat-${audienceType}`]
+
+  if (isSelected) classNames.push('is-selected')
+
+  return classNames.join(' ')
+}
+
 function ChatReactionBar({ message, onOpen }) {
   const { t } = useI18n()
   const reactions = message.reactions ?? {}
@@ -11026,7 +11166,11 @@ function ChatWorkspace({
   onReactToMessage,
   onRefreshAssetPreviewUrl,
   onSendMessage,
+  onSendTeamMessage,
   onTyping,
+  personRecords = [],
+  teamChatMessages = [],
+  teamChatThreads = [],
 }) {
   const { t } = useI18n()
   const availableDrivers = useMemo(
@@ -11034,6 +11178,7 @@ function ChatWorkspace({
     [driverRecords],
   )
   const [selectedDriverId, setSelectedDriverId] = useState('')
+  const [selectedTeamThreadId, setSelectedTeamThreadId] = useState('')
   const [isStartingNewChat, setIsStartingNewChat] = useState(false)
   const [newChatQuery, setNewChatQuery] = useState('')
   const [messageBody, setMessageBody] = useState('')
@@ -11066,6 +11211,34 @@ function ChatWorkspace({
 
     return groupedMessages
   }, [chatMessages])
+  const teamMessagesByThread = useMemo(() => {
+    const groupedMessages = new Map()
+
+    teamChatMessages.forEach((message) => {
+      const messages = groupedMessages.get(message.threadId) ?? []
+      messages.push(message)
+      groupedMessages.set(message.threadId, messages)
+    })
+
+    return groupedMessages
+  }, [teamChatMessages])
+  const visibleTeamThreads = useMemo(
+    () =>
+      [...teamChatThreads]
+        .filter((thread) => thread.status !== 'archived')
+        .sort((firstThread, secondThread) => {
+          const firstMessages = teamMessagesByThread.get(firstThread.id) ?? []
+          const secondMessages = teamMessagesByThread.get(secondThread.id) ?? []
+          const firstLastMessage = firstMessages[firstMessages.length - 1]
+          const secondLastMessage = secondMessages[secondMessages.length - 1]
+          const firstTime = new Date(firstLastMessage?.createdAt ?? firstThread.lastMessageAt ?? firstThread.createdAt ?? 0).getTime()
+          const secondTime = new Date(secondLastMessage?.createdAt ?? secondThread.lastMessageAt ?? secondThread.createdAt ?? 0).getTime()
+
+          if (firstTime !== secondTime) return secondTime - firstTime
+          return firstThread.title.localeCompare(secondThread.title)
+        }),
+    [teamChatThreads, teamMessagesByThread],
+  )
   const conversationDrivers = useMemo(
     () =>
       availableDrivers
@@ -11117,24 +11290,28 @@ function ChatWorkspace({
         .some((value) => String(value).toLowerCase().includes(query))
     ))
   }, [availableDrivers, newChatQuery])
-  const selectedDriver =
-    availableDrivers.find((driver) => driver.id === selectedDriverId) ??
-    conversationDrivers[0] ??
-    null
+  const selectedTeamThread = visibleTeamThreads.find((thread) => thread.id === selectedTeamThreadId) ?? null
+  const selectedDriver = selectedTeamThread
+    ? null
+    : availableDrivers.find((driver) => driver.id === selectedDriverId) ??
+      conversationDrivers[0] ??
+      null
   const selectedThread = selectedDriver
     ? chatThreads.find((thread) => thread.driverId === selectedDriver.id && thread.contextType === 'general')
-    : null
+    : selectedTeamThread
   const visibleMessages = useMemo(
     () =>
-      selectedThread
+      selectedTeamThread
+        ? [...(teamMessagesByThread.get(selectedTeamThread.id) ?? [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+        : selectedThread
         ? [...(messagesByThread.get(selectedThread.id) ?? [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
         : [],
-    [messagesByThread, selectedThread],
+    [messagesByThread, selectedTeamThread, selectedThread, teamMessagesByThread],
   )
   const lastVisibleMessageId = visibleMessages[visibleMessages.length - 1]?.id ?? ''
   const selectedDriverIsOnline = isChatActorOnline(chatLiveState, 'driver', selectedDriver?.id)
   const selectedDriverIsTyping = Boolean(
-    selectedThread?.id && getTypingActors(chatLiveState, selectedThread.id, 'driver').length > 0,
+    selectedDriver && selectedThread?.id && getTypingActors(chatLiveState, selectedThread.id, 'driver').length > 0,
   )
   const selectedDriverPresenceLabel = selectedDriver
     ? getChatPresenceLabel({
@@ -11143,16 +11320,21 @@ function ChatWorkspace({
         lastSeenAt: getChatActorLastSeenAt(chatLiveState, 'driver', selectedDriver.id),
         typingLabel: `${selectedDriver.name} sta scrivendo...`,
       })
+    : selectedTeamThread
+    ? `${getTeamThreadKindLabel(selectedTeamThread)} · ${getTeamAudienceLabel(selectedTeamThread.audienceType)}`
     : t('chat.createdOnFirstMessage')
   const hasUnreadDriverMessages = visibleMessages.some(
-    (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
+    (message) => selectedDriver && message.senderRole === 'driver' && !message.readByCompanyAt,
   )
   const signalCompanyTyping = useChatTypingSignal({
     actorRole: 'company',
     onTyping,
-    threadId: selectedThread?.id,
+    threadId: selectedDriver ? selectedThread?.id : '',
   })
   const hasCompanyComposerPayload = Boolean(messageBody.trim() || attachmentFile)
+  const hasSelectedChatTarget = Boolean(selectedDriver || selectedTeamThread)
+  const selectedChatTitle = selectedTeamThread?.title ?? selectedDriver?.name ?? t('chat.selectDriver')
+  const selectedChatAvatarUrl = selectedDriver ? assetPreviewUrl(selectedDriver.profileImagePath) : ''
 
   useLayoutEffect(() => {
     if (!selectedThread?.id) return
@@ -11186,6 +11368,11 @@ function ChatWorkspace({
     return messages[messages.length - 1] ?? null
   }
 
+  function getLastTeamMessage(threadId) {
+    const messages = teamMessagesByThread.get(threadId) ?? []
+    return messages[messages.length - 1] ?? null
+  }
+
   function handleAttachmentChange(event) {
     const file = event.target.files?.[0] ?? null
     setAttachmentFile(file)
@@ -11194,6 +11381,17 @@ function ChatWorkspace({
 
   function selectDriverChat(driverId) {
     setSelectedDriverId(driverId)
+    setSelectedTeamThreadId('')
+    setIsStartingNewChat(false)
+    setNewChatQuery('')
+    setIsCompanyChatOpen(true)
+    setReplyToMessage(null)
+    messageActions.closeMessageActions()
+  }
+
+  function selectTeamChat(threadId) {
+    setSelectedTeamThreadId(threadId)
+    setSelectedDriverId('')
     setIsStartingNewChat(false)
     setNewChatQuery('')
     setIsCompanyChatOpen(true)
@@ -11202,7 +11400,14 @@ function ChatWorkspace({
   }
 
   function getCompanyMessageSenderLabel(message) {
-    return message.senderRole === 'company' ? t('chat.company') : selectedDriver?.name ?? t('chat.driver')
+    if (message.senderRole === 'company') return t('chat.company')
+    const senderPerson = personRecords.find((person) => person.id === message.senderPersonId)
+    if (senderPerson?.name) return senderPerson.name
+    if (message.senderRole === 'office') return 'Ufficio'
+    if (message.senderRole === 'warehouse') return 'Magazzino'
+    if (message.senderRole === 'driver') return selectedDriver?.name ?? 'Autista'
+    if (!selectedTeamThread) return selectedDriver?.name ?? t('chat.driver')
+    return selectedTeamThread.title
   }
 
   function startReplyToMessage(message) {
@@ -11238,7 +11443,7 @@ function ChatWorkspace({
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (!selectedDriver || isSending || (!messageBody.trim() && !attachmentFile)) return
+    if ((!selectedDriver && !selectedTeamThread) || isSending || (!messageBody.trim() && !attachmentFile)) return
 
     const sentBody = messageBody
     const sentAttachmentFile = attachmentFile
@@ -11249,14 +11454,22 @@ function ChatWorkspace({
     setReplyToMessage(null)
     signalCompanyTyping('')
     setIsSending(true)
-    const sent = await onSendMessage?.({
-      attachmentFile: sentAttachmentFile,
-      body: sentBody,
-      driverId: selectedDriver.id,
-      senderRole: 'company',
-      threadId: selectedThread?.id,
-      replyToMessage: sentReplyToMessage,
-    })
+    const sent = selectedTeamThread
+      ? await onSendTeamMessage?.({
+          attachmentFile: sentAttachmentFile,
+          body: sentBody,
+          senderRole: 'company',
+          threadId: selectedTeamThread.id,
+          replyToMessage: sentReplyToMessage,
+        })
+      : await onSendMessage?.({
+          attachmentFile: sentAttachmentFile,
+          body: sentBody,
+          driverId: selectedDriver.id,
+          senderRole: 'company',
+          threadId: selectedThread?.id,
+          replyToMessage: sentReplyToMessage,
+        })
     setIsSending(false)
 
     if (sent) {
@@ -11297,12 +11510,12 @@ function ChatWorkspace({
 
     const newMessages = visibleMessages.filter((message) => !seenMessages.has(message.id))
 
-    if (isCompanyChatOpen && newMessages.some((message) => message.senderRole === 'driver')) {
+    if (isCompanyChatOpen && newMessages.some((message) => (selectedTeamThread ? message.senderRole !== 'company' : message.senderRole === 'driver'))) {
       chatSound.playSound('incoming')
     }
 
     newMessages.forEach((message) => seenMessages.add(message.id))
-  }, [chatSound, isCompanyChatOpen, lastVisibleMessageId, selectedThread?.id, visibleMessages])
+  }, [chatSound, isCompanyChatOpen, lastVisibleMessageId, selectedTeamThread, selectedThread?.id, visibleMessages])
 
   return (
     <section
@@ -11336,6 +11549,23 @@ function ChatWorkspace({
               />
             </label>
             <div className="new-chat-list">
+              {visibleTeamThreads.map((thread) => (
+                <button
+                  className={getTeamThreadRowClassName('new-chat-driver', thread)}
+                  key={thread.id}
+                  onClick={() => selectTeamChat(thread.id)}
+                  type="button"
+                >
+                  <span className="team-chat-row-icon">
+                    {getTeamThreadIcon(thread)}
+                  </span>
+                  <span>
+                    <strong>{thread.title}</strong>
+                    <small>{getTeamThreadKindLabel(thread)} · {getTeamAudienceLabel(thread.audienceType)}</small>
+                  </span>
+                  <ChevronRight size={17} />
+                </button>
+              ))}
               {newChatDrivers.map((driver) => (
                 <button className="new-chat-driver" key={driver.id} onClick={() => selectDriverChat(driver.id)} type="button">
                   <EntityAvatar imageUrl={assetPreviewUrl(driver.profileImagePath)} name={driver.name} />
@@ -11351,6 +11581,41 @@ function ChatWorkspace({
           </div>
         )}
         <div className="chat-driver-list">
+          {visibleTeamThreads.length > 0 && (
+            <div className="chat-list-section-label">Gruppi e reparti</div>
+          )}
+          {visibleTeamThreads.map((thread) => {
+            const lastMessage = getLastTeamMessage(thread.id)
+            const isSelected = selectedTeamThread?.id === thread.id
+
+            return (
+              <button
+                className={getTeamThreadRowClassName('chat-driver-row', thread, isSelected)}
+                key={thread.id}
+                onClick={() => selectTeamChat(thread.id)}
+                type="button"
+              >
+                <span className="team-chat-row-icon">
+                  {getTeamThreadIcon(thread)}
+                </span>
+                <span>
+                  <strong>{thread.title}</strong>
+                  <small>
+                    {lastMessage
+                      ? `${getCompanyMessageSenderLabel(lastMessage)}: ${getChatMessageText(lastMessage, t('chat.photoAttached'))}`
+                      : `${getTeamThreadKindLabel(thread)} · ${getTeamAudienceLabel(thread.audienceType)}`}
+                  </small>
+                </span>
+                <span className="chat-row-meta">
+                  <strong className="chat-kind-badge">{getTeamThreadKindLabel(thread)}</strong>
+                  {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
+                </span>
+              </button>
+            )
+          })}
+          {conversationDrivers.length > 0 && (
+            <div className="chat-list-section-label">Chat autisti</div>
+          )}
           {conversationDrivers.map((driver) => {
             const lastMessage = getLastDriverMessage(driver.id)
             const isSelected = selectedDriver?.id === driver.id
@@ -11393,7 +11658,7 @@ function ChatWorkspace({
               </button>
             )
           })}
-          {conversationDrivers.length === 0 && (
+          {conversationDrivers.length === 0 && visibleTeamThreads.length === 0 && (
             <div className="empty-state-row">
               <Users size={20} />
               <div>
@@ -11417,7 +11682,7 @@ function ChatWorkspace({
           </button>
           <div>
             <p className="overline">{t('chat.conversation')}</p>
-            <h2>{selectedDriver?.name ?? t('chat.selectDriver')}</h2>
+            <h2>{selectedChatTitle}</h2>
             <span className={selectedDriverIsTyping ? 'chat-presence-text is-typing' : 'chat-presence-text'}>
               {selectedDriverPresenceLabel}
             </span>
@@ -11426,7 +11691,7 @@ function ChatWorkspace({
             <ChatSoundButton enabled={chatSound.isEnabled} onToggle={chatSound.toggleSound} t={t} />
             {selectedDriver && (
               <ChatAvatarButton
-                imageUrl={assetPreviewUrl(selectedDriver.profileImagePath)}
+                imageUrl={selectedChatAvatarUrl}
                 name={selectedDriver.name}
                 onOpen={openChatAvatarPreview}
               />
@@ -11441,14 +11706,14 @@ function ChatWorkspace({
           />
         )}
         <div className="chat-message-list" ref={messagesListRef}>
-          {selectedDriver && visibleMessages.length === 0 && (
+          {hasSelectedChatTarget && visibleMessages.length === 0 && (
             <div className="chat-empty-state">
               <Mail size={24} />
               <strong>{t('chat.noMessagesYet')}</strong>
-              <span>{t('chat.firstMessageHint')}</span>
+              <span>{selectedTeamThread ? 'Scrivi il primo messaggio nel gruppo.' : t('chat.firstMessageHint')}</span>
             </div>
           )}
-          {!selectedDriver && (
+          {!hasSelectedChatTarget && (
             <div className="chat-empty-state">
               <Users size={24} />
               <strong>{t('chat.selectDriver')}</strong>
@@ -11474,7 +11739,7 @@ function ChatWorkspace({
                 data-chat-message-id={message.id}
                 key={message.id}
                 style={swipeOffset ? { '--swipe-offset': `${swipeOffset}px` } : undefined}
-                {...messageActions.getMessageActionProps(message)}
+                {...(selectedTeamThread ? {} : messageActions.getMessageActionProps(message))}
               >
                 <div className="chat-message-meta">
                   <span>{getCompanyMessageSenderLabel(message)}</span>
@@ -11490,14 +11755,16 @@ function ChatWorkspace({
                   url={attachmentUrl}
                 />
                 {message.attachmentPath && !attachmentUrl && <small>{t('chat.photoLoading')}</small>}
-                {message.senderRole === 'company' && (
+                {!selectedTeamThread && message.senderRole === 'company' && (
                   <MessageStatus status={getMessageStatus(message, 'company')} />
                 )}
-                <ChatReactionBar
-                  message={message}
-                  onOpen={() => messageActions.openMessageActions(message.id)}
-                />
-                {isActionMenuOpen && (
+                {!selectedTeamThread && (
+                  <ChatReactionBar
+                    message={message}
+                    onOpen={() => messageActions.openMessageActions(message.id)}
+                  />
+                )}
+                {!selectedTeamThread && isActionMenuOpen && (
                   <ChatMessageActionMenu
                     actorRole="company"
                     message={message}
@@ -11525,34 +11792,34 @@ function ChatWorkspace({
         <form className="chat-compose" onSubmit={handleSubmit}>
           <ChatReplyPreview onCancel={() => setReplyToMessage(null)} reply={replyToMessage} t={t} />
           <ChatAttachmentDraft file={attachmentFile} onRemove={() => setAttachmentFile(null)} t={t} />
-          <div className={isCompanyRecordingAudio ? 'chat-compose-bar is-recording-audio' : 'chat-compose-bar'}>
-            {!isCompanyRecordingAudio && (
-              <ChatAttachmentMenu disabled={!selectedDriver} onFile={handleAttachmentChange} t={t} />
+            <div className={isCompanyRecordingAudio ? 'chat-compose-bar is-recording-audio' : 'chat-compose-bar'}>
+              {!isCompanyRecordingAudio && (
+              <ChatAttachmentMenu disabled={!hasSelectedChatTarget} onFile={handleAttachmentChange} t={t} />
             )}
             {!isCompanyRecordingAudio && (
               <textarea
                 ref={composeTextareaRef}
                 className="chat-compose-input"
-                disabled={!selectedDriver}
+                disabled={!hasSelectedChatTarget}
                 onKeyDown={handleComposeKeyDown}
                 onChange={(event) => {
                   setMessageBody(event.target.value)
                   signalCompanyTyping(event.target.value)
                 }}
-                placeholder={selectedDriver ? t('chat.writePlaceholder') : t('chat.selectDriver')}
+                placeholder={hasSelectedChatTarget ? t('chat.writePlaceholder') : t('chat.selectDriver')}
                 rows={1}
                 value={messageBody}
               />
             )}
             <span className="chat-compose-tail">
               {!hasCompanyComposerPayload && !isCompanyRecordingAudio && (
-                <ChatQuickCameraButton disabled={!selectedDriver || isSending} onFile={handleAttachmentChange} t={t} />
+                <ChatQuickCameraButton disabled={!hasSelectedChatTarget || isSending} onFile={handleAttachmentChange} t={t} />
               )}
               {hasCompanyComposerPayload ? (
                 <button
                   aria-label={isSending ? t('chat.sending') : t('chat.send')}
                   className="chat-send-button"
-                  disabled={!selectedDriver || isSending}
+                  disabled={!hasSelectedChatTarget || isSending}
                   type="submit"
                 >
                   <Send size={18} />
@@ -11560,7 +11827,7 @@ function ChatWorkspace({
                 </button>
               ) : (
                 <ChatAudioRecorder
-                  disabled={!selectedDriver || isSending}
+                  disabled={!hasSelectedChatTarget || isSending}
                   onRecord={setAttachmentFile}
                   onRecordingChange={setIsCompanyRecordingAudio}
                   t={t}

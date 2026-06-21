@@ -73,6 +73,7 @@ begin
   exception
     when undefined_function or undefined_table then
       null;
+    when others then
+      null;
   end;
 end $$;
-

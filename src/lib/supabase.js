@@ -331,6 +331,20 @@ function mapChatThread(row) {
   }
 }
 
+function mapTeamChatThread(row) {
+  return {
+    audienceType: row.audience_type ?? 'custom',
+    companyId: row.company_id,
+    createdAt: row.created_at,
+    id: row.id,
+    lastMessageAt: row.last_message_at,
+    status: row.status ?? 'open',
+    threadType: row.thread_type ?? 'group',
+    title: row.title ?? 'Gruppo',
+    updatedAt: row.updated_at,
+  }
+}
+
 function mapChatMessage(row) {
   return {
     attachmentPath: row.attachment_path ?? '',
@@ -341,6 +355,23 @@ function mapChatMessage(row) {
     readByCompanyAt: row.read_by_company_at,
     readByDriverAt: row.read_by_driver_at,
     reactions: row.reactions ?? {},
+    senderRole: row.sender_role,
+    senderUserId: row.sender_user_id,
+    threadId: row.thread_id,
+  }
+}
+
+function mapTeamChatMessage(row) {
+  return {
+    attachmentPath: row.attachment_path ?? '',
+    body: row.body ?? '',
+    companyId: row.company_id,
+    createdAt: row.created_at,
+    id: row.id,
+    readByCompanyAt: '',
+    readByDriverAt: '',
+    reactions: {},
+    senderPersonId: row.sender_person_id ?? '',
     senderRole: row.sender_role,
     senderUserId: row.sender_user_id,
     threadId: row.thread_id,
@@ -371,6 +402,30 @@ const chatMessageSelectColumnsWithoutReactions = `
   attachment_path,
   read_by_company_at,
   read_by_driver_at,
+  created_at
+`
+
+const teamChatThreadSelectColumns = `
+  id,
+  company_id,
+  thread_type,
+  audience_type,
+  title,
+  status,
+  last_message_at,
+  created_at,
+  updated_at
+`
+
+const teamChatMessageSelectColumns = `
+  id,
+  thread_id,
+  company_id,
+  sender_user_id,
+  sender_person_id,
+  sender_role,
+  body,
+  attachment_path,
   created_at
 `
 
@@ -1037,6 +1092,68 @@ export async function fetchChatMessages(companyId = configuredCompanyId) {
   return { data: data?.map(mapChatMessage) ?? null, error }
 }
 
+export async function ensureDefaultTeamThreads(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('ensure_default_team_threads', {
+    target_company_id: companyId,
+  })
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: null }
+  }
+
+  return { data, error }
+}
+
+export async function fetchTeamChatThreads(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('team_chat_threads')
+    .select(teamChatThreadSelectColumns)
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('last_message_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null }
+  }
+
+  return { data: data?.map(mapTeamChatThread) ?? null, error }
+}
+
+export async function fetchTeamChatMessages(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('team_chat_messages')
+    .select(teamChatMessageSelectColumns)
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: true })
+    .limit(700)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null }
+  }
+
+  return { data: data?.map(mapTeamChatMessage) ?? null, error }
+}
+
 export async function fetchDriverSessionData() {
   const supabase = await getSupabaseClient()
 
@@ -1396,6 +1513,65 @@ export async function createChatMessageRecord(message, companyId = configuredCom
   }
 
   return { data: data ? mapChatMessage(data) : null, error }
+}
+
+export async function createTeamChatMessageRecord(message, companyId = configuredCompanyId, attachmentFile = null) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !message?.threadId) {
+    return { data: null, error: null }
+  }
+
+  let attachmentPath = message.attachmentPath ?? ''
+
+  if (attachmentFile) {
+    const cleanFileName = sanitizeStorageFileName(attachmentFile.name)
+    attachmentPath = `${companyId}/team-chat/${message.threadId}/${Date.now()}-${cleanFileName}`
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(attachmentPath, attachmentFile, {
+      cacheControl: '3600',
+      contentType: attachmentFile.type || undefined,
+      upsert: false,
+    })
+
+    if (uploadError) {
+      return { data: null, error: uploadError }
+    }
+  }
+
+  const payload = {
+    attachment_path: attachmentPath || null,
+    body: message.body?.trim() || null,
+    company_id: companyId,
+    sender_person_id: message.senderPersonId || null,
+    sender_role: message.senderRole,
+    thread_id: message.threadId,
+  }
+
+  const { data, error } = await supabase
+    .from('team_chat_messages')
+    .insert(payload)
+    .select(teamChatMessageSelectColumns)
+    .single()
+
+  if (error && attachmentPath) {
+    await supabase.storage.from(companyAssetsBucket).remove([attachmentPath])
+  }
+
+  if (!error && attachmentFile && attachmentPath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'chat',
+      companyId,
+      file: attachmentFile,
+      filePath: attachmentPath,
+    })
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: { message: 'Per usare chat gruppi/reparti esegui il file SQL 31 in Supabase.' } }
+  }
+
+  return { data: data ? mapTeamChatMessage(data) : null, error }
 }
 
 export async function markChatMessagesRead(threadId, readerRole) {
@@ -1859,6 +2035,34 @@ export async function subscribeToChatMessages(companyId, onMessage) {
       },
       (payload) => {
         if (payload.new) onMessage?.(mapChatMessage(payload.new), payload)
+      },
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+export async function subscribeToTeamChatMessages(companyId, onMessage) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return () => {}
+  }
+
+  const channel = supabase
+    .channel(`team-chat-messages-${companyId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'team_chat_messages',
+      },
+      (payload) => {
+        if (payload.new) onMessage?.(mapTeamChatMessage(payload.new), payload)
       },
     )
     .subscribe()

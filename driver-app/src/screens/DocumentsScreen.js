@@ -98,6 +98,11 @@ function DocumentRow({ document, language = 'it', onUploadDocument }) {
       return
     }
 
+    if (/^https?:\/\//i.test(document.filePath)) {
+      await Linking.openURL(document.filePath)
+      return
+    }
+
     const result = await createDriverDocumentSignedUrl(document.filePath)
     const signedUrl = result.data?.signedUrl
 

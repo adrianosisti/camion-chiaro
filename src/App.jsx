@@ -369,6 +369,21 @@ const translations = {
     'homeCommand.settingsLabel': 'Impostazioni',
     'homeCommand.subtitle': 'Ogni pulsante apre una sezione precisa: la home resta pulita, le pratiche restano lavorabili.',
     'homeCommand.title': 'Comandi azienda',
+    'homeInsight.deadlineCleanDetail': 'Apri scadenze per pianificare i prossimi rinnovi.',
+    'homeInsight.deadlineCleanValue': 'Nessuna urgente',
+    'homeInsight.deadlineLabel': 'Prossima scadenza',
+    'homeInsight.eventCleanDetail': 'Check e guasti appariranno qui appena arrivano.',
+    'homeInsight.eventCleanValue': 'Nessun evento',
+    'homeInsight.eventLabel': 'Ultimo evento',
+    'homeInsight.fleetDetail': '{drivers} autisti · {people} persone',
+    'homeInsight.fleetLabel': 'Squadra e flotta',
+    'homeInsight.operationsCleanDetail': 'La giornata operativa e sotto controllo.',
+    'homeInsight.operationsCleanValue': 'Nessuna urgenza',
+    'homeInsight.operationsDetail': 'Registro operativo da aprire.',
+    'homeInsight.operationsLabel': 'Priorita ora',
+    'homeInsight.operationsValue': '{count} da aprire',
+    'homeInsight.subtitle': 'Una lettura veloce per capire cosa succede senza scorrere.',
+    'homeInsight.title': 'Situazione del giorno',
     'hero.aria': 'Controllo scadenze',
     'hero.description': 'Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.',
     'hero.factDrivers': 'autisti attivi',
@@ -497,6 +512,21 @@ const translations = {
     'homeCommand.settingsLabel': 'Settings',
     'homeCommand.subtitle': 'Each button opens a precise area: the home stays clean, every case stays workable.',
     'homeCommand.title': 'Company commands',
+    'homeInsight.deadlineCleanDetail': 'Open deadlines to plan the next renewals.',
+    'homeInsight.deadlineCleanValue': 'Nothing urgent',
+    'homeInsight.deadlineLabel': 'Next deadline',
+    'homeInsight.eventCleanDetail': 'Checks and faults will appear here as soon as they arrive.',
+    'homeInsight.eventCleanValue': 'No events',
+    'homeInsight.eventLabel': 'Latest event',
+    'homeInsight.fleetDetail': '{drivers} drivers · {people} people',
+    'homeInsight.fleetLabel': 'Team and fleet',
+    'homeInsight.operationsCleanDetail': 'The operating day is under control.',
+    'homeInsight.operationsCleanValue': 'No urgency',
+    'homeInsight.operationsDetail': 'Operations log to open.',
+    'homeInsight.operationsLabel': 'Priority now',
+    'homeInsight.operationsValue': '{count} to open',
+    'homeInsight.subtitle': 'A quick read of what is happening without scrolling.',
+    'homeInsight.title': 'Daily situation',
     'hero.aria': 'Deadline control',
     'hero.description': 'A clean screen to see deadlines, morning checks and faults to manage right away.',
     'hero.factDrivers': 'active drivers',
@@ -7070,6 +7100,75 @@ function App() {
       value: '',
     },
   ]
+  const nextHomeDeadline = decoratedItems
+    .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
+    .slice()
+    .sort((first, second) => first.urgency.days - second.urgency.days)[0]
+  const latestHomeEvent = [
+    ...visibleFaultReportRecords.map((report) => {
+      const driver = driverRecords.find((entry) => entry.id === report.driverId)
+      const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
+
+      return {
+        createdAt: report.createdAt,
+        detail: `${driver?.name ?? 'Autista'} · ${vehicle?.plate ?? 'targa mancante'}`,
+        icon: Wrench,
+        onClick: () => openNotifications('faults'),
+        title: report.title || 'Guasto segnalato',
+        tone: isFaultArchived(report) ? 'info' : 'warning',
+      }
+    }),
+    ...vehicleCheckRecords.map((check) => {
+      const driver = driverRecords.find((entry) => entry.id === check.driverId)
+      const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
+      const hasIssues = hasCheckIssues(check)
+
+      return {
+        createdAt: check.createdAt,
+        detail: `${driver?.name ?? 'Autista'} · ${vehicle?.plate ?? 'targa mancante'}`,
+        icon: ClipboardCheck,
+        onClick: () => openNotifications(hasIssues ? 'critical_checks' : 'checks'),
+        title: hasIssues ? 'Check con criticita' : 'Check mattutino ricevuto',
+        tone: hasIssues ? 'danger' : 'success',
+      }
+    }),
+  ]
+    .filter((event) => event.createdAt)
+    .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))[0]
+  const homeInsightItems = [
+    {
+      detail: notificationCount > 0 ? t('homeInsight.operationsDetail') : t('homeInsight.operationsCleanDetail'),
+      icon: Bell,
+      label: t('homeInsight.operationsLabel'),
+      onClick: () => openNotifications('inbox'),
+      tone: notificationCount > 0 ? 'warning' : 'success',
+      value: notificationCount > 0 ? t('homeInsight.operationsValue', { count: notificationCount }) : t('homeInsight.operationsCleanValue'),
+    },
+    {
+      detail: nextHomeDeadline ? `${nextHomeDeadline.assignee} · ${formatDate(nextHomeDeadline.dueDate)}` : t('homeInsight.deadlineCleanDetail'),
+      icon: CalendarClock,
+      label: t('homeInsight.deadlineLabel'),
+      onClick: () => openComplianceFilter('month'),
+      tone: nextHomeDeadline ? nextHomeDeadline.urgency.tone : 'success',
+      value: nextHomeDeadline?.type ?? t('homeInsight.deadlineCleanValue'),
+    },
+    {
+      detail: latestHomeEvent ? `${latestHomeEvent.detail} · ${formatShortDateTime(latestHomeEvent.createdAt)}` : t('homeInsight.eventCleanDetail'),
+      icon: latestHomeEvent?.icon ?? Clock3,
+      label: t('homeInsight.eventLabel'),
+      onClick: latestHomeEvent?.onClick ?? (() => openNotifications('inbox')),
+      tone: latestHomeEvent?.tone ?? 'info',
+      value: latestHomeEvent?.title ?? t('homeInsight.eventCleanValue'),
+    },
+    {
+      detail: t('homeInsight.fleetDetail', { drivers: activeDriverCount, people: activePeopleCount }),
+      icon: Truck,
+      label: t('homeInsight.fleetLabel'),
+      onClick: () => openRecords('fleet'),
+      tone: openFaultCount > 0 ? 'warning' : 'info',
+      value: `${activeVehicleCount} mezzi`,
+    },
+  ]
 
   return (
     <I18nContext.Provider value={i18nValue}>
@@ -7251,6 +7350,7 @@ function App() {
                 t={t}
               />
               <HomeCommandPanel actions={homeCommandActions} t={t} />
+              <HomeInsightStrip items={homeInsightItems} t={t} />
             </section>
           </>
         )}
@@ -8932,6 +9032,36 @@ function HomeCommandPanel({ actions = [], t }) {
               <b className="home-command-value">{action.value}</b>
             )}
             <ChevronRight className="home-command-arrow" size={18} />
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function HomeInsightStrip({ items = [], t }) {
+  return (
+    <section className="home-insight-strip" aria-label={t('homeInsight.title')}>
+      <div className="home-insight-intro">
+        <p className="overline">{t('homeInsight.title')}</p>
+        <strong>{t('homeInsight.subtitle')}</strong>
+      </div>
+      <div className="home-insight-grid">
+        {items.map((item) => (
+          <button
+            className={`home-insight-card tone-${item.tone ?? 'info'}`}
+            key={item.label}
+            onClick={item.onClick}
+            type="button"
+          >
+            <span className="home-insight-icon">
+              <item.icon size={18} />
+            </span>
+            <span className="home-insight-copy">
+              <small>{item.label}</small>
+              <strong>{item.value}</strong>
+              <em>{item.detail}</em>
+            </span>
           </button>
         ))}
       </div>

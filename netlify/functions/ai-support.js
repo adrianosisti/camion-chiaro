@@ -35,6 +35,10 @@ function normalizeHistory(history = []) {
     }))
 }
 
+function isAiSupportEnabled() {
+  return process.env.OPENAI_SUPPORT_ENABLED === 'true'
+}
+
 const camionChiaroKnowledgeBase = `
 Camion Chiaro e un software per aziende di logistica e trasporto.
 Ruoli principali: azienda/titolare, autista, ufficio, magazzino.
@@ -270,7 +274,7 @@ export async function handler(event) {
   }
 
   const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
+  if (!isAiSupportEnabled() || !apiKey) {
     return jsonResponse(200, {
       mode: 'guided',
       reply: buildGuidedAnswer(message),

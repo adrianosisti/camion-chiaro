@@ -120,7 +120,7 @@ begin
       ('office', 'demo.roberto', 'office', '[DEMOPLUS] Ho riassegnato secondo giro a Tomasz. Ahmed resta su tratta nord.', now() - interval '4 hours 10 minutes'),
       ('office', null, 'company', '[DEMOPLUS] Prima di chiudere giornata voglio archivio guasti aggiornato e note su check muletti.', now() - interval '2 hours 30 minutes'),
 
-      ('all', null, 'company', '[DEMOPLUS] 06:00 Avvio giornata SpediFast: 7 autisti, 5 persone ufficio/magazzino, 10 mezzi, 6 attrezzature.', now() - interval '10 hours'),
+      ('all', null, 'company', '[DEMOPLUS] 06:00 Avvio giornata azienda demo: 7 autisti, 5 persone ufficio/magazzino, 10 mezzi, 6 attrezzature.', now() - interval '10 hours'),
       ('all', 'demo.paola', 'office', '[DEMOPLUS] Comunicazione: per oggi priorita Bologna, farmaceutico Prato e messa in sicurezza locale batterie.', now() - interval '8 hours 20 minutes'),
       ('all', 'demo.gianni', 'warehouse', '[DEMOPLUS] Magazzino aggiornato: ribalte 2 e 4 operative, muletto 01 in carica.', now() - interval '5 hours 50 minutes'),
       ('all', null, 'company', '[DEMOPLUS] Grazie a tutti. Ogni criticita deve restare tracciata: check, guasto o chat reparto.', now() - interval '90 minutes')

@@ -179,7 +179,7 @@ const emptyCompanyStorageSummary = {
 }
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
-const demoCompanyName = 'Spedifast SRL'
+const demoCompanyName = 'Azienda Demo SRL'
 const supportEmail = 'assistenza@camionchiaro.it'
 const placeholderCompanyNames = new Set(['Camion Chiaro', 'Camion Chiaro Demo'])
 const fleetTypeOptions = [
@@ -212,7 +212,7 @@ const billingCheckoutPlans = [
     bestFor: 'Per partire con una piccola flotta senza perdere scadenze e documenti.',
     features: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', '10 GB file inclusi'],
     id: 'starter',
-    price: '300 euro/mese',
+    price: '300 euro/mese + IVA',
     title: 'Start 5',
   },
   {
@@ -220,28 +220,28 @@ const billingCheckoutPlans = [
     features: ['Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', '20 GB file inclusi'],
     id: 'fleet10',
     isRecommended: true,
-    price: '450 euro/mese',
+    price: '450 euro/mese + IVA',
     title: 'Fleet 10',
   },
   {
     bestFor: 'Per flotte strutturate che vogliono report economici e storico completo.',
     features: ['Fino a 20 mezzi', 'Fino a 10 strumenti o muletti', 'Fino a 40 account', '30 GB file inclusi'],
     id: 'fleet20',
-    price: '650 euro/mese',
+    price: '650 euro/mese + IVA',
     title: 'Fleet 20',
   },
   {
     bestFor: 'Per aziende con piu reparti, magazzino e gestione manutenzioni frequente.',
     features: ['Fino a 30 mezzi', 'Fino a 15 strumenti o muletti', 'Fino a 60 account', '50 GB file inclusi'],
     id: 'fleet30',
-    price: '850 euro/mese',
+    price: '850 euro/mese + IVA',
     title: 'Fleet 30',
   },
   {
     bestFor: 'Per flotte grandi con piu utenti e alto volume documentale.',
     features: ['Fino a 50 mezzi', 'Fino a 25 strumenti o muletti', 'Fino a 100 account', '75 GB file inclusi'],
     id: 'fleet50',
-    price: '1.200 euro/mese',
+    price: '1.200 euro/mese + IVA',
     title: 'Fleet 50',
   },
 ]
@@ -315,7 +315,7 @@ const translations = {
     'auth.companyEmailPlaceholder': 'azienda@esempio.it',
     'auth.companyNameLabel': 'Nome trasportatore / Ragione sociale',
     'auth.companyNameMissing': 'Inserisci il nome del trasportatore o la ragione sociale.',
-    'auth.companyNamePlaceholder': 'Es. Spedifast SRL',
+    'auth.companyNamePlaceholder': 'Es. La tua azienda SRL',
     'auth.companySigninOverline': 'Accesso azienda',
     'auth.companySigninTitle': 'Entra nel pannello',
     'auth.companySignupOverline': 'Registrazione azienda',
@@ -491,7 +491,7 @@ const translations = {
     'auth.companyEmailPlaceholder': 'company@example.com',
     'auth.companyNameLabel': 'Carrier name / Legal name',
     'auth.companyNameMissing': 'Enter the carrier name or legal company name.',
-    'auth.companyNamePlaceholder': 'Example: Spedifast Ltd',
+    'auth.companyNamePlaceholder': 'Example: Your company Ltd',
     'auth.companySigninOverline': 'Company access',
     'auth.companySigninTitle': 'Enter the dashboard',
     'auth.companySignupOverline': 'Company registration',
@@ -667,7 +667,7 @@ const translations = {
     'auth.companyEmailPlaceholder': 'empresa@ejemplo.com',
     'auth.companyNameLabel': 'Nombre del transportista / Razon social',
     'auth.companyNameMissing': 'Introduce el nombre del transportista o la razon social.',
-    'auth.companyNamePlaceholder': 'Ej. Spedifast SL',
+    'auth.companyNamePlaceholder': 'Ej. Tu empresa SL',
     'auth.companySigninOverline': 'Acceso empresa',
     'auth.companySigninTitle': 'Entrar al panel',
     'auth.companySignupOverline': 'Registro empresa',
@@ -795,7 +795,7 @@ const translations = {
     'auth.companyEmailPlaceholder': 'entreprise@exemple.fr',
     'auth.companyNameLabel': 'Nom transporteur / Raison sociale',
     'auth.companyNameMissing': 'Saisis le nom du transporteur ou la raison sociale.',
-    'auth.companyNamePlaceholder': 'Ex. Spedifast SARL',
+    'auth.companyNamePlaceholder': 'Ex. Votre entreprise SARL',
     'auth.companySigninOverline': 'Acces entreprise',
     'auth.companySigninTitle': 'Entrer dans le tableau',
     'auth.companySignupOverline': 'Inscription entreprise',
@@ -923,7 +923,7 @@ const translations = {
     'auth.companyEmailPlaceholder': 'firma@beispiel.de',
     'auth.companyNameLabel': 'Transportunternehmen / Firmenname',
     'auth.companyNameMissing': 'Firmennamen oder rechtlichen Namen eingeben.',
-    'auth.companyNamePlaceholder': 'z. B. Spedifast GmbH',
+    'auth.companyNamePlaceholder': 'z. B. Ihre Firma GmbH',
     'auth.companySigninOverline': 'Firmenzugang',
     'auth.companySigninTitle': 'Dashboard offnen',
     'auth.companySignupOverline': 'Firma registrieren',
@@ -3493,7 +3493,7 @@ const supportSections = [
         title: 'Posso controllare quanto spendo sui mezzi?',
       },
       {
-        body: 'Il prezzo parte da 300 euro/mese perche Camion Chiaro non e una semplice agenda: include app, notifiche, documenti, storico, costi, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
+        body: 'Il prezzo parte da 300 euro/mese + IVA perche Camion Chiaro non e una semplice agenda: include app, notifiche, documenti, storico, costi, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
         title: 'Perche vale il canone mensile?',
       },
     ],
@@ -8312,7 +8312,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           <div className="public-mock-topbar">
             <div>
               <span>Dashboard azienda</span>
-              <strong>Spedifast SRL</strong>
+              <strong>La tua azienda SRL</strong>
             </div>
             <Bell size={19} />
           </div>
@@ -8437,7 +8437,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         <div className="public-price-grid">
           <article>
             <span>Start 5</span>
-            <strong>300 euro/mese</strong>
+            <strong>300 euro/mese + IVA</strong>
             <p>Per piccole flotte che vogliono smettere subito di lavorare con scadenze e documenti sparsi.</p>
             <ul>
               <li>Fino a 5 mezzi</li>
@@ -8449,7 +8449,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
           <article className="is-featured">
             <span>Fleet 10</span>
-            <strong>450 euro/mese</strong>
+            <strong>450 euro/mese + IVA</strong>
             <p>Per aziende con ufficio operativo, autisti e magazzino collegati che vogliono piu controllo ogni giorno.</p>
             <ul>
               <li>Fino a 10 mezzi</li>
@@ -8461,7 +8461,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
           <article>
             <span>Fleet 20+</span>
-            <strong>da 650 euro/mese</strong>
+            <strong>da 650 euro/mese + IVA</strong>
             <p>Per flotte strutturate che vogliono storico, reparti, report economici e controllo su mezzi e strumenti.</p>
             <ul>
               <li>20, 30 o 50 mezzi</li>
@@ -8473,9 +8473,9 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
         </div>
         <div className="public-extra-pricing">
-          <div><strong>Chat aziendale</strong><span>+100 euro/mese per chat singole, gruppi, foto, video, audio e notifiche.</span></div>
-          <div><strong>Start-up kit</strong><span>1.500 euro una tantum per configurazione, anagrafiche iniziali e formazione.</span></div>
-          <div><strong>Storage extra</strong><span>20 GB +49 euro/mese · 50 GB +99 euro/mese · 100 GB +179 euro/mese.</span></div>
+          <div><strong>Chat aziendale</strong><span>100 euro/mese + IVA per chat singole, gruppi, foto, video, audio e notifiche.</span></div>
+          <div><strong>Start-up kit</strong><span>1.500 euro + IVA una tantum per configurazione, anagrafiche iniziali e formazione.</span></div>
+          <div><strong>Storage extra</strong><span>20 GB: 49 euro/mese + IVA · 50 GB: 99 euro/mese + IVA · 100 GB: 179 euro/mese + IVA.</span></div>
         </div>
       </section>
 

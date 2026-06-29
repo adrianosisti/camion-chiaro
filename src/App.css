@@ -422,8 +422,9 @@
 
 .public-price-grid strong {
   color: #020617;
-  font-size: clamp(1.45rem, 3vw, 2rem);
-  line-height: 1.1;
+  overflow-wrap: anywhere;
+  font-size: clamp(1.22rem, 2.45vw, 1.72rem);
+  line-height: 1.12;
 }
 
 .public-price-grid ul {
@@ -5826,7 +5827,9 @@
 
 .billing-plan-card b {
   color: #020617;
-  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+  font-size: 1.05rem;
+  line-height: 1.15;
 }
 
 .billing-plan-card small {

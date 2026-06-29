@@ -57,6 +57,29 @@ function getDocumentStatusLabel(document) {
   return document.filePath ? 'File disponibile' : 'File da caricare'
 }
 
+function getDocumentTypeKey(value = '') {
+  return String(value).trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function getDocumentTime(document = {}) {
+  const time = document.expiresAt ? new Date(document.expiresAt).getTime() : 0
+  return Number.isFinite(time) ? time : 0
+}
+
+function getLatestDocumentsByType(documents = []) {
+  const byType = new Map()
+
+  documents.forEach((document) => {
+    const key = getDocumentTypeKey(document.type || document.id)
+    const current = byType.get(key)
+    if (!current || getDocumentTime(document) >= getDocumentTime(current)) {
+      byType.set(key, document)
+    }
+  })
+
+  return Array.from(byType.values())
+}
+
 function isImageDocument(path = '') {
   return /\.(jpe?g|png|webp|heic|heif)$/i.test(String(path ?? '').split('?')[0])
 }
@@ -391,7 +414,8 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
   const [expiresAt, setExpiresAt] = useState('')
   const [renewRequestDocumentId, setRenewRequestDocumentId] = useState('')
   const [isCreating, setIsCreating] = useState(false)
-  const sortedDocuments = documents
+  const latestDocuments = getLatestDocumentsByType(documents)
+  const sortedDocuments = latestDocuments
     .slice()
     .sort((first, second) => getDocumentDaysLeft(first) - getDocumentDaysLeft(second))
   const criticalDocuments = sortedDocuments.filter((document) => ['expired', 'warning'].includes(getDocumentTone(document)))
@@ -503,7 +527,7 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
         />
       ))}
 
-      {documents.length === 0 ? (
+      {latestDocuments.length === 0 ? (
         <Text style={styles.emptyText}>Nessun documento visibile al momento.</Text>
       ) : null}
     </ScrollView>

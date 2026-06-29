@@ -37,6 +37,29 @@ function getDocumentCriticalText(document) {
   return 'Valido'
 }
 
+function getDocumentTypeKey(value = '') {
+  return String(value).trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function getDocumentTime(document = {}) {
+  const time = document.expiresAt ? new Date(document.expiresAt).getTime() : 0
+  return Number.isFinite(time) ? time : 0
+}
+
+function getLatestDocumentsByType(documents = []) {
+  const byType = new Map()
+
+  documents.forEach((document) => {
+    const key = getDocumentTypeKey(document.type || document.id)
+    const current = byType.get(key)
+    if (!current || getDocumentTime(document) >= getDocumentTime(current)) {
+      byType.set(key, document)
+    }
+  })
+
+  return Array.from(byType.values())
+}
+
 const dailyPhrases = {
   de: ['Klare Strecke, klarer Tag.', 'Sicherheit beginnt vor dem Start.', 'Ein guter Check spart morgen Zeit.'],
   en: ['Clear road, clear day.', 'Safety starts before the engine.', 'A good check today saves time tomorrow.'],
@@ -101,10 +124,11 @@ export function HomeScreen({
   unreadCompanyMessages = 0,
 }) {
   const documents = context?.documents ?? []
+  const latestDocuments = getLatestDocumentsByType(documents)
   const checks = context?.vehicleChecks ?? []
   const faults = context?.faultReports ?? []
   const vehicles = context?.vehicles ?? []
-  const sortedDocuments = documents
+  const sortedDocuments = latestDocuments
     .filter((document) => document.expiresAt)
     .slice()
     .sort((first, second) => new Date(first.expiresAt) - new Date(second.expiresAt))
@@ -214,7 +238,7 @@ export function HomeScreen({
         <ActionTile
           icon="document-text-outline"
           label={t(language, 'documents')}
-          meta={`${documents.length} disponibili`}
+          meta={`${latestDocuments.length} disponibili`}
           onPress={() => onOpenDocuments?.('')}
         />
         <ActionTile

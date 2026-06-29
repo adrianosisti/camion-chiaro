@@ -294,7 +294,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['chat', 'deadlines', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings', 'support'])
+const deepLinkViews = new Set(['chat', 'deadlines', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'reports', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -464,6 +464,7 @@ const translations = {
     'nav.deadlines': 'Scadenze',
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
+    'nav.reports': 'Report',
     'nav.settings': 'Impostazioni',
     'nav.support': 'Guida',
     'onboarding.body': 'Completa questi passaggi per rendere Camion Chiaro operativo senza confusione.',
@@ -640,6 +641,7 @@ const translations = {
     'nav.deadlines': 'Deadlines',
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
+    'nav.reports': 'Reports',
     'nav.settings': 'Settings',
     'nav.support': 'Guide',
     'onboarding.body': 'Complete these steps to make Camion Chiaro operational without confusion.',
@@ -768,6 +770,7 @@ const translations = {
     'nav.deadlines': 'Vencimientos',
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
+    'nav.reports': 'Informes',
     'nav.settings': 'Ajustes',
     'nav.support': 'Guia',
     'onboarding.body': 'Completa estos pasos para poner Camion Chiaro operativo sin confusion.',
@@ -896,6 +899,7 @@ const translations = {
     'nav.deadlines': 'Echeances',
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
+    'nav.reports': 'Rapports',
     'nav.settings': 'Reglages',
     'nav.support': 'Guide',
     'onboarding.body': 'Complete ces etapes pour rendre Camion Chiaro operationnel sans confusion.',
@@ -1024,6 +1028,7 @@ const translations = {
     'nav.deadlines': 'Fristen',
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
+    'nav.reports': 'Berichte',
     'nav.settings': 'Einstellungen',
     'nav.support': 'Hilfe',
     'onboarding.body': 'Schliesse diese Schritte ab, damit Camion Chiaro sauber einsatzbereit ist.',
@@ -3064,6 +3069,7 @@ const regionalTranslations = {
     'nav.deadlines': 'Scadente',
     'nav.notifications': 'Notificari',
     'nav.records': 'Date',
+    'nav.reports': 'Rapoarte',
     'nav.settings': 'Setari',
     'nav.support': 'Ghid',
     'onboarding.body': 'Completeaza acesti pasi pentru a porni Camion Chiaro fara confuzie.',
@@ -3113,6 +3119,7 @@ const regionalTranslations = {
     'nav.deadlines': 'Terminy',
     'nav.notifications': 'Powiadomienia',
     'nav.records': 'Kartoteki',
+    'nav.reports': 'Raporty',
     'nav.settings': 'Ustawienia',
     'nav.support': 'Pomoc',
     'onboarding.body': 'Wykonaj te kroki, aby Camion Chiaro bylo gotowe do pracy.',
@@ -7655,6 +7662,14 @@ function App() {
     }, 0)
   }
 
+  function openReports() {
+    setCostReportResetKey(Date.now())
+    setActiveView('reports')
+    window.setTimeout(() => {
+      window.scrollTo({ behavior: 'smooth', top: 0 })
+    }, 0)
+  }
+
   function openRecords(tab = recordsTab) {
     setCostReportResetKey(Date.now())
     setRecordsTab(tab)
@@ -7713,6 +7728,14 @@ function App() {
       onClick: openCostReport,
       tone: faultCostSummary.monthCents > 0 ? 'cost' : 'info',
       value: formatCompactMoneyCents(faultCostSummary.monthCents, defaultCurrency),
+    },
+    {
+      detail: 'Stampa, CSV e analisi filtrate per periodo, targa, autista e multe',
+      icon: FileText,
+      label: t('nav.reports'),
+      onClick: openReports,
+      tone: 'cost',
+      value: faultCostSummary.count,
     },
     {
       detail: 'Aggiungi subito manutenzioni, gomme, assicurazioni o costi generali',
@@ -7917,6 +7940,14 @@ function App() {
             personRecords={personRecords}
             teamChatMessages={teamChatMessageRecords}
             teamChatThreads={teamChatThreadRecords}
+          />
+        ) : activeView === 'reports' ? (
+          <ReportsWorkspace
+            assetRecords={assetRecords}
+            costEntryRecords={costEntryRecords}
+            driverRecords={driverRecords}
+            faultReportRecords={visibleFaultReportRecords}
+            vehicleRecords={vehicleRecords}
           />
         ) : activeView === 'support' ? (
           <SupportWorkspace t={t} />
@@ -8801,6 +8832,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onH
     { id: 'records', label: t('nav.records'), icon: Users },
     { id: 'notifications', label: t('nav.notifications'), icon: Bell },
     { id: 'chat', label: t('nav.chat'), icon: Mail },
+    { id: 'reports', label: t('nav.reports'), icon: FileText },
     { id: 'support', label: t('nav.support'), icon: BookOpen },
     { id: 'settings', label: t('nav.settings'), icon: SettingsIcon },
   ]
@@ -9261,6 +9293,63 @@ function PhotoPreviewModal({ imageUrl, name, onClose }) {
         <img alt={`Foto profilo ${name}`} src={imageUrl} />
       </div>
     </div>
+  )
+}
+
+function ReportsWorkspace({
+  assetRecords = [],
+  costEntryRecords = [],
+  driverRecords = [],
+  faultReportRecords = [],
+  vehicleRecords = [],
+}) {
+  const { language } = useI18n()
+  const defaultCurrency = getDefaultCurrency(language)
+  const reportRows = buildCostReportRows(faultReportRecords, costEntryRecords)
+  const monthStart = getFaultCostPeriodStart('month')
+  const monthRows = reportRows.filter((row) => new Date(row.date) >= monthStart)
+  const fineRows = reportRows.filter((row) => row.category === 'fine')
+  const vehicleRows = reportRows.filter((row) => row.vehicleId)
+  const driverRows = reportRows.filter((row) => row.driverId)
+  const monthTotalCents = monthRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+
+  return (
+    <section className="reports-workspace" aria-label="Report aziendali">
+      <div className="panel reports-hero-panel">
+        <div>
+          <p className="overline">Report e CSV</p>
+          <h2>Stampa solo quello che ti serve</h2>
+          <span>Costi, multe, manutenzioni e spese per targa, autista, attrezzatura o periodo. Prima scegli la domanda, poi scarichi CSV o stampi il report.</span>
+        </div>
+        <FileText size={28} />
+      </div>
+      <div className="reports-kpi-grid">
+        <article>
+          <strong>{formatMoneyCents(monthTotalCents, defaultCurrency)}</strong>
+          <span>spese del mese</span>
+        </article>
+        <article>
+          <strong>{fineRows.length}</strong>
+          <span>multe registrate</span>
+        </article>
+        <article>
+          <strong>{vehicleRows.length}</strong>
+          <span>voci collegate a targhe</span>
+        </article>
+        <article>
+          <strong>{driverRows.length}</strong>
+          <span>voci collegate ad autisti</span>
+        </article>
+      </div>
+      <FaultCostReport
+        assetRecords={assetRecords}
+        costEntryRecords={costEntryRecords}
+        driverRecords={driverRecords}
+        faultReportRecords={faultReportRecords}
+        reportMode="reports"
+        vehicleRecords={vehicleRecords}
+      />
+    </section>
   )
 }
 
@@ -11969,12 +12058,16 @@ function FaultCostReport({
   onDeleteCostEntry,
   onUpdateCostEntry,
   onUpdateFaultStatus,
+  reportMode = 'costs',
   resetCostFormKey = 0,
   startAddingCostKey = 0,
   vehicleRecords = [],
 }) {
   const { language } = useI18n()
+  const isReportWorkspace = reportMode === 'reports'
   const [period, setPeriod] = useState('month')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
   const [targetFilter, setTargetFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [reportType, setReportType] = useState('detail')
@@ -12002,7 +12095,23 @@ function FaultCostReport({
   })
   const defaultCurrency = getDefaultCurrency(language)
   const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
-  const periodStart = getFaultCostPeriodStart(period)
+  const reportTypeLabels = {
+    detail: 'Dettaglio costi',
+    fines: 'Multe e sanzioni',
+    fine_ranking: 'Classifica multe autisti',
+  }
+  const reportPeriodLabel = (() => {
+    if (period === 'today') return 'Oggi'
+    if (period === 'month') return 'Questo mese'
+    if (period === 'year') return 'Quest anno'
+    if (period === 'custom') {
+      const startLabel = customStartDate ? formatDate(customStartDate) : 'inizio'
+      const endLabel = customEndDate ? formatDate(customEndDate) : 'fine'
+      return `${startLabel} - ${endLabel}`
+    }
+
+    return 'Sempre'
+  })()
   const matchesTargetFilter = (row) => {
     if (targetFilter === 'all') return true
     if (targetFilter === 'company') return !row.vehicleId && !row.assetId && !row.driverId
@@ -12014,14 +12123,28 @@ function FaultCostReport({
 
     return true
   }
+  const matchesPeriodFilter = (row) => {
+    const costDate = new Date(row.date)
+    if (Number.isNaN(costDate.getTime())) return false
+
+    if (period === 'custom') {
+      if (customStartDate) {
+        const startDate = new Date(`${customStartDate}T00:00:00`)
+        if (!Number.isNaN(startDate.getTime()) && costDate < startDate) return false
+      }
+      if (customEndDate) {
+        const endDate = new Date(`${customEndDate}T23:59:59`)
+        if (!Number.isNaN(endDate.getTime()) && costDate > endDate) return false
+      }
+      return true
+    }
+
+    const periodStart = getFaultCostPeriodStart(period)
+    return !periodStart || costDate >= periodStart
+  }
   const periodTargetCosts = costRows
     .filter(matchesTargetFilter)
-    .filter((row) => {
-      if (!periodStart) return true
-
-      const costDate = new Date(row.date)
-      return !Number.isNaN(costDate.getTime()) && costDate >= periodStart
-    })
+    .filter(matchesPeriodFilter)
     .sort((first, second) => new Date(second.date) - new Date(first.date))
   const filteredCosts = periodTargetCosts
     .filter((row) => categoryFilter === 'all' || row.category === categoryFilter)
@@ -12031,8 +12154,9 @@ function FaultCostReport({
     : reportType === 'fine_ranking'
       ? []
       : filteredCosts
-  const totalCents = filteredCosts.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
-  const averageCents = filteredCosts.length ? Math.round(totalCents / filteredCosts.length) : 0
+  const summaryRows = ['fines', 'fine_ranking'].includes(reportType) ? fineRows : filteredCosts
+  const totalCents = summaryRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const averageCents = summaryRows.length ? Math.round(totalCents / summaryRows.length) : 0
   const fineTotalCents = fineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const fineRanking = Array.from(fineRows.reduce((ranking, row) => {
     const key = row.driverId || 'unassigned'
@@ -12068,6 +12192,61 @@ function FaultCostReport({
 
     return 'Tutti i costi'
   })()
+  const selectedCategoryLabel = categoryFilter === 'all' ? 'Tutte le tipologie' : getCostCategoryLabel(categoryFilter)
+  const reportPresetCards = [
+    {
+      description: 'Importi, targhe e responsabili nel periodo scelto.',
+      label: 'Multe e sanzioni',
+      onClick: () => {
+        setReportType('fines')
+        setCategoryFilter('fine')
+        setTargetFilter('all')
+      },
+    },
+    {
+      description: 'Chi ha generato piu sanzioni e quanto sono costate.',
+      label: 'Classifica autisti',
+      onClick: () => {
+        setReportType('fine_ranking')
+        setCategoryFilter('fine')
+        setTargetFilter('all')
+      },
+    },
+    {
+      description: 'Manutenzioni, guasti e spese su una targa precisa.',
+      label: 'Costi per targa',
+      onClick: () => {
+        setReportType('detail')
+        setCategoryFilter('all')
+        setTargetFilter(vehicleRecords[0]?.id ? `vehicle:${vehicleRecords[0].id}` : 'all')
+      },
+    },
+    {
+      description: 'Patenti, multe o costi collegati a una persona.',
+      label: 'Costi per autista',
+      onClick: () => {
+        setReportType('detail')
+        setCategoryFilter('all')
+        setTargetFilter(driverRecords[0]?.id ? `driver:${driverRecords[0].id}` : 'all')
+      },
+    },
+  ]
+
+  function buildReportFileSlug() {
+    const periodSlug = period === 'custom'
+      ? `${customStartDate || 'inizio'}-${customEndDate || 'fine'}`
+      : period
+    return [
+      reportType,
+      targetFilter,
+      categoryFilter,
+      periodSlug,
+    ]
+      .join('-')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
 
   function updateCostForm(field, value) {
     setCostForm((currentForm) => {
@@ -12295,7 +12474,7 @@ function FaultCostReport({
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `camion-chiaro-${reportType}-${period}.csv`
+    link.download = `camion-chiaro-${buildReportFileSlug()}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -12309,11 +12488,7 @@ function FaultCostReport({
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;')
-    const reportTitle = reportType === 'fine_ranking'
-      ? 'Classifica multe autisti'
-      : reportType === 'fines'
-        ? 'Report multe e sanzioni'
-        : 'Report centro costi'
+    const reportTitle = reportTypeLabels[reportType] ?? 'Report aziendale'
     const rowsHtml = reportType === 'fine_ranking'
       ? fineRanking.map((row, index) => `
           <tr>
@@ -12363,10 +12538,10 @@ function FaultCostReport({
         </head>
         <body>
           <h1>${escapeHtml(reportTitle)}</h1>
-          <p>${escapeHtml(selectedTargetLabel)} · ${escapeHtml(period)} · ${escapeHtml(categoryFilter === 'all' ? 'tutte le tipologie' : getCostCategoryLabel(categoryFilter))}</p>
+          <p>${escapeHtml(selectedTargetLabel)} · ${escapeHtml(reportPeriodLabel)} · ${escapeHtml(selectedCategoryLabel)}</p>
           <section class="summary">
             <div><strong>${escapeHtml(formatMoneyCents(totalCents, defaultCurrency))}</strong><span>Totale periodo</span></div>
-            <div><strong>${filteredCosts.length}</strong><span>Voci costo</span></div>
+            <div><strong>${summaryRows.length}</strong><span>Voci costo</span></div>
             <div><strong>${escapeHtml(formatMoneyCents(fineTotalCents, defaultCurrency))}</strong><span>Totale sanzioni</span></div>
           </section>
           <table>
@@ -12382,27 +12557,45 @@ function FaultCostReport({
   }
 
   return (
-    <section className="fault-cost-report" id="fault-cost-report">
+    <section className={`fault-cost-report ${isReportWorkspace ? 'is-report-workspace' : ''}`} id="fault-cost-report">
       <div className="fault-cost-report-header">
         <div>
-          <p className="overline">Centro costi</p>
-          <h3>{selectedTargetLabel}</h3>
+          <p className="overline">{isReportWorkspace ? 'Report aziendali' : 'Centro costi'}</p>
+          <h3>{isReportWorkspace ? 'Cosa vuoi stampare o esportare?' : selectedTargetLabel}</h3>
+          {isReportWorkspace ? (
+            <span>Filtra per periodo, targa, autista, muletto, categoria o multe e genera solo il file che serve.</span>
+          ) : null}
         </div>
         <div className="fault-cost-report-actions">
-          <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
-            <Download size={16} />
-            Scarica report
-          </button>
-          <button className="secondary-button compact-button" onClick={printCostReport} type="button">
-            <FileText size={16} />
-            Stampa report
-          </button>
-          <button className="primary-button compact-button" onClick={() => (isAddingCost ? resetCostForm() : openNewCostForm())} type="button">
-            <Plus size={16} />
-            {isAddingCost ? 'Chiudi' : 'Aggiungi spesa libera'}
-          </button>
+          {isReportWorkspace ? (
+            <>
+              <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
+                <Download size={16} />
+                Scarica CSV
+              </button>
+              <button className="primary-button compact-button" onClick={printCostReport} type="button">
+                <FileText size={16} />
+                Stampa / PDF
+              </button>
+            </>
+          ) : (
+            <button className="primary-button compact-button" onClick={() => (isAddingCost ? resetCostForm() : openNewCostForm())} type="button">
+              <Plus size={16} />
+              {isAddingCost ? 'Chiudi' : 'Aggiungi spesa libera'}
+            </button>
+          )}
         </div>
       </div>
+      {isReportWorkspace ? (
+        <div className="report-question-grid" aria-label="Domande rapide report">
+          {reportPresetCards.map((card) => (
+            <button className="report-question-card" key={card.label} onClick={card.onClick} type="button">
+              <strong>{card.label}</strong>
+              <span>{card.description}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
       {isAddingCost ? (
         <form className="fault-cost-entry-form" onSubmit={handleSubmitCostEntry}>
           <div className="fault-cost-entry-title fault-cost-entry-wide">
@@ -12521,7 +12714,7 @@ function FaultCostReport({
       ) : null}
       <div className="fault-cost-controls">
         <label>
-          Report
+          {isReportWorkspace ? 'Che report vuoi?' : 'Vista costi'}
           <select value={reportType} onChange={(event) => setReportType(event.target.value)}>
             <option value="detail">Dettaglio costi</option>
             <option value="fines">Solo multe / sanzioni</option>
@@ -12529,7 +12722,7 @@ function FaultCostReport({
           </select>
         </label>
         <label>
-          Filtro report
+          Per chi o cosa
           <select value={targetFilter} onChange={(event) => setTargetFilter(event.target.value)}>
             <option value="all">Tutti i costi</option>
             <option value="company">Azienda generale</option>
@@ -12565,9 +12758,22 @@ function FaultCostReport({
             <option value="today">Oggi</option>
             <option value="month">Questo mese</option>
             <option value="year">Quest anno</option>
+            <option value="custom">Periodo personalizzato</option>
             <option value="all">Sempre</option>
           </select>
         </label>
+        {period === 'custom' ? (
+          <>
+            <label>
+              Dal
+              <input type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} />
+            </label>
+            <label>
+              Al
+              <input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} />
+            </label>
+          </>
+        ) : null}
       </div>
       <div className="fault-cost-summary">
         <div>
@@ -12575,7 +12781,7 @@ function FaultCostReport({
           <span>Totale periodo</span>
         </div>
         <div>
-          <strong>{filteredCosts.length}</strong>
+          <strong>{summaryRows.length}</strong>
           <span>Voci costo</span>
         </div>
         <div>
@@ -12641,7 +12847,7 @@ function FaultCostReport({
             </div>
             <div className="fault-cost-row-side">
               <b>{formatMoneyCents(row.amountCents, row.currency || defaultCurrency)}</b>
-              {row.kind === 'entry' ? (
+              {!isReportWorkspace && row.kind === 'entry' ? (
                 <span className="fault-cost-row-actions">
                   <button className="text-button" onClick={() => startEditingCostEntry(row.source)} type="button">
                     <Pencil size={14} />
@@ -12652,7 +12858,8 @@ function FaultCostReport({
                     Elimina
                   </button>
                 </span>
-              ) : (
+              ) : null}
+              {!isReportWorkspace && row.kind !== 'entry' ? (
                 <span className="fault-cost-row-actions">
                   <button className="text-button" onClick={() => startEditingFaultCost(row.source)} type="button">
                     <Pencil size={14} />
@@ -12663,7 +12870,7 @@ function FaultCostReport({
                     Elimina costo
                   </button>
                 </span>
-              )}
+              ) : null}
             </div>
           </article>
         ))}

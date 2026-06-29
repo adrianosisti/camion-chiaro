@@ -7383,75 +7383,6 @@ function App() {
       value: '',
     },
   ]
-  const nextHomeDeadline = decoratedItems
-    .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
-    .slice()
-    .sort((first, second) => first.urgency.days - second.urgency.days)[0]
-  const latestHomeEvent = [
-    ...visibleFaultReportRecords.map((report) => {
-      const driver = driverRecords.find((entry) => entry.id === report.driverId)
-      const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
-
-      return {
-        createdAt: report.createdAt,
-        detail: `${driver?.name ?? 'Autista'} · ${vehicle?.plate ?? 'targa mancante'}`,
-        icon: Wrench,
-        onClick: () => openNotifications('faults'),
-        title: report.title || 'Guasto segnalato',
-        tone: isFaultArchived(report) ? 'info' : 'warning',
-      }
-    }),
-    ...vehicleCheckRecords.map((check) => {
-      const driver = driverRecords.find((entry) => entry.id === check.driverId)
-      const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
-      const hasIssues = hasCheckIssues(check)
-
-      return {
-        createdAt: check.createdAt,
-        detail: `${driver?.name ?? 'Autista'} · ${vehicle?.plate ?? 'targa mancante'}`,
-        icon: ClipboardCheck,
-        onClick: () => openNotifications(hasIssues ? 'critical_checks' : 'checks'),
-        title: hasIssues ? 'Check con criticita' : 'Check mattutino ricevuto',
-        tone: hasIssues ? 'danger' : 'success',
-      }
-    }),
-  ]
-    .filter((event) => event.createdAt)
-    .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))[0]
-  const homeInsightItems = [
-    {
-      detail: notificationCount > 0 ? t('homeInsight.operationsDetail') : t('homeInsight.operationsCleanDetail'),
-      icon: Bell,
-      label: t('homeInsight.operationsLabel'),
-      onClick: () => openNotifications('inbox'),
-      tone: notificationCount > 0 ? 'warning' : 'success',
-      value: notificationCount > 0 ? t('homeInsight.operationsValue', { count: notificationCount }) : t('homeInsight.operationsCleanValue'),
-    },
-    {
-      detail: nextHomeDeadline ? `${nextHomeDeadline.assignee} · ${formatDate(nextHomeDeadline.dueDate)}` : t('homeInsight.deadlineCleanDetail'),
-      icon: CalendarClock,
-      label: t('homeInsight.deadlineLabel'),
-      onClick: () => openComplianceFilter('month'),
-      tone: nextHomeDeadline ? nextHomeDeadline.urgency.tone : 'success',
-      value: nextHomeDeadline?.type ?? t('homeInsight.deadlineCleanValue'),
-    },
-    {
-      detail: latestHomeEvent ? `${latestHomeEvent.detail} · ${formatShortDateTime(latestHomeEvent.createdAt)}` : t('homeInsight.eventCleanDetail'),
-      icon: latestHomeEvent?.icon ?? Clock3,
-      label: t('homeInsight.eventLabel'),
-      onClick: latestHomeEvent?.onClick ?? (() => openNotifications('inbox')),
-      tone: latestHomeEvent?.tone ?? 'info',
-      value: latestHomeEvent?.title ?? t('homeInsight.eventCleanValue'),
-    },
-    {
-      detail: t('homeInsight.fleetDetail', { drivers: activeDriverCount, people: activePeopleCount }),
-      icon: Truck,
-      label: t('homeInsight.fleetLabel'),
-      onClick: () => openRecords('fleet'),
-      tone: openFaultCount > 0 ? 'warning' : 'info',
-      value: `${activeVehicleCount} mezzi`,
-    },
-  ]
   const homeStatusItems = [
     {
       icon: RadioTower,
@@ -7476,32 +7407,6 @@ function App() {
       label: t('homeStatus.lastCheck'),
       tone: 'info',
       value: t('homeStatus.now'),
-    },
-  ]
-  const homeFlowItems = [
-    {
-      detail: t('homeFlow.checksDetail'),
-      icon: ClipboardCheck,
-      label: t('homeFlow.checks'),
-      onClick: () => openNotifications('checks'),
-    },
-    {
-      detail: t('homeFlow.faultsDetail'),
-      icon: Wrench,
-      label: t('homeFlow.faults'),
-      onClick: () => openNotifications('faults'),
-    },
-    {
-      detail: t('homeFlow.deadlinesDetail'),
-      icon: CalendarClock,
-      label: t('homeFlow.deadlines'),
-      onClick: () => openComplianceFilter('month'),
-    },
-    {
-      detail: t('homeFlow.archiveDetail'),
-      icon: Clock3,
-      label: t('homeFlow.archive'),
-      onClick: () => openNotifications('archive'),
     },
   ]
   const homeAssistantTopics = [
@@ -7707,15 +7612,13 @@ function App() {
                 t={t}
               />
               <HomeCommandPanel actions={homeCommandActions} t={t} />
-              <HomeInsightStrip items={homeInsightItems} t={t} />
-              <HomeStatusBar items={homeStatusItems} />
-              <HomeFlowBar items={homeFlowItems} t={t} />
               <HomeAssistantStrip
                 onOpenChat={() => setActiveView('chat')}
                 onOpenSupport={() => setActiveView('support')}
                 topics={homeAssistantTopics}
                 t={t}
               />
+              <HomeStatusBar items={homeStatusItems} />
             </section>
           </>
         )}
@@ -9320,7 +9223,6 @@ function HeroPanel({
           <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
           <h2>{companyName}</h2>
         </div>
-        <p>{t('hero.description')}</p>
         <DailyMotivation role="company" t={t} />
         <div className="hero-facts" aria-label="Dimensione azienda">
           <div>
@@ -9375,7 +9277,6 @@ function HomeCommandPanel({ actions = [], t }) {
           <p className="overline">{t('homeCommand.open')}</p>
           <h2>{t('homeCommand.title')}</h2>
         </div>
-        <p>{t('homeCommand.subtitle')}</p>
       </div>
       <div className="home-command-grid">
         {actions.map((action) => (
@@ -9404,36 +9305,6 @@ function HomeCommandPanel({ actions = [], t }) {
   )
 }
 
-function HomeInsightStrip({ items = [], t }) {
-  return (
-    <section className="home-insight-strip" aria-label={t('homeInsight.title')}>
-      <div className="home-insight-intro">
-        <p className="overline">{t('homeInsight.title')}</p>
-        <strong>{t('homeInsight.subtitle')}</strong>
-      </div>
-      <div className="home-insight-grid">
-        {items.map((item) => (
-          <button
-            className={`home-insight-card tone-${item.tone ?? 'info'}`}
-            key={item.label}
-            onClick={item.onClick}
-            type="button"
-          >
-            <span className="home-insight-icon">
-              <item.icon size={18} />
-            </span>
-            <span className="home-insight-copy">
-              <small>{item.label}</small>
-              <strong>{item.value}</strong>
-              <em>{item.detail}</em>
-            </span>
-          </button>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 function HomeStatusBar({ items = [] }) {
   return (
     <section className="home-status-bar" aria-label="Stato operativo">
@@ -9446,26 +9317,6 @@ function HomeStatusBar({ items = [] }) {
           <strong>{item.value}</strong>
         </div>
       ))}
-    </section>
-  )
-}
-
-function HomeFlowBar({ items = [], t }) {
-  return (
-    <section className="home-flow-bar" aria-label={t('homeFlow.title')}>
-      <div className="home-flow-title">{t('homeFlow.title')}</div>
-      <div className="home-flow-steps">
-        {items.map((item, index) => (
-          <button className="home-flow-step" key={item.label} onClick={item.onClick} type="button">
-            <span className="home-flow-index">{index + 1}</span>
-            <span className="home-flow-icon">
-              <item.icon size={14} />
-            </span>
-            <strong>{item.label}</strong>
-            <small>{item.detail}</small>
-          </button>
-        ))}
-      </div>
     </section>
   )
 }

@@ -1202,6 +1202,8 @@
 .workspace.is-dashboard-home .overview-grid {
   align-content: start;
   gap: 12px;
+  height: 100%;
+  grid-template-rows: minmax(260px, 1fr) auto auto auto;
   min-height: 0;
   overflow: hidden;
 }
@@ -1225,7 +1227,7 @@
 .workspace.is-dashboard-home .hero-panel {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.54fr);
   gap: 16px;
-  min-height: 0;
+  min-height: 248px;
   padding: 18px;
   border-color: rgba(18, 198, 223, 0.28);
   color: #f8fbff;
@@ -1449,7 +1451,7 @@
 .workspace.is-dashboard-home .home-command-panel {
   gap: 12px;
   margin-top: 0;
-  padding: 14px;
+  padding: 16px;
   border-color: #9de8f4;
   background:
     linear-gradient(135deg, rgba(18, 198, 223, 0.18), rgba(255, 255, 255, 0.84) 46%),
@@ -1471,7 +1473,7 @@
 }
 
 .workspace.is-dashboard-home .home-command-header h2 {
-  font-size: 1.08rem;
+  font-size: 1.12rem;
 }
 
 .home-command-header > p {
@@ -1521,10 +1523,10 @@
 }
 
 .workspace.is-dashboard-home .home-command-button {
-  grid-template-columns: 34px minmax(0, 1fr) auto auto;
-  gap: 8px;
-  min-height: 62px;
-  padding: 9px;
+  grid-template-columns: 46px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  min-height: 74px;
+  padding: 11px;
 }
 
 .home-command-button:hover,
@@ -1547,8 +1549,8 @@
 }
 
 .workspace.is-dashboard-home .home-command-icon {
-  width: 34px;
-  height: 34px;
+  width: 46px;
+  height: 46px;
 }
 
 .home-command-button.tone-warning .home-command-icon {
@@ -1583,7 +1585,7 @@
 }
 
 .workspace.is-dashboard-home .home-command-copy strong {
-  font-size: 0.84rem;
+  font-size: 0.9rem;
 }
 
 .home-command-copy small {
@@ -1620,133 +1622,6 @@
 
 .home-command-arrow {
   color: #94a3b8;
-}
-
-.home-insight-strip {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.34fr) minmax(0, 1fr);
-  gap: 12px;
-  min-height: 118px;
-  padding: 14px;
-  border: 1px solid #cfe5ef;
-  border-radius: 8px;
-  background:
-    linear-gradient(90deg, rgba(2, 6, 23, 0.035), transparent 42%),
-    #ffffff;
-  box-shadow: var(--shadow);
-}
-
-.workspace.is-dashboard-home .home-insight-strip {
-  border-color: #bfd9e4;
-  background:
-    linear-gradient(90deg, rgba(2, 6, 23, 0.045), rgba(18, 198, 223, 0.055) 56%),
-    #ffffff;
-}
-
-.home-insight-intro {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-  padding-right: 8px;
-}
-
-.home-insight-intro strong {
-  color: #0f172a;
-  font-size: 0.96rem;
-  font-weight: 780;
-  line-height: 1.28;
-}
-
-.home-insight-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 9px;
-  min-width: 0;
-}
-
-.home-insight-card {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid #d8e7ee;
-  border-radius: 8px;
-  color: #0f172a;
-  background: #f8fbff;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.home-insight-card:hover,
-.home-insight-card:focus-visible {
-  border-color: #12c6df;
-  background: #ffffff;
-}
-
-.home-insight-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  color: #075985;
-  background: #cffafe;
-}
-
-.home-insight-card.tone-success .home-insight-icon {
-  color: #047857;
-  background: #d1fae5;
-}
-
-.home-insight-card.tone-warning .home-insight-icon {
-  color: #92400e;
-  background: #fef3c7;
-}
-
-.home-insight-card.tone-danger .home-insight-icon {
-  color: #991b1b;
-  background: #fee2e2;
-}
-
-.home-insight-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.home-insight-copy small,
-.home-insight-copy strong,
-.home-insight-copy em {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-insight-copy small {
-  color: #0284c7;
-  font-size: 0.66rem;
-  font-weight: 840;
-  text-transform: uppercase;
-}
-
-.home-insight-copy strong {
-  color: #020617;
-  font-size: 0.84rem;
-  font-weight: 820;
-  line-height: 1.2;
-}
-
-.home-insight-copy em {
-  color: #64748b;
-  font-size: 0.72rem;
-  font-style: normal;
-  font-weight: 640;
-  line-height: 1.25;
 }
 
 .home-status-bar {
@@ -1809,108 +1684,6 @@
   font-weight: 820;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.home-flow-bar {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 7px 10px;
-  border: 1px solid #d8e7ee;
-  border-radius: 8px;
-  background:
-    linear-gradient(90deg, rgba(18, 198, 223, 0.14), rgba(255, 255, 255, 0.72)),
-    #ffffff;
-}
-
-.workspace.is-dashboard-home .home-flow-bar {
-  border-color: #bdebf4;
-  background:
-    linear-gradient(90deg, rgba(18, 198, 223, 0.2), rgba(255, 255, 255, 0.86)),
-    #ffffff;
-}
-
-.home-flow-title {
-  color: #0f172a;
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.home-flow-steps {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  min-width: 0;
-}
-
-.home-flow-step {
-  display: grid;
-  grid-template-columns: 18px 22px minmax(0, auto) minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  min-height: 28px;
-  padding: 4px 8px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.76);
-  color: #0f172a;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.home-flow-step:hover,
-.home-flow-step:focus-visible {
-  border-color: #12c6df;
-  background: #ffffff;
-}
-
-.home-flow-index,
-.home-flow-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 7px;
-}
-
-.home-flow-index {
-  width: 18px;
-  height: 18px;
-  color: #ffffff;
-  background: #0f172a;
-  font-size: 0.62rem;
-  font-weight: 900;
-}
-
-.home-flow-icon {
-  width: 22px;
-  height: 22px;
-  color: #075985;
-  background: #cffafe;
-}
-
-.home-flow-step strong,
-.home-flow-step small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-flow-step strong {
-  font-size: 0.76rem;
-  font-weight: 880;
-}
-
-.home-flow-step small {
-  color: #64748b;
-  font-size: 0.68rem;
-  font-weight: 700;
 }
 
 .home-assistant-strip {
@@ -2461,9 +2234,9 @@
 }
 
 .workspace.is-dashboard-home .priority-card {
-  gap: 5px;
-  min-height: 76px;
-  padding: 11px;
+  gap: 7px;
+  min-height: 96px;
+  padding: 14px;
 }
 
 .priority-card:hover,
@@ -2513,9 +2286,9 @@
 }
 
 .workspace.is-dashboard-home .priority-icon {
-  width: 30px;
-  height: 30px;
-  flex-basis: 30px;
+  width: 42px;
+  height: 42px;
+  flex-basis: 42px;
 }
 
 .priority-card span {
@@ -2525,7 +2298,7 @@
 }
 
 .workspace.is-dashboard-home .priority-card span {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
 }
 
 .priority-card strong {
@@ -2535,7 +2308,7 @@
 }
 
 .workspace.is-dashboard-home .priority-card strong {
-  font-size: 1.42rem;
+  font-size: 1.72rem;
 }
 
 .priority-card.is-money strong {
@@ -2550,8 +2323,8 @@
 }
 
 .workspace.is-dashboard-home .priority-card small {
-  font-size: 0.68rem;
-  line-height: 1.2;
+  font-size: 0.72rem;
+  line-height: 1.25;
 }
 
 @keyframes priorityPulse {
@@ -7666,6 +7439,10 @@
     padding: 14px 18px;
   }
 
+  .workspace.is-dashboard-home .overview-grid {
+    grid-template-rows: minmax(210px, 1fr) auto auto auto;
+  }
+
   .workspace.is-dashboard-home .topbar h1 {
     font-size: 1.35rem;
   }
@@ -7676,6 +7453,7 @@
   }
 
   .workspace.is-dashboard-home .hero-panel {
+    min-height: 210px;
     padding: 14px;
   }
 
@@ -7711,26 +7489,13 @@
   }
 
   .workspace.is-dashboard-home .home-command-button {
-    min-height: 54px;
-  }
-
-  .workspace.is-dashboard-home .home-insight-strip {
-    grid-template-columns: minmax(160px, 0.25fr) minmax(0, 1fr);
-    min-height: 82px;
-    padding: 10px;
-  }
-
-  .workspace.is-dashboard-home .home-insight-intro strong {
-    display: none;
-  }
-
-  .workspace.is-dashboard-home .home-insight-card {
+    grid-template-columns: 38px minmax(0, 1fr) auto auto;
     min-height: 58px;
-    padding: 8px;
   }
 
-  .workspace.is-dashboard-home .home-insight-copy em {
-    display: none;
+  .workspace.is-dashboard-home .home-command-icon {
+    width: 38px;
+    height: 38px;
   }
 
   .workspace.is-dashboard-home .home-status-bar {
@@ -7742,19 +7507,6 @@
   }
 
   .workspace.is-dashboard-home .home-status-item small {
-    display: none;
-  }
-
-  .workspace.is-dashboard-home .home-flow-bar {
-    min-height: 34px;
-    padding: 5px 8px;
-  }
-
-  .workspace.is-dashboard-home .home-flow-step {
-    padding: 4px 6px;
-  }
-
-  .workspace.is-dashboard-home .home-flow-step small {
     display: none;
   }
 
@@ -7808,28 +7560,7 @@
     gap: 8px;
   }
 
-  .home-command-header > p {
-    max-width: none;
-    text-align: left;
-  }
-
-  .home-insight-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .home-insight-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .home-status-bar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .home-flow-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .home-flow-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -8149,15 +7880,7 @@
     min-height: 72px;
   }
 
-  .home-insight-grid {
-    grid-template-columns: 1fr;
-  }
-
   .home-status-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .home-flow-steps {
     grid-template-columns: 1fr;
   }
 

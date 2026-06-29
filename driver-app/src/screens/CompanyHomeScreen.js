@@ -228,15 +228,14 @@ function DetailRow({ label, value }) {
   )
 }
 
-function HomeCommandButton({ detail, icon = 'grid-outline', label, onPress, tone = 'info', value }) {
+function HomeCommandButton({ icon = 'grid-outline', label, onPress, tone = 'info', value }) {
   return (
     <Pressable onPress={onPress} style={[styles.homeCommandButton, styles[`${tone}CommandButton`]]}>
       <View style={[styles.homeCommandIcon, styles[`${tone}CommandIcon`]]}>
-        <Ionicons color={tone === 'danger' ? colors.danger : tone === 'warning' ? '#92400e' : tone === 'cost' ? '#065f46' : colors.cyanDark} name={icon} size={20} />
+        <Ionicons color={tone === 'danger' ? colors.danger : tone === 'warning' ? '#92400e' : tone === 'cost' ? '#065f46' : colors.cyanDark} name={icon} size={26} />
       </View>
       <View style={styles.homeCommandCopy}>
         <Text numberOfLines={1} style={styles.homeCommandLabel}>{label}</Text>
-        <Text numberOfLines={2} style={styles.homeCommandDetail}>{detail}</Text>
       </View>
       {value !== '' && value !== null && value !== undefined ? (
         <Text numberOfLines={1} style={styles.homeCommandValue}>{value}</Text>
@@ -528,7 +527,6 @@ export function CompanyHomeScreen({
             <Text style={styles.homeCommandKicker}>Apri</Text>
             <Text style={styles.homeCommandTitle}>Comandi azienda</Text>
           </View>
-          <Text style={styles.homeCommandSubtitle}>Una schermata pulita, ogni area a un tocco.</Text>
         </View>
         <View style={styles.homeCommandGrid}>
           <HomeCommandButton
@@ -699,9 +697,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexBasis: '48.5%',
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     minHeight: 0,
-    padding: 8,
+    padding: 10,
   },
   warningCommandButton: {
     backgroundColor: '#fffbeb',
@@ -719,9 +717,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#cffafe',
     borderRadius: 12,
-    height: 34,
+    height: 44,
     justifyContent: 'center',
-    width: 34,
+    width: 44,
   },
   warningCommandIcon: {
     backgroundColor: '#fef3c7',
@@ -738,7 +736,7 @@ const styles = StyleSheet.create({
   },
   homeCommandLabel: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
   },
   homeCommandDetail: {

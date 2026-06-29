@@ -384,6 +384,16 @@ const translations = {
     'homeInsight.operationsValue': '{count} da aprire',
     'homeInsight.subtitle': 'Una lettura veloce per capire cosa succede senza scorrere.',
     'homeInsight.title': 'Situazione del giorno',
+    'homeStatus.files': 'Spazio file',
+    'homeStatus.lastCheck': 'Ultimo controllo',
+    'homeStatus.notifications': 'Notifiche',
+    'homeStatus.now': 'Adesso',
+    'homeStatus.ready': 'Attive',
+    'homeStatus.storageDetail': '{files} file',
+    'homeStatus.sync': 'Sistema',
+    'homeStatus.syncDemo': 'Demo locale',
+    'homeStatus.syncReady': 'Collegato',
+    'homeStatus.waiting': 'Da attivare',
     'hero.aria': 'Controllo scadenze',
     'hero.description': 'Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.',
     'hero.factDrivers': 'autisti attivi',
@@ -396,7 +406,7 @@ const translations = {
     'hero.priorityCostLabel': 'Costi mese',
     'hero.priorityCriticalDetail': 'check con anomalie da aprire',
     'hero.priorityCriticalLabel': 'Check critici',
-    'hero.priorityDeadlineDetail': '{count} critiche o scadute',
+    'hero.priorityDeadlineDetail': '{count} da controllare',
     'hero.priorityDeadlineLabel': 'Scadenze 30 giorni',
     'hero.priorityFaultDetail': 'segnalazioni ancora aperte',
     'hero.priorityFaultLabel': 'Guasti aperti',
@@ -527,6 +537,16 @@ const translations = {
     'homeInsight.operationsValue': '{count} to open',
     'homeInsight.subtitle': 'A quick read of what is happening without scrolling.',
     'homeInsight.title': 'Daily situation',
+    'homeStatus.files': 'File space',
+    'homeStatus.lastCheck': 'Last check',
+    'homeStatus.notifications': 'Notifications',
+    'homeStatus.now': 'Now',
+    'homeStatus.ready': 'Active',
+    'homeStatus.storageDetail': '{files} files',
+    'homeStatus.sync': 'System',
+    'homeStatus.syncDemo': 'Local demo',
+    'homeStatus.syncReady': 'Connected',
+    'homeStatus.waiting': 'To enable',
     'hero.aria': 'Deadline control',
     'hero.description': 'A clean screen to see deadlines, morning checks and faults to manage right away.',
     'hero.factDrivers': 'active drivers',
@@ -539,7 +559,7 @@ const translations = {
     'hero.priorityCostLabel': 'Month costs',
     'hero.priorityCriticalDetail': 'checks with issues to open',
     'hero.priorityCriticalLabel': 'Critical checks',
-    'hero.priorityDeadlineDetail': '{count} critical or expired',
+    'hero.priorityDeadlineDetail': '{count} to check',
     'hero.priorityDeadlineLabel': '30-day deadlines',
     'hero.priorityFaultDetail': 'reports still open',
     'hero.priorityFaultLabel': 'Open faults',
@@ -7169,6 +7189,32 @@ function App() {
       value: `${activeVehicleCount} mezzi`,
     },
   ]
+  const homeStatusItems = [
+    {
+      icon: RadioTower,
+      label: t('homeStatus.sync'),
+      tone: isSupabaseConfigured ? 'success' : 'warning',
+      value: isSupabaseConfigured ? t('homeStatus.syncReady') : t('homeStatus.syncDemo'),
+    },
+    {
+      icon: Bell,
+      label: t('homeStatus.notifications'),
+      tone: phoneNotificationEnabled ? 'success' : 'warning',
+      value: phoneNotificationEnabled ? t('homeStatus.ready') : t('homeStatus.waiting'),
+    },
+    {
+      icon: Upload,
+      label: t('homeStatus.files'),
+      tone: companyStorageSummary.totalBytes > 0 ? 'info' : 'success',
+      value: `${formatBytes(companyStorageSummary.totalBytes)} · ${t('homeStatus.storageDetail', { files: companyStorageSummary.fileCount })}`,
+    },
+    {
+      icon: Clock3,
+      label: t('homeStatus.lastCheck'),
+      tone: 'info',
+      value: t('homeStatus.now'),
+    },
+  ]
 
   return (
     <I18nContext.Provider value={i18nValue}>
@@ -7351,6 +7397,7 @@ function App() {
               />
               <HomeCommandPanel actions={homeCommandActions} t={t} />
               <HomeInsightStrip items={homeInsightItems} t={t} />
+              <HomeStatusBar items={homeStatusItems} />
             </section>
           </>
         )}
@@ -9065,6 +9112,22 @@ function HomeInsightStrip({ items = [], t }) {
           </button>
         ))}
       </div>
+    </section>
+  )
+}
+
+function HomeStatusBar({ items = [] }) {
+  return (
+    <section className="home-status-bar" aria-label="Stato operativo">
+      {items.map((item) => (
+        <div className={`home-status-item tone-${item.tone ?? 'info'}`} key={item.label}>
+          <span>
+            <item.icon size={15} />
+          </span>
+          <small>{item.label}</small>
+          <strong>{item.value}</strong>
+        </div>
+      ))}
     </section>
   )
 }

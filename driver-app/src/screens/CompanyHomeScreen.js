@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
-import { MetricPill } from '../components/MetricPill'
 import { getLocale, t } from '../i18n/native'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
@@ -246,6 +245,15 @@ function HomeCommandButton({ detail, icon = 'grid-outline', label, onPress, tone
   )
 }
 
+function CompanyMetricMini({ label, onPress, tone = 'info', value }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.metricMini, styles[`${tone}MetricMini`]]}>
+      <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={styles.metricMiniValue}>{value}</Text>
+      <Text numberOfLines={1} style={styles.metricMiniLabel}>{label}</Text>
+    </Pressable>
+  )
+}
+
 function DeadlineDetailPanel({ assets = [], detail, drivers, language = 'it', onClose, onOpenArchive, people = [], vehicles }) {
   if (!detail) return null
 
@@ -478,7 +486,7 @@ export function CompanyHomeScreen({
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <View style={styles.content}>
       <View style={styles.hero}>
         <View style={styles.heroTop}>
           <View style={styles.companyMark}>
@@ -489,31 +497,27 @@ export function CompanyHomeScreen({
             <Text style={styles.companyMeta}>{t(language, 'companyDashboard')}</Text>
           </View>
         </View>
-        <View style={styles.metricRow}>
-          <MetricPill
+        <View style={styles.metricGrid}>
+          <CompanyMetricMini
             label="Guasti"
             onPress={() => openFaults[0] && setSelectedDetail({ item: openFaults[0], type: 'fault' })}
             tone={openFaults.length ? 'danger' : 'success'}
             value={openFaults.length}
           />
-          <MetricPill
+          <CompanyMetricMini
             label="Check"
             onPress={() => recentChecks[0] && setSelectedDetail({ item: recentChecks[0], type: 'check' })}
             tone={criticalChecks.length ? 'danger' : activeChecks.length ? 'success' : 'info'}
             value={activeChecks.length}
           />
-        </View>
-        <View style={styles.metricRow}>
-          <MetricPill label={t(language, 'deadlines')} onPress={() => onOpenManagement?.('deadlines')} tone={deadlineTone} value={activeDeadlines.length} />
-          <MetricPill
+          <CompanyMetricMini label={t(language, 'deadlines')} onPress={() => onOpenManagement?.('deadlines')} tone={deadlineTone} value={activeDeadlines.length} />
+          <CompanyMetricMini
             label="Costi"
             onPress={() => onOpenManagement?.('costs')}
             tone={repairCostSummary.monthCents ? 'info' : 'success'}
             value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
           />
-        </View>
-        <View style={styles.metricRow}>
-          <MetricPill label="Chat" onPress={onOpenChat} tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
+          <CompanyMetricMini label="Chat" onPress={onOpenChat} tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>
@@ -600,7 +604,7 @@ export function CompanyHomeScreen({
         onSaveFaultRepair={onUpdateFaultRepair}
         vehicles={vehicles}
       />
-    </ScrollView>
+    </View>
   )
 }
 
@@ -617,11 +621,11 @@ const styles = StyleSheet.create({
   companyMark: {
     alignItems: 'center',
     backgroundColor: colors.white,
-    borderRadius: 16,
-    height: 54,
+    borderRadius: 14,
+    height: 46,
     justifyContent: 'center',
     overflow: 'hidden',
-    width: 54,
+    width: 46,
   },
   companyMeta: {
     color: '#cffafe',
@@ -631,7 +635,7 @@ const styles = StyleSheet.create({
   },
   companyName: {
     color: colors.white,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
   },
   archiveOpenText: {
@@ -640,16 +644,19 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   content: {
+    flex: 1,
+    gap: 10,
     padding: layout.screenPadding,
-    paddingBottom: 28,
+    paddingBottom: 10,
   },
   homeCommandPanel: {
     backgroundColor: colors.white,
     borderColor: colors.line,
     borderRadius: 18,
     borderWidth: 1,
-    gap: 14,
-    padding: 14,
+    flex: 1,
+    gap: 10,
+    padding: 12,
   },
   homeCommandHeader: {
     alignItems: 'flex-start',
@@ -665,7 +672,7 @@ const styles = StyleSheet.create({
   },
   homeCommandTitle: {
     color: colors.ink,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     marginTop: 2,
   },
@@ -679,9 +686,10 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   homeCommandGrid: {
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 9,
+    gap: 8,
   },
   homeCommandButton: {
     alignItems: 'center',
@@ -691,9 +699,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexBasis: '48.5%',
     flexDirection: 'row',
-    gap: 9,
-    minHeight: 82,
-    padding: 10,
+    gap: 8,
+    minHeight: 0,
+    padding: 8,
   },
   warningCommandButton: {
     backgroundColor: '#fffbeb',
@@ -711,9 +719,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#cffafe',
     borderRadius: 12,
-    height: 38,
+    height: 34,
     justifyContent: 'center',
-    width: 38,
+    width: 34,
   },
   warningCommandIcon: {
     backgroundColor: '#fef3c7',
@@ -735,10 +743,10 @@ const styles = StyleSheet.create({
   },
   homeCommandDetail: {
     color: colors.muted,
-    fontSize: 10.8,
+    fontSize: 10,
     fontWeight: '700',
-    lineHeight: 14,
-    marginTop: 3,
+    lineHeight: 12,
+    marginTop: 2,
   },
   homeCommandValue: {
     backgroundColor: colors.white,
@@ -820,10 +828,10 @@ const styles = StyleSheet.create({
   },
   dailyPhrase: {
     color: '#cffafe',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    lineHeight: 18,
-    marginTop: 12,
+    lineHeight: 15,
+    marginTop: 8,
   },
   deadlineDate: {
     color: colors.cyanDark,
@@ -1051,8 +1059,7 @@ const styles = StyleSheet.create({
   hero: {
     backgroundColor: colors.ink,
     borderRadius: 20,
-    marginBottom: 12,
-    padding: 14,
+    padding: 12,
   },
   heroCopy: {
     flex: 1,
@@ -1060,8 +1067,8 @@ const styles = StyleSheet.create({
   heroTop: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 14,
+    gap: 10,
+    marginBottom: 10,
   },
   issueBox: {
     backgroundColor: '#f8fbff',
@@ -1117,10 +1124,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
-  metricRow: {
+  metricGrid: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  metricMini: {
+    borderRadius: 13,
+    flexBasis: '31.5%',
+    minHeight: 47,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+  },
+  metricMiniLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  metricMiniValue: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '900',
+    lineHeight: 20,
+  },
+  dangerMetricMini: {
+    backgroundColor: '#fee2e2',
+  },
+  infoMetricMini: {
+    backgroundColor: '#e0f2fe',
+  },
+  successMetricMini: {
+    backgroundColor: '#dcfce7',
+  },
+  warningMetricMini: {
+    backgroundColor: '#fef3c7',
   },
   openText: {
     color: colors.cyanDark,

@@ -5,6 +5,7 @@ import Banknote from 'lucide-react/dist/esm/icons/banknote.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
 import BadgeCheck from 'lucide-react/dist/esm/icons/badge-check.mjs'
 import BookOpen from 'lucide-react/dist/esm/icons/book-open.mjs'
+import Bot from 'lucide-react/dist/esm/icons/bot.mjs'
 import Building2 from 'lucide-react/dist/esm/icons/building-2.mjs'
 import CalendarClock from 'lucide-react/dist/esm/icons/calendar-clock.mjs'
 import Camera from 'lucide-react/dist/esm/icons/camera.mjs'
@@ -403,6 +404,20 @@ const translations = {
     'homeFlow.faults': 'Guasti',
     'homeFlow.faultsDetail': 'gestione e costi',
     'homeFlow.title': 'Flusso operativo',
+    'homeAssistant.answer.chat': 'Apri la chat aziendale per scrivere ad autisti, gruppi e reparti. Se serve, usa anche il centro supporto per guide e FAQ.',
+    'homeAssistant.answer.deadlines': 'Apri Scadenze, filtra quelle da lavorare e rinnova con nuovo documento, nuova data o sollecito alla persona.',
+    'homeAssistant.answer.documents': 'Da Anagrafiche e Documenti puoi caricare file, foto e scadenze. L autista vede solo cio che rendi visibile.',
+    'homeAssistant.answer.faults': 'Apri Guasti, guarda foto e dettagli, poi registra stato, costo riparazione e storico per targa o periodo.',
+    'homeAssistant.body': 'Guida rapida su scadenze, guasti, documenti e chat. Se non basta, apre il centro supporto Camion Chiaro.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Scadenze',
+    'homeAssistant.documents': 'Documenti',
+    'homeAssistant.faults': 'Guasti',
+    'homeAssistant.openChat': 'Apri chat',
+    'homeAssistant.openGuide': 'Apri guida',
+    'homeAssistant.question': 'Come posso aiutarti oggi?',
+    'homeAssistant.status': 'Assistente live',
+    'homeAssistant.title': 'Assistente Camion Chiaro',
     'hero.aria': 'Controllo scadenze',
     'hero.description': 'Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.',
     'hero.factDrivers': 'autisti attivi',
@@ -565,6 +580,20 @@ const translations = {
     'homeFlow.faults': 'Faults',
     'homeFlow.faultsDetail': 'handling and costs',
     'homeFlow.title': 'Operating flow',
+    'homeAssistant.answer.chat': 'Open company chat to message drivers, groups and departments. Use the support center for guides and FAQs when needed.',
+    'homeAssistant.answer.deadlines': 'Open Deadlines, filter items to work on, then renew with a new document, new date or reminder.',
+    'homeAssistant.answer.documents': 'From Records and Documents you can upload files, photos and expiry dates. Drivers only see what you make visible.',
+    'homeAssistant.answer.faults': 'Open Faults, review photos and details, then record status, repair cost and history by plate or period.',
+    'homeAssistant.body': 'Quick guidance for deadlines, faults, documents and chat. If that is not enough, open Camion Chiaro support.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Deadlines',
+    'homeAssistant.documents': 'Documents',
+    'homeAssistant.faults': 'Faults',
+    'homeAssistant.openChat': 'Open chat',
+    'homeAssistant.openGuide': 'Open guide',
+    'homeAssistant.question': 'How can I help today?',
+    'homeAssistant.status': 'Live assistant',
+    'homeAssistant.title': 'Camion Chiaro Assistant',
     'hero.aria': 'Deadline control',
     'hero.description': 'A clean screen to see deadlines, morning checks and faults to manage right away.',
     'hero.factDrivers': 'active drivers',
@@ -3095,7 +3124,223 @@ Object.entries(regionalTranslations).forEach(([translationLanguage, translationE
   }
 })
 
+const homeDashboardTranslations = {
+  it: {
+    'homeFlow.archive': 'Archivio',
+    'homeFlow.archiveDetail': 'storico ordinato',
+    'homeFlow.checks': 'Check',
+    'homeFlow.checksDetail': 'arrivano in tempo reale',
+    'homeFlow.deadlines': 'Scadenze',
+    'homeFlow.deadlinesDetail': 'rinnovi tracciati',
+    'homeFlow.faults': 'Guasti',
+    'homeFlow.faultsDetail': 'gestione e costi',
+    'homeFlow.title': 'Flusso operativo',
+    'homeAssistant.answer.chat': 'Apri la chat aziendale per scrivere ad autisti, gruppi e reparti. Se serve, usa anche il centro supporto per guide e FAQ.',
+    'homeAssistant.answer.deadlines': 'Apri Scadenze, filtra quelle da lavorare e rinnova con nuovo documento, nuova data o sollecito alla persona.',
+    'homeAssistant.answer.documents': 'Da Anagrafiche e Documenti puoi caricare file, foto e scadenze. L autista vede solo cio che rendi visibile.',
+    'homeAssistant.answer.faults': 'Apri Guasti, guarda foto e dettagli, poi registra stato, costo riparazione e storico per targa o periodo.',
+    'homeAssistant.body': 'Guida rapida su scadenze, guasti, documenti e chat. Se non basta, apre il centro supporto Camion Chiaro.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Scadenze',
+    'homeAssistant.documents': 'Documenti',
+    'homeAssistant.faults': 'Guasti',
+    'homeAssistant.openChat': 'Apri chat',
+    'homeAssistant.openGuide': 'Apri guida',
+    'homeAssistant.question': 'Come posso aiutarti oggi?',
+    'homeAssistant.status': 'Assistente live',
+    'homeAssistant.title': 'Assistente Camion Chiaro',
+    'support.assistant': 'Assistente AI',
+  },
+  en: {
+    'homeFlow.archive': 'Archive',
+    'homeFlow.archiveDetail': 'ordered history',
+    'homeFlow.checks': 'Checks',
+    'homeFlow.checksDetail': 'real-time arrivals',
+    'homeFlow.deadlines': 'Deadlines',
+    'homeFlow.deadlinesDetail': 'tracked renewals',
+    'homeFlow.faults': 'Faults',
+    'homeFlow.faultsDetail': 'handling and costs',
+    'homeFlow.title': 'Operating flow',
+    'homeAssistant.answer.chat': 'Open company chat to message drivers, groups and departments. Use the support center for guides and FAQs when needed.',
+    'homeAssistant.answer.deadlines': 'Open Deadlines, filter items to work on, then renew with a new document, new date or reminder.',
+    'homeAssistant.answer.documents': 'From Records and Documents you can upload files, photos and expiry dates. Drivers only see what you make visible.',
+    'homeAssistant.answer.faults': 'Open Faults, review photos and details, then record status, repair cost and history by plate or period.',
+    'homeAssistant.body': 'Quick guidance for deadlines, faults, documents and chat. If that is not enough, open Camion Chiaro support.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Deadlines',
+    'homeAssistant.documents': 'Documents',
+    'homeAssistant.faults': 'Faults',
+    'homeAssistant.openChat': 'Open chat',
+    'homeAssistant.openGuide': 'Open guide',
+    'homeAssistant.question': 'How can I help today?',
+    'homeAssistant.status': 'Live assistant',
+    'homeAssistant.title': 'Camion Chiaro Assistant',
+    'support.assistant': 'AI assistant',
+  },
+  es: {
+    'homeFlow.archive': 'Archivo',
+    'homeFlow.archiveDetail': 'historico ordenado',
+    'homeFlow.checks': 'Checks',
+    'homeFlow.checksDetail': 'llegan en tiempo real',
+    'homeFlow.deadlines': 'Vencimientos',
+    'homeFlow.deadlinesDetail': 'renovaciones trazadas',
+    'homeFlow.faults': 'Averias',
+    'homeFlow.faultsDetail': 'gestion y costes',
+    'homeFlow.title': 'Flujo operativo',
+    'homeAssistant.answer.chat': 'Abre el chat de empresa para escribir a conductores, grupos y departamentos. Si hace falta, usa el centro de ayuda.',
+    'homeAssistant.answer.deadlines': 'Abre Vencimientos, filtra lo pendiente y renueva con nuevo documento, nueva fecha o recordatorio.',
+    'homeAssistant.answer.documents': 'Desde Ficheros y Documentos puedes subir archivos, fotos y fechas. El conductor ve solo lo que haces visible.',
+    'homeAssistant.answer.faults': 'Abre Averias, revisa fotos y detalles, luego registra estado, coste de reparacion e historico por matricula o periodo.',
+    'homeAssistant.body': 'Guia rapida sobre vencimientos, averias, documentos y chat. Si no basta, abre el soporte Camion Chiaro.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Vencimientos',
+    'homeAssistant.documents': 'Documentos',
+    'homeAssistant.faults': 'Averias',
+    'homeAssistant.openChat': 'Abrir chat',
+    'homeAssistant.openGuide': 'Abrir guia',
+    'homeAssistant.question': 'Como puedo ayudarte hoy?',
+    'homeAssistant.status': 'Asistente live',
+    'homeAssistant.title': 'Asistente Camion Chiaro',
+    'support.assistant': 'Asistente AI',
+  },
+  fr: {
+    'homeFlow.archive': 'Archive',
+    'homeFlow.archiveDetail': 'historique ordonne',
+    'homeFlow.checks': 'Checks',
+    'homeFlow.checksDetail': 'arrivent en temps reel',
+    'homeFlow.deadlines': 'Echeances',
+    'homeFlow.deadlinesDetail': 'renouvellements traces',
+    'homeFlow.faults': 'Pannes',
+    'homeFlow.faultsDetail': 'gestion et couts',
+    'homeFlow.title': 'Flux operationnel',
+    'homeAssistant.answer.chat': 'Ouvre le chat entreprise pour ecrire aux chauffeurs, groupes et services. Si besoin, utilise le centre support.',
+    'homeAssistant.answer.deadlines': 'Ouvre Echeances, filtre ce qui est a traiter puis renouvelle avec document, date ou rappel.',
+    'homeAssistant.answer.documents': 'Depuis Fichiers et Documents tu peux charger fichiers, photos et dates. Le chauffeur voit seulement ce qui est visible.',
+    'homeAssistant.answer.faults': 'Ouvre Pannes, regarde photos et details, puis note statut, cout de reparation et historique par plaque ou periode.',
+    'homeAssistant.body': 'Guide rapide pour echeances, pannes, documents et chat. Si cela ne suffit pas, ouvre le support Camion Chiaro.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Echeances',
+    'homeAssistant.documents': 'Documents',
+    'homeAssistant.faults': 'Pannes',
+    'homeAssistant.openChat': 'Ouvrir chat',
+    'homeAssistant.openGuide': 'Ouvrir guide',
+    'homeAssistant.question': 'Comment puis-je aider aujourd hui?',
+    'homeAssistant.status': 'Assistant live',
+    'homeAssistant.title': 'Assistant Camion Chiaro',
+    'support.assistant': 'Assistant IA',
+  },
+  de: {
+    'homeFlow.archive': 'Archiv',
+    'homeFlow.archiveDetail': 'geordnetes Protokoll',
+    'homeFlow.checks': 'Checks',
+    'homeFlow.checksDetail': 'in Echtzeit',
+    'homeFlow.deadlines': 'Fristen',
+    'homeFlow.deadlinesDetail': 'Erneuerungen verfolgt',
+    'homeFlow.faults': 'Schaden',
+    'homeFlow.faultsDetail': 'Bearbeitung und Kosten',
+    'homeFlow.title': 'Arbeitsfluss',
+    'homeAssistant.answer.chat': 'Offne den Firmenchat fur Fahrer, Gruppen und Abteilungen. Bei Bedarf hilft das Support-Center weiter.',
+    'homeAssistant.answer.deadlines': 'Offne Fristen, filtere offene Punkte und erneuere mit neuem Dokument, Datum oder Erinnerung.',
+    'homeAssistant.answer.documents': 'In Daten und Dokumente kannst du Dateien, Fotos und Ablaufdaten hochladen. Fahrer sehen nur freigegebene Inhalte.',
+    'homeAssistant.answer.faults': 'Offne Schaden, prufe Fotos und Details, erfasse Status, Reparaturkosten und Verlauf nach Kennzeichen oder Zeitraum.',
+    'homeAssistant.body': 'Schnelle Hilfe zu Fristen, Schaden, Dokumenten und Chat. Wenn das nicht reicht, offne den Camion Chiaro Support.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Fristen',
+    'homeAssistant.documents': 'Dokumente',
+    'homeAssistant.faults': 'Schaden',
+    'homeAssistant.openChat': 'Chat offnen',
+    'homeAssistant.openGuide': 'Hilfe offnen',
+    'homeAssistant.question': 'Wie kann ich heute helfen?',
+    'homeAssistant.status': 'Live-Assistent',
+    'homeAssistant.title': 'Camion Chiaro Assistent',
+    'support.assistant': 'KI-Assistent',
+  },
+  ro: {
+    'homeFlow.archive': 'Arhiva',
+    'homeFlow.archiveDetail': 'istoric ordonat',
+    'homeFlow.checks': 'Check',
+    'homeFlow.checksDetail': 'in timp real',
+    'homeFlow.deadlines': 'Scadente',
+    'homeFlow.deadlinesDetail': 'reinnoiri urmarite',
+    'homeFlow.faults': 'Defectiuni',
+    'homeFlow.faultsDetail': 'gestionare si costuri',
+    'homeFlow.title': 'Flux operational',
+    'homeAssistant.answer.chat': 'Deschide chatul firmei pentru soferi, grupuri si departamente. Daca este nevoie, foloseste centrul de suport.',
+    'homeAssistant.answer.deadlines': 'Deschide Scadente, filtreaza ce este de lucrat si reinnoieste cu document, data noua sau reminder.',
+    'homeAssistant.answer.documents': 'Din Date si Documente poti incarca fisiere, poze si date de expirare. Soferul vede doar ce este vizibil.',
+    'homeAssistant.answer.faults': 'Deschide Defectiuni, verifica poze si detalii, apoi noteaza status, cost reparatie si istoric pe numar sau perioada.',
+    'homeAssistant.body': 'Ghid rapid pentru scadente, defectiuni, documente si chat. Daca nu ajunge, deschide suportul Camion Chiaro.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Scadente',
+    'homeAssistant.documents': 'Documente',
+    'homeAssistant.faults': 'Defectiuni',
+    'homeAssistant.openChat': 'Deschide chat',
+    'homeAssistant.openGuide': 'Deschide ghid',
+    'homeAssistant.question': 'Cum te pot ajuta azi?',
+    'homeAssistant.status': 'Asistent live',
+    'homeAssistant.title': 'Asistent Camion Chiaro',
+    'support.assistant': 'Asistent AI',
+  },
+  pl: {
+    'homeFlow.archive': 'Archiwum',
+    'homeFlow.archiveDetail': 'uporzadkowana historia',
+    'homeFlow.checks': 'Checki',
+    'homeFlow.checksDetail': 'w czasie rzeczywistym',
+    'homeFlow.deadlines': 'Terminy',
+    'homeFlow.deadlinesDetail': 'odnowienia pod kontrola',
+    'homeFlow.faults': 'Usterki',
+    'homeFlow.faultsDetail': 'obsluga i koszty',
+    'homeFlow.title': 'Przeplyw pracy',
+    'homeAssistant.answer.chat': 'Otworz chat firmy, aby pisac do kierowcow, grup i dzialow. W razie potrzeby uzyj centrum pomocy.',
+    'homeAssistant.answer.deadlines': 'Otworz Terminy, filtruj sprawy do obslugi i odnawiaj dokumentem, nowa data albo przypomnieniem.',
+    'homeAssistant.answer.documents': 'W Kartotekach i Dokumentach mozesz dodawac pliki, zdjecia i daty. Kierowca widzi tylko udostepnione rzeczy.',
+    'homeAssistant.answer.faults': 'Otworz Usterki, sprawdz zdjecia i szczegoly, potem wpisz status, koszt naprawy i historie wedlug tablicy lub okresu.',
+    'homeAssistant.body': 'Szybka pomoc dla terminow, usterek, dokumentow i chatu. Jesli to za malo, otworz wsparcie Camion Chiaro.',
+    'homeAssistant.chat': 'Chat',
+    'homeAssistant.deadlines': 'Terminy',
+    'homeAssistant.documents': 'Dokumenty',
+    'homeAssistant.faults': 'Usterki',
+    'homeAssistant.openChat': 'Otworz chat',
+    'homeAssistant.openGuide': 'Otworz pomoc',
+    'homeAssistant.question': 'Jak moge dzis pomoc?',
+    'homeAssistant.status': 'Asystent live',
+    'homeAssistant.title': 'Asystent Camion Chiaro',
+    'support.assistant': 'Asystent AI',
+  },
+}
+
+Object.entries(homeDashboardTranslations).forEach(([translationLanguage, translationEntries]) => {
+  translations[translationLanguage] = {
+    ...translations[translationLanguage],
+    ...translationEntries,
+  }
+})
+
 const supportSections = [
+  {
+    description: 'Primo livello di assistenza: guida l utente dentro Camion Chiaro e prepara il passaggio a supporto umano quando serve.',
+    icon: Bot,
+    id: 'assistant',
+    titleKey: 'support.assistant',
+    items: [
+      {
+        body: 'In home risponde subito alle domande piu frequenti su scadenze, guasti, documenti e chat, portando l utente nella sezione corretta.',
+        title: 'Cosa fa ora',
+      },
+      {
+        body: 'Quando collegheremo una vera AI, potra leggere FAQ, manuale, guide interne e stato operativo autorizzato, rispondendo come assistenza Camion Chiaro.',
+        title: 'Evoluzione AI',
+      },
+      {
+        body: 'Se non risolve, deve proporre contatto assistenza, raccogliere domanda, azienda, utente, schermata e priorita, cosi il caso arriva gia ordinato.',
+        title: 'Passaggio a supporto',
+      },
+      {
+        body: 'Non deve modificare scadenze, documenti o guasti senza conferma esplicita. Deve guidare, spiegare e aprire la sezione giusta.',
+        title: 'Regola di sicurezza',
+      },
+    ],
+  },
   {
     description: 'Risposte pensate per far capire subito il valore: meno caos, meno telefonate, piu controllo.',
     icon: BadgeCheck,
@@ -7259,6 +7504,28 @@ function App() {
       onClick: () => openNotifications('archive'),
     },
   ]
+  const homeAssistantTopics = [
+    {
+      answer: t('homeAssistant.answer.deadlines'),
+      id: 'deadlines',
+      label: t('homeAssistant.deadlines'),
+    },
+    {
+      answer: t('homeAssistant.answer.faults'),
+      id: 'faults',
+      label: t('homeAssistant.faults'),
+    },
+    {
+      answer: t('homeAssistant.answer.documents'),
+      id: 'documents',
+      label: t('homeAssistant.documents'),
+    },
+    {
+      answer: t('homeAssistant.answer.chat'),
+      id: 'chat',
+      label: t('homeAssistant.chat'),
+    },
+  ]
 
   return (
     <I18nContext.Provider value={i18nValue}>
@@ -7443,6 +7710,12 @@ function App() {
               <HomeInsightStrip items={homeInsightItems} t={t} />
               <HomeStatusBar items={homeStatusItems} />
               <HomeFlowBar items={homeFlowItems} t={t} />
+              <HomeAssistantStrip
+                onOpenChat={() => setActiveView('chat')}
+                onOpenSupport={() => setActiveView('support')}
+                topics={homeAssistantTopics}
+                t={t}
+              />
             </section>
           </>
         )}
@@ -9192,6 +9465,53 @@ function HomeFlowBar({ items = [], t }) {
             <small>{item.detail}</small>
           </button>
         ))}
+      </div>
+    </section>
+  )
+}
+
+function HomeAssistantStrip({ onOpenChat, onOpenSupport, topics = [], t }) {
+  const [activeTopicId, setActiveTopicId] = useState(topics[0]?.id ?? '')
+  const activeTopic = topics.find((topic) => topic.id === activeTopicId) ?? topics[0]
+
+  return (
+    <section className="home-assistant-strip" aria-label={t('homeAssistant.title')}>
+      <div className="home-assistant-title">
+        <span className="home-assistant-icon">
+          <Bot size={18} />
+        </span>
+        <span>
+          <strong>{t('homeAssistant.title')}</strong>
+          <small>{t('homeAssistant.status')}</small>
+        </span>
+      </div>
+      <div className="home-assistant-message">
+        <small>{t('homeAssistant.question')}</small>
+        <strong>{activeTopic?.answer ?? t('homeAssistant.body')}</strong>
+      </div>
+      <div className="home-assistant-topics" role="tablist" aria-label={t('homeAssistant.question')}>
+        {topics.map((topic) => (
+          <button
+            aria-selected={activeTopic?.id === topic.id}
+            className={activeTopic?.id === topic.id ? 'is-active' : ''}
+            key={topic.id}
+            onClick={() => setActiveTopicId(topic.id)}
+            role="tab"
+            type="button"
+          >
+            {topic.label}
+          </button>
+        ))}
+      </div>
+      <div className="home-assistant-actions">
+        <button className="secondary-button compact-button" onClick={onOpenSupport} type="button">
+          <BookOpen size={15} />
+          {t('homeAssistant.openGuide')}
+        </button>
+        <button className="primary-button compact-button" onClick={onOpenChat} type="button">
+          <Send size={15} />
+          {t('homeAssistant.openChat')}
+        </button>
       </div>
     </section>
   )

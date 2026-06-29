@@ -4,7 +4,7 @@ import { colors } from '../theme'
 export function MetricPill({ label, onPress, tone = 'info', value }) {
   const content = (
     <View style={[styles.pill, styles[tone]]}>
-      <Text style={styles.value}>{value}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={styles.value}>{value}</Text>
       <Text style={styles.label}>{label}</Text>
     </View>
   )

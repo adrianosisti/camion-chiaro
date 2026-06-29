@@ -1803,6 +1803,11 @@
   line-height: 1;
 }
 
+.priority-card.is-money strong {
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  white-space: nowrap;
+}
+
 .priority-card small {
   color: #64748b;
   font-size: 0.76rem;
@@ -6833,6 +6838,17 @@
   --priority-dot: rgba(18, 198, 223, 0.14);
   --priority-glow: rgba(18, 198, 223, 0.18);
   --priority-number: #075985;
+}
+
+.tone-cost {
+  --tone-color: #020617;
+  --tone-bg: #cffafe;
+  --priority-accent: #020617;
+  --priority-bg: #ecfeff;
+  --priority-border: #67e8f9;
+  --priority-dot: rgba(2, 6, 23, 0.16);
+  --priority-glow: rgba(18, 198, 223, 0.22);
+  --priority-number: #020617;
 }
 
 .tone-success {

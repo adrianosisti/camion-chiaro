@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
+import Banknote from 'lucide-react/dist/esm/icons/banknote.mjs'
 import Bell from 'lucide-react/dist/esm/icons/bell.mjs'
 import BadgeCheck from 'lucide-react/dist/esm/icons/badge-check.mjs'
 import BookOpen from 'lucide-react/dist/esm/icons/book-open.mjs'
@@ -356,6 +357,8 @@ const translations = {
     'hero.newDeadline': 'Nuova scadenza',
     'hero.openBell': 'Apri notifiche',
     'hero.priorityAria': 'Priorita di oggi',
+    'hero.priorityCostDetail': '{count} interventi registrati questo mese',
+    'hero.priorityCostLabel': 'Costi mese',
     'hero.priorityCriticalDetail': 'check con anomalie da aprire',
     'hero.priorityCriticalLabel': 'Check critici',
     'hero.priorityDeadlineDetail': '{count} critiche o scadute',
@@ -462,6 +465,8 @@ const translations = {
     'hero.newDeadline': 'New deadline',
     'hero.openBell': 'Open notifications',
     'hero.priorityAria': 'Today priorities',
+    'hero.priorityCostDetail': '{count} repairs logged this month',
+    'hero.priorityCostLabel': 'Month costs',
     'hero.priorityCriticalDetail': 'checks with issues to open',
     'hero.priorityCriticalLabel': 'Critical checks',
     'hero.priorityDeadlineDetail': '{count} critical or expired',
@@ -568,6 +573,8 @@ const translations = {
     'hero.newDeadline': 'Nuevo vencimiento',
     'hero.openBell': 'Abrir avisos',
     'hero.priorityAria': 'Prioridades de hoy',
+    'hero.priorityCostDetail': '{count} reparaciones registradas este mes',
+    'hero.priorityCostLabel': 'Costes mes',
     'hero.priorityCriticalDetail': 'checks con incidencias por abrir',
     'hero.priorityCriticalLabel': 'Checks criticos',
     'hero.priorityDeadlineDetail': '{count} criticos o vencidos',
@@ -674,6 +681,8 @@ const translations = {
     'hero.newDeadline': 'Nouvelle echeance',
     'hero.openBell': 'Ouvrir alertes',
     'hero.priorityAria': 'Priorites du jour',
+    'hero.priorityCostDetail': '{count} reparations enregistrees ce mois',
+    'hero.priorityCostLabel': 'Couts mois',
     'hero.priorityCriticalDetail': 'checks avec anomalies a ouvrir',
     'hero.priorityCriticalLabel': 'Checks critiques',
     'hero.priorityDeadlineDetail': '{count} critiques ou expirees',
@@ -780,6 +789,8 @@ const translations = {
     'hero.newDeadline': 'Neue Frist',
     'hero.openBell': 'Hinweise offnen',
     'hero.priorityAria': 'Prioritaten heute',
+    'hero.priorityCostDetail': '{count} Reparaturen diesen Monat',
+    'hero.priorityCostLabel': 'Monatskosten',
     'hero.priorityCriticalDetail': 'Checks mit Problemen offnen',
     'hero.priorityCriticalLabel': 'Kritische Checks',
     'hero.priorityDeadlineDetail': '{count} kritisch oder abgelaufen',
@@ -3801,6 +3812,15 @@ function formatMoneyCents(cents = 0, currency = 'EUR') {
   }).format((Number(cents) || 0) / 100)
 }
 
+function formatCompactMoneyCents(cents = 0, currency = 'EUR') {
+  return new Intl.NumberFormat('it-IT', {
+    currency: currency || 'EUR',
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    style: 'currency',
+  }).format((Number(cents) || 0) / 100)
+}
+
 function parseMoneyToCents(value = '') {
   const normalized = String(value)
     .replace(/\s/g, '')
@@ -6712,6 +6732,8 @@ function App() {
   const unreadCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds)).length
   const openFaultCount = visibleFaultReportRecords.filter(isFaultUnread).length
   const criticalCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds) && hasCheckIssues(check)).length
+  const faultCostSummary = getFaultCostSummary(visibleFaultReportRecords)
+  const defaultCurrency = getDefaultCurrency(language)
   const notificationCount = unreadCheckCount + openFaultCount
   const companyUnreadChatCount = chatMessageRecords.filter(
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
@@ -7005,8 +7027,12 @@ function App() {
                 activeVehicleCount={activeVehicleCount}
                 companyName={companyName}
                 companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)}
+                costMonthCents={faultCostSummary.monthCents}
+                costMonthValue={formatCompactMoneyCents(faultCostSummary.monthCents, defaultCurrency)}
+                costRepairCount={faultCostSummary.count}
                 criticalCheckCount={criticalCheckCount}
                 notificationCount={notificationCount}
+                onOpenCostReport={openCostReport}
                 onOpenCriticalChecks={() => openNotifications('critical_checks')}
                 onOpenDeadlineWindow={() => openComplianceFilter('month')}
                 onOpenFaults={() => openNotifications('faults')}
@@ -8687,8 +8713,12 @@ function HeroPanel({
   activeVehicleCount,
   companyName,
   companyLogoUrl,
+  costMonthCents = 0,
+  costMonthValue = '0 €',
+  costRepairCount = 0,
   criticalCheckCount,
   notificationCount,
+  onOpenCostReport,
   onOpenCriticalChecks,
   onOpenDeadlineWindow,
   onOpenFaults,
@@ -8724,6 +8754,16 @@ function HeroPanel({
       onClick: onOpenDeadlineWindow,
       tone: 'info',
       value: summary.next30,
+    },
+    {
+      detail: t('hero.priorityCostDetail', { count: costRepairCount }),
+      icon: Banknote,
+      isActive: costMonthCents > 0,
+      isMoney: true,
+      label: t('hero.priorityCostLabel'),
+      onClick: onOpenCostReport,
+      tone: 'cost',
+      value: costMonthValue,
     },
   ]
 
@@ -8761,7 +8801,7 @@ function HeroPanel({
         {priorityCards.map((card) => (
           <button
             aria-label={`Apri ${card.label.toLowerCase()}: ${card.value}`}
-            className={`priority-card tone-${card.tone}${card.isActive ? ' is-active' : ''}`}
+            className={`priority-card tone-${card.tone}${card.isActive ? ' is-active' : ''}${card.isMoney ? ' is-money' : ''}`}
             key={card.label}
             onClick={card.onClick}
             type="button"

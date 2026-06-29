@@ -24,6 +24,15 @@ function formatMoneyCents(cents = 0, currency = 'EUR') {
   }).format((Number(cents) || 0) / 100)
 }
 
+function formatCompactMoneyCents(cents = 0, currency = 'EUR') {
+  return new Intl.NumberFormat('it-IT', {
+    currency: currency || 'EUR',
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    style: 'currency',
+  }).format((Number(cents) || 0) / 100)
+}
+
 function formatMoneyInput(cents = 0) {
   if (!cents) return ''
   return String((Number(cents) / 100).toFixed(2)).replace('.', ',')
@@ -487,6 +496,14 @@ export function CompanyHomeScreen({
         </View>
         <View style={styles.metricRow}>
           <MetricPill label={t(language, 'deadlines')} onPress={() => onOpenManagement?.('deadlines')} tone={deadlineTone} value={activeDeadlines.length} />
+          <MetricPill
+            label="Costi"
+            onPress={() => onOpenManagement?.('costs')}
+            tone={repairCostSummary.monthCents ? 'info' : 'success'}
+            value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
+          />
+        </View>
+        <View style={styles.metricRow}>
           <MetricPill label="Chat" onPress={onOpenChat} tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>

@@ -394,6 +394,15 @@ const translations = {
     'homeStatus.syncDemo': 'Demo locale',
     'homeStatus.syncReady': 'Collegato',
     'homeStatus.waiting': 'Da attivare',
+    'homeFlow.archive': 'Archivio',
+    'homeFlow.archiveDetail': 'storico ordinato',
+    'homeFlow.checks': 'Check',
+    'homeFlow.checksDetail': 'arrivano in tempo reale',
+    'homeFlow.deadlines': 'Scadenze',
+    'homeFlow.deadlinesDetail': 'rinnovi tracciati',
+    'homeFlow.faults': 'Guasti',
+    'homeFlow.faultsDetail': 'gestione e costi',
+    'homeFlow.title': 'Flusso operativo',
     'hero.aria': 'Controllo scadenze',
     'hero.description': 'Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.',
     'hero.factDrivers': 'autisti attivi',
@@ -547,6 +556,15 @@ const translations = {
     'homeStatus.syncDemo': 'Local demo',
     'homeStatus.syncReady': 'Connected',
     'homeStatus.waiting': 'To enable',
+    'homeFlow.archive': 'Archive',
+    'homeFlow.archiveDetail': 'ordered history',
+    'homeFlow.checks': 'Checks',
+    'homeFlow.checksDetail': 'real-time arrivals',
+    'homeFlow.deadlines': 'Deadlines',
+    'homeFlow.deadlinesDetail': 'tracked renewals',
+    'homeFlow.faults': 'Faults',
+    'homeFlow.faultsDetail': 'handling and costs',
+    'homeFlow.title': 'Operating flow',
     'hero.aria': 'Deadline control',
     'hero.description': 'A clean screen to see deadlines, morning checks and faults to manage right away.',
     'hero.factDrivers': 'active drivers',
@@ -7215,6 +7233,32 @@ function App() {
       value: t('homeStatus.now'),
     },
   ]
+  const homeFlowItems = [
+    {
+      detail: t('homeFlow.checksDetail'),
+      icon: ClipboardCheck,
+      label: t('homeFlow.checks'),
+      onClick: () => openNotifications('checks'),
+    },
+    {
+      detail: t('homeFlow.faultsDetail'),
+      icon: Wrench,
+      label: t('homeFlow.faults'),
+      onClick: () => openNotifications('faults'),
+    },
+    {
+      detail: t('homeFlow.deadlinesDetail'),
+      icon: CalendarClock,
+      label: t('homeFlow.deadlines'),
+      onClick: () => openComplianceFilter('month'),
+    },
+    {
+      detail: t('homeFlow.archiveDetail'),
+      icon: Clock3,
+      label: t('homeFlow.archive'),
+      onClick: () => openNotifications('archive'),
+    },
+  ]
 
   return (
     <I18nContext.Provider value={i18nValue}>
@@ -7398,6 +7442,7 @@ function App() {
               <HomeCommandPanel actions={homeCommandActions} t={t} />
               <HomeInsightStrip items={homeInsightItems} t={t} />
               <HomeStatusBar items={homeStatusItems} />
+              <HomeFlowBar items={homeFlowItems} t={t} />
             </section>
           </>
         )}
@@ -9128,6 +9173,26 @@ function HomeStatusBar({ items = [] }) {
           <strong>{item.value}</strong>
         </div>
       ))}
+    </section>
+  )
+}
+
+function HomeFlowBar({ items = [], t }) {
+  return (
+    <section className="home-flow-bar" aria-label={t('homeFlow.title')}>
+      <div className="home-flow-title">{t('homeFlow.title')}</div>
+      <div className="home-flow-steps">
+        {items.map((item, index) => (
+          <button className="home-flow-step" key={item.label} onClick={item.onClick} type="button">
+            <span className="home-flow-index">{index + 1}</span>
+            <span className="home-flow-icon">
+              <item.icon size={14} />
+            </span>
+            <strong>{item.label}</strong>
+            <small>{item.detail}</small>
+          </button>
+        ))}
+      </div>
     </section>
   )
 }

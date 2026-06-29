@@ -1737,6 +1737,101 @@
   white-space: nowrap;
 }
 
+.home-flow-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid #d8e7ee;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(18, 198, 223, 0.14), rgba(255, 255, 255, 0.72)),
+    #ffffff;
+}
+
+.home-flow-title {
+  color: #0f172a;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.home-flow-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.home-flow-step {
+  display: grid;
+  grid-template-columns: 18px 22px minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #0f172a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-flow-step:hover,
+.home-flow-step:focus-visible {
+  border-color: #12c6df;
+  background: #ffffff;
+}
+
+.home-flow-index,
+.home-flow-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+}
+
+.home-flow-index {
+  width: 18px;
+  height: 18px;
+  color: #ffffff;
+  background: #0f172a;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.home-flow-icon {
+  width: 22px;
+  height: 22px;
+  color: #075985;
+  background: #cffafe;
+}
+
+.home-flow-step strong,
+.home-flow-step small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-flow-step strong {
+  font-size: 0.76rem;
+  font-weight: 880;
+}
+
+.home-flow-step small {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
 .cost-home-card {
   display: grid;
   gap: 16px;
@@ -7451,6 +7546,19 @@
   .workspace.is-dashboard-home .home-status-item small {
     display: none;
   }
+
+  .workspace.is-dashboard-home .home-flow-bar {
+    min-height: 34px;
+    padding: 5px 8px;
+  }
+
+  .workspace.is-dashboard-home .home-flow-step {
+    padding: 4px 6px;
+  }
+
+  .workspace.is-dashboard-home .home-flow-step small {
+    display: none;
+  }
 }
 
 @media (max-width: 980px) {
@@ -7491,6 +7599,14 @@
   }
 
   .home-status-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-flow-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .home-flow-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -7797,6 +7913,10 @@
   }
 
   .home-status-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .home-flow-steps {
     grid-template-columns: 1fr;
   }
 

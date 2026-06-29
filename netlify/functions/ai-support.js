@@ -295,6 +295,7 @@ export async function handler(event) {
         ],
         max_output_tokens: 700,
         model: process.env.OPENAI_SUPPORT_MODEL || 'gpt-5.2-mini',
+        store: false,
       }),
       headers: {
         Authorization: `Bearer ${apiKey}`,

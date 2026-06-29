@@ -9332,12 +9332,13 @@ function ReportsWorkspace({
   return (
     <section className="reports-workspace" aria-label="Report aziendali">
       <div className="panel reports-hero-panel">
-        <div>
-          <p className="overline">Report e CSV</p>
+        <div className="reports-hero-copy">
           <h2>Stampa solo quello che ti serve</h2>
           <span>Costi, multe, manutenzioni e spese per targa, autista, attrezzatura o periodo. Prima scegli la domanda, poi scarichi CSV o stampi il report.</span>
         </div>
-        <FileText size={28} />
+        <span className="reports-hero-icon" aria-hidden="true">
+          <FileText size={28} />
+        </span>
       </div>
       <div className="reports-kpi-grid">
         <article>

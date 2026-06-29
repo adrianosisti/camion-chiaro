@@ -755,6 +755,7 @@ export function CompanyManagementScreen({
     amount: '',
     assetId: '',
     category: 'maintenance',
+    driverId: '',
     file: null,
     id: '',
     notes: '',
@@ -768,7 +769,7 @@ export function CompanyManagementScreen({
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingCost, setIsSavingCost] = useState(false)
   const [costPeriod, setCostPeriod] = useState('month')
-  const [costVehicleId, setCostVehicleId] = useState('all')
+  const [costTargetFilter, setCostTargetFilter] = useState('all')
   const currentScopes = workforceSchemaReady ? workforceScopes : scopes
   const deadlineAssignees = useMemo(() => {
     if (deadlineForm.scope === 'driver') return drivers
@@ -792,6 +793,7 @@ export function CompanyManagementScreen({
         currency: fault.repairCostCurrency || defaultCurrency,
         date: getRepairCostDate(fault),
         description: fault.description ?? '',
+        driverId: fault.driverId ?? '',
         fault,
         id: `fault-${fault.id}`,
         kind: 'fault',
@@ -807,6 +809,7 @@ export function CompanyManagementScreen({
         currency: entry.currency || defaultCurrency,
         date: getCostEntryDate(entry),
         description: entry.notes ?? '',
+        driverId: entry.driverId ?? '',
         entry,
         id: `entry-${entry.id}`,
         kind: 'entry',
@@ -815,7 +818,17 @@ export function CompanyManagementScreen({
       }))
 
     return [...faultRows, ...entryRows]
-      .filter((row) => costVehicleId === 'all' || row.vehicleId === costVehicleId)
+      .filter((row) => {
+        if (costTargetFilter === 'all') return true
+        if (costTargetFilter === 'company') return !row.vehicleId && !row.assetId && !row.driverId
+
+        const [targetType, targetId] = costTargetFilter.split(':')
+        if (targetType === 'vehicle') return row.vehicleId === targetId
+        if (targetType === 'driver') return row.driverId === targetId
+        if (targetType === 'asset') return row.assetId === targetId
+
+        return true
+      })
       .filter((row) => {
         if (!periodStart) return true
         const costDate = new Date(row.date)
@@ -823,7 +836,7 @@ export function CompanyManagementScreen({
       })
       .slice()
       .sort((first, second) => new Date(second.date) - new Date(first.date))
-  }, [costEntries, costPeriod, costVehicleId, defaultCurrency, faults])
+  }, [costEntries, costPeriod, costTargetFilter, defaultCurrency, faults])
   const repairCostTotalCents = costRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const repairCostAverageCents = costRows.length ? Math.round(repairCostTotalCents / costRows.length) : 0
 
@@ -885,7 +898,19 @@ export function CompanyManagementScreen({
   }
 
   function updateCostForm(field, value) {
-    setCostForm((currentForm) => ({ ...currentForm, [field]: value }))
+    setCostForm((currentForm) => {
+      if (field === 'targetType') {
+        return {
+          ...currentForm,
+          assetId: '',
+          driverId: '',
+          targetType: value,
+          vehicleId: '',
+        }
+      }
+
+      return { ...currentForm, [field]: value }
+    })
   }
 
   async function pickAttachment(onSelected) {
@@ -912,6 +937,7 @@ export function CompanyManagementScreen({
       assetId: costForm.targetType === 'asset' ? costForm.assetId : '',
       category: costForm.category,
       currency: defaultCurrency,
+      driverId: costForm.targetType === 'driver' ? costForm.driverId : '',
       notes: costForm.notes.trim(),
       odometerKm: costForm.odometerKm.trim(),
       spentAt: costForm.spentAt.trim(),
@@ -943,6 +969,7 @@ export function CompanyManagementScreen({
       amount: '',
       assetId: '',
       category: 'maintenance',
+      driverId: '',
       file: null,
       id: '',
       notes: '',
@@ -960,13 +987,14 @@ export function CompanyManagementScreen({
       amount: entry.amountCents ? String((Number(entry.amountCents) / 100).toFixed(2)).replace('.', ',') : '',
       assetId: entry.assetId ?? '',
       category: entry.category ?? 'maintenance',
+      driverId: entry.driverId ?? '',
       file: null,
       id: entry.id ?? '',
       notes: entry.notes ?? '',
       odometerKm: entry.odometerKm ? String(entry.odometerKm) : '',
       spentAt: entry.spentAt ?? getTodayInputDate(),
       supplier: entry.supplier ?? '',
-      targetType: entry.assetId ? 'asset' : entry.vehicleId ? 'vehicle' : 'company',
+      targetType: entry.driverId ? 'driver' : entry.assetId ? 'asset' : entry.vehicleId ? 'vehicle' : 'company',
       title: entry.title ?? '',
       vehicleId: entry.vehicleId ?? '',
     })
@@ -1015,6 +1043,7 @@ export function CompanyManagementScreen({
   function getCostTargetLabel(row = {}) {
     if (row.vehicleId) return getVehiclePlate(vehicles, row.vehicleId)
     if (row.assetId) return warehouseAssets.find((asset) => asset.id === row.assetId)?.code ?? 'Attrezzatura'
+    if (row.driverId) return drivers.find((driver) => driver.id === row.driverId)?.name ?? 'Autista'
     return 'Azienda'
   }
 
@@ -1810,6 +1839,7 @@ export function CompanyManagementScreen({
               <View style={styles.chipGrid}>
                 <Chip active={costForm.targetType === 'vehicle'} label="Mezzo" onPress={() => updateCostForm('targetType', 'vehicle')} />
                 <Chip active={costForm.targetType === 'asset'} label="Attrezzatura" onPress={() => updateCostForm('targetType', 'asset')} />
+                <Chip active={costForm.targetType === 'driver'} label="Autista" onPress={() => updateCostForm('targetType', 'driver')} />
                 <Chip active={costForm.targetType === 'company'} label="Azienda" onPress={() => updateCostForm('targetType', 'company')} />
               </View>
               {costForm.targetType === 'vehicle' ? (
@@ -1838,6 +1868,19 @@ export function CompanyManagementScreen({
                   </ScrollView>
                 </>
               ) : null}
+              {costForm.targetType === 'driver' ? (
+                <>
+                  <Text style={styles.costFilterLabel}>Autista</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                    <View style={styles.inlineChipRow}>
+                      <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} />
+                      {drivers.map((driver) => (
+                        <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} />
+                      ))}
+                    </View>
+                  </ScrollView>
+                </>
+              ) : null}
               <DateField label="Data spesa" language={language} onChange={(value) => updateCostForm('spentAt', value)} value={costForm.spentAt} />
               <TextField label="Fornitore" onChangeText={(value) => updateCostForm('supplier', value)} placeholder="Officina, gommista..." value={costForm.supplier} />
               <TextField keyboardType="numeric" label="Km" onChangeText={(value) => updateCostForm('odometerKm', value)} placeholder="Opzionale" value={costForm.odometerKm} />
@@ -1856,18 +1899,37 @@ export function CompanyManagementScreen({
                 <Chip active={costPeriod === 'year'} label="Anno" onPress={() => setCostPeriod('year')} />
                 <Chip active={costPeriod === 'all'} label="Sempre" onPress={() => setCostPeriod('all')} />
               </View>
-              <Text style={styles.costFilterLabel}>Targa</Text>
-              <View style={styles.chipGrid}>
-                <Chip active={costVehicleId === 'all'} label="Tutte" onPress={() => setCostVehicleId('all')} />
+              <Text style={styles.costFilterLabel}>Filtro report</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                <View style={styles.inlineChipRow}>
+                <Chip active={costTargetFilter === 'all'} label="Tutti" onPress={() => setCostTargetFilter('all')} />
+                <Chip active={costTargetFilter === 'company'} label="Azienda" onPress={() => setCostTargetFilter('company')} />
                 {vehicles.map((vehicle) => (
                   <Chip
-                    active={costVehicleId === vehicle.id}
+                    active={costTargetFilter === `vehicle:${vehicle.id}`}
                     key={vehicle.id}
-                    label={vehicle.plate}
-                    onPress={() => setCostVehicleId(vehicle.id)}
+                    label={`Mezzo ${vehicle.plate}`}
+                    onPress={() => setCostTargetFilter(`vehicle:${vehicle.id}`)}
                   />
                 ))}
-              </View>
+                {drivers.map((driver) => (
+                  <Chip
+                    active={costTargetFilter === `driver:${driver.id}`}
+                    key={driver.id}
+                    label={`Autista ${driver.name}`}
+                    onPress={() => setCostTargetFilter(`driver:${driver.id}`)}
+                  />
+                ))}
+                {warehouseAssets.map((asset) => (
+                  <Chip
+                    active={costTargetFilter === `asset:${asset.id}`}
+                    key={asset.id}
+                    label={`Attr. ${asset.code}`}
+                    onPress={() => setCostTargetFilter(`asset:${asset.id}`)}
+                  />
+                ))}
+                </View>
+              </ScrollView>
               <Text style={styles.costTotal}>{formatMoneyCents(repairCostTotalCents, defaultCurrency)}</Text>
               <View style={styles.costMetricRow}>
                 <View style={styles.costMetricCard}>

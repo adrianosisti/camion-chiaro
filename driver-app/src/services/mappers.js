@@ -93,6 +93,7 @@ export function mapCostEntry(row = {}) {
     companyId: row.company_id ?? row.companyId ?? '',
     createdAt: row.created_at ?? row.createdAt ?? '',
     currency: row.currency ?? 'EUR',
+    driverId: row.driver_id ?? row.driverId ?? '',
     fileBucket: row.file_bucket ?? row.fileBucket ?? '',
     filePath: row.file_path ?? row.filePath ?? '',
     id: row.id,

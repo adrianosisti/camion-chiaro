@@ -63,7 +63,7 @@ const faultReportSelect =
 const faultReportLegacySelect =
   'id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at'
 const costEntrySelect =
-  'id, company_id, vehicle_id, asset_id, source_type, category, title, supplier, amount_cents, currency, spent_at, odometer_km, notes, file_bucket, file_path, created_at, updated_at'
+  'id, company_id, vehicle_id, asset_id, driver_id, source_type, category, title, supplier, amount_cents, currency, spent_at, odometer_km, notes, file_bucket, file_path, created_at, updated_at'
 
 function mapCompanyProfile(row = {}) {
   return {
@@ -2011,6 +2011,7 @@ export async function createCompanyCostEntry({ companyId, entry, file = null }) 
     company_id: companyId,
     created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
     currency: entry.currency || 'EUR',
+    driver_id: entry.driverId || null,
     file_bucket: companyAssetsBucket,
     file_path: filePath || null,
     notes: entry.notes?.trim() || null,
@@ -2045,7 +2046,7 @@ export async function createCompanyCostEntry({ companyId, entry, file = null }) 
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
     }
   }
 
@@ -2078,6 +2079,7 @@ export async function updateCompanyCostEntry({ companyId, entryId, entry, file =
     asset_id: entry.assetId || null,
     category: entry.category || 'maintenance',
     currency: entry.currency || 'EUR',
+    driver_id: entry.driverId || null,
     file_bucket: companyAssetsBucket,
     file_path: filePath || null,
     notes: entry.notes?.trim() || null,
@@ -2114,7 +2116,7 @@ export async function updateCompanyCostEntry({ companyId, entryId, entry, file =
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
     }
   }
 
@@ -2130,7 +2132,7 @@ export async function deleteCompanyCostEntry({ entryId }) {
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
     }
   }
 

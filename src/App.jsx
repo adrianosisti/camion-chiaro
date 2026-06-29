@@ -11628,6 +11628,7 @@ function buildCostReportRows(faultReportRecords = [], costEntryRecords = []) {
       currency: report.repairCostCurrency || 'EUR',
       date: getFaultCostDate(report),
       description: report.description ?? '',
+      driverId: report.driverId ?? '',
       id: `fault-${report.id}`,
       kind: 'fault',
       source: report,
@@ -11643,6 +11644,7 @@ function buildCostReportRows(faultReportRecords = [], costEntryRecords = []) {
       currency: entry.currency || 'EUR',
       date: getCostEntryDate(entry),
       description: entry.notes ?? '',
+      driverId: entry.driverId ?? '',
       id: `entry-${entry.id}`,
       kind: 'entry',
       source: entry,
@@ -11673,6 +11675,7 @@ function getFaultCostSummary(faultReportRecords = [], costEntryRecords = []) {
 function FaultCostReport({
   assetRecords = [],
   costEntryRecords = [],
+  driverRecords = [],
   faultReportRecords = [],
   onCreateCostEntry,
   onDeleteCostEntry,
@@ -11683,13 +11686,14 @@ function FaultCostReport({
 }) {
   const { language } = useI18n()
   const [period, setPeriod] = useState('month')
-  const [vehicleId, setVehicleId] = useState('all')
+  const [targetFilter, setTargetFilter] = useState('all')
   const [isAddingCost, setIsAddingCost] = useState(false)
   const [isSavingCost, setIsSavingCost] = useState(false)
   const [costForm, setCostForm] = useState({
     amount: '',
     assetId: '',
     category: 'maintenance',
+    driverId: '',
     file: null,
     id: '',
     notes: '',
@@ -11708,8 +11712,19 @@ function FaultCostReport({
   const defaultCurrency = getDefaultCurrency(language)
   const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
   const periodStart = getFaultCostPeriodStart(period)
+  const matchesTargetFilter = (row) => {
+    if (targetFilter === 'all') return true
+    if (targetFilter === 'company') return !row.vehicleId && !row.assetId && !row.driverId
+
+    const [targetType, targetId] = targetFilter.split(':')
+    if (targetType === 'vehicle') return row.vehicleId === targetId
+    if (targetType === 'driver') return row.driverId === targetId
+    if (targetType === 'asset') return row.assetId === targetId
+
+    return true
+  }
   const filteredCosts = costRows
-    .filter((row) => vehicleId === 'all' || row.vehicleId === vehicleId)
+    .filter(matchesTargetFilter)
     .filter((row) => {
       if (!periodStart) return true
 
@@ -11719,10 +11734,40 @@ function FaultCostReport({
     .sort((first, second) => new Date(second.date) - new Date(first.date))
   const totalCents = filteredCosts.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const averageCents = filteredCosts.length ? Math.round(totalCents / filteredCosts.length) : 0
-  const selectedVehicle = vehicleRecords.find((vehicle) => vehicle.id === vehicleId)
+  const selectedTargetLabel = (() => {
+    if (targetFilter === 'all') return 'Tutti i costi'
+    if (targetFilter === 'company') return 'Azienda generale'
+
+    const [targetType, targetId] = targetFilter.split(':')
+    if (targetType === 'vehicle') {
+      const vehicle = vehicleRecords.find((vehicle) => vehicle.id === targetId)
+      return vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : 'Mezzo'
+    }
+    if (targetType === 'driver') {
+      return driverRecords.find((driver) => driver.id === targetId)?.name ?? 'Autista'
+    }
+    if (targetType === 'asset') {
+      const asset = assetRecords.find((entry) => entry.id === targetId)
+      return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
+    }
+
+    return 'Tutti i costi'
+  })()
 
   function updateCostForm(field, value) {
-    setCostForm((currentForm) => ({ ...currentForm, [field]: value }))
+    setCostForm((currentForm) => {
+      if (field === 'targetType') {
+        return {
+          ...currentForm,
+          assetId: '',
+          driverId: '',
+          targetType: value,
+          vehicleId: value === 'vehicle' ? vehicleRecords[0]?.id ?? '' : '',
+        }
+      }
+
+      return { ...currentForm, [field]: value }
+    })
   }
 
   function getEmptyCostForm() {
@@ -11730,6 +11775,7 @@ function FaultCostReport({
       amount: '',
       assetId: '',
       category: 'maintenance',
+      driverId: '',
       file: null,
       id: '',
       notes: '',
@@ -11768,6 +11814,7 @@ function FaultCostReport({
       assetId: costForm.targetType === 'asset' ? costForm.assetId : '',
       category: costForm.category,
       currency: defaultCurrency,
+      driverId: costForm.targetType === 'driver' ? costForm.driverId : '',
       notes: costForm.notes,
       odometerKm: costForm.odometerKm,
       spentAt: costForm.spentAt,
@@ -11793,13 +11840,14 @@ function FaultCostReport({
       amount: entry.amountCents ? String((Number(entry.amountCents) / 100).toFixed(2)).replace('.', ',') : '',
       assetId: entry.assetId ?? '',
       category: entry.category ?? 'maintenance',
+      driverId: entry.driverId ?? '',
       file: null,
       id: entry.id ?? '',
       notes: entry.notes ?? '',
       odometerKm: entry.odometerKm ? String(entry.odometerKm) : '',
       spentAt: entry.spentAt ?? getDateInputToday(),
       supplier: entry.supplier ?? '',
-      targetType: entry.assetId ? 'asset' : entry.vehicleId ? 'vehicle' : 'company',
+      targetType: entry.driverId ? 'driver' : entry.assetId ? 'asset' : entry.vehicleId ? 'vehicle' : 'company',
       title: entry.title ?? '',
       vehicleId: entry.vehicleId ?? '',
     })
@@ -11866,6 +11914,10 @@ function FaultCostReport({
       return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
     }
 
+    if (row.driverId) {
+      return driverRecords.find((driver) => driver.id === row.driverId)?.name ?? 'Autista'
+    }
+
     return 'Azienda'
   }
 
@@ -11913,7 +11965,7 @@ function FaultCostReport({
       <div className="fault-cost-report-header">
         <div>
           <p className="overline">Centro costi</p>
-          <h3>{selectedVehicle ? selectedVehicle.plate : 'Tutti i mezzi'}</h3>
+          <h3>{selectedTargetLabel}</h3>
         </div>
         <div className="fault-cost-report-actions">
           <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
@@ -11961,6 +12013,7 @@ function FaultCostReport({
             <select value={costForm.targetType} onChange={(event) => updateCostForm('targetType', event.target.value)}>
               <option value="vehicle">Mezzo / targa</option>
               <option value="asset">Attrezzatura / muletto</option>
+              <option value="driver">Autista</option>
               <option value="company">Azienda generale</option>
             </select>
           </label>
@@ -11986,6 +12039,17 @@ function FaultCostReport({
               </select>
             </label>
           ) : null}
+          {costForm.targetType === 'driver' ? (
+            <label>
+              Autista
+              <select value={costForm.driverId} onChange={(event) => updateCostForm('driverId', event.target.value)}>
+                <option value="">Senza autista</option>
+                {driverRecords.map((driver) => (
+                  <option key={driver.id} value={driver.id}>{driver.name}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label>
             Fornitore
             <input value={costForm.supplier} onChange={(event) => updateCostForm('supplier', event.target.value)} placeholder="Officina, gommista, assicurazione..." />
@@ -11998,7 +12062,7 @@ function FaultCostReport({
             Note
             <textarea value={costForm.notes} onChange={(event) => updateCostForm('notes', event.target.value)} placeholder="Dettagli intervento, numero fattura, promemoria..." />
           </label>
-          <label className="fault-cost-entry-wide">
+          <label className="fault-cost-entry-wide fault-cost-file-label">
             Allegato fattura/foto
             <input accept="image/*,.pdf" type="file" onChange={(event) => updateCostForm('file', event.target.files?.[0] ?? null)} />
           </label>
@@ -12036,12 +12100,23 @@ function FaultCostReport({
       ) : null}
       <div className="fault-cost-controls">
         <label>
-          Targa
-          <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
-            <option value="all">Tutti i mezzi</option>
+          Filtro report
+          <select value={targetFilter} onChange={(event) => setTargetFilter(event.target.value)}>
+            <option value="all">Tutti i costi</option>
+            <option value="company">Azienda generale</option>
             {vehicleRecords.map((vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}
+              <option key={vehicle.id} value={`vehicle:${vehicle.id}`}>
+                Mezzo · {vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}
+              </option>
+            ))}
+            {driverRecords.map((driver) => (
+              <option key={driver.id} value={`driver:${driver.id}`}>
+                Autista · {driver.name}
+              </option>
+            ))}
+            {assetRecords.map((asset) => (
+              <option key={asset.id} value={`asset:${asset.id}`}>
+                Attrezzatura · {asset.code} · {asset.model || 'Muletto'}
               </option>
             ))}
           </select>
@@ -12237,6 +12312,7 @@ function OperationsWorkspace({
           onDeleteCostEntry={onDeleteCostEntry}
           onUpdateCostEntry={onUpdateCostEntry}
           onUpdateFaultStatus={onUpdateFaultStatus}
+          driverRecords={driverRecords}
           startAddingCostKey={startAddingCostKey}
           vehicleRecords={vehicleRecords}
         />

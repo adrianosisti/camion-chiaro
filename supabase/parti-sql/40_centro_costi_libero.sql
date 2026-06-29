@@ -7,6 +7,7 @@ create table if not exists public.cost_entries (
   company_id uuid not null references public.companies(id) on delete cascade,
   vehicle_id uuid references public.vehicles(id) on delete set null,
   asset_id uuid references public.company_assets(id) on delete set null,
+  driver_id uuid references public.drivers(id) on delete set null,
   source_type text not null default 'manual'
     check (source_type in ('manual', 'fault', 'deadline', 'maintenance')),
   category text not null default 'maintenance'
@@ -23,7 +24,7 @@ create table if not exists public.cost_entries (
   created_by_user_id uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (vehicle_id is null or asset_id is null)
+  constraint cost_entries_single_target_check check (num_nonnulls(vehicle_id, asset_id, driver_id) <= 1)
 );
 
 create index if not exists cost_entries_company_spent_idx
@@ -36,6 +37,10 @@ where vehicle_id is not null;
 create index if not exists cost_entries_company_asset_idx
 on public.cost_entries (company_id, asset_id, spent_at desc)
 where asset_id is not null;
+
+create index if not exists cost_entries_company_driver_idx
+on public.cost_entries (company_id, driver_id, spent_at desc)
+where driver_id is not null;
 
 alter table public.cost_entries enable row level security;
 

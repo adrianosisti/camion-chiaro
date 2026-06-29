@@ -35,6 +35,154 @@ function normalizeHistory(history = []) {
     }))
 }
 
+const camionChiaroKnowledgeBase = `
+Camion Chiaro e un software per aziende di logistica e trasporto.
+Ruoli principali: azienda/titolare, autista, ufficio, magazzino.
+Dashboard azienda: deve far vedere subito chat non lette, guasti aperti, check critici, scadenze, costi e comandi principali.
+Anagrafiche: contiene persone, autisti, ufficio, magazzino, flotta, strumenti, documenti e scadenze.
+Flotta: furgoni, motrici, trattori e semirimorchi. L autista sceglie il mezzo preso in giornata; se aggancia un semirimorchio puo indicarlo nel check o nella segnalazione.
+Scadenze: patente, CQC, ADR, visite mediche, documenti persona, assicurazione, revisione, bollo, tachigrafo, libretti mezzo e documenti azienda.
+Rinnovo scadenza: aprire il dettaglio, caricare nuovo file o foto, inserire nuova data con calendario, salvare. La criticita deve sparire e restare nello storico.
+Sollecito: se una persona deve aggiornare un documento, l azienda puo inviare sollecito; la persona riceve notifica e messaggio guidato.
+App autista: home, check mattutino, segnala guasto, chat, documenti da mostrare alla polizia, impostazioni.
+Documenti autista: l autista puo caricare foto o file, aggiornarli, mostrarli dal telefono e rinnovare la scadenza.
+Check mattutino: se tutto e ok va nello storico; se manca qualcosa diventa criticita azienda. L azienda lo apre, vede dettaglio e puo segnare risolto.
+Guasti: autista o personale segnala con mezzo, descrizione, gravita, foto. L azienda apre dettaglio, lavora, archivia e puo inserire costo riparazione.
+Centro costi: registra costi di guasti, manutenzioni, assicurazioni, revisioni e interventi su mezzi, strumenti e muletti; filtra per periodo, targa, asset e categoria.
+Chat: dirette e gruppi/reparti. I messaggi mostrano nome, ruolo e foto di chi scrive. L azienda vede solo chat in cui e partecipante. Sono previsti audio, foto, video, reazioni, risposte e conferme lettura.
+Notifiche: si attivano dalle impostazioni sul dispositivo. Devono avvisare per messaggi, guasti, check critici, scadenze e solleciti.
+Magazzino: puo avere check muletti/strumenti, documenti e visite mediche. Ufficio puo usare chat, documenti e scadenze persona.
+Piani commerciali: Start 5 300 euro/mese; Fleet 10 450 euro/mese; Fleet 20 da 650 euro/mese; Fleet 30 850 euro/mese; Fleet 50 1200 euro/mese. Chat aziendale +100 euro/mese. Start-up kit 1500 euro una tantum. Storage extra 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.
+Regola supporto: dare sempre passi pratici. Se serve assistenza umana, raccogliere azienda, utente, sezione, cosa stava facendo, messaggio errore, dispositivo e priorita.
+`.trim()
+
+const supportPlaybooks = [
+  {
+    id: 'renew_deadline',
+    keywords: ['scad', 'patent', 'cqc', 'adr', 'visita', 'medica', 'assicur', 'revision', 'rinnov', 'document'],
+    title: 'rinnovo scadenze e documenti',
+    response: [
+      'Per rinnovare una scadenza in Camion Chiaro fai cosi:',
+      '1. Apri Scadenze dalla dashboard o entra nella scheda della persona/mezzo da Anagrafiche.',
+      '2. Clicca la scadenza: patente, visita, assicurazione, revisione o altro documento.',
+      '3. Premi rinnova, carica il nuovo file o una foto leggibile, poi inserisci la nuova data con il calendario.',
+      '4. Salva: la criticita sparisce dalla home e resta nello storico documentale.',
+      '5. Se deve farlo l autista o un dipendente, usa sollecito: ricevera notifica e messaggio gia guidato.',
+    ],
+  },
+  {
+    id: 'driver_documents',
+    keywords: ['polizia', 'mostrare', 'documenti autista', 'documento autista', 'caricare documento', 'fotocamera', 'galleria'],
+    title: 'documenti autista da mostrare',
+    response: [
+      'Per i documenti da mostrare alla polizia:',
+      '1. L autista apre Documenti nella sua app.',
+      '2. Se manca un documento, usa aggiungi o cambia e carica foto/file da fotocamera o galleria.',
+      '3. Inserisce numero documento e data di scadenza, poi salva.',
+      '4. Quando preme mostra, il documento deve aprirsi grande sul telefono.',
+      '5. L azienda puo vedere, aggiornare o sostituire lo stesso documento dalla scheda autista.',
+    ],
+  },
+  {
+    id: 'faults_costs',
+    keywords: ['guast', 'ripar', 'costo', 'manutenz', 'dann', 'officina', 'spesa', 'fattura', 'muletto'],
+    title: 'guasti, manutenzioni e costi',
+    response: [
+      'Per gestire un guasto con costo:',
+      '1. Apri Guasti aperti o Registro operativo.',
+      '2. Entra nel dettaglio per vedere chi ha segnalato, mezzo/strumento, foto, gravita e note.',
+      '3. Se il lavoro e finito, inserisci importo, valuta, data intervento e una nota breve.',
+      '4. Usa archivia con costo: il guasto sparisce dai lavori aperti e resta nello storico.',
+      '5. Dal Centro costi filtri per targa, muletto, periodo o categoria e vedi quanto hai speso.',
+    ],
+  },
+  {
+    id: 'morning_check',
+    keywords: ['check', 'mattut', 'controllo', 'anomalia', 'trattore', 'semirimorchio', 'mezzo preso'],
+    title: 'check mattutino e anomalie',
+    response: [
+      'Per il check mattutino:',
+      '1. L autista sceglie il mezzo che sta prendendo oggi.',
+      '2. Se aggancia un semirimorchio, lo indica nel campo opzionale.',
+      '3. Compila i controlli e invia.',
+      '4. Se e tutto ok, l azienda lo trova nello storico operativo.',
+      '5. Se c e un anomalia, la dashboard azienda la conta come criticita e apre il dettaglio con mezzo, autista e problema.',
+    ],
+  },
+  {
+    id: 'chat_notifications',
+    keywords: ['chat', 'messagg', 'notific', 'campan', 'grupp', 'repart', 'spunte', 'letto', 'audio', 'foto', 'video'],
+    title: 'chat, gruppi e notifiche',
+    response: [
+      'Per chat e notifiche:',
+      '1. Apri Chat: trovi chat singole e gruppi/reparti separati.',
+      '2. Le chat con messaggi non letti mostrano un numeretto rosso sulla lista e sull icona in basso.',
+      '3. Dentro un gruppo ogni fumetto deve mostrare nome, ruolo e foto della persona che scrive.',
+      '4. Se non arrivano notifiche, apri Impostazioni sul telefono e premi attiva notifiche.',
+      '5. Per foto, audio, video o reazioni usa i comandi dentro la chat; le spunte indicano consegna e lettura.',
+    ],
+  },
+  {
+    id: 'records_people',
+    keywords: ['autist', 'persona', 'magazz', 'ufficio', 'account', 'login', 'credenzial', 'utente', 'dipendent'],
+    title: 'anagrafiche persone e account',
+    response: [
+      'Per creare o modificare persone:',
+      '1. Apri Anagrafiche.',
+      '2. Scegli il tipo corretto: autista, ufficio o magazzino.',
+      '3. Premi aggiungi, compila nome, telefono, ruolo/reparto e dati obbligatori.',
+      '4. Salva e consegna le credenziali generate alla persona.',
+      '5. Dalla scheda puoi cambiare foto, documenti, scadenze, stato e dati di contatto.',
+    ],
+  },
+  {
+    id: 'fleet_assets',
+    keywords: ['flotta', 'mezzo', 'mezzi', 'furgone', 'motrice', 'trattore', 'semirimorchio', 'targa', 'libretto', 'tachigrafo'],
+    title: 'flotta, mezzi e documenti mezzo',
+    response: [
+      'Per gestire la flotta:',
+      '1. Vai in Anagrafiche e apri Flotta.',
+      '2. Aggiungi furgone, motrice, trattore o semirimorchio con targa, modello e km.',
+      '3. Nella scheda mezzo carica libretto, assicurazione, revisione e altre scadenze.',
+      '4. Ogni scadenza entra nella dashboard e puo generare promemoria.',
+      '5. Guasti e costi collegati a quella targa restano consultabili nello storico e nel Centro costi.',
+    ],
+  },
+  {
+    id: 'app_install',
+    keywords: ['app', 'install', 'iphone', 'android', 'telefono', 'scaric', 'store', 'notifiche telefono'],
+    title: 'app telefono e permessi',
+    response: [
+      'Per usare Camion Chiaro da telefono:',
+      '1. Installa l app iOS o Android quando disponibile, oppure la build interna se siete in test.',
+      '2. Accedi con il ruolo corretto: azienda, autista, ufficio o magazzino.',
+      '3. Alla prima apertura abilita notifiche, fotocamera e microfono quando servono.',
+      '4. Se una notifica non arriva, controlla Impostazioni app e permessi del telefono.',
+      '5. L azienda puo usare anche il desktop web per lavorare piu comodamente in ufficio.',
+    ],
+  },
+  {
+    id: 'billing',
+    keywords: ['prezz', 'piano', 'abbon', 'costa', 'pag', 'stripe', 'fattur', 'storage', 'gb', 'commercial'],
+    title: 'piani, prezzi e fatturazione',
+    response: [
+      'I piani Camion Chiaro sono pensati per dimensione azienda:',
+      '1. Start 5: 300 euro/mese, fino a 5 mezzi, 3 strumenti/muletti, 10 account e 10 GB.',
+      '2. Fleet 10: 450 euro/mese, fino a 10 mezzi, 5 strumenti/muletti, 20 account e 20 GB.',
+      '3. Fleet 20+: da 650 euro/mese per flotte piu strutturate.',
+      '4. Chat aziendale: +100 euro/mese. Start-up kit: 1500 euro una tantum.',
+      '5. Storage extra: 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.',
+    ],
+  },
+]
+
+function getMatchedPlaybooks(message) {
+  const normalizedMessage = message.toLowerCase()
+  return supportPlaybooks.filter((playbook) =>
+    playbook.keywords.some((keyword) => normalizedMessage.includes(keyword)),
+  )
+}
+
 function buildSystemPrompt({ companyContext = {}, companyName = 'Azienda', language = 'it' }) {
   const contextLines = [
     `Azienda: ${cleanText(companyName, 120)}`,
@@ -55,6 +203,17 @@ Non dire mai di poter modificare direttamente i dati se non hai uno strumento pe
 Se la domanda riguarda norme, lavoro, privacy, fiscalita o sicurezza, dai indicazioni operative generali e consiglia verifica con consulente o assistenza Camion Chiaro.
 Se non sei sicuro, fai una sola domanda chiara oppure indirizza al centro supporto Camion Chiaro.
 Rispondi con massimo 6 punti brevi, senza linguaggio tecnico.
+Ogni risposta deve essere concreta: se l utente chiede come fare una cosa, indica sezione, pulsante/azione, risultato atteso e cosa controllare se non funziona.
+Non limitarti a dire "apri la guida". Prima prova a risolvere.
+Formato preferito:
+- Dove andare: sezione o schermata precisa.
+- Cosa fare: 2-4 passaggi.
+- Risultato atteso: cosa deve cambiare nella dashboard/app.
+- Se non funziona: una verifica pratica.
+Se l utente segnala un errore o bug, chiedi solo il dato mancante piu utile: PC/app, ruolo, schermata, messaggio errore o dispositivo.
+
+Manuale operativo Camion Chiaro:
+${camionChiaroKnowledgeBase}
 
 Contesto attuale:
 ${contextLines}
@@ -62,62 +221,21 @@ ${contextLines}
 }
 
 function buildGuidedAnswer(message) {
-  const text = message.toLowerCase()
-
-  if (/(scad|patent|document|visita|assicur|revision|rinnov)/i.test(text)) {
-    return [
-      'Certo. Per gestire una scadenza apri Scadenze dalla dashboard.',
-      '1. Clicca sulla scadenza interessata.',
-      '2. Scegli rinnova se hai il nuovo documento o la nuova data.',
-      '3. Carica il file o la foto, inserisci la nuova scadenza e salva.',
-      '4. Se deve pensarci l autista o un dipendente, usa sollecito: ricevera una notifica e un messaggio guidato.',
-      'Quando il rinnovo e salvato, la criticita sparisce dalla home e resta nello storico.',
-    ].join('\n')
-  }
-
-  if (/(guast|ripar|costo|manutenz|dann|officina)/i.test(text)) {
-    return [
-      'Per un guasto entra nel Registro operativo o in Guasti aperti.',
-      '1. Apri la segnalazione per vedere mezzo, foto, note e autore.',
-      '2. Se la riparazione e conclusa, inserisci il costo e archivia con costo.',
-      '3. Il costo finisce nel centro costi e potrai filtrarlo per targa, periodo o tipo mezzo.',
-      '4. Se manca qualcosa, lascia il guasto aperto o scrivi in chat alla persona che lo ha segnalato.',
-    ].join('\n')
-  }
-
-  if (/(chat|messagg|notific|campan|grupp|repart)/i.test(text)) {
-    return [
-      'Per chat e notifiche controlla questi passaggi.',
-      '1. Apri Chat dalla barra laterale o dall icona in basso su app.',
-      '2. Le chat singole e i gruppi mostrano il numero rosso solo quando ci sono messaggi da leggere.',
-      '3. Se non arrivano notifiche, vai in Impostazioni e premi attiva notifiche sul telefono interessato.',
-      '4. Nei gruppi ogni messaggio deve mostrare chi ha scritto, con ruolo e foto profilo quando disponibile.',
-    ].join('\n')
-  }
-
-  if (/(autist|persona|magazz|ufficio|account|login|access)/i.test(text)) {
-    return [
-      'Per creare o gestire utenti vai in Anagrafiche.',
-      '1. Scegli persone, autisti, ufficio o magazzino.',
-      '2. Apri aggiungi e compila i campi obbligatori.',
-      '3. Salva: Camion Chiaro crea le credenziali da consegnare alla persona.',
-      '4. Se devi cambiare dati o foto, apri la scheda della persona e usa modifica.',
-    ].join('\n')
-  }
-
-  if (/(app|install|iphone|android|telefono|scaric)/i.test(text)) {
-    return [
-      'Per usare Camion Chiaro da telefono installa l app o apri la web app.',
-      'Su iPhone, se stai testando la build interna, apri il link Expo/EAS e installa la versione autorizzata sul dispositivo.',
-      'Su Android puoi installare l APK di test dal link EAS oppure la versione store quando sara pubblicata.',
-      'Dopo il primo accesso apri Impostazioni e attiva notifiche, microfono e fotocamera quando richiesto.',
-    ].join('\n')
+  const matchedPlaybooks = getMatchedPlaybooks(message)
+  if (matchedPlaybooks.length) {
+    const [primaryPlaybook] = matchedPlaybooks
+    const answer = [...primaryPlaybook.response]
+    answer.push('Se mi dici se sei da PC azienda o da app telefono, ti indico il percorso preciso sul tuo schermo.')
+    return answer.join('\n')
   }
 
   return [
-    'Dimmi pure cosa stai cercando di fare: ti guido passo passo dentro Camion Chiaro.',
-    'Posso aiutarti con scadenze, documenti, guasti, check, chat, notifiche, anagrafiche, flotta e costi.',
-    'Se vuoi essere velocissimo, scrivi una frase tipo: "devo rinnovare una patente", "non arriva una notifica" oppure "voglio chiudere un guasto con costo".',
+    'Ti guido io. Scrivi cosa vuoi fare con una frase pratica, ad esempio:',
+    '- "devo rinnovare la patente di un autista"',
+    '- "non arriva una notifica chat"',
+    '- "voglio archiviare un guasto con costo"',
+    '- "devo aggiungere un trattore con assicurazione e revisione"',
+    'Appena capisco la sezione, ti do il percorso preciso dentro Camion Chiaro.',
   ].join('\n')
 }
 

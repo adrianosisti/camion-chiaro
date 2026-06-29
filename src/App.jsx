@@ -7084,7 +7084,7 @@ function App() {
         session={session}
         t={t}
       />
-      <main className="workspace">
+      <main className={activeView === 'dashboard' ? 'workspace is-dashboard-home' : 'workspace'}>
         <Topbar
           acknowledgedCheckIds={acknowledgedCheckIds}
           assetPreviewUrl={getAssetPreviewUrl}

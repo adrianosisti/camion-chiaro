@@ -912,6 +912,14 @@
   padding: 22px;
 }
 
+.workspace.is-dashboard-home {
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100svh;
+  gap: 14px;
+  overflow: hidden;
+  padding: 18px 20px;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -1175,6 +1183,13 @@
   grid-template-columns: 1fr;
 }
 
+.workspace.is-dashboard-home .overview-grid {
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .hero-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.62fr);
@@ -1191,6 +1206,13 @@
   box-shadow: var(--shadow);
 }
 
+.workspace.is-dashboard-home .hero-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.54fr);
+  gap: 16px;
+  min-height: 0;
+  padding: 18px;
+}
+
 .hero-copy {
   display: flex;
   flex-direction: column;
@@ -1205,12 +1227,22 @@
   line-height: 1.05;
 }
 
+.workspace.is-dashboard-home .hero-panel h2 {
+  font-size: clamp(1.45rem, 2.05vw, 1.9rem);
+}
+
 .hero-panel p {
   max-width: 640px;
   margin: 12px 0 0;
   color: #475569;
   font-size: 0.96rem;
   line-height: 1.55;
+}
+
+.workspace.is-dashboard-home .hero-panel p {
+  margin-top: 8px;
+  font-size: 0.88rem;
+  line-height: 1.42;
 }
 
 .company-title-row {
@@ -1227,6 +1259,12 @@
   font-size: 1.08rem;
 }
 
+.workspace.is-dashboard-home .company-title-row .avatar-company {
+  flex-basis: 58px;
+  width: 58px;
+  height: 58px;
+}
+
 .company-title-row h2 {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -1239,6 +1277,11 @@
   margin-top: 18px;
 }
 
+.workspace.is-dashboard-home .hero-facts {
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .hero-facts div {
   display: grid;
   gap: 2px;
@@ -1247,6 +1290,11 @@
   border: 1px solid #c8eef5;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
+}
+
+.workspace.is-dashboard-home .hero-facts div {
+  min-width: 102px;
+  padding: 8px 10px;
 }
 
 .hero-facts strong {
@@ -1268,6 +1316,10 @@
   margin-top: 22px;
 }
 
+.workspace.is-dashboard-home .hero-actions {
+  margin-top: 10px;
+}
+
 .daily-motivation {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
@@ -1281,6 +1333,11 @@
   border-radius: 8px;
   color: #075985;
   background: #ecfeff;
+}
+
+.workspace.is-dashboard-home .daily-motivation {
+  margin-top: 10px;
+  padding: 7px 9px;
 }
 
 .daily-motivation svg {
@@ -1331,6 +1388,12 @@
   box-shadow: var(--shadow);
 }
 
+.workspace.is-dashboard-home .home-command-panel {
+  gap: 12px;
+  margin-top: 0;
+  padding: 14px;
+}
+
 .home-command-header {
   display: flex;
   align-items: flex-start;
@@ -1345,6 +1408,10 @@
   line-height: 1.15;
 }
 
+.workspace.is-dashboard-home .home-command-header h2 {
+  font-size: 1.08rem;
+}
+
 .home-command-header > p {
   max-width: 520px;
   margin: 0;
@@ -1354,10 +1421,20 @@
   text-align: right;
 }
 
+.workspace.is-dashboard-home .home-command-header > p {
+  max-width: 480px;
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
 .home-command-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+.workspace.is-dashboard-home .home-command-grid {
+  gap: 8px;
 }
 
 .home-command-button {
@@ -1381,6 +1458,13 @@
     background 160ms ease;
 }
 
+.workspace.is-dashboard-home .home-command-button {
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  min-height: 62px;
+  padding: 9px;
+}
+
 .home-command-button:hover,
 .home-command-button:focus-visible {
   border-color: #12c6df;
@@ -1398,6 +1482,11 @@
   border-radius: 8px;
   color: #075985;
   background: #cffafe;
+}
+
+.workspace.is-dashboard-home .home-command-icon {
+  width: 34px;
+  height: 34px;
 }
 
 .home-command-button.tone-warning .home-command-icon {
@@ -1431,6 +1520,10 @@
   white-space: nowrap;
 }
 
+.workspace.is-dashboard-home .home-command-copy strong {
+  font-size: 0.84rem;
+}
+
 .home-command-copy small {
   overflow: hidden;
   color: #64748b;
@@ -1439,6 +1532,10 @@
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.workspace.is-dashboard-home .home-command-copy small {
+  display: none;
 }
 
 .home-command-value {
@@ -1451,6 +1548,12 @@
   font-size: 0.86rem;
   line-height: 1;
   text-align: center;
+}
+
+.workspace.is-dashboard-home .home-command-value {
+  min-width: 30px;
+  padding: 6px 7px;
+  font-size: 0.78rem;
 }
 
 .home-command-arrow {
@@ -1859,6 +1962,11 @@
   align-content: center;
 }
 
+.workspace.is-dashboard-home .priority-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .priority-card {
   position: relative;
   display: grid;
@@ -1880,6 +1988,12 @@
     border-color 160ms ease,
     box-shadow 160ms ease,
     transform 160ms ease;
+}
+
+.workspace.is-dashboard-home .priority-card {
+  gap: 5px;
+  min-height: 76px;
+  padding: 11px;
 }
 
 .priority-card:hover,
@@ -1928,16 +2042,30 @@
   background: var(--tone-bg);
 }
 
+.workspace.is-dashboard-home .priority-icon {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+
 .priority-card span {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 700;
 }
 
+.workspace.is-dashboard-home .priority-card span {
+  font-size: 0.72rem;
+}
+
 .priority-card strong {
   color: var(--priority-number, #020617);
   font-size: 2rem;
   line-height: 1;
+}
+
+.workspace.is-dashboard-home .priority-card strong {
+  font-size: 1.42rem;
 }
 
 .priority-card.is-money strong {
@@ -1949,6 +2077,11 @@
   color: #64748b;
   font-size: 0.76rem;
   line-height: 1.35;
+}
+
+.workspace.is-dashboard-home .priority-card small {
+  font-size: 0.68rem;
+  line-height: 1.2;
 }
 
 @keyframes priorityPulse {
@@ -7057,12 +7190,72 @@
   }
 }
 
+@media (min-width: 981px) and (max-height: 760px) {
+  .workspace.is-dashboard-home {
+    gap: 10px;
+    padding: 14px 18px;
+  }
+
+  .workspace.is-dashboard-home .topbar h1 {
+    font-size: 1.35rem;
+  }
+
+  .workspace.is-dashboard-home .search-box,
+  .workspace.is-dashboard-home .notification-bell-button {
+    min-height: 38px;
+  }
+
+  .workspace.is-dashboard-home .hero-panel {
+    padding: 14px;
+  }
+
+  .workspace.is-dashboard-home .hero-panel p,
+  .workspace.is-dashboard-home .hero-actions {
+    display: none;
+  }
+
+  .workspace.is-dashboard-home .daily-motivation {
+    margin-top: 8px;
+    padding: 6px 8px;
+  }
+
+  .workspace.is-dashboard-home .hero-facts {
+    margin-top: 8px;
+  }
+
+  .workspace.is-dashboard-home .priority-card {
+    min-height: 68px;
+    padding: 9px;
+  }
+
+  .workspace.is-dashboard-home .priority-card small {
+    display: none;
+  }
+
+  .workspace.is-dashboard-home .home-command-panel {
+    padding: 12px;
+  }
+
+  .workspace.is-dashboard-home .home-command-header > p {
+    display: none;
+  }
+
+  .workspace.is-dashboard-home .home-command-button {
+    min-height: 54px;
+  }
+}
+
 @media (max-width: 980px) {
   .billing-plan-grid,
   .billing-form-grid,
   .cost-home-metrics,
   .fault-cost-summary {
     grid-template-columns: 1fr;
+  }
+
+  .workspace.is-dashboard-home {
+    height: auto;
+    overflow: visible;
   }
 
   .cost-home-header,

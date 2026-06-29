@@ -23,6 +23,7 @@ import Filter from 'lucide-react/dist/esm/icons/filter.mjs'
 import Globe2 from 'lucide-react/dist/esm/icons/globe-2.mjs'
 import ImageIcon from 'lucide-react/dist/esm/icons/image.mjs'
 import KeyRound from 'lucide-react/dist/esm/icons/key-round.mjs'
+import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard.mjs'
 import LockKeyhole from 'lucide-react/dist/esm/icons/lock-keyhole.mjs'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.mjs'
 import Mail from 'lucide-react/dist/esm/icons/mail.mjs'
@@ -461,6 +462,7 @@ const translations = {
     'language.label': 'Lingua',
     'language.short': 'Lingua',
     'nav.chat': 'Chat',
+    'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Scadenze',
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
@@ -638,6 +640,7 @@ const translations = {
     'language.label': 'Language',
     'language.short': 'Language',
     'nav.chat': 'Chat',
+    'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Deadlines',
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
@@ -767,6 +770,7 @@ const translations = {
     'language.label': 'Idioma',
     'language.short': 'Idioma',
     'nav.chat': 'Chat',
+    'nav.dashboard': 'Panel',
     'nav.deadlines': 'Vencimientos',
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
@@ -896,6 +900,7 @@ const translations = {
     'language.label': 'Langue',
     'language.short': 'Langue',
     'nav.chat': 'Chat',
+    'nav.dashboard': 'Tableau',
     'nav.deadlines': 'Echeances',
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
@@ -1025,6 +1030,7 @@ const translations = {
     'language.label': 'Sprache',
     'language.short': 'Sprache',
     'nav.chat': 'Chat',
+    'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Fristen',
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
@@ -3066,6 +3072,7 @@ const regionalTranslations = {
     'language.label': 'Limba',
     'language.short': 'Limba',
     'nav.chat': 'Chat',
+    'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Scadente',
     'nav.notifications': 'Notificari',
     'nav.records': 'Date',
@@ -3116,6 +3123,7 @@ const regionalTranslations = {
     'language.label': 'Jezyk',
     'language.short': 'Jezyk',
     'nav.chat': 'Chat',
+    'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Terminy',
     'nav.notifications': 'Powiadomienia',
     'nav.records': 'Kartoteki',
@@ -7650,7 +7658,7 @@ function App() {
     const shouldStartAdding = options?.add === true
 
     if (shouldStartAdding) {
-      setCostReportStartAddingKey(Date.now())
+      setCostReportStartAddingKey(`${options.category || 'cost'}:${Date.now()}`)
     } else {
       setCostReportResetKey(Date.now())
     }
@@ -7743,6 +7751,14 @@ function App() {
       label: 'Nuova spesa',
       onClick: () => openCostReport({ add: true }),
       tone: 'cost',
+      value: '',
+    },
+    {
+      detail: 'Registra multa con importo, data, autista responsabile e targa collegata',
+      icon: AlertTriangle,
+      label: 'Nuova sanzione',
+      onClick: () => openCostReport({ add: true, category: 'fine' }),
+      tone: 'warning',
       value: '',
     },
     {
@@ -8828,7 +8844,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
 
 function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onHome, onNavigate, onSignOut, session, t }) {
   const navItems = [
-    { id: 'dashboard', label: t('nav.deadlines'), icon: CalendarClock },
+    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'records', label: t('nav.records'), icon: Users },
     { id: 'notifications', label: t('nav.notifications'), icon: Bell },
     { id: 'chat', label: t('nav.chat'), icon: Mail },
@@ -12147,10 +12163,13 @@ function FaultCostReport({
     .filter(matchesPeriodFilter)
     .sort((first, second) => new Date(second.date) - new Date(first.date))
   const filteredCosts = periodTargetCosts
-    .filter((row) => categoryFilter === 'all' || row.category === categoryFilter)
+    .filter((row) => {
+      const effectiveCategoryFilter = ['fines', 'fine_ranking'].includes(reportType) ? 'fine' : categoryFilter
+      return effectiveCategoryFilter === 'all' || row.category === effectiveCategoryFilter
+    })
   const fineRows = periodTargetCosts.filter((row) => row.category === 'fine')
   const reportRows = reportType === 'fines'
-    ? fineRows
+    ? filteredCosts
     : reportType === 'fine_ranking'
       ? []
       : filteredCosts
@@ -12192,7 +12211,9 @@ function FaultCostReport({
 
     return 'Tutti i costi'
   })()
-  const selectedCategoryLabel = categoryFilter === 'all' ? 'Tutte le tipologie' : getCostCategoryLabel(categoryFilter)
+  const selectedCategoryLabel = ['fines', 'fine_ranking'].includes(reportType)
+    ? getCostCategoryLabel('fine')
+    : categoryFilter === 'all' ? 'Tutte le tipologie' : getCostCategoryLabel(categoryFilter)
   const reportPresetCards = [
     {
       description: 'Importi, targhe e responsabili nel periodo scelto.',
@@ -12251,6 +12272,13 @@ function FaultCostReport({
   function updateCostForm(field, value) {
     setCostForm((currentForm) => {
       if (field === 'targetType') {
+        if (currentForm.category === 'fine') {
+          return {
+            ...currentForm,
+            targetType: value,
+          }
+        }
+
         return {
           ...currentForm,
           assetId: '',
@@ -12282,8 +12310,20 @@ function FaultCostReport({
     }
   }
 
-  function openNewCostForm() {
-    setCostForm(getEmptyCostForm())
+  function getFineCostFormPreset() {
+    return {
+      ...getEmptyCostForm(),
+      category: 'fine',
+      driverId: driverRecords[0]?.id ?? '',
+      supplier: 'Sanzione',
+      targetType: 'driver',
+      title: 'Sanzione',
+      vehicleId: vehicleRecords[0]?.id ?? '',
+    }
+  }
+
+  function openNewCostForm(type = 'cost') {
+    setCostForm(type === 'fine' ? getFineCostFormPreset() : getEmptyCostForm())
     setFaultCostForm({ amount: '', id: '', notes: '' })
     setIsAddingCost(true)
   }
@@ -12291,7 +12331,8 @@ function FaultCostReport({
   useEffect(() => {
     if (!startAddingCostKey) return undefined
 
-    const timeoutId = window.setTimeout(() => openNewCostForm(), 0)
+    const startType = String(startAddingCostKey).startsWith('fine:') ? 'fine' : 'cost'
+    const timeoutId = window.setTimeout(() => openNewCostForm(startType), 0)
     return () => window.clearTimeout(timeoutId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startAddingCostKey])
@@ -12318,18 +12359,19 @@ function FaultCostReport({
 
     if (!amountCents || !costForm.title.trim() || !costForm.spentAt) return
 
+    const isFineEntry = costForm.category === 'fine'
     const payload = {
       amountCents,
-      assetId: costForm.targetType === 'asset' ? costForm.assetId : '',
+      assetId: !isFineEntry && costForm.targetType === 'asset' ? costForm.assetId : '',
       category: costForm.category,
       currency: defaultCurrency,
-      driverId: costForm.targetType === 'driver' ? costForm.driverId : '',
+      driverId: isFineEntry ? costForm.driverId : costForm.targetType === 'driver' ? costForm.driverId : '',
       notes: costForm.notes,
       odometerKm: costForm.odometerKm,
       spentAt: costForm.spentAt,
       supplier: costForm.supplier,
       title: costForm.title,
-      vehicleId: costForm.targetType === 'vehicle' ? costForm.vehicleId : '',
+      vehicleId: isFineEntry ? costForm.vehicleId : costForm.targetType === 'vehicle' ? costForm.vehicleId : '',
     }
     const previousEntry = costEntryRecords.find((entry) => entry.id === costForm.id)
 
@@ -12413,21 +12455,33 @@ function FaultCostReport({
   }
 
   function getCostTargetLabel(row) {
-    if (row.vehicleId) {
-      const vehicle = vehicleRecords.find((entry) => entry.id === row.vehicleId)
-      return vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : 'Mezzo'
-    }
+    const vehicle = row.vehicleId ? vehicleRecords.find((entry) => entry.id === row.vehicleId) : null
+    const asset = row.assetId ? assetRecords.find((entry) => entry.id === row.assetId) : null
+    const driver = row.driverId ? driverRecords.find((entry) => entry.id === row.driverId) : null
+    const labels = [
+      vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : row.vehicleId ? 'Mezzo' : '',
+      asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : row.assetId ? 'Attrezzatura' : '',
+      driver ? driver.name : row.driverId ? 'Autista' : '',
+    ].filter(Boolean)
 
-    if (row.assetId) {
-      const asset = assetRecords.find((entry) => entry.id === row.assetId)
-      return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
-    }
+    return labels.length ? labels.join(' · ') : 'Azienda'
+  }
 
-    if (row.driverId) {
-      return driverRecords.find((driver) => driver.id === row.driverId)?.name ?? 'Autista'
-    }
+  function getCostVehicleLabel(row) {
+    if (!row.vehicleId) return ''
+    const vehicle = vehicleRecords.find((entry) => entry.id === row.vehicleId)
+    return vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : 'Mezzo'
+  }
 
-    return 'Azienda'
+  function getCostDriverLabel(row) {
+    if (!row.driverId) return ''
+    return driverRecords.find((driver) => driver.id === row.driverId)?.name ?? 'Autista'
+  }
+
+  function getCostAssetLabel(row) {
+    if (!row.assetId) return ''
+    const asset = assetRecords.find((entry) => entry.id === row.assetId)
+    return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
   }
 
   function downloadCostCsv() {
@@ -12450,13 +12504,16 @@ function FaultCostReport({
           ]),
         ]
       : [
-      ['Data', 'Titolo', 'Categoria', 'Soggetto', 'Importo', 'Valuta', 'Tipo', 'Fornitore', 'Km', 'Note'],
+      ['Data', 'Titolo', 'Categoria', 'Targa o mezzo', 'Autista', 'Attrezzatura', 'Soggetto completo', 'Importo', 'Valuta', 'Tipo', 'Fornitore', 'Km', 'Note'],
       ...rowsForExport.map((row) => {
         const source = row.source ?? {}
         return [
           formatCsvDate(row.date),
           row.title,
           getCostCategoryLabel(row.category),
+          getCostVehicleLabel(row),
+          getCostDriverLabel(row),
+          getCostAssetLabel(row),
           getCostTargetLabel(row),
           (Number(row.amountCents ?? 0) / 100).toFixed(2),
           row.currency || defaultCurrency,
@@ -12556,6 +12613,8 @@ function FaultCostReport({
     printWindow.print()
   }
 
+  const isFineCostForm = costForm.category === 'fine'
+
   return (
     <section className={`fault-cost-report ${isReportWorkspace ? 'is-report-workspace' : ''}`} id="fault-cost-report">
       <div className="fault-cost-report-header">
@@ -12622,48 +12681,73 @@ function FaultCostReport({
             Data
             <input required type="date" value={costForm.spentAt} onChange={(event) => updateCostForm('spentAt', event.target.value)} />
           </label>
-          <label>
-            Collegata a
-            <select value={costForm.targetType} onChange={(event) => updateCostForm('targetType', event.target.value)}>
-              <option value="vehicle">Mezzo / targa</option>
-              <option value="asset">Attrezzatura / muletto</option>
-              <option value="driver">Autista</option>
-              <option value="company">Azienda generale</option>
-            </select>
-          </label>
-          {costForm.targetType === 'vehicle' ? (
-            <label>
-              Mezzo
-              <select value={costForm.vehicleId} onChange={(event) => updateCostForm('vehicleId', event.target.value)}>
-                <option value="">Senza targa</option>
-                {vehicleRecords.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {costForm.targetType === 'asset' ? (
-            <label>
-              Attrezzatura
-              <select value={costForm.assetId} onChange={(event) => updateCostForm('assetId', event.target.value)}>
-                <option value="">Senza attrezzatura</option>
-                {assetRecords.map((asset) => (
-                  <option key={asset.id} value={asset.id}>{asset.code} · {asset.model || 'Attrezzatura'}</option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {costForm.targetType === 'driver' ? (
-            <label>
-              Autista
-              <select value={costForm.driverId} onChange={(event) => updateCostForm('driverId', event.target.value)}>
-                <option value="">Senza autista</option>
-                {driverRecords.map((driver) => (
-                  <option key={driver.id} value={driver.id}>{driver.name}</option>
-                ))}
-              </select>
-            </label>
-          ) : null}
+          {isFineCostForm ? (
+            <>
+              <label>
+                Autista responsabile
+                <select value={costForm.driverId} onChange={(event) => updateCostForm('driverId', event.target.value)}>
+                  <option value="">Senza autista</option>
+                  {driverRecords.map((driver) => (
+                    <option key={driver.id} value={driver.id}>{driver.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Mezzo / targa collegata
+                <select value={costForm.vehicleId} onChange={(event) => updateCostForm('vehicleId', event.target.value)}>
+                  <option value="">Senza targa</option>
+                  {vehicleRecords.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : (
+            <>
+              <label>
+                Collegata a
+                <select value={costForm.targetType} onChange={(event) => updateCostForm('targetType', event.target.value)}>
+                  <option value="vehicle">Mezzo / targa</option>
+                  <option value="asset">Attrezzatura / muletto</option>
+                  <option value="driver">Autista</option>
+                  <option value="company">Azienda generale</option>
+                </select>
+              </label>
+              {costForm.targetType === 'vehicle' ? (
+                <label>
+                  Mezzo
+                  <select value={costForm.vehicleId} onChange={(event) => updateCostForm('vehicleId', event.target.value)}>
+                    <option value="">Senza targa</option>
+                    {vehicleRecords.map((vehicle) => (
+                      <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {costForm.targetType === 'asset' ? (
+                <label>
+                  Attrezzatura
+                  <select value={costForm.assetId} onChange={(event) => updateCostForm('assetId', event.target.value)}>
+                    <option value="">Senza attrezzatura</option>
+                    {assetRecords.map((asset) => (
+                      <option key={asset.id} value={asset.id}>{asset.code} · {asset.model || 'Attrezzatura'}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {costForm.targetType === 'driver' ? (
+                <label>
+                  Autista
+                  <select value={costForm.driverId} onChange={(event) => updateCostForm('driverId', event.target.value)}>
+                    <option value="">Senza autista</option>
+                    {driverRecords.map((driver) => (
+                      <option key={driver.id} value={driver.id}>{driver.name}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </>
+          )}
           <label>
             Fornitore
             <input value={costForm.supplier} onChange={(event) => updateCostForm('supplier', event.target.value)} placeholder="Officina, gommista, assicurazione..." />
@@ -12715,7 +12799,14 @@ function FaultCostReport({
       <div className="fault-cost-controls">
         <label>
           {isReportWorkspace ? 'Che report vuoi?' : 'Vista costi'}
-          <select value={reportType} onChange={(event) => setReportType(event.target.value)}>
+          <select
+            value={reportType}
+            onChange={(event) => {
+              const nextReportType = event.target.value
+              setReportType(nextReportType)
+              if (['fines', 'fine_ranking'].includes(nextReportType)) setCategoryFilter('fine')
+            }}
+          >
             <option value="detail">Dettaglio costi</option>
             <option value="fines">Solo multe / sanzioni</option>
             <option value="fine_ranking">Classifica multe autisti</option>
@@ -12745,7 +12836,11 @@ function FaultCostReport({
         </label>
         <label>
           Tipologia
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+          <select
+            disabled={['fines', 'fine_ranking'].includes(reportType)}
+            value={['fines', 'fine_ranking'].includes(reportType) ? 'fine' : categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+          >
             <option value="all">Tutte le tipologie</option>
             {costCategoryOptions.map((option) => (
               <option key={option.id} value={option.id}>{option.label}</option>

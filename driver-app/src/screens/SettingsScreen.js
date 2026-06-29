@@ -23,6 +23,7 @@ export function SettingsScreen({
   onChatSoundChange,
   onEnableNativeNotifications,
   onLanguageChange,
+  onOpenAssistant,
   onRefresh,
   onResetChatBadge,
   onSignOut,
@@ -61,6 +62,14 @@ export function SettingsScreen({
         <View style={styles.buttonGap} />
         <PrimaryButton onPress={onEnableNativeNotifications} title="Abilita notifiche app" tone="light" />
         {nativePushStatus ? <Text style={styles.diagnosticLine}>{nativePushStatus}</Text> : null}
+      </Panel>
+
+      <Panel kicker="Supporto" title="Assistente Camion Chiaro">
+        <Text style={styles.helper}>
+          Apri una chat guidata per scadenze, guasti, documenti, chat e notifiche. Se non basta, prepara un ticket email per l assistenza.
+        </Text>
+        <View style={styles.buttonGap} />
+        <PrimaryButton onPress={onOpenAssistant} title="Apri assistente" tone="light" />
       </Panel>
 
       <Panel kicker="Chat" title={t(language, 'chatSettings')}>

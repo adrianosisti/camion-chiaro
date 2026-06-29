@@ -18,6 +18,7 @@ import { useShareIntent } from 'expo-share-intent'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AuthScreen } from './src/screens/AuthScreen'
+import { AssistantModal } from './src/screens/AssistantModal'
 import { CompanyChatScreen } from './src/screens/CompanyChatScreen'
 import { CompanyHomeScreen } from './src/screens/CompanyHomeScreen'
 import { CompanyManagementScreen } from './src/screens/CompanyManagementScreen'
@@ -355,6 +356,7 @@ function CamionChiaroApp() {
   const [isSelectedDriverTyping, setIsSelectedDriverTyping] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [incomingChatShare, setIncomingChatShare] = useState(null)
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false)
   const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
@@ -2275,6 +2277,7 @@ function CamionChiaroApp() {
             nativePushStatus={nativePushStatus}
             onChatSoundChange={setChatSoundEnabled}
             onEnableNativeNotifications={handleEnableNativeNotifications}
+            onOpenAssistant={() => setIsAssistantOpen(true)}
             onLanguageChange={setLanguage}
             onRefresh={() => loadCompanyData()}
             onSignOut={handleSignOut}
@@ -2309,8 +2312,8 @@ function CamionChiaroApp() {
           language={language}
           logoUrl={logoUrl}
           onOpenChat={() => setActiveTab('chat')}
+          onOpenAssistant={() => setIsAssistantOpen(true)}
           onOpenManagement={openCompanyManagement}
-          onOpenSettings={() => setActiveTab('settings')}
           onRefresh={() => loadCompanyData()}
           onCloseDeadline={handleCloseCompanyDeadline}
           onRenewDeadline={handleRenewCompanyDeadline}
@@ -2396,6 +2399,7 @@ function CamionChiaroApp() {
           nativePushStatus={nativePushStatus}
           onChatSoundChange={setChatSoundEnabled}
           onEnableNativeNotifications={handleEnableNativeNotifications}
+          onOpenAssistant={() => setIsAssistantOpen(true)}
           onLanguageChange={setLanguage}
           onRefresh={() => loadDriverData()}
           onResetChatBadge={resetDriverChatBadge}
@@ -2430,6 +2434,7 @@ function CamionChiaroApp() {
           setActiveTab('documents')
         }}
         onOpenOperations={() => setActiveTab('operations')}
+        onOpenAssistant={() => setIsAssistantOpen(true)}
         onOpenSettings={() => setActiveTab('settings')}
         onSelectDailyVehicle={handleSelectDailyVehicle}
         onUpdateProfilePhoto={handleUpdateProfilePhoto}
@@ -2566,6 +2571,13 @@ function CamionChiaroApp() {
           )
         })}
       </View>
+      <AssistantModal
+        accountType={accountType}
+        actorName={accountType === 'company' ? companyName : driverName}
+        companyName={companyName}
+        onClose={() => setIsAssistantOpen(false)}
+        visible={isAssistantOpen}
+      />
     </View>
   )
 }

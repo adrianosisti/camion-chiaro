@@ -439,9 +439,9 @@ export function CompanyHomeScreen({
   context,
   language = 'it',
   logoUrl,
+  onOpenAssistant,
   onOpenChat,
   onOpenManagement,
-  onOpenSettings,
   onResolveCheck,
   onResolveFault,
   onUpdateFaultRepair,
@@ -581,10 +581,10 @@ export function CompanyHomeScreen({
             value={unreadMessages}
           />
           <HomeCommandButton
-            detail="Lingua, notifiche e profilo"
-            icon="settings-outline"
-            label="Menu"
-            onPress={onOpenSettings}
+            detail="Guida e ticket supporto"
+            icon="help-buoy-outline"
+            label="Aiuto"
+            onPress={onOpenAssistant}
             value=""
           />
         </View>

@@ -117,6 +117,7 @@ export function HomeScreen({
   onOpenChat,
   onOpenDocuments,
   onOpenOperations,
+  onOpenAssistant,
   onOpenSettings,
   onSelectDailyVehicle,
   onUpdateProfilePhoto,
@@ -190,9 +191,14 @@ export function HomeScreen({
               </View>
             </View>
           </View>
-          <Pressable onPress={onOpenSettings} style={styles.settingsButton}>
-            <Ionicons color={colors.ink} name="settings-outline" size={19} />
-          </Pressable>
+          <View style={styles.heroButtons}>
+            <Pressable onPress={onOpenAssistant} style={styles.settingsButton}>
+              <Ionicons color={colors.ink} name="help-buoy-outline" size={19} />
+            </Pressable>
+            <Pressable onPress={onOpenSettings} style={styles.settingsButton}>
+              <Ionicons color={colors.ink} name="settings-outline" size={19} />
+            </Pressable>
+          </View>
         </View>
         <View style={styles.metricRow}>
           <MetricPill label="Messaggi" onPress={onOpenChat} tone={unreadCompanyMessages ? 'warning' : 'info'} value={unreadCompanyMessages} />
@@ -537,6 +543,10 @@ const styles = StyleSheet.create({
   },
   heroCopy: {
     flex: 1,
+  },
+  heroButtons: {
+    flexDirection: 'row',
+    gap: 8,
   },
   heroGreeting: {
     color: colors.white,

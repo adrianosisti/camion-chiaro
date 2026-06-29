@@ -3,49 +3,55 @@
 ## Azienda
 
 ### A cosa serve Camion Chiaro?
-Serve a tenere sotto controllo autisti, flotta, documenti, scadenze, check mattutini, guasti, chat e notifiche in un unico posto.
+Serve a tenere sotto controllo autisti, ufficio, magazzino, flotta, strumenti, documenti, scadenze, check, guasti, chat, notifiche e costi operativi in un unico posto.
 
-### Devo installare un programma sul computer?
-No. L azienda entra dal browser. Se usa un telefono o un tablet puo aggiungere Camion Chiaro alla schermata home come web app.
+### L azienda deve installare un programma sul computer?
+No. L ufficio entra dal browser desktop. Il titolare puo usare anche l app su telefono per notifiche, chat e controllo operativo.
 
-### L autista deve scaricare un app dallo store?
-Nella prima versione no. L autista usa la web app dal telefono e puo aggiungerla alla home. In futuro si puo valutare anche app store nativa.
+### Autisti e personale usano una vera app?
+Si. Camion Chiaro e previsto come app iOS/Android per autisti, titolari e personale operativo. L app serve per chat, notifiche, documenti, check, guasti e aggiornamenti rapidi.
 
-### Posso creare io gli accessi degli autisti?
-Si. L azienda crea l autista, genera username/password e l autista entra solo nella sua area.
+### Posso creare io gli accessi degli utenti?
+Si. L azienda crea autisti, ufficio e magazzino, assegna username/password e decide quali dati sono collegati a ogni persona.
 
 ### L autista vede tutti i dati aziendali?
-No. L autista vede solo la sua area: documenti visibili, chat, check, guasti e notifiche che lo riguardano.
+No. L autista vede solo la sua area: documenti visibili, chat, check, guasti, notifiche e scadenze personali.
+
+### Posso gestire furgoni, motrici, trattori e semirimorchi?
+Si. La flotta gestisce questi tipi. Nei check o nei guasti l autista puo indicare il mezzo usato e, se serve, il semirimorchio agganciato.
+
+### Posso gestire muletti e strumenti di lavoro?
+Si. La struttura prevede magazzino, strumenti, muletti e check dedicati. I costi futuri dovranno includere anche manutenzioni e guasti di questi strumenti.
 
 ### Cosa succede se un documento sta per scadere?
-La scadenza compare in dashboard e puo generare notifiche in app/telefono secondo le regole impostate.
+La scadenza compare in dashboard, entra nelle pratiche da lavorare e puo generare solleciti e notifiche alla persona interessata.
 
-### Posso archiviare guasti e check?
-Si. Le notifiche aperte restano da gestire; quando vengono archiviate vanno nello storico.
+### Posso rinnovare una scadenza?
+Si. L azienda puo aprire una scadenza, caricare il nuovo documento, inserire la nuova data e chiudere la pratica.
 
-### Posso caricare documenti per l autista?
-Si. L azienda puo caricare documenti e renderli visibili all autista.
+### Posso registrare i costi di guasti e riparazioni?
+Si. Ogni guasto puo avere importo e note. Il report costi mostra totale mese, anno, interventi e filtri per targa/mezzo.
 
-### L autista puo caricare documenti da telefono?
-Si. Puo usare fotocamera o galleria, cosi patente, CQC, carta tachigrafica o altri documenti restano disponibili.
-
-### Posso usare Camion Chiaro con piu lingue?
-Si. Sono gia previste italiano, inglese, spagnolo, francese, tedesco, rumeno e polacco, con possibilita di aggiungere altre lingue.
+### Il report costi sara solo per i guasti?
+No. La direzione prodotto e avere un conto economico operativo: guasti, manutenzioni, revisioni, assicurazioni, muletti, strumenti e documenti onerosi.
 
 ### Le notifiche arrivano anche con app chiusa?
-Si, se il telefono supporta le notifiche web push, l app e stata aggiunta correttamente e l utente ha premuto "abilita notifiche".
+Si, se il telefono e registrato e l utente ha autorizzato le notifiche. Chat, guasti, check e solleciti possono arrivare su telefono.
 
-### Cosa vede il titolare quando riceve un messaggio?
-La notifica deve mostrare il nome dell autista e il testo del messaggio, come una chat normale.
+### Quanto costa Camion Chiaro?
+Il prezzo parte da 300 euro/mese per piccole flotte. I piani crescono per numero di mezzi, strumenti e account utenti.
 
-### Cosa vede l autista quando riceve un messaggio?
-La notifica deve mostrare il nome dell azienda e il testo del messaggio.
+### La chat e inclusa?
+La chat aziendale completa puo essere venduta come modulo separato, ad esempio +100 euro/mese, per proteggere costi di notifiche, storage e assistenza.
 
-### Posso usare furgoni, motrici, trattori e semirimorchi?
-Si. La flotta gestisce tutti questi tipi. Nel check o nel guasto l autista puo indicare il trattore e, se serve, il semirimorchio agganciato.
+### Quanto costa l avvio iniziale?
+Lo start-up kit consigliato e 1.500 euro una tantum: configurazione, anagrafiche iniziali, scadenze, formazione e supporto operativo.
 
-### Camion Chiaro sostituisce il consulente o il gestionale?
-No. Aiuta a non dimenticare e a tenere ordine operativo. Puo affiancare consulente, officina, amministrazione e gestionale trasporti.
+### Come funziona lo storage?
+Ogni piano include spazio file. I pacchetti extra consigliati sono 20 GB, 50 GB e 100 GB con canone mensile separato.
+
+### Quali valute sono previste?
+Per le lingue attuali: EUR per italiano/spagnolo/francese/tedesco, RON per rumeno, PLN per polacco. Inglese usa EUR come default commerciale europeo.
 
 ## Autista
 
@@ -53,13 +59,13 @@ No. Aiuta a non dimenticare e a tenere ordine operativo. Puo affiancare consulen
 Con username e password creati dall azienda.
 
 ### Posso mostrare i documenti alla polizia?
-Si. Nell area "Documenti da mostrare" puoi aprire i documenti caricati e visibili.
+Si. Nell area documenti puoi aprire i documenti visibili e mostrarli quando servono.
 
 ### Devo fare il check ogni mattina?
-L azienda puo chiedere il check mattutino. Se segnali luci, gomme o documenti non ok, l azienda riceve una notifica critica.
+Dipende dall azienda. Se il check segnala anomalie, l azienda riceve un avviso critico.
 
 ### Posso segnalare un guasto con foto?
 Si. Puoi indicare gravita, mezzo, semirimorchio se agganciato, descrizione e foto.
 
-### Posso parlare con l azienda?
-Si. C e una chat tra azienda e autista con messaggi, foto, spunte e reazioni.
+### Posso parlare con azienda, ufficio o magazzino?
+Si. La chat supporta conversazioni dirette e gruppi aziendali autorizzati.

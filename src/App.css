@@ -452,6 +452,33 @@
   width: 100%;
 }
 
+.public-extra-pricing {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.public-extra-pricing div {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid #bdeaf3;
+  border-radius: 8px;
+  background: #f8feff;
+}
+
+.public-extra-pricing strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.public-extra-pricing span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
 .public-faq {
   padding-bottom: clamp(48px, 8vw, 92px);
 }
@@ -1291,6 +1318,82 @@
 .daily-motivation.is-driver strong {
   grid-column: 1 / -1;
   font-size: 0.74rem;
+}
+
+.cost-home-card {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #9de8f4;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(18, 198, 223, 0.18), rgba(15, 23, 42, 0.04)),
+    #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.cost-home-header,
+.cost-home-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cost-home-header h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.cost-home-header span,
+.cost-home-footer p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.cost-home-header svg {
+  flex: 0 0 auto;
+  color: #0284c7;
+}
+
+.cost-home-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cost-home-metrics div {
+  display: grid;
+  gap: 4px;
+  padding: 13px;
+  border: 1px solid #c7eef6;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.cost-home-metrics strong {
+  color: #020617;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  line-height: 1;
+}
+
+.cost-home-metrics span {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 780;
+}
+
+.cost-home-footer {
+  align-items: center;
+}
+
+.cost-home-footer p {
+  margin: 0;
 }
 
 .setup-panel {
@@ -5012,6 +5115,14 @@
   padding-bottom: 12px;
 }
 
+.panel-header-subtitle {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
 .panel-header-actions {
   display: inline-flex;
   align-items: center;
@@ -5156,6 +5267,12 @@
 .small-button:hover {
   border-color: #b9c8c6;
   background: #f6faf9;
+}
+
+.compliance-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .lower-grid {
@@ -6753,7 +6870,8 @@
 
 @media (max-width: 1240px) {
   .public-feature-grid,
-  .public-steps {
+  .public-steps,
+  .public-extra-pricing {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -6784,8 +6902,16 @@
 
 @media (max-width: 980px) {
   .billing-plan-grid,
-  .billing-form-grid {
+  .billing-form-grid,
+  .cost-home-metrics,
+  .fault-cost-summary {
     grid-template-columns: 1fr;
+  }
+
+  .cost-home-header,
+  .cost-home-footer {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .license-gate-heading {
@@ -6948,6 +7074,12 @@
 }
 
 @media (max-width: 720px) {
+  .public-extra-pricing,
+  .fault-cost-grid,
+  .fault-cost-controls {
+    grid-template-columns: 1fr;
+  }
+
   .driver-page {
     padding: 12px;
   }

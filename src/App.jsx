@@ -160,10 +160,12 @@ const maxChatVideoFileSize = 64 * 1024 * 1024
 const imageCompressionMaxSide = 1600
 const imageCompressionQuality = 0.76
 const storagePlanLimitsBytes = {
-  business: 50 * 1024 * 1024 * 1024,
-  enterprise: 200 * 1024 * 1024 * 1024,
-  pro: 10 * 1024 * 1024 * 1024,
-  starter: 2 * 1024 * 1024 * 1024,
+  enterprise: 100 * 1024 * 1024 * 1024,
+  fleet10: 20 * 1024 * 1024 * 1024,
+  fleet20: 30 * 1024 * 1024 * 1024,
+  fleet30: 50 * 1024 * 1024 * 1024,
+  fleet50: 75 * 1024 * 1024 * 1024,
+  starter: 10 * 1024 * 1024 * 1024,
 }
 const emptyCompanyStorageSummary = {
   chatBytes: 0,
@@ -186,10 +188,14 @@ const fleetTypeOptions = [
 
 const vehicleStatusOptions = ['Operativo', 'Da controllare', 'In manutenzione']
 const billingPlanLabels = {
-  business: 'Business',
+  business: 'Fleet 20',
   enterprise: 'Enterprise',
-  pro: 'Pro',
-  starter: 'Starter',
+  fleet10: 'Fleet 10',
+  fleet20: 'Fleet 20',
+  fleet30: 'Fleet 30',
+  fleet50: 'Fleet 50',
+  pro: 'Fleet 10',
+  starter: 'Start 5',
 }
 const billingStatusLabels = {
   active: 'Attivo',
@@ -200,26 +206,40 @@ const billingStatusLabels = {
 }
 const billingCheckoutPlans = [
   {
-    bestFor: 'Piccole flotte che vogliono partire ordinate.',
-    features: ['Fino a 5 autisti', 'Fino a 5 mezzi', 'Scadenze e documenti', 'Notifiche base'],
+    bestFor: 'Per partire con una piccola flotta senza perdere scadenze e documenti.',
+    features: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', '10 GB file inclusi'],
     id: 'starter',
-    price: '49 euro/mese',
-    title: 'Starter',
+    price: '300 euro/mese',
+    title: 'Start 5',
   },
   {
-    bestFor: 'La scelta giusta per la maggior parte delle aziende.',
-    features: ['Fino a 20 autisti', 'Fino a 25 mezzi', 'Chat, check e guasti', 'Documenti autista e push'],
-    id: 'pro',
+    bestFor: 'Per aziende che hanno gia un ufficio operativo e piu persone collegate.',
+    features: ['Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', '20 GB file inclusi'],
+    id: 'fleet10',
     isRecommended: true,
-    price: '99 euro/mese',
-    title: 'Pro',
+    price: '450 euro/mese',
+    title: 'Fleet 10',
   },
   {
-    bestFor: 'Flotte piu strutturate con piu controllo operativo.',
-    features: ['Fino a 60 autisti', 'Fino a 80 mezzi', 'Priorita supporto', 'Storico e gestione avanzata'],
-    id: 'business',
-    price: '199 euro/mese',
-    title: 'Business',
+    bestFor: 'Per flotte strutturate che vogliono report economici e storico completo.',
+    features: ['Fino a 20 mezzi', 'Fino a 10 strumenti o muletti', 'Fino a 40 account', '30 GB file inclusi'],
+    id: 'fleet20',
+    price: '650 euro/mese',
+    title: 'Fleet 20',
+  },
+  {
+    bestFor: 'Per aziende con piu reparti, magazzino e gestione manutenzioni frequente.',
+    features: ['Fino a 30 mezzi', 'Fino a 15 strumenti o muletti', 'Fino a 60 account', '50 GB file inclusi'],
+    id: 'fleet30',
+    price: '850 euro/mese',
+    title: 'Fleet 30',
+  },
+  {
+    bestFor: 'Per flotte grandi con piu utenti e alto volume documentale.',
+    features: ['Fino a 50 mezzi', 'Fino a 25 strumenti o muletti', 'Fino a 100 account', '75 GB file inclusi'],
+    id: 'fleet50',
+    price: '1.200 euro/mese',
+    title: 'Fleet 50',
   },
 ]
 const faultSeverityOptions = [
@@ -272,6 +292,20 @@ const languageOptions = [
   { code: 'pl', label: 'Polski', shortLabel: 'PL' },
 ]
 const supportedLanguageCodes = new Set(languageOptions.map((option) => option.code))
+const currencyByLanguage = {
+  de: 'EUR',
+  en: 'EUR',
+  es: 'EUR',
+  fr: 'EUR',
+  it: 'EUR',
+  pl: 'PLN',
+  ro: 'RON',
+}
+
+function getDefaultCurrency(language = defaultLanguage) {
+  return currencyByLanguage[language] ?? 'EUR'
+}
+
 const translations = {
   it: {
     'auth.companyEmailLabel': 'Email aziendale',
@@ -2894,7 +2928,7 @@ const supportSections = [
         title: 'A cosa serve Camion Chiaro?',
       },
       {
-        body: 'No. L azienda entra dal browser. Da telefono puo aggiungere Camion Chiaro alla schermata home come web app.',
+        body: 'L ufficio entra dal browser desktop. Autisti, titolare e personale possono usare l app iOS/Android con notifiche.',
         title: 'Devo installare un programma?',
       },
       {
@@ -2910,8 +2944,12 @@ const supportSections = [
         title: 'Il check mattutino avvisa l azienda?',
       },
       {
-        body: 'Si. Le notifiche web push arrivano se telefono e browser le supportano e l utente le ha abilitate.',
+        body: 'Si. Le notifiche arrivano sui telefoni registrati nell app, anche per chat, guasti, check e solleciti documentali.',
         title: 'Le notifiche arrivano anche con app chiusa?',
+      },
+      {
+        body: 'Si. Guasti e riparazioni possono avere importi e note. Il report costi filtra per targa, periodo e storico interventi.',
+        title: 'Posso controllare quanto spendo sui mezzi?',
       },
     ],
   },
@@ -2922,7 +2960,7 @@ const supportSections = [
     titleKey: 'support.manual',
     items: [
       {
-        points: ['Entra come azienda.', 'Completa ragione sociale, sede e logo.', 'Scegli la lingua preferita.', 'Attiva notifiche se il titolare usera il telefono.'],
+        points: ['Entra come azienda.', 'Completa ragione sociale, sede e logo.', 'Scegli la lingua preferita.', 'Attiva notifiche sull app del titolare se usera il telefono.'],
         title: '1. Primo accesso',
       },
       {
@@ -2942,8 +2980,12 @@ const supportSections = [
         title: '5. Check mattutino',
       },
       {
-        points: ['L autista invia guasto con foto.', 'L azienda apre il dettaglio.', 'Quando gestito, archivia e mantiene lo storico.'],
+        points: ['L autista invia guasto con foto.', 'L azienda apre il dettaglio.', 'Inserisce costo e note riparazione se disponibili.', 'Quando gestito, archivia e mantiene storico e report economico.'],
         title: '6. Guasti e storico',
+      },
+      {
+        points: ['Apri il riquadro Costi in home.', 'Filtra per targa e periodo.', 'Controlla totale mese, anno e interventi con costo.', 'Usa questi dati per capire quali mezzi assorbono piu soldi.'],
+        title: '7. Report costi',
       },
     ],
   },
@@ -4256,6 +4298,7 @@ function App() {
   const [activeView, setActiveView] = useState(getInitialActiveView)
   const [recordsTab, setRecordsTab] = useState(getInitialRecordsTab)
   const [activeFilter, setActiveFilter] = useState('all')
+  const [complianceShowAll, setComplianceShowAll] = useState(false)
   const [selectedDeadline, setSelectedDeadline] = useState(null)
   const [operationsFilter, setOperationsFilter] = useState('inbox')
   const [query, setQuery] = useState('')
@@ -5242,8 +5285,11 @@ function App() {
 
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase()
+    const visibleBaseItems = complianceShowAll
+      ? decoratedItems
+      : decoratedItems.filter((item) => !['done', 'archived'].includes(item.status))
 
-    return decoratedItems.filter((item) => {
+    return visibleBaseItems.filter((item) => {
       const matchesFilter =
         activeFilter === 'all' ||
         (activeFilter === 'urgent' && ['expired', 'critical'].includes(item.urgency.key)) ||
@@ -5259,7 +5305,8 @@ function App() {
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(needle))
     })
-  }, [activeFilter, decoratedItems, query])
+  }, [activeFilter, complianceShowAll, decoratedItems, query])
+  const complianceWorkItemCount = decoratedItems.filter((item) => !['done', 'archived'].includes(item.status)).length
 
   async function handleSignOut() {
     await signOut()
@@ -5267,6 +5314,7 @@ function App() {
     setQuery('')
     setActiveView('dashboard')
     setActiveFilter('all')
+    setComplianceShowAll(false)
     setOperationsFilter('inbox')
     setOperationsSyncStatus('')
     setCompanySettingsStatus('')
@@ -5341,12 +5389,6 @@ function App() {
 
   function addComplianceItem(formItem) {
     setItems((currentItems) => [formItem, ...currentItems])
-  }
-
-  function markRenewing(id) {
-    setItems((currentItems) =>
-      currentItems.map((item) => (item.id === id ? { ...item, status: 'renewing' } : item)),
-    )
   }
 
   async function sendReminder(id) {
@@ -6452,7 +6494,7 @@ function App() {
     const localRepairPatch = hasRepairUpdate
       ? {
           repairCostCents: Number(repair.repairCostCents ?? 0),
-          repairCostCurrency: repair.repairCostCurrency || 'EUR',
+          repairCostCurrency: repair.repairCostCurrency || getDefaultCurrency(language),
           repairNotes: repair.repairNotes ?? '',
           repairRecordedAt: new Date().toISOString(),
         }
@@ -6484,7 +6526,11 @@ function App() {
       }
 
       setFaultReportRecords((currentReports) =>
-        currentReports.map((report) => (report.id === reportId ? result.data : report)),
+        currentReports.map((report) => (
+          report.id === reportId
+            ? { ...report, ...localRepairPatch, ...(result.data ?? {}), status }
+            : report
+        )),
       )
       setOperationsSyncStatus(
         hasRepairUpdate
@@ -6788,6 +6834,14 @@ function App() {
     setActiveView('notifications')
   }
 
+  function openCostReport() {
+    setOperationsFilter('archive')
+    setActiveView('notifications')
+    window.setTimeout(() => {
+      document.getElementById('fault-cost-report')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 0)
+  }
+
   function openRecords(tab = recordsTab) {
     setRecordsTab(tab)
     setActiveView('records')
@@ -6961,6 +7015,11 @@ function App() {
                 summary={summary}
                 t={t}
               />
+              <CostHomeCard
+                faultReportRecords={visibleFaultReportRecords}
+                onOpenReport={openCostReport}
+                vehicleRecords={vehicleRecords}
+              />
               <DashboardActivityFeed
                 acknowledgedCheckIds={acknowledgedCheckIds}
                 assetPreviewUrl={getAssetPreviewUrl}
@@ -6993,12 +7052,16 @@ function App() {
               <div className="main-column">
                 <ComplianceBoard
                   activeFilter={activeFilter}
+                  allItemCount={decoratedItems.length}
+                  complianceShowAll={complianceShowAll}
                   filteredItems={filteredItems}
+                  onToggleShowAll={() => setComplianceShowAll((currentValue) => !currentValue)}
                   onClose={closeItem}
                   onFilter={setActiveFilter}
                   onOpenDetail={setSelectedDeadline}
                   onReminder={sendReminder}
                   onRenew={setSelectedDeadline}
+                  workItemCount={complianceWorkItemCount}
                 />
                 <DeadlineDetailModal
                   item={selectedDeadline}
@@ -7686,43 +7749,51 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
       <section className="public-section" id="prezzi">
         <div className="public-section-heading">
           <p className="overline">Piani</p>
-          <h2>Prezzi semplici per aziende vere.</h2>
-          <p>Il pagamento online arrivera nella fase commerciale; la pagina e gia pronta per portare il cliente all attivazione.</p>
+          <h2>Prezzi per dimensione reale della flotta.</h2>
+          <p>Il piano cresce con mezzi, strumenti e account. Chat aziendale, storage extra e start-up kit restano separati e trasparenti.</p>
         </div>
         <div className="public-price-grid">
           <article>
-            <span>Starter</span>
-            <strong>39 euro/mese</strong>
-            <p>Per piccole flotte che vogliono mettere ordine subito.</p>
+            <span>Start 5</span>
+            <strong>300 euro/mese</strong>
+            <p>Per piccole flotte che vogliono controllo serio da subito.</p>
             <ul>
-              <li>Fino a 5 autisti</li>
-              <li>Scadenze e documenti</li>
-              <li>Check e guasti</li>
+              <li>Fino a 5 mezzi</li>
+              <li>Fino a 3 strumenti o muletti</li>
+              <li>Fino a 10 account utenti</li>
+              <li>10 GB inclusi</li>
             </ul>
-            <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Starter</button>
+            <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Start 5</button>
           </article>
           <article className="is-featured">
-            <span>Pro</span>
-            <strong>89 euro/mese</strong>
-            <p>Il piano giusto per la maggior parte delle aziende.</p>
+            <span>Fleet 10</span>
+            <strong>450 euro/mese</strong>
+            <p>Per aziende con ufficio operativo, autisti e magazzino collegati.</p>
             <ul>
-              <li>Fino a 25 autisti</li>
-              <li>Chat e notifiche telefono</li>
-              <li>Archivio operativo completo</li>
+              <li>Fino a 10 mezzi</li>
+              <li>Fino a 5 strumenti o muletti</li>
+              <li>Fino a 20 account utenti</li>
+              <li>20 GB inclusi</li>
             </ul>
-            <button className="primary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Pro</button>
+            <button className="primary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Fleet 10</button>
           </article>
           <article>
-            <span>Business</span>
-            <strong>189 euro/mese</strong>
-            <p>Per flotte piu grandi, sedi multiple e processi piu strutturati.</p>
+            <span>Fleet 20+</span>
+            <strong>da 650 euro/mese</strong>
+            <p>Per flotte strutturate con report economici, reparti e storico completo.</p>
             <ul>
-              <li>Autisti e mezzi estesi</li>
-              <li>Supporto prioritario</li>
-              <li>Preparazione integrazioni</li>
+              <li>20, 30 o 50 mezzi</li>
+              <li>Strumenti e muletti inclusi</li>
+              <li>Account proporzionati alla flotta</li>
+              <li>Storage da 30 GB in su</li>
             </ul>
-            <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Business</button>
+            <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Richiedi attivazione</button>
           </article>
+        </div>
+        <div className="public-extra-pricing">
+          <div><strong>Chat aziendale</strong><span>+100 euro/mese per chat singole, gruppi, foto, video, audio e notifiche.</span></div>
+          <div><strong>Start-up kit</strong><span>1.500 euro una tantum per configurazione, anagrafiche iniziali e formazione.</span></div>
+          <div><strong>Storage extra</strong><span>20 GB +49 euro/mese · 50 GB +99 euro/mese · 100 GB +179 euro/mese.</span></div>
         </div>
       </section>
 
@@ -7734,7 +7805,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         <div className="public-faq-list">
           <article>
             <h3>L autista deve scaricare un app dallo store?</h3>
-            <p>No: usa la web app dal telefono e puo aggiungerla alla schermata Home. Funziona su iPhone e Android.</p>
+            <p>Si: Camion Chiaro e previsto come app iOS/Android per autisti, magazzino e azienda. L azienda puo continuare a lavorare anche da browser desktop.</p>
           </article>
           <article>
             <h3>Arrivano notifiche sul telefono?</h3>
@@ -7742,7 +7813,11 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
           <article>
             <h3>Posso usarlo dall ufficio e dal telefono?</h3>
-            <p>Si. L azienda lavora da PC, ma il titolare puo entrare anche da telefono e vedere notifiche e chat.</p>
+            <p>Si. L ufficio lavora da PC, mentre titolare, autisti e personale possono usare l app su telefono con notifiche.</p>
+          </article>
+          <article>
+            <h3>I costi di guasti e manutenzioni vengono tracciati?</h3>
+            <p>Si. L azienda puo registrare costi su guasti e interventi, filtrare per periodo e mezzo, e preparare report economici operativi.</p>
           </article>
         </div>
       </section>
@@ -10644,9 +10719,76 @@ function getFaultCostPeriodStart(period) {
   return null
 }
 
+function getFaultCostSummary(faultReportRecords = []) {
+  const costFaults = faultReportRecords
+    .filter((report) => Number(report.repairCostCents ?? 0) > 0)
+    .slice()
+    .sort((first, second) => new Date(getFaultCostDate(second)) - new Date(getFaultCostDate(first)))
+  const monthStart = getFaultCostPeriodStart('month')
+  const yearStart = getFaultCostPeriodStart('year')
+  const sumFaults = (reports) => reports.reduce((total, report) => total + Number(report.repairCostCents ?? 0), 0)
+  const monthFaults = costFaults.filter((report) => new Date(getFaultCostDate(report)) >= monthStart)
+  const yearFaults = costFaults.filter((report) => new Date(getFaultCostDate(report)) >= yearStart)
+
+  return {
+    allCents: sumFaults(costFaults),
+    count: costFaults.length,
+    latest: costFaults[0] ?? null,
+    monthCents: sumFaults(monthFaults),
+    yearCents: sumFaults(yearFaults),
+  }
+}
+
+function CostHomeCard({ faultReportRecords = [], onOpenReport, vehicleRecords = [] }) {
+  const { language } = useI18n()
+  const summary = getFaultCostSummary(faultReportRecords)
+  const latestVehicle = vehicleRecords.find((vehicle) => vehicle.id === summary.latest?.vehicleId)
+  const defaultCurrency = getDefaultCurrency(language)
+
+  return (
+    <section className="cost-home-card" aria-label="Costi operativi">
+      <div className="cost-home-header">
+        <div>
+          <p className="overline">Costi</p>
+          <h2>Spese guasti e riparazioni</h2>
+          <span>Controllo immediato per targa, mese e anno.</span>
+        </div>
+        <Wrench size={24} />
+      </div>
+      <div className="cost-home-metrics">
+        <div>
+          <strong>{formatMoneyCents(summary.monthCents)}</strong>
+          <span>Questo mese</span>
+        </div>
+        <div>
+          <strong>{formatMoneyCents(summary.yearCents)}</strong>
+          <span>Quest anno</span>
+        </div>
+        <div>
+          <strong>{summary.count}</strong>
+          <span>Interventi con costo</span>
+        </div>
+      </div>
+      <div className="cost-home-footer">
+        <p>
+          {summary.latest
+            ? `Ultimo costo: ${summary.latest.title} · ${latestVehicle?.plate ?? 'targa mancante'} · ${formatMoneyCents(summary.latest.repairCostCents, summary.latest.repairCostCurrency || defaultCurrency)}`
+            : 'Nessun costo registrato: salva l importo da un guasto per iniziare il report.'}
+        </p>
+        <button className="primary-button compact-button" onClick={onOpenReport} type="button">
+          <ExternalLink size={16} />
+          Apri report costi
+        </button>
+      </div>
+    </section>
+  )
+}
+
 function FaultCostReport({ faultReportRecords = [], vehicleRecords = [] }) {
+  const { language } = useI18n()
   const [period, setPeriod] = useState('month')
   const [vehicleId, setVehicleId] = useState('all')
+  const defaultCurrency = getDefaultCurrency(language)
   const costFaults = faultReportRecords.filter((report) => Number(report.repairCostCents ?? 0) > 0)
   const periodStart = getFaultCostPeriodStart(period)
   const filteredFaults = costFaults
@@ -10663,7 +10805,7 @@ function FaultCostReport({ faultReportRecords = [], vehicleRecords = [] }) {
   const selectedVehicle = vehicleRecords.find((vehicle) => vehicle.id === vehicleId)
 
   return (
-    <section className="fault-cost-report">
+    <section className="fault-cost-report" id="fault-cost-report">
       <div className="fault-cost-report-header">
         <div>
           <p className="overline">Costi riparazioni</p>
@@ -10717,7 +10859,7 @@ function FaultCostReport({ faultReportRecords = [], vehicleRecords = [] }) {
                 <strong>{report.title}</strong>
                 <span>{vehicle?.plate ?? 'Targa mancante'} · {formatShortDateTime(getFaultCostDate(report))}</span>
               </div>
-              <b>{formatMoneyCents(report.repairCostCents, report.repairCostCurrency)}</b>
+              <b>{formatMoneyCents(report.repairCostCents, report.repairCostCurrency || defaultCurrency)}</b>
             </article>
           )
         })}
@@ -12348,7 +12490,8 @@ function ChatWorkspace({
 }
 
 function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, trailer, vehicle }) {
-  const { t } = useI18n()
+  const { language, t } = useI18n()
+  const repairCurrency = report.repairCostCurrency || getDefaultCurrency(language)
   const isClosed = isFaultArchived(report)
   const rowClassName = ['operation-row', selected ? 'is-selected' : '', isClosed ? 'is-muted' : '']
     .filter(Boolean)
@@ -12369,7 +12512,7 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
           {getFaultSeverityLabel(report.severity, t)} · {formatShortDateTime(report.createdAt)}
           {trailer ? ` · ${t('common.trailer')} ${trailer.plate}` : ''}
           {report.photoPath ? ` · ${t('chat.photoAttached').toLowerCase()}` : ''}
-          {report.repairCostCents ? ` · ${formatMoneyCents(report.repairCostCents, report.repairCostCurrency)}` : ''}
+          {report.repairCostCents ? ` · ${formatMoneyCents(report.repairCostCents, repairCurrency)}` : ''}
         </small>
         {report.description && <em>{report.description}</em>}
       </div>
@@ -12504,7 +12647,7 @@ function OperationDetailShell({
   surface = 'side',
   vehicleRecords,
 }) {
-  const { t } = useI18n()
+  const { language, t } = useI18n()
   const Shell = surface === 'modal' ? 'section' : 'aside'
   const shellClassName = surface === 'modal' ? 'panel operation-detail-panel operation-modal' : 'panel operation-detail-panel'
   const shellProps =
@@ -12523,6 +12666,7 @@ function OperationDetailShell({
 
   useEffect(() => {
     if (!currentFault?.id) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset the edit form when a different fault is opened.
     setRepairAmount(formatMoneyInput(currentFault.repairCostCents))
     setRepairNotes(currentFault.repairNotes ?? '')
     setIsSavingRepair(false)
@@ -12551,12 +12695,13 @@ function OperationDetailShell({
     const isClosed = isFaultArchived(report)
     const faultPhotoUrl = assetPreviewUrl(report.photoPath)
     const repairCostCents = parseMoneyToCents(repairAmount)
+    const repairCurrency = report.repairCostCurrency || getDefaultCurrency(language)
 
     async function saveRepair(nextStatus = report.status) {
       setIsSavingRepair(true)
       await onUpdateFaultStatus?.(report.id, nextStatus, {
         repairCostCents,
-        repairCostCurrency: report.repairCostCurrency || 'EUR',
+        repairCostCurrency: repairCurrency,
         repairNotes,
       })
       setIsSavingRepair(false)
@@ -12586,7 +12731,7 @@ function OperationDetailShell({
           {trailer && <DetailLine label={t('common.trailer')} value={`${trailer.plate} · ${trailer.model}`} />}
           <DetailLine label={t('operations.created')} value={formatShortDateTime(report.createdAt)} />
           <DetailLine label={t('operations.updated')} value={formatShortDateTime(report.updatedAt)} />
-          <DetailLine label="Costo riparazione" value={report.repairCostCents ? formatMoneyCents(report.repairCostCents, report.repairCostCurrency) : 'Non inserito'} />
+          <DetailLine label="Costo riparazione" value={report.repairCostCents ? formatMoneyCents(report.repairCostCents, repairCurrency) : 'Non inserito'} />
           {report.repairRecordedAt ? <DetailLine label="Costo registrato" value={formatShortDateTime(report.repairRecordedAt)} /> : null}
           {report.description && (
             <div className="detail-note">
@@ -12626,7 +12771,7 @@ function OperationDetailShell({
                 />
               </label>
             </div>
-            <small>{repairCostCents ? `Totale inserito: ${formatMoneyCents(repairCostCents, report.repairCostCurrency)}` : 'Lascia 0 se il costo non e ancora noto.'}</small>
+            <small>{repairCostCents ? `Totale inserito: ${formatMoneyCents(repairCostCents, repairCurrency)}` : 'Lascia 0 se il costo non e ancora noto.'}</small>
           </div>
         </div>
         <div className="operation-detail-actions">
@@ -12729,7 +12874,19 @@ function FormValidationAlert({ message }) {
   )
 }
 
-function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onOpenDetail, onReminder, onRenew }) {
+function ComplianceBoard({
+  activeFilter,
+  allItemCount = 0,
+  complianceShowAll = false,
+  filteredItems,
+  onClose,
+  onFilter,
+  onOpenDetail,
+  onReminder,
+  onRenew,
+  onToggleShowAll,
+  workItemCount = 0,
+}) {
   const { t } = useI18n()
 
   return (
@@ -12738,9 +12895,15 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onOpe
         <div>
           <p className="overline">{t('deadline.agenda')}</p>
           <h2>{t('deadline.boardTitle')}</h2>
+          <span className="panel-header-subtitle">
+            {complianceShowAll
+              ? `${allItemCount} pratiche totali · ${workItemCount} da lavorare`
+              : `${workItemCount} da lavorare`}
+          </span>
         </div>
-        <button className="icon-button" type="button" aria-label={t('deadline.advancedFilters')}>
+        <button className="small-button compliance-toggle-button" type="button" onClick={onToggleShowAll}>
           <Filter size={18} />
+          {complianceShowAll ? 'Solo da lavorare' : 'Mostra tutto'}
         </button>
       </div>
 
@@ -12847,6 +13010,7 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onOpenFile, onReminder
   useEffect(() => {
     if (!item) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset the renewal form when a different deadline is opened.
     setForm({
       documentNumber: item.documentNumber ?? '',
       dueDate: item.dueDate ?? '',
@@ -12855,6 +13019,7 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onOpenFile, onReminder
     })
     setFile(null)
     setShowValidation(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Keep edits intact while the same deadline is open.
   }, [item?.id])
 
   if (!item) return null

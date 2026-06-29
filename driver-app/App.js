@@ -127,6 +127,20 @@ function getDriverChatReadStorageKey(driverId) {
   return `camion-chiaro-driver-chat-read:${driverId}`
 }
 
+const currencyByLanguage = {
+  de: 'EUR',
+  en: 'EUR',
+  es: 'EUR',
+  fr: 'EUR',
+  it: 'EUR',
+  pl: 'PLN',
+  ro: 'RON',
+}
+
+function getDefaultCurrency(language = 'it') {
+  return currencyByLanguage[language] ?? 'EUR'
+}
+
 const driverTabs = [
   { id: 'home', icon: 'home-outline', label: 'Home', labelKey: 'home' },
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
@@ -2115,11 +2129,20 @@ function CamionChiaroApp() {
     setCompanyContext((currentContext) => {
       if (!currentContext) return currentContext
       const updatedReport = result.data
+      const localRepairPatch = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
+        Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+        ? {
+            repairCostCents: Number(repair.repairCostCents ?? 0),
+            repairCostCurrency: repair.repairCostCurrency || getDefaultCurrency(language),
+            repairNotes: repair.repairNotes ?? '',
+            repairRecordedAt: new Date().toISOString(),
+          }
+        : {}
 
       return {
         ...currentContext,
         faultReports: currentContext.faultReports.map((report) => (
-          report.id === reportId ? { ...report, ...(updatedReport ?? {}), status: 'closed' } : report
+          report.id === reportId ? { ...report, ...localRepairPatch, ...(updatedReport ?? {}), status: 'closed' } : report
         )),
       }
     })
@@ -2141,11 +2164,20 @@ function CamionChiaroApp() {
     setCompanyContext((currentContext) => {
       if (!currentContext) return currentContext
       const updatedReport = result.data
+      const localRepairPatch = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
+        Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+        ? {
+            repairCostCents: Number(repair.repairCostCents ?? 0),
+            repairCostCurrency: repair.repairCostCurrency || getDefaultCurrency(language),
+            repairNotes: repair.repairNotes ?? '',
+            repairRecordedAt: new Date().toISOString(),
+          }
+        : {}
 
       return {
         ...currentContext,
         faultReports: currentContext.faultReports.map((report) => (
-          report.id === reportId ? { ...report, ...(updatedReport ?? {}) } : report
+          report.id === reportId ? { ...report, ...localRepairPatch, ...(updatedReport ?? {}) } : report
         )),
       }
     })

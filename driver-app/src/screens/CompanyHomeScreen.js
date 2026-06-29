@@ -36,6 +36,48 @@ function parseMoneyToCents(value = '') {
   return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0
 }
 
+const currencyByLanguage = {
+  de: 'EUR',
+  en: 'EUR',
+  es: 'EUR',
+  fr: 'EUR',
+  it: 'EUR',
+  pl: 'PLN',
+  ro: 'RON',
+}
+
+function getDefaultCurrency(language = 'it') {
+  return currencyByLanguage[language] ?? 'EUR'
+}
+
+function getRepairCostDate(fault = {}) {
+  return fault.repairRecordedAt || fault.updatedAt || fault.createdAt
+}
+
+function getRepairPeriodStart(period) {
+  const now = new Date()
+  if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1)
+  if (period === 'year') return new Date(now.getFullYear(), 0, 1)
+  return null
+}
+
+function getRepairCostSummary(faults = []) {
+  const costFaults = faults
+    .filter((fault) => Number(fault.repairCostCents ?? 0) > 0)
+    .slice()
+    .sort((first, second) => new Date(getRepairCostDate(second)) - new Date(getRepairCostDate(first)))
+  const monthStart = getRepairPeriodStart('month')
+  const yearStart = getRepairPeriodStart('year')
+  const sumFaults = (items) => items.reduce((total, fault) => total + Number(fault.repairCostCents ?? 0), 0)
+
+  return {
+    count: costFaults.length,
+    latest: costFaults[0] ?? null,
+    monthCents: sumFaults(costFaults.filter((fault) => new Date(getRepairCostDate(fault)) >= monthStart)),
+    yearCents: sumFaults(costFaults.filter((fault) => new Date(getRepairCostDate(fault)) >= yearStart)),
+  }
+}
+
 function getDriverName(drivers, driverId) {
   return drivers.find((driver) => driver.id === driverId)?.name ?? 'Autista'
 }
@@ -260,9 +302,10 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
   if (!detail || !item) return null
 
   const repairCostCents = parseMoneyToCents(repairAmount)
+  const repairCurrency = item.repairCostCurrency || getDefaultCurrency(language)
   const repairPayload = {
     repairCostCents,
-    repairCostCurrency: item.repairCostCurrency || 'EUR',
+    repairCostCurrency: repairCurrency,
     repairNotes,
   }
 
@@ -316,7 +359,7 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
             <>
               <DetailRow label="Gravita" value={formatSeverity(item.severity)} />
               <DetailRow label="Descrizione" value={item.description || 'Nessuna descrizione'} />
-              <DetailRow label="Costo riparazione" value={item.repairCostCents ? formatMoneyCents(item.repairCostCents, item.repairCostCurrency) : 'Non inserito'} />
+              <DetailRow label="Costo riparazione" value={item.repairCostCents ? formatMoneyCents(item.repairCostCents, repairCurrency) : 'Non inserito'} />
               {item.repairRecordedAt ? <DetailRow label="Costo registrato" value={formatDateTime(item.repairRecordedAt, language)} /> : null}
               {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.detailPhoto} /> : null}
               <View style={styles.repairBox}>
@@ -340,7 +383,7 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
                   value={repairNotes}
                 />
                 <Text style={styles.repairHelp}>
-                  {repairCostCents ? `Totale inserito: ${formatMoneyCents(repairCostCents, item.repairCostCurrency)}` : 'Lascia vuoto se il costo non e ancora noto.'}
+                  {repairCostCents ? `Totale inserito: ${formatMoneyCents(repairCostCents, repairCurrency)}` : 'Lascia vuoto se il costo non e ancora noto.'}
                 </Text>
                 <Pressable disabled={isSavingRepair} onPress={saveFaultRepair} style={[styles.secondaryResolveButton, isSavingRepair && styles.resolveButtonDisabled]}>
                   <Text style={styles.secondaryResolveButtonText}>{isSavingRepair ? 'Salvo...' : 'Salva costo'}</Text>
@@ -388,6 +431,9 @@ export function CompanyHomeScreen({
   const complianceItems = context?.complianceItems ?? []
   const unreadMessages = Number(context?.unreadDriverMessages ?? 0) + Number(context?.unreadTeamMessages ?? 0)
   const openFaults = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
+  const repairCostSummary = getRepairCostSummary(faults)
+  const latestCostVehicle = vehicles.find((vehicle) => vehicle.id === repairCostSummary.latest?.vehicleId)
+  const defaultCurrency = getDefaultCurrency(language)
   const activeChecks = checks.filter((check) => !isCheckResolved(check))
   const criticalChecks = checks.filter(isCheckCritical)
   const recentChecks = activeChecks.slice(0, 4)
@@ -445,6 +491,31 @@ export function CompanyHomeScreen({
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>
+
+      <Pressable onPress={() => onOpenManagement?.('costs')} style={styles.costAlertCard}>
+        <View style={styles.costAlertHeader}>
+          <View>
+            <Text style={styles.costAlertKicker}>Costi</Text>
+            <Text style={styles.costAlertTitle}>Spese guasti e riparazioni</Text>
+          </View>
+          <Text style={styles.costAlertCount}>{repairCostSummary.count}</Text>
+        </View>
+        <View style={styles.costMetricRow}>
+          <View style={styles.costMetricBox}>
+            <Text style={styles.costMetricValue}>{formatMoneyCents(repairCostSummary.monthCents, defaultCurrency)}</Text>
+            <Text style={styles.costMetricLabel}>Mese</Text>
+          </View>
+          <View style={styles.costMetricBox}>
+            <Text style={styles.costMetricValue}>{formatMoneyCents(repairCostSummary.yearCents, defaultCurrency)}</Text>
+            <Text style={styles.costMetricLabel}>Anno</Text>
+          </View>
+        </View>
+        <Text numberOfLines={1} style={styles.costAlertMeta}>
+          {repairCostSummary.latest
+            ? `${repairCostSummary.latest.title} · ${latestCostVehicle?.plate ?? 'targa mancante'} · ${formatMoneyCents(repairCostSummary.latest.repairCostCents, repairCostSummary.latest.repairCostCurrency || defaultCurrency)}`
+            : 'Nessun costo registrato. Apri un guasto e salva l importo.'}
+        </Text>
+      </Pressable>
 
       {activeDeadlines.length ? (
         <Pressable
@@ -615,6 +686,72 @@ const styles = StyleSheet.create({
   content: {
     padding: layout.screenPadding,
     paddingBottom: 28,
+  },
+  costAlertCard: {
+    backgroundColor: '#ecfeff',
+    borderColor: colors.cyan,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 12,
+    marginBottom: 12,
+    padding: 14,
+  },
+  costAlertCount: {
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: '900',
+    minWidth: 40,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    textAlign: 'center',
+  },
+  costAlertHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  costAlertKicker: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  costAlertMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  costAlertTitle: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  costMetricBox: {
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    flex: 1,
+    padding: 12,
+  },
+  costMetricLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+  costMetricRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  costMetricValue: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '900',
   },
   dailyPhrase: {
     color: '#cffafe',

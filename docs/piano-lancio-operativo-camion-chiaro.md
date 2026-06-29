@@ -18,47 +18,66 @@ Messaggio commerciale principale:
 
 ## Clienti ideali
 
-1. Piccole aziende con 3-10 autisti
+1. Piccole aziende con 3-10 utenti operativi
    - Hanno ancora molti documenti su WhatsApp, carta, foto sparse.
    - Comprano se capiscono che evita multe e dimenticanze.
-   - Piano consigliato: Starter o Pro.
+   - Piano consigliato: Start 5 o Fleet 10.
 
 2. Aziende medie con 10-40 autisti
    - Hanno piu persone in ufficio e piu confusione tra mezzi, scadenze e guasti.
    - Comprano se vedono chat, notifiche, archivio e storico.
-   - Piano consigliato: Pro o Business.
+   - Piano consigliato: Fleet 10 o Fleet 20.
 
 3. Flotte strutturate con responsabile operativo
    - Vogliono storico, ruoli, report, fatture, dati e controllo.
    - Comprano se c e affidabilita e supporto.
-   - Piano consigliato: Business o Enterprise.
+   - Piano consigliato: Fleet 30, Fleet 50 o Enterprise.
 
 ## Piani consigliati
 
-Starter - 49 euro/mese
-- fino a 5 autisti;
+Start 5 - 300 euro/mese
 - fino a 5 mezzi;
-- 2 GB file;
-- scadenze, documenti, notifiche base.
+- fino a 3 strumenti o muletti;
+- fino a 10 account utenti;
+- 10 GB file inclusi.
 
-Pro - 99 euro/mese
-- fino a 20 autisti;
-- fino a 25 mezzi;
-- 10 GB file;
-- chat, check mattutini, guasti, notifiche push.
+Fleet 10 - 450 euro/mese
+- fino a 10 mezzi;
+- fino a 5 strumenti o muletti;
+- fino a 20 account utenti;
+- 20 GB file inclusi.
 
-Business - 199 euro/mese
-- fino a 60 autisti;
-- fino a 80 mezzi;
-- 50 GB file;
-- storico avanzato, priorita supporto, report.
+Fleet 20 - 650 euro/mese
+- fino a 20 mezzi;
+- fino a 10 strumenti o muletti;
+- fino a 40 account utenti;
+- 30 GB file inclusi.
+
+Fleet 30 - 850 euro/mese
+- fino a 30 mezzi;
+- fino a 15 strumenti o muletti;
+- fino a 60 account utenti;
+- 50 GB file inclusi.
+
+Fleet 50 - 1.200 euro/mese
+- fino a 50 mezzi;
+- fino a 25 strumenti o muletti;
+- fino a 100 account utenti;
+- 75 GB file inclusi.
 
 Enterprise - prezzo su misura
 - limiti personalizzati;
-- 200 GB file di partenza;
+- storage personalizzato;
 - onboarding, import dati, supporto dedicato.
 
-Regola semplice: il prezzo deve salire con autisti, mezzi, spazio documentale e livello di supporto.
+Extra consigliati:
+- chat aziendale completa: +100 euro/mese;
+- start-up kit: 1.500 euro una tantum;
+- storage 20 GB: +49 euro/mese;
+- storage 50 GB: +99 euro/mese;
+- storage 100 GB: +179 euro/mese.
+
+Regola semplice: il prezzo deve salire con mezzi, strumenti, account utenti, spazio documentale, chat e livello di supporto.
 
 ## Costi e margine da controllare
 
@@ -76,6 +95,8 @@ Policy file:
 - non permettere video all inizio;
 - 10 MB massimo per documento;
 - 8 MB massimo per foto guasto/chat dopo ottimizzazione;
+- comprimere foto chat e guasti prima dell upload;
+- far pagare storage extra prima che diventi costo nascosto;
 - mostrare spazio usato in Impostazioni;
 - avvisare quando il cliente si avvicina al limite;
 - tenere piani con limiti chiari per evitare costi fuori controllo.
@@ -97,7 +118,8 @@ Gia presenti o quasi presenti:
 - lingue principali;
 - blocco licenza e preparazione Stripe;
 - storico fatture;
-- pannello spazio file.
+- pannello spazio file;
+- report costi guasti e riparazioni.
 
 Da completare prima di vendere seriamente:
 
@@ -120,9 +142,10 @@ Da completare prima di vendere seriamente:
    - Suggerire documenti mancanti per autista o mezzo.
    - Evidenziare chi non ha patente, CQC, visita medica o carta tachigrafica.
 
-3. Report mensile azienda
-   - Numero guasti, check critici, scadenze risolte, documenti mancanti.
-   - Utile per far percepire valore ogni mese.
+3. Report economico operativo
+   - Costi guasti, manutenzioni, revisioni, assicurazioni, muletti e strumenti.
+   - Filtri per periodo, targa, strumento, reparto e causale.
+   - Utile per mostrare quali mezzi o strumenti consumano piu soldi.
 
 4. News trasporto
    - Normative, blocchi traffico, scioperi, emergenze stradali.

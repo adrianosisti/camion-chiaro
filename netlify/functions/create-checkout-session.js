@@ -9,15 +9,31 @@ const jsonHeaders = {
 
 const planConfig = {
   business: {
-    label: 'Business',
+    label: 'Fleet 20',
     priceEnv: ['STRIPE_PRICE_BUSINESS', 'STRIPE_PRICE_BUSINESS_MONTHLY'],
   },
+  fleet10: {
+    label: 'Fleet 10',
+    priceEnv: ['STRIPE_PRICE_FLEET10', 'STRIPE_PRICE_FLEET10_MONTHLY', 'STRIPE_PRICE_PRO', 'STRIPE_PRICE_PRO_MONTHLY'],
+  },
+  fleet20: {
+    label: 'Fleet 20',
+    priceEnv: ['STRIPE_PRICE_FLEET20', 'STRIPE_PRICE_FLEET20_MONTHLY', 'STRIPE_PRICE_BUSINESS', 'STRIPE_PRICE_BUSINESS_MONTHLY'],
+  },
+  fleet30: {
+    label: 'Fleet 30',
+    priceEnv: ['STRIPE_PRICE_FLEET30', 'STRIPE_PRICE_FLEET30_MONTHLY'],
+  },
+  fleet50: {
+    label: 'Fleet 50',
+    priceEnv: ['STRIPE_PRICE_FLEET50', 'STRIPE_PRICE_FLEET50_MONTHLY'],
+  },
   pro: {
-    label: 'Pro',
+    label: 'Fleet 10',
     priceEnv: ['STRIPE_PRICE_PRO', 'STRIPE_PRICE_PRO_MONTHLY'],
   },
   starter: {
-    label: 'Starter',
+    label: 'Start 5',
     priceEnv: ['STRIPE_PRICE_STARTER', 'STRIPE_PRICE_STARTER_MONTHLY'],
   },
 }

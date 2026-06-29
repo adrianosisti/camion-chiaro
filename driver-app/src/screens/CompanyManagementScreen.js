@@ -121,6 +121,20 @@ function parseMoneyToCents(value = '') {
   return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0
 }
 
+const currencyByLanguage = {
+  de: 'EUR',
+  en: 'EUR',
+  es: 'EUR',
+  fr: 'EUR',
+  it: 'EUR',
+  pl: 'PLN',
+  ro: 'RON',
+}
+
+function getDefaultCurrency(language = 'it') {
+  return currencyByLanguage[language] ?? 'EUR'
+}
+
 function getRepairCostDate(fault = {}) {
   return fault.repairRecordedAt || fault.updatedAt || fault.createdAt
 }
@@ -489,12 +503,13 @@ function FaultRepairModal({ fault, language = 'it', onClose, onSave, vehicles = 
 
   const repairCostCents = parseMoneyToCents(amount)
   const vehicle = vehicles.find((entry) => entry.id === fault.vehicleId)
+  const repairCurrency = fault.repairCostCurrency || getDefaultCurrency(language)
 
   async function saveRepair() {
     setIsSaving(true)
     const saved = await onSave?.(fault.id, {
       repairCostCents,
-      repairCostCurrency: fault.repairCostCurrency || 'EUR',
+      repairCostCurrency: repairCurrency,
       repairNotes: notes,
     })
     setIsSaving(false)
@@ -525,7 +540,7 @@ function FaultRepairModal({ fault, language = 'it', onClose, onSave, vehicles = 
           <TextField label="Importo speso" keyboardType="decimal-pad" onChangeText={setAmount} placeholder="Es. 450,00" value={amount} />
           <TextField label="Note officina/intervento" multiline onChangeText={setNotes} placeholder="Es. sostituito alternatore" value={notes} />
           <Text style={styles.repairTotalText}>
-            {repairCostCents ? `Totale: ${formatMoneyCents(repairCostCents, fault.repairCostCurrency)}` : 'Lascia vuoto se il costo non e ancora noto.'}
+            {repairCostCents ? `Totale: ${formatMoneyCents(repairCostCents, repairCurrency)}` : 'Lascia vuoto se il costo non e ancora noto.'}
           </Text>
           <PrimaryButton loading={isSaving} onPress={saveRepair} title="Salva costo" />
         </ScrollView>
@@ -587,6 +602,7 @@ export function CompanyManagementScreen({
   const deadlines = context?.complianceItems ?? []
   const faults = context?.faultReports ?? []
   const checks = context?.vehicleChecks ?? []
+  const defaultCurrency = getDefaultCurrency(language)
   const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
   const archivedFaults = faults.filter((fault) => ['closed', 'archived'].includes(fault.status))
   const archivedChecks = checks.filter(isCheckResolved)
@@ -1462,7 +1478,7 @@ export function CompanyManagementScreen({
                       {getDriverName(drivers, fault.driverId)} · {getVehiclePlate(vehicles, fault.vehicleId)} · {formatDateTime(fault.createdAt, language)}
                     </Text>
                     <Text style={styles.listMeta}>
-                      {fault.description || 'Nessuna descrizione'} · {fault.repairCostCents ? formatMoneyCents(fault.repairCostCents, fault.repairCostCurrency) : 'costo non inserito'}
+                      {fault.description || 'Nessuna descrizione'} · {fault.repairCostCents ? formatMoneyCents(fault.repairCostCents, fault.repairCostCurrency || defaultCurrency) : 'costo non inserito'}
                     </Text>
                   </View>
                 </View>
@@ -1555,7 +1571,7 @@ export function CompanyManagementScreen({
                   />
                 ))}
               </View>
-              <Text style={styles.costTotal}>{formatMoneyCents(repairCostTotalCents)}</Text>
+              <Text style={styles.costTotal}>{formatMoneyCents(repairCostTotalCents, defaultCurrency)}</Text>
               <View style={styles.costMetricRow}>
                 <View style={styles.costMetricCard}>
                   <Text style={styles.summaryLabel}>Interventi</Text>
@@ -1563,7 +1579,7 @@ export function CompanyManagementScreen({
                 </View>
                 <View style={styles.costMetricCard}>
                   <Text style={styles.summaryLabel}>Media</Text>
-                  <Text style={styles.summaryValue}>{formatMoneyCents(repairCostAverageCents)}</Text>
+                  <Text style={styles.summaryValue}>{formatMoneyCents(repairCostAverageCents, defaultCurrency)}</Text>
                 </View>
               </View>
             </View>
@@ -1581,7 +1597,7 @@ export function CompanyManagementScreen({
                     </Text>
                     <Text style={styles.listMeta}>{fault.description || 'Nessuna descrizione'}</Text>
                   </View>
-                  <Text style={styles.costRowAmount}>{formatMoneyCents(fault.repairCostCents, fault.repairCostCurrency)}</Text>
+                  <Text style={styles.costRowAmount}>{formatMoneyCents(fault.repairCostCents, fault.repairCostCurrency || defaultCurrency)}</Text>
                 </View>
               </Pressable>
             ))}

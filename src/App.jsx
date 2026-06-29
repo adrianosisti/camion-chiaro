@@ -4864,6 +4864,7 @@ function App() {
   const [phoneNotificationStatus, setPhoneNotificationStatus] = useState('')
   const [activeView, setActiveView] = useState(getInitialActiveView)
   const [costReportStartAddingKey, setCostReportStartAddingKey] = useState(0)
+  const [costReportResetKey, setCostReportResetKey] = useState(0)
   const [recordsTab, setRecordsTab] = useState(getInitialRecordsTab)
   const [activeFilter, setActiveFilter] = useState('all')
   const [complianceShowAll, setComplianceShowAll] = useState(false)
@@ -7503,6 +7504,7 @@ function App() {
   }
 
   function openNotifications(filter = 'inbox') {
+    setCostReportResetKey(Date.now())
     setOperationsFilter(filter)
     setActiveView('notifications')
   }
@@ -7512,6 +7514,8 @@ function App() {
 
     if (shouldStartAdding) {
       setCostReportStartAddingKey(Date.now())
+    } else {
+      setCostReportResetKey(Date.now())
     }
 
     setOperationsFilter('archive')
@@ -7522,11 +7526,13 @@ function App() {
   }
 
   function openRecords(tab = recordsTab) {
+    setCostReportResetKey(Date.now())
     setRecordsTab(tab)
     setActiveView('records')
   }
 
   function openComplianceFilter(filter) {
+    setCostReportResetKey(Date.now())
     setActiveFilter(filter)
     setActiveView('deadlines')
     window.setTimeout(() => {
@@ -7757,6 +7763,7 @@ function App() {
             onUpdateCostEntry={editCostEntryRecord}
             onUpdateFaultStatus={updateFaultReportStatus}
             selectedFilter={operationsFilter}
+            resetCostFormKey={costReportResetKey}
             startAddingCostKey={costReportStartAddingKey}
             syncStatus={operationsSyncStatus}
             vehicleCheckRecords={vehicleCheckRecords}
@@ -11681,12 +11688,15 @@ function FaultCostReport({
   onDeleteCostEntry,
   onUpdateCostEntry,
   onUpdateFaultStatus,
+  resetCostFormKey = 0,
   startAddingCostKey = 0,
   vehicleRecords = [],
 }) {
   const { language } = useI18n()
   const [period, setPeriod] = useState('month')
   const [targetFilter, setTargetFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [reportType, setReportType] = useState('detail')
   const [isAddingCost, setIsAddingCost] = useState(false)
   const [isSavingCost, setIsSavingCost] = useState(false)
   const [costForm, setCostForm] = useState({
@@ -11723,7 +11733,7 @@ function FaultCostReport({
 
     return true
   }
-  const filteredCosts = costRows
+  const periodTargetCosts = costRows
     .filter(matchesTargetFilter)
     .filter((row) => {
       if (!periodStart) return true
@@ -11732,8 +11742,32 @@ function FaultCostReport({
       return !Number.isNaN(costDate.getTime()) && costDate >= periodStart
     })
     .sort((first, second) => new Date(second.date) - new Date(first.date))
+  const filteredCosts = periodTargetCosts
+    .filter((row) => categoryFilter === 'all' || row.category === categoryFilter)
+  const fineRows = periodTargetCosts.filter((row) => row.category === 'fine')
+  const reportRows = reportType === 'fines'
+    ? fineRows
+    : reportType === 'fine_ranking'
+      ? []
+      : filteredCosts
   const totalCents = filteredCosts.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const averageCents = filteredCosts.length ? Math.round(totalCents / filteredCosts.length) : 0
+  const fineTotalCents = fineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const fineRanking = Array.from(fineRows.reduce((ranking, row) => {
+    const key = row.driverId || 'unassigned'
+    const current = ranking.get(key) ?? {
+      count: 0,
+      driverId: row.driverId,
+      name: row.driverId ? driverRecords.find((driver) => driver.id === row.driverId)?.name ?? 'Autista' : 'Non assegnate',
+      totalCents: 0,
+    }
+    ranking.set(key, {
+      ...current,
+      count: current.count + 1,
+      totalCents: current.totalCents + Number(row.amountCents ?? 0),
+    })
+    return ranking
+  }, new Map()).values()).sort((first, second) => second.totalCents - first.totalCents)
   const selectedTargetLabel = (() => {
     if (targetFilter === 'all') return 'Tutti i costi'
     if (targetFilter === 'company') return 'Azienda generale'
@@ -11797,6 +11831,12 @@ function FaultCostReport({
   useEffect(() => {
     if (startAddingCostKey) openNewCostForm()
   }, [startAddingCostKey])
+
+  useEffect(() => {
+    if (!resetCostFormKey) return
+    resetCostForm()
+    cancelFaultCostEdit()
+  }, [resetCostFormKey])
 
   function resetCostForm() {
     setCostForm(getEmptyCostForm())
@@ -11928,9 +11968,21 @@ function FaultCostReport({
       if (Number.isNaN(date.getTime())) return String(value)
       return new Intl.DateTimeFormat('it-IT').format(date)
     }
-    const csvRows = [
+    const rowsForExport = reportType === 'fines' ? fineRows : reportRows
+    const csvRows = reportType === 'fine_ranking'
+      ? [
+          ['Posizione', 'Autista', 'Numero multe', 'Totale', 'Media'],
+          ...fineRanking.map((row, index) => [
+            index + 1,
+            row.name,
+            row.count,
+            (Number(row.totalCents ?? 0) / 100).toFixed(2),
+            (Number(row.totalCents ?? 0) / Math.max(row.count, 1) / 100).toFixed(2),
+          ]),
+        ]
+      : [
       ['Data', 'Titolo', 'Categoria', 'Soggetto', 'Importo', 'Valuta', 'Tipo', 'Fornitore', 'Km', 'Note'],
-      ...filteredCosts.map((row) => {
+      ...rowsForExport.map((row) => {
         const source = row.source ?? {}
         return [
           formatCsvDate(row.date),
@@ -11953,11 +12005,90 @@ function FaultCostReport({
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `camion-chiaro-centro-costi-${period}.csv`
+    link.download = `camion-chiaro-${reportType}-${period}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
+  }
+
+  function printCostReport() {
+    const escapeHtml = (value) => String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;')
+    const reportTitle = reportType === 'fine_ranking'
+      ? 'Classifica multe autisti'
+      : reportType === 'fines'
+        ? 'Report multe e sanzioni'
+        : 'Report centro costi'
+    const rowsHtml = reportType === 'fine_ranking'
+      ? fineRanking.map((row, index) => `
+          <tr>
+            <td>#${index + 1}</td>
+            <td>${escapeHtml(row.name)}</td>
+            <td>${row.count}</td>
+            <td>${escapeHtml(formatMoneyCents(row.totalCents, defaultCurrency))}</td>
+            <td>${escapeHtml(formatMoneyCents(Math.round(row.totalCents / Math.max(row.count, 1)), defaultCurrency))}</td>
+          </tr>
+        `).join('')
+      : reportRows.map((row) => `
+          <tr>
+            <td>${escapeHtml(formatShortDateTime(row.date))}</td>
+            <td>${escapeHtml(row.title)}</td>
+            <td>${escapeHtml(getCostCategoryLabel(row.category))}</td>
+            <td>${escapeHtml(getCostTargetLabel(row))}</td>
+            <td>${escapeHtml(formatMoneyCents(row.amountCents, row.currency || defaultCurrency))}</td>
+          </tr>
+        `).join('')
+    const headerHtml = reportType === 'fine_ranking'
+      ? '<tr><th>Pos.</th><th>Autista</th><th>Multe</th><th>Totale</th><th>Media</th></tr>'
+      : '<tr><th>Data</th><th>Titolo</th><th>Tipologia</th><th>Soggetto</th><th>Importo</th></tr>'
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
+
+    if (!printWindow) {
+      window.print()
+      return
+    }
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${escapeHtml(reportTitle)}</title>
+          <style>
+            body { color: #111827; font-family: Arial, sans-serif; margin: 28px; }
+            h1 { font-size: 24px; margin: 0 0 6px; }
+            p { color: #4b5563; margin: 0 0 18px; }
+            .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+            .summary div { border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; }
+            .summary strong { display: block; font-size: 18px; }
+            .summary span { color: #6b7280; font-size: 12px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border-bottom: 1px solid #e5e7eb; font-size: 12px; padding: 9px; text-align: left; }
+            th { background: #ecfeff; color: #0f172a; }
+          </style>
+        </head>
+        <body>
+          <h1>${escapeHtml(reportTitle)}</h1>
+          <p>${escapeHtml(selectedTargetLabel)} · ${escapeHtml(period)} · ${escapeHtml(categoryFilter === 'all' ? 'tutte le tipologie' : getCostCategoryLabel(categoryFilter))}</p>
+          <section class="summary">
+            <div><strong>${escapeHtml(formatMoneyCents(totalCents, defaultCurrency))}</strong><span>Totale periodo</span></div>
+            <div><strong>${filteredCosts.length}</strong><span>Voci costo</span></div>
+            <div><strong>${escapeHtml(formatMoneyCents(fineTotalCents, defaultCurrency))}</strong><span>Totale sanzioni</span></div>
+          </section>
+          <table>
+            <thead>${headerHtml}</thead>
+            <tbody>${rowsHtml || '<tr><td colspan="5">Nessun dato per questi filtri.</td></tr>'}</tbody>
+          </table>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
   }
 
   return (
@@ -11970,11 +12101,11 @@ function FaultCostReport({
         <div className="fault-cost-report-actions">
           <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
             <Download size={16} />
-            CSV / Excel
+            Scarica report
           </button>
-          <button className="secondary-button compact-button" onClick={() => window.print()} type="button">
+          <button className="secondary-button compact-button" onClick={printCostReport} type="button">
             <FileText size={16} />
-            Stampa A4
+            Stampa report
           </button>
           <button className="primary-button compact-button" onClick={() => (isAddingCost ? resetCostForm() : openNewCostForm())} type="button">
             <Plus size={16} />
@@ -12100,6 +12231,14 @@ function FaultCostReport({
       ) : null}
       <div className="fault-cost-controls">
         <label>
+          Report
+          <select value={reportType} onChange={(event) => setReportType(event.target.value)}>
+            <option value="detail">Dettaglio costi</option>
+            <option value="fines">Solo multe / sanzioni</option>
+            <option value="fine_ranking">Classifica multe autisti</option>
+          </select>
+        </label>
+        <label>
           Filtro report
           <select value={targetFilter} onChange={(event) => setTargetFilter(event.target.value)}>
             <option value="all">Tutti i costi</option>
@@ -12118,6 +12257,15 @@ function FaultCostReport({
               <option key={asset.id} value={`asset:${asset.id}`}>
                 Attrezzatura · {asset.code} · {asset.model || 'Muletto'}
               </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Tipologia
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="all">Tutte le tipologie</option>
+            {costCategoryOptions.map((option) => (
+              <option key={option.id} value={option.id}>{option.label}</option>
             ))}
           </select>
         </label>
@@ -12145,8 +12293,55 @@ function FaultCostReport({
           <span>Media</span>
         </div>
       </div>
+      <div className="fault-fines-panel">
+        <div className="fault-fines-head">
+          <div>
+            <strong>Sanzioni e multe</strong>
+            <span>Totale pagato nel periodo e classifica autisti.</span>
+          </div>
+          <b>{formatMoneyCents(fineTotalCents, defaultCurrency)}</b>
+        </div>
+        <div className="fault-fines-grid">
+          <div>
+            <strong>{fineRows.length}</strong>
+            <span>multe registrate</span>
+          </div>
+          <div>
+            <strong>{fineRows.length ? formatMoneyCents(Math.round(fineTotalCents / fineRows.length), defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</strong>
+            <span>media multa</span>
+          </div>
+          <div>
+            <strong>{fineRanking[0]?.name ?? 'Nessuno'}</strong>
+            <span>piu alto totale</span>
+          </div>
+        </div>
+        {fineRanking.length > 0 ? (
+          <div className="fault-fines-ranking">
+            {fineRanking.slice(0, 6).map((row, index) => (
+              <article key={row.driverId || 'unassigned'}>
+                <span>#{index + 1}</span>
+                <strong>{row.name}</strong>
+                <small>{row.count} multe</small>
+                <b>{formatMoneyCents(row.totalCents, defaultCurrency)}</b>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="archive-note">Nessuna sanzione registrata con questi filtri.</p>
+        )}
+      </div>
       <div className="fault-cost-list">
-        {filteredCosts.map((row) => (
+        {reportType === 'fine_ranking' ? fineRanking.map((row, index) => (
+          <article className="fault-cost-row" key={row.driverId || 'unassigned'}>
+            <div>
+              <strong>#{index + 1} · {row.name}</strong>
+              <span>{row.count} multe · media {formatMoneyCents(Math.round(row.totalCents / Math.max(row.count, 1)), defaultCurrency)}</span>
+            </div>
+            <div className="fault-cost-row-side">
+              <b>{formatMoneyCents(row.totalCents, defaultCurrency)}</b>
+            </div>
+          </article>
+        )) : reportRows.map((row) => (
           <article className="fault-cost-row" key={row.id}>
             <div>
               <strong>{row.title}</strong>
@@ -12182,7 +12377,8 @@ function FaultCostReport({
             </div>
           </article>
         ))}
-        {!filteredCosts.length ? <p className="archive-note">Nessun costo registrato per questo filtro.</p> : null}
+        {reportType === 'fine_ranking' && !fineRanking.length ? <p className="archive-note">Nessuna multa da classificare con questi filtri.</p> : null}
+        {reportType !== 'fine_ranking' && !reportRows.length ? <p className="archive-note">Nessun costo registrato per questo filtro.</p> : null}
       </div>
     </section>
   )
@@ -12202,6 +12398,7 @@ function OperationsWorkspace({
   onMarkCheckUnread,
   onUpdateCostEntry,
   onUpdateFaultStatus,
+  resetCostFormKey = 0,
   selectedFilter = 'inbox',
   startAddingCostKey = 0,
   syncStatus,
@@ -12313,6 +12510,7 @@ function OperationsWorkspace({
           onUpdateCostEntry={onUpdateCostEntry}
           onUpdateFaultStatus={onUpdateFaultStatus}
           driverRecords={driverRecords}
+          resetCostFormKey={resetCostFormKey}
           startAddingCostKey={startAddingCostKey}
           vehicleRecords={vehicleRecords}
         />

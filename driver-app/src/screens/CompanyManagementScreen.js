@@ -839,6 +839,23 @@ export function CompanyManagementScreen({
   }, [costEntries, costPeriod, costTargetFilter, defaultCurrency, faults])
   const repairCostTotalCents = costRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const repairCostAverageCents = costRows.length ? Math.round(repairCostTotalCents / costRows.length) : 0
+  const fineCostRows = costRows.filter((row) => row.category === 'fine')
+  const fineCostTotalCents = fineCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const fineRanking = Array.from(fineCostRows.reduce((ranking, row) => {
+    const key = row.driverId || 'unassigned'
+    const current = ranking.get(key) ?? {
+      count: 0,
+      driverId: row.driverId,
+      name: row.driverId ? drivers.find((driver) => driver.id === row.driverId)?.name ?? 'Autista' : 'Non assegnate',
+      totalCents: 0,
+    }
+    ranking.set(key, {
+      ...current,
+      count: current.count + 1,
+      totalCents: current.totalCents + Number(row.amountCents ?? 0),
+    })
+    return ranking
+  }, new Map()).values()).sort((first, second) => second.totalCents - first.totalCents)
 
   useEffect(() => {
     if (initialSection) {
@@ -1941,6 +1958,26 @@ export function CompanyManagementScreen({
                   <Text style={styles.summaryValue}>{formatMoneyCents(repairCostAverageCents, defaultCurrency)}</Text>
                 </View>
               </View>
+              <View style={styles.fineReportCard}>
+                <View style={styles.fineReportHeader}>
+                  <View>
+                    <Text style={styles.fineReportTitle}>Sanzioni</Text>
+                    <Text style={styles.listMeta}>Totale multe pagate e classifica autisti</Text>
+                  </View>
+                  <Text style={styles.fineReportAmount}>{formatMoneyCents(fineCostTotalCents, defaultCurrency)}</Text>
+                </View>
+                {fineRanking.map((row, index) => (
+                  <View key={row.driverId || 'unassigned'} style={styles.fineRankingRow}>
+                    <Text style={styles.fineRankingIndex}>#{index + 1}</Text>
+                    <View style={styles.listCopy}>
+                      <Text style={styles.listTitle}>{row.name}</Text>
+                      <Text style={styles.listMeta}>{row.count} multe</Text>
+                    </View>
+                    <Text style={styles.costRowAmount}>{formatMoneyCents(row.totalCents, defaultCurrency)}</Text>
+                  </View>
+                ))}
+                {!fineRanking.length ? <Text style={styles.emptyText}>Nessuna sanzione registrata con questi filtri.</Text> : null}
+              </View>
             </View>
 
             {costRows.map((row) => (
@@ -2104,6 +2141,46 @@ const styles = StyleSheet.create({
   costRowAmount: {
     color: colors.ink,
     fontSize: 13,
+    fontWeight: '900',
+  },
+  fineRankingIndex: {
+    color: '#9a3412',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  fineRankingRow: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#fed7aa',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 10,
+  },
+  fineReportAmount: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  fineReportCard: {
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+    marginTop: 10,
+    padding: 12,
+  },
+  fineReportHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  fineReportTitle: {
+    color: colors.ink,
+    fontSize: 14,
     fontWeight: '900',
   },
   costTotal: {

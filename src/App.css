@@ -3971,6 +3971,79 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.fault-fines-panel {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff7ed;
+}
+
+.fault-fines-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fault-fines-head div {
+  display: grid;
+  gap: 3px;
+}
+
+.fault-fines-head strong,
+.fault-fines-head b {
+  color: var(--ink);
+}
+
+.fault-fines-head span,
+.fault-fines-grid span,
+.fault-fines-ranking small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.fault-fines-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fault-fines-grid div,
+.fault-fines-ranking article {
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.fault-fines-grid div {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.fault-fines-ranking {
+  display: grid;
+  gap: 6px;
+}
+
+.fault-fines-ranking article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.fault-fines-ranking span {
+  color: #9a3412;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .fault-cost-summary div {
   display: grid;
   gap: 2px;

@@ -2477,9 +2477,10 @@
 }
 
 .workspace.is-dashboard-home .priority-card {
-  gap: 7px;
-  min-height: 96px;
-  padding: 14px;
+  align-content: center;
+  gap: 6px;
+  min-height: 92px;
+  padding: 12px;
 }
 
 .priority-card:hover,
@@ -2512,9 +2513,11 @@
 }
 
 .priority-card div {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .priority-icon {
@@ -2529,9 +2532,9 @@
 }
 
 .workspace.is-dashboard-home .priority-icon {
-  width: 42px;
-  height: 42px;
-  flex-basis: 42px;
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
 }
 
 .priority-card span {
@@ -2541,7 +2544,9 @@
 }
 
 .workspace.is-dashboard-home .priority-card span {
-  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+  font-size: 0.76rem;
+  line-height: 1.08;
 }
 
 .priority-card strong {
@@ -2551,11 +2556,15 @@
 }
 
 .workspace.is-dashboard-home .priority-card strong {
-  font-size: 1.72rem;
+  font-size: 1.58rem;
+  line-height: 1.02;
 }
 
 .priority-card.is-money strong {
-  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  font-size: clamp(1rem, 1.55vw, 1.44rem);
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -2566,8 +2575,7 @@
 }
 
 .workspace.is-dashboard-home .priority-card small {
-  font-size: 0.72rem;
-  line-height: 1.25;
+  display: none;
 }
 
 @keyframes priorityPulse {
@@ -7782,8 +7790,9 @@
   }
 
   .workspace.is-dashboard-home {
-    height: auto;
-    overflow: visible;
+    height: 100dvh;
+    overflow: hidden;
+    padding: 12px;
   }
 
   .cost-home-header,
@@ -8108,12 +8117,35 @@
     padding: 20px;
   }
 
+  .workspace.is-dashboard-home .overview-grid {
+    gap: 8px;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    min-height: 0;
+  }
+
+  .workspace.is-dashboard-home .hero-panel {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    min-height: 0;
+    padding: 10px;
+  }
+
   .hero-copy {
     gap: 12px;
   }
 
+  .workspace.is-dashboard-home .hero-copy {
+    gap: 6px;
+  }
+
   .hero-panel p {
     margin-top: 0;
+  }
+
+  .workspace.is-dashboard-home .hero-facts,
+  .workspace.is-dashboard-home .hero-actions,
+  .workspace.is-dashboard-home .daily-motivation {
+    display: none;
   }
 
   .hero-actions {
@@ -8129,8 +8161,24 @@
     font-size: 1.55rem;
   }
 
+  .workspace.is-dashboard-home .hero-panel h2 {
+    font-size: 1.08rem;
+    line-height: 1.05;
+  }
+
   .company-title-row {
     align-items: flex-start;
+  }
+
+  .workspace.is-dashboard-home .company-title-row {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .workspace.is-dashboard-home .company-title-row .avatar-company {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
   }
 
   .home-command-panel {
@@ -8138,16 +8186,110 @@
     padding: 14px;
   }
 
+  .workspace.is-dashboard-home .home-command-panel {
+    gap: 8px;
+    min-height: 0;
+    overflow: hidden;
+    padding: 10px;
+  }
+
+  .workspace.is-dashboard-home .home-command-header h2 {
+    font-size: 0.98rem;
+  }
+
   .home-command-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .workspace.is-dashboard-home .home-command-grid {
+    gap: 6px;
   }
 
   .home-command-button {
-    min-height: 72px;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: center;
+    min-height: 82px;
+    padding: 10px;
+  }
+
+  .workspace.is-dashboard-home .home-command-button {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 6px;
+    min-height: 48px;
+    padding: 7px;
+  }
+
+  .home-command-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .workspace.is-dashboard-home .home-command-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .home-command-button .home-command-arrow,
+  .home-command-copy small {
+    display: none;
+  }
+
+  .home-command-copy strong {
+    white-space: normal;
+  }
+
+  .workspace.is-dashboard-home .home-command-copy strong {
+    font-size: 0.76rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .home-command-value {
+    grid-column: 1 / -1;
+    justify-self: start;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .workspace.is-dashboard-home .home-command-value {
+    grid-column: auto;
+    justify-self: end;
+    max-width: 54px;
+    padding: 5px 6px;
+    font-size: 0.68rem;
   }
 
   .home-status-bar {
     grid-template-columns: 1fr;
+  }
+
+  .workspace.is-dashboard-home .home-status-bar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    min-height: 36px;
+  }
+
+  .workspace.is-dashboard-home .home-status-item {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 6px 4px;
+    text-align: center;
+  }
+
+  .workspace.is-dashboard-home .home-status-item span,
+  .workspace.is-dashboard-home .home-status-item small {
+    display: none;
+  }
+
+  .workspace.is-dashboard-home .home-status-item strong {
+    font-size: 0.7rem;
+  }
+
+  .workspace.is-dashboard-home .home-assistant-strip {
+    min-height: 38px;
+    padding: 6px 8px;
   }
 
   .home-assistant-actions {
@@ -8174,13 +8316,42 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .priority-card {
-    min-height: 112px;
-    padding: 14px;
+  .workspace.is-dashboard-home .priority-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: stretch;
   }
 
-  .priority-card:first-child {
-    grid-column: 1 / -1;
+  .priority-card {
+    min-height: 88px;
+    padding: 11px;
+  }
+
+  .workspace.is-dashboard-home .priority-card {
+    min-height: 76px;
+    padding: 9px;
+  }
+
+  .workspace.is-dashboard-home .priority-card div {
+    gap: 6px;
+  }
+
+  .workspace.is-dashboard-home .priority-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .workspace.is-dashboard-home .priority-card span {
+    font-size: 0.68rem;
+    line-height: 1;
+  }
+
+  .workspace.is-dashboard-home .priority-card strong {
+    font-size: 1.28rem;
+    line-height: 1;
+  }
+
+  .workspace.is-dashboard-home .priority-card.is-money strong {
+    font-size: clamp(0.8rem, 3.8vw, 1.08rem);
   }
 
   .records-tabs {
@@ -8432,6 +8603,10 @@
 
   .priority-grid {
     grid-template-columns: 1fr;
+  }
+
+  .workspace.is-dashboard-home .priority-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .password-field-row {

@@ -232,13 +232,13 @@ function HomeCommandButton({ icon = 'grid-outline', label, onPress, tone = 'info
   return (
     <Pressable onPress={onPress} style={[styles.homeCommandButton, styles[`${tone}CommandButton`]]}>
       <View style={[styles.homeCommandIcon, styles[`${tone}CommandIcon`]]}>
-        <Ionicons color={tone === 'danger' ? colors.danger : tone === 'warning' ? '#92400e' : tone === 'cost' ? '#065f46' : colors.cyanDark} name={icon} size={26} />
+        <Ionicons color={tone === 'danger' ? colors.danger : tone === 'warning' ? '#92400e' : tone === 'cost' ? '#065f46' : colors.cyanDark} name={icon} size={20} />
       </View>
       <View style={styles.homeCommandCopy}>
-        <Text numberOfLines={1} style={styles.homeCommandLabel}>{label}</Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={styles.homeCommandLabel}>{label}</Text>
       </View>
       {value !== '' && value !== null && value !== undefined ? (
-        <Text numberOfLines={1} style={styles.homeCommandValue}>{value}</Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1} style={styles.homeCommandValue}>{value}</Text>
       ) : null}
     </Pressable>
   )
@@ -516,15 +516,13 @@ export function CompanyHomeScreen({
             tone={repairCostSummary.monthCents ? 'info' : 'success'}
             value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
           />
-          <CompanyMetricMini label="Chat" onPress={onOpenChat} tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
         </View>
-        <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
+        {dailyPhrase ? <Text numberOfLines={1} style={styles.dailyPhrase}>{dailyPhrase}</Text> : null}
       </View>
 
       <View style={styles.homeCommandPanel}>
         <View style={styles.homeCommandHeader}>
           <View>
-            <Text style={styles.homeCommandKicker}>Apri</Text>
             <Text style={styles.homeCommandTitle}>Comandi azienda</Text>
           </View>
         </View>
@@ -643,18 +641,18 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    gap: 10,
-    padding: layout.screenPadding,
-    paddingBottom: 10,
+    gap: 8,
+    padding: 10,
+    paddingBottom: 8,
   },
   homeCommandPanel: {
     backgroundColor: colors.white,
     borderColor: colors.line,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     flex: 1,
-    gap: 10,
-    padding: 12,
+    gap: 7,
+    padding: 10,
   },
   homeCommandHeader: {
     alignItems: 'flex-start',
@@ -662,17 +660,10 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'space-between',
   },
-  homeCommandKicker: {
-    color: colors.cyanDark,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
   homeCommandTitle: {
     color: colors.ink,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
-    marginTop: 2,
   },
   homeCommandSubtitle: {
     color: colors.muted,
@@ -687,19 +678,20 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   homeCommandButton: {
     alignItems: 'center',
     backgroundColor: '#f8fbff',
     borderColor: '#d8e7ee',
-    borderRadius: 14,
+    borderRadius: 13,
     borderWidth: 1,
-    flexBasis: '48.5%',
     flexDirection: 'row',
-    gap: 10,
-    minHeight: 0,
-    padding: 10,
+    flexBasis: '48.8%',
+    gap: 6,
+    justifyContent: 'flex-start',
+    minHeight: 58,
+    padding: 8,
   },
   warningCommandButton: {
     backgroundColor: '#fffbeb',
@@ -716,10 +708,10 @@ const styles = StyleSheet.create({
   homeCommandIcon: {
     alignItems: 'center',
     backgroundColor: '#cffafe',
-    borderRadius: 12,
-    height: 44,
+    borderRadius: 10,
+    height: 30,
     justifyContent: 'center',
-    width: 44,
+    width: 30,
   },
   warningCommandIcon: {
     backgroundColor: '#fef3c7',
@@ -736,7 +728,7 @@ const styles = StyleSheet.create({
   },
   homeCommandLabel: {
     color: colors.ink,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '900',
   },
   homeCommandDetail: {
@@ -747,15 +739,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   homeCommandValue: {
+    alignSelf: 'center',
     backgroundColor: colors.white,
     borderRadius: 999,
     color: colors.ink,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '900',
     maxWidth: 58,
+    minWidth: 24,
     overflow: 'hidden',
-    paddingHorizontal: 7,
-    paddingVertical: 5,
+    paddingHorizontal: 5,
+    paddingVertical: 3,
     textAlign: 'center',
   },
   costAlertCard: {
@@ -826,10 +820,10 @@ const styles = StyleSheet.create({
   },
   dailyPhrase: {
     color: '#cffafe',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    lineHeight: 15,
-    marginTop: 8,
+    lineHeight: 12,
+    marginTop: 5,
   },
   deadlineDate: {
     color: colors.cyanDark,
@@ -1056,8 +1050,8 @@ const styles = StyleSheet.create({
   },
   hero: {
     backgroundColor: colors.ink,
-    borderRadius: 20,
-    padding: 12,
+    borderRadius: 17,
+    padding: 9,
   },
   heroCopy: {
     flex: 1,
@@ -1065,8 +1059,8 @@ const styles = StyleSheet.create({
   heroTop: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 6,
   },
   issueBox: {
     backgroundColor: '#f8fbff',
@@ -1125,25 +1119,31 @@ const styles = StyleSheet.create({
   metricGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 7,
+    gap: 6,
+    justifyContent: 'center',
   },
   metricMini: {
-    borderRadius: 13,
-    flexBasis: '31.5%',
-    minHeight: 47,
-    paddingHorizontal: 9,
-    paddingVertical: 7,
+    alignItems: 'center',
+    borderRadius: 12,
+    flexBasis: '48%',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
   },
   metricMiniLabel: {
     color: colors.muted,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
+    marginTop: 1,
+    textAlign: 'center',
   },
   metricMiniValue: {
     color: colors.ink,
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '900',
-    lineHeight: 20,
+    lineHeight: 17,
+    textAlign: 'center',
   },
   dangerMetricMini: {
     backgroundColor: '#fee2e2',

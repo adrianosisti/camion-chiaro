@@ -9397,7 +9397,6 @@ function HomeCommandPanel({ actions = [], t }) {
     <section className="home-command-panel" aria-label={t('homeCommand.aria')}>
       <div className="home-command-header">
         <div>
-          <p className="overline">{t('homeCommand.open')}</p>
           <h2>{t('homeCommand.title')}</h2>
         </div>
       </div>

@@ -1931,6 +1931,10 @@
   animation: assistantPulse 1.2s ease-in-out infinite;
 }
 
+.assistant-chat-choice-message {
+  max-width: min(94%, 380px);
+}
+
 .assistant-chat-footer {
   display: grid;
   min-height: 0;
@@ -1938,12 +1942,13 @@
 }
 
 .assistant-chat-quick {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  padding: 9px 12px;
-  overflow-x: auto;
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
-  background: #ffffff;
+  padding: 10px 0 0;
+  overflow: visible;
+  border-top: 0;
+  background: transparent;
 }
 
 .assistant-chat-quick button {
@@ -1951,9 +1956,10 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  flex: 0 0 auto;
+  width: 100%;
   min-height: 32px;
   padding: 0 11px;
+  overflow: hidden;
   border: 1px solid rgba(18, 198, 223, 0.34);
   border-radius: 8px;
   color: #075985;
@@ -1961,10 +1967,13 @@
   font: inherit;
   font-size: 0.75rem;
   font-weight: 820;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .assistant-chat-quick .assistant-ticket-button {
+  grid-column: 1 / -1;
   border-color: rgba(15, 23, 42, 0.18);
   color: #0f172a;
   background: #f8fafc;
@@ -1973,8 +1982,9 @@
 .assistant-chat-ticket {
   display: grid;
   gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  max-width: min(94%, 380px);
+  padding: 12px;
+  border-top: 0;
   background:
     linear-gradient(135deg, rgba(18, 198, 223, 0.1), rgba(255, 255, 255, 0)),
     #ffffff;

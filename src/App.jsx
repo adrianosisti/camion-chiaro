@@ -3155,6 +3155,7 @@ const homeDashboardTranslations = {
     'homeAssistant.openTicket': 'Apri ticket email',
     'homeAssistant.placeholder': 'Scrivi qui il problema o cosa vuoi fare...',
     'homeAssistant.question': 'Come posso aiutarti oggi?',
+    'homeAssistant.quickTitle': 'Puoi scrivere liberamente oppure scegliere un argomento:',
     'homeAssistant.quickHelp': 'Aiutami con',
     'homeAssistant.send': 'Invia',
     'homeAssistant.status': 'Supporto guidato',
@@ -3194,6 +3195,7 @@ const homeDashboardTranslations = {
     'homeAssistant.openTicket': 'Open email ticket',
     'homeAssistant.placeholder': 'Write the problem or what you want to do...',
     'homeAssistant.question': 'How can I help today?',
+    'homeAssistant.quickTitle': 'You can write freely or choose a topic:',
     'homeAssistant.quickHelp': 'Help me with',
     'homeAssistant.send': 'Send',
     'homeAssistant.status': 'Guided support',
@@ -3233,6 +3235,7 @@ const homeDashboardTranslations = {
     'homeAssistant.openTicket': 'Abrir ticket email',
     'homeAssistant.placeholder': 'Escribe el problema o lo que quieres hacer...',
     'homeAssistant.question': 'Como puedo ayudarte hoy?',
+    'homeAssistant.quickTitle': 'Puedes escribir libremente o elegir un tema:',
     'homeAssistant.quickHelp': 'Ayudame con',
     'homeAssistant.send': 'Enviar',
     'homeAssistant.status': 'Soporte guiado',
@@ -3272,6 +3275,7 @@ const homeDashboardTranslations = {
     'homeAssistant.openTicket': 'Ouvrir ticket email',
     'homeAssistant.placeholder': 'Ecris le probleme ou ce que tu veux faire...',
     'homeAssistant.question': 'Comment puis-je aider aujourd hui?',
+    'homeAssistant.quickTitle': 'Tu peux ecrire librement ou choisir un sujet:',
     'homeAssistant.quickHelp': 'Aide-moi avec',
     'homeAssistant.send': 'Envoyer',
     'homeAssistant.status': 'Support guide',
@@ -3311,6 +3315,7 @@ const homeDashboardTranslations = {
     'homeAssistant.openTicket': 'E-Mail-Ticket offnen',
     'homeAssistant.placeholder': 'Schreibe das Problem oder was du tun mochtest...',
     'homeAssistant.question': 'Wie kann ich heute helfen?',
+    'homeAssistant.quickTitle': 'Du kannst frei schreiben oder ein Thema wahlen:',
     'homeAssistant.quickHelp': 'Hilf mir mit',
     'homeAssistant.send': 'Senden',
     'homeAssistant.status': 'Gefuhrter Support',
@@ -3350,6 +3355,7 @@ const homeDashboardTranslations = {
     'homeAssistant.openTicket': 'Deschide ticket email',
     'homeAssistant.placeholder': 'Scrie problema sau ce vrei sa faci...',
     'homeAssistant.question': 'Cum te pot ajuta azi?',
+    'homeAssistant.quickTitle': 'Poti scrie liber sau alege un subiect:',
     'homeAssistant.quickHelp': 'Ajuta-ma cu',
     'homeAssistant.send': 'Trimite',
     'homeAssistant.status': 'Suport ghidat',
@@ -3389,6 +3395,7 @@ const homeDashboardTranslations = {
     'homeAssistant.openTicket': 'Otworz ticket email',
     'homeAssistant.placeholder': 'Napisz problem albo co chcesz zrobic...',
     'homeAssistant.question': 'Jak moge dzis pomoc?',
+    'homeAssistant.quickTitle': 'Mozesz napisac samodzielnie albo wybrac temat:',
     'homeAssistant.quickHelp': 'Pomoz mi z',
     'homeAssistant.send': 'Wyslij',
     'homeAssistant.status': 'Wsparcie prowadzone',
@@ -9450,7 +9457,7 @@ function HomeAssistantStrip({
       behavior: 'smooth',
       top: messageListRef.current.scrollHeight,
     })
-  }, [isOpen, isSending, messages.length])
+  }, [isOpen, isSending, isTicketVisible, messages.length])
 
   async function sendAssistantMessage(rawMessage) {
     const cleanMessage = rawMessage.trim()
@@ -9606,21 +9613,22 @@ function HomeAssistantStrip({
                   <p>{t('homeAssistant.typing')}</p>
                 </article>
               )}
-            </div>
-            <div className="assistant-chat-footer">
-              <div className="assistant-chat-quick">
-                {topics.map((topic) => (
-                  <button key={topic.id} onClick={() => handleTopicClick(topic)} type="button">
-                    {topic.label}
+              <article className="assistant-chat-message is-assistant assistant-chat-choice-message">
+                <p>{t('homeAssistant.quickTitle')}</p>
+                <div className="assistant-chat-quick">
+                  {topics.map((topic) => (
+                    <button key={topic.id} onClick={() => handleTopicClick(topic)} type="button">
+                      {topic.label}
+                    </button>
+                  ))}
+                  <button className="assistant-ticket-button" onClick={handleTicketRequest} type="button">
+                    <Mail size={14} />
+                    {t('homeAssistant.notHelpful')}
                   </button>
-                ))}
-                <button className="assistant-ticket-button" onClick={handleTicketRequest} type="button">
-                  <Mail size={14} />
-                  {t('homeAssistant.notHelpful')}
-                </button>
-              </div>
+                </div>
+              </article>
               {isTicketVisible && (
-                <div className="assistant-chat-ticket">
+                <article className="assistant-chat-message is-assistant assistant-chat-ticket">
                   <strong>{t('homeAssistant.ticketTitle')}</strong>
                   <p>{t('homeAssistant.ticketBody')}</p>
                   <div className="assistant-chat-ticket-actions">
@@ -9633,8 +9641,10 @@ function HomeAssistantStrip({
                       {t('homeAssistant.openGuide')}
                     </button>
                   </div>
-                </div>
+                </article>
               )}
+            </div>
+            <div className="assistant-chat-footer">
               <form className="assistant-chat-input" onSubmit={handleSubmit}>
                 <textarea
                   aria-label={t('homeAssistant.placeholder')}

@@ -3,70 +3,236 @@
 ## Slide 1 - Titolo
 Camion Chiaro
 
-La piattaforma semplice per non dimenticare scadenze, documenti, guasti e comunicazioni della flotta.
+La flotta sotto controllo, ogni giorno.
 
-## Slide 2 - Il problema
-Le aziende di trasporto lavorano con:
-- patenti e CQC in scadenza;
-- revisioni, assicurazioni e bolli;
-- documenti dispersi tra telefono, ufficio e camion;
-- guasti comunicati male;
-- autisti che chiamano per tutto;
-- notifiche e responsabilita che si perdono.
+Sottotitolo:
+Scadenze, documenti, autisti, guasti, chat, notifiche e costi in un unico centro operativo per aziende di trasporto e logistica.
 
-## Slide 3 - Il costo del disordine
-Una scadenza dimenticata puo diventare:
+## Slide 2 - Il problema vero
+Il problema di molte aziende di trasporto non e lavorare tanto. E lavorare con informazioni sparse.
+
+Ogni giorno succede qualcosa:
+- una patente sta per scadere;
+- una revisione viene ricordata tardi;
+- una foto di un guasto resta in una chat;
+- un documento e sul telefono di qualcuno;
+- un autista chiama mentre l ufficio sta facendo altro;
+- il titolare non vede subito cosa e urgente;
+- i costi dei mezzi si capiscono solo quando ormai sono gia usciti soldi.
+
+## Slide 3 - Quanto costa il disordine
+Il disordine non sembra un costo finche non esplode.
+
+Puo diventare:
 - fermo mezzo;
-- multa;
-- perdita di tempo;
-- cliente scontento;
-- stress per titolare e ufficio.
+- urgenza in officina;
+- cliente da richiamare;
+- autista bloccato;
+- documento cercato all ultimo minuto;
+- multa o rischio operativo;
+- ufficio sotto pressione;
+- titolare che deve chiedere a tutti "a che punto siamo?".
 
-## Slide 4 - La soluzione
-Camion Chiaro mette tutto in una dashboard:
+Camion Chiaro nasce per far emergere questi problemi prima che diventino emergenze.
+
+## Slide 4 - La promessa
+Con Camion Chiaro apri una sola schermata e capisci subito:
+- cosa scade;
+- cosa manca;
+- chi deve fare qualcosa;
+- quale mezzo ha un problema;
+- quali check sono critici;
+- quali guasti sono aperti;
+- quanto stai spendendo sulle riparazioni;
+- quali messaggi richiedono risposta.
+
+Messaggio chiave:
+"Sai cosa richiede attenzione prima che diventi un problema."
+
+## Slide 5 - La soluzione
+Camion Chiaro mette in ordine:
 - autisti;
-- flotta;
-- scadenze;
-- documenti;
+- ufficio e magazzino;
+- furgoni, motrici, trattori e semirimorchi;
+- strumenti e muletti;
+- scadenze documentali;
+- documenti da mostrare;
 - check mattutini;
-- guasti;
-- chat;
-- notifiche.
+- segnalazioni guasti;
+- chat e gruppi;
+- notifiche su telefono;
+- storico e centro costi.
 
-## Slide 5 - App autista
-L autista usa il telefono per:
+## Slide 6 - Dashboard azienda
+La dashboard azienda non e piena di cose inutili. Mostra subito le priorita:
+- check critici;
+- guasti aperti;
+- scadenze nei prossimi 30 giorni;
+- costi del mese;
+- registro operativo da lavorare.
+
+Il titolare non deve cercare: vede subito dove mettere attenzione.
+
+## Slide 7 - App autista
+L autista entra con username creato dall azienda e usa l app per:
+- vedere le proprie notifiche;
 - fare check;
 - segnalare guasti con foto;
+- indicare mezzo e semirimorchio;
 - caricare documenti;
-- mostrare documenti alla polizia;
-- parlare con l azienda.
+- mostrare documenti quando serve;
+- parlare con azienda, ufficio o magazzino.
 
-## Slide 6 - Notifiche intelligenti
-L azienda riceve avvisi quando:
-- un documento sta per scadere;
-- un check e critico;
-- un guasto e urgente;
-- un autista scrive in chat.
+Meno telefonate, meno messaggi incompleti, piu autonomia.
 
-## Slide 7 - Perche e diverso
-Non e un gestionale complicato.
+## Slide 8 - Documenti e scadenze
+Patente, CQC, carta tachigrafica, visita medica, ADR, assicurazione, revisione, libretto, bollo, documenti mezzo.
 
-E uno strumento operativo quotidiano: semplice, veloce, pensato per trasportatori veri.
+Tutto viene collegato alla persona o al mezzo giusto.
 
-## Slide 8 - Benefici
+Quando una scadenza si avvicina:
+- entra nella dashboard;
+- puo generare sollecito;
+- viene aggiornata con nuovo documento e nuova data;
+- resta nello storico.
+
+## Slide 9 - Guasti e check
+Un guasto non deve essere solo un messaggio.
+
+Con Camion Chiaro diventa una segnalazione:
+- con titolo;
+- foto;
+- gravita;
+- mezzo;
+- semirimorchio opzionale;
+- descrizione;
+- stato;
+- costo riparazione;
+- archivio.
+
+Il check mattutino aiuta a vedere subito anomalie su luci, gomme, documenti e mezzo.
+
+## Slide 10 - Centro costi
+Molte aziende sanno di spendere, ma non vedono bene dove.
+
+Camion Chiaro trasforma i guasti in dati:
+- costo mese;
+- costo anno;
+- interventi con costo;
+- filtri per targa;
+- storico per mezzo.
+
+Obiettivo: capire quali mezzi costano troppo e prendere decisioni con dati reali.
+
+## Slide 11 - Chat aziendale
+La chat non e solo "messaggi".
+
+E comunicazione operativa:
+- chat singole;
+- gruppi e reparti;
+- notifiche;
+- foto, audio e allegati;
+- letture;
+- storico collegato all azienda.
+
+WhatsApp resta comodo, ma non organizza l azienda. Camion Chiaro mette la comunicazione dove serve.
+
+## Slide 12 - Perche e diverso
+Camion Chiaro non vuole essere un gestionale pesante.
+
+E pensato per aziende vere:
+- schermate semplici;
+- uso quotidiano;
+- app per chi lavora su strada;
+- dashboard per chi controlla;
+- storico per chi deve dimostrare cosa e stato fatto;
+- costi visibili per chi deve decidere.
+
+## Slide 13 - Benefici concreti
+Camion Chiaro aiuta a ottenere:
 - meno dimenticanze;
 - meno telefonate inutili;
-- piu controllo;
-- piu ordine;
-- storico sempre disponibile;
-- autisti piu autonomi.
+- documenti trovati piu velocemente;
+- autisti piu autonomi;
+- ufficio piu ordinato;
+- guasti piu chiari;
+- storico consultabile;
+- scadenze lavorate prima;
+- costi mezzi piu leggibili;
+- piu controllo anche fuori ufficio.
 
-## Slide 9 - Piani
-Starter, Pro, Business, Enterprise.
+## Slide 14 - Piani
+Start 5 - 300 euro/mese
+- fino a 5 mezzi;
+- fino a 3 strumenti o muletti;
+- fino a 10 account;
+- 10 GB file inclusi.
 
-Prezzo in base ad autisti, mezzi, notifiche, storico, report e funzioni Premium.
+Fleet 10 - 450 euro/mese
+- fino a 10 mezzi;
+- fino a 5 strumenti o muletti;
+- fino a 20 account;
+- 20 GB file inclusi.
 
-## Slide 10 - Chiusura
-Camion Chiaro: la flotta sotto controllo, ogni giorno.
+Fleet 20+ - da 650 euro/mese
+- per flotte strutturate;
+- piu mezzi, reparti, strumenti e storage;
+- report e storico piu ampio.
 
-Call to action: acquista l abbonamento, attiva l azienda e parti con onboarding iniziale.
+Extra:
+- chat aziendale completa: +100 euro/mese;
+- start-up kit: 1.500 euro una tantum;
+- storage extra a pacchetti.
+
+## Slide 15 - Perche il prezzo ha senso
+Camion Chiaro non vende solo accesso a una app.
+
+Vende:
+- ordine;
+- tempo recuperato;
+- meno rischio di dimenticanze;
+- meno rincorse ai documenti;
+- meno messaggi persi;
+- storico operativo;
+- supporto all avvio;
+- dati sui costi.
+
+Una sola situazione gestita prima, una scadenza non dimenticata o un guasto tracciato bene possono gia giustificare il valore percepito.
+
+## Slide 16 - Obiezioni
+"Uso gia WhatsApp"
+
+Risposta: WhatsApp serve per parlare. Camion Chiaro serve per gestire. Scadenze, documenti, guasti, check, costi e storico non possono stare solo in chat.
+
+"Costa troppo"
+
+Risposta: costa di piu lavorare senza vedere cosa manca. Camion Chiaro riduce caos, urgenze e tempo perso.
+
+"Gli autisti non lo useranno"
+
+Risposta: l app e semplice: aprono, fanno check, caricano documenti, segnalano guasti, leggono messaggi.
+
+"Non ho tempo di caricare tutto"
+
+Risposta: lo start-up kit serve proprio a partire ordinati, con dati iniziali e formazione.
+
+## Slide 17 - Demo consigliata
+1. Aprire dashboard azienda.
+2. Mostrare check critici, guasti aperti, scadenze e costi mese.
+3. Aprire una scadenza e spiegare rinnovo/sollecito.
+4. Aprire un guasto con foto.
+5. Salvare costo riparazione.
+6. Mostrare Centro costi.
+7. Aprire app autista.
+8. Mostrare documenti da aprire.
+9. Aprire chat.
+10. Chiudere con piano e start-up kit.
+
+## Slide 18 - Chiusura
+Camion Chiaro e per chi vuole smettere di rincorrere informazioni.
+
+Call to action:
+Acquista il piano, attiva l azienda e parti con lo start-up kit.
+
+Frase finale:
+"La flotta lavora ogni giorno. Camion Chiaro ti aiuta a tenerla sotto controllo ogni giorno."

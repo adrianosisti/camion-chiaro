@@ -2,6 +2,8 @@
 
 Questo documento serve come bussola interna: cosa vendiamo, a chi, cosa va completato prima del lancio e quali idee tenere per fare diventare Camion Chiaro un prodotto indispensabile per aziende di trasporto e logistica.
 
+Il punto chiave: non dobbiamo vendere "un software". Dobbiamo vendere una vita aziendale piu ordinata. Il cliente deve sentire che comprando Camion Chiaro smette di rincorrere documenti, foto, telefonate, scadenze e responsabilita sparse.
+
 ## Posizionamento
 
 Camion Chiaro non deve sembrare una semplice agenda scadenze. Deve essere il pannello operativo leggero dell azienda di trasporto:
@@ -11,26 +13,59 @@ Camion Chiaro non deve sembrare una semplice agenda scadenze. Deve essere il pan
 - check mattutini e guasti tracciati;
 - archivio documentale pronto in caso di controllo;
 - flotta ordinata tra furgoni, motrici, trattori e semirimorchi.
+- costi di guasti e riparazioni finalmente visibili.
 
 Messaggio commerciale principale:
 
-"La tua azienda vede subito cosa manca, cosa scade e cosa succede sui mezzi, mentre gli autisti hanno tutto sul telefono."
+"Apri una sola schermata e capisci subito cosa manca, cosa scade, cosa e urgente e dove stai spendendo soldi."
+
+Messaggi secondari:
+
+- "Basta cercare documenti tra WhatsApp, telefono, ufficio e camion."
+- "Ogni guasto diventa una segnalazione chiara, non una foto persa in chat."
+- "Ogni autista ha sul telefono quello che gli serve, senza chiamare per tutto."
+- "Il titolare vede la flotta anche quando non e in ufficio."
+- "Sai cosa richiede attenzione prima che diventi un problema."
+
+## Trasformazione promessa al cliente
+
+Prima di Camion Chiaro:
+- documenti sparsi;
+- scadenze ricordate a memoria;
+- telefonate continue;
+- foto di guasti in chat;
+- nessuno storico ordinato;
+- costi mezzi difficili da leggere;
+- ufficio che rincorre autisti e documenti.
+
+Dopo Camion Chiaro:
+- dashboard con priorita chiare;
+- app per autisti e personale;
+- notifiche quando serve;
+- documenti collegati a persone e mezzi;
+- guasti archiviati con foto e costo;
+- chat operative piu ordinate;
+- storico consultabile;
+- centro costi per vedere dove vanno i soldi.
 
 ## Clienti ideali
 
 1. Piccole aziende con 3-10 utenti operativi
    - Hanno ancora molti documenti su WhatsApp, carta, foto sparse.
    - Comprano se capiscono che evita multe e dimenticanze.
+   - Messaggio forte: "Ti metti in ordine senza comprare un gestionale complicato."
    - Piano consigliato: Start 5 o Fleet 10.
 
 2. Aziende medie con 10-40 autisti
    - Hanno piu persone in ufficio e piu confusione tra mezzi, scadenze e guasti.
    - Comprano se vedono chat, notifiche, archivio e storico.
+   - Messaggio forte: "Il tuo ufficio smette di rincorrere informazioni."
    - Piano consigliato: Fleet 10 o Fleet 20.
 
 3. Flotte strutturate con responsabile operativo
    - Vogliono storico, ruoli, report, fatture, dati e controllo.
    - Comprano se c e affidabilita e supporto.
+   - Messaggio forte: "Trasformi operativita e costi in dati leggibili."
    - Piano consigliato: Fleet 30, Fleet 50 o Enterprise.
 
 ## Piani consigliati
@@ -78,6 +113,16 @@ Extra consigliati:
 - storage 100 GB: +179 euro/mese.
 
 Regola semplice: il prezzo deve salire con mezzi, strumenti, account utenti, spazio documentale, chat e livello di supporto.
+
+La vendita non deve essere impostata come "costa X al mese". Deve essere impostata cosi:
+
+- quanto costa un fermo mezzo?
+- quanto costa una scadenza dimenticata?
+- quanto tempo perde l ufficio a cercare documenti?
+- quante telefonate inutili arrivano ogni settimana?
+- quanto spendi in riparazioni senza avere un report chiaro per targa?
+
+Camion Chiaro deve sembrare piccolo rispetto al costo del disordine.
 
 ## Costi e margine da controllare
 
@@ -167,25 +212,55 @@ Da completare prima di vendere seriamente:
 
 Promessa breve:
 
-"In 10 minuti sai chi ha documenti mancanti, quale mezzo ha problemi e quali scadenze rischiano di farti perdere soldi."
+"In 10 minuti sai chi ha documenti mancanti, quale mezzo ha problemi, quali scadenze rischiano di farti perdere soldi e quanto hai speso sui guasti del mese."
+
+Promessa emotiva:
+
+"La mattina apri Camion Chiaro e non devi chiedere a tutti cosa manca: lo vedi."
+
+Promessa per il titolare:
+
+"Anche se sei fuori ufficio, sai cosa succede nella tua azienda."
+
+Promessa per l ufficio:
+
+"Meno telefonate, meno fogli, meno documenti persi, piu ordine."
+
+Promessa per l autista:
+
+"Hai documenti, chat, check e segnalazioni nello stesso telefono."
 
 Demo commerciale:
 
 1. Mostrare dashboard azienda.
-2. Aprire scadenze critiche.
-3. Entrare in app autista.
-4. Fare check mattutino con anomalia.
-5. Mostrare notifica in azienda.
-6. Segnalare guasto con foto.
-7. Aprire chat e documento autista.
-8. Chiudere con piani e attivazione.
+2. Far vedere in alto: check critici, guasti aperti, scadenze e costi mese.
+3. Aprire scadenze critiche.
+4. Mostrare rinnovo o sollecito.
+5. Entrare in app autista.
+6. Fare check mattutino con anomalia.
+7. Mostrare notifica in azienda.
+8. Segnalare guasto con foto.
+9. Inserire costo riparazione.
+10. Aprire Centro costi.
+11. Aprire chat e documento autista.
+12. Chiudere con piani, start-up kit e attivazione.
 
 Obiezioni prevedibili:
 
-- "Uso gia WhatsApp": WhatsApp non archivia scadenze, non organizza guasti, non crea storico.
-- "Costa troppo": una multa o una scadenza dimenticata costa piu di mesi di abbonamento.
-- "Gli autisti non lo useranno": entrano con nome utente, fanno due tocchi, vedono documenti e chat.
-- "Non ho tempo di caricare tutto": offrire import Excel o servizio onboarding.
+- "Uso gia WhatsApp": WhatsApp serve per parlare, non per gestire. Non collega scadenze, documenti, guasti, costi e storico aziendale.
+- "Costa troppo": costa di piu lavorare senza vedere cosa manca. Una scadenza dimenticata, un fermo mezzo o ore perse in ufficio possono valere molto piu del canone.
+- "Gli autisti non lo useranno": l app deve essere semplice: apri, leggi, fai check, carichi foto, segnali guasto.
+- "Non ho tempo di caricare tutto": lo start-up kit esiste proprio per questo. Il cliente compra anche ordine iniziale.
+- "Ho gia un gestionale": Camion Chiaro non deve sostituirlo per forza. Puo diventare il livello operativo quotidiano per notifiche, documenti, guasti, check e chat.
+
+## Frasi vendita pronte
+
+- "Non ti vendo un altro programma da controllare. Ti vendo un posto unico dove vedere cosa richiede attenzione."
+- "Se oggi una scadenza la ricordate solo perche qualcuno se la segna, prima o poi qualcosa scappa."
+- "Un guasto mandato su WhatsApp e una foto. Un guasto in Camion Chiaro diventa storico, costo e controllo."
+- "L autista smette di chiamare per ogni cosa, perche ha documenti e chat nell app."
+- "Il valore non e solo ricordare una data: e sapere cosa fare quando quella data si avvicina."
+- "Quando l azienda cresce, il disordine cresce piu veloce. Camion Chiaro serve a non farselo scappare."
 
 ## Priorita prossime
 

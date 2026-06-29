@@ -2929,17 +2929,21 @@ Object.entries(regionalTranslations).forEach(([translationLanguage, translationE
 
 const supportSections = [
   {
-    description: 'Risposte rapide alle domande che un azienda o un autista fanno prima di acquistare.',
+    description: 'Risposte pensate per far capire subito il valore: meno caos, meno telefonate, piu controllo.',
     icon: BadgeCheck,
     id: 'faq',
     titleKey: 'support.faq',
     items: [
       {
-        body: 'Tiene insieme autisti, flotta, scadenze, documenti, check mattutini, guasti, chat e notifiche.',
+        body: 'Camion Chiaro porta in un unico posto autisti, mezzi, scadenze, documenti, check, guasti, chat, notifiche e costi. L azienda apre la dashboard e vede subito cosa richiede attenzione.',
         title: 'A cosa serve Camion Chiaro?',
       },
       {
-        body: 'L ufficio entra dal browser desktop. Autisti, titolare e personale possono usare l app iOS/Android con notifiche.',
+        body: 'Documenti sparsi, foto su WhatsApp, telefonate continue e scadenze da ricordare diventano pratiche ordinate, notifiche e storico consultabile. Il lavoro resta lo stesso, ma finalmente e piu leggibile.',
+        title: 'Cosa cambia nella vita dell azienda?',
+      },
+      {
+        body: 'L ufficio entra dal browser desktop. Autisti, titolare e personale possono usare l app iOS/Android con notifiche, chat, documenti, check e guasti.',
         title: 'Devo installare un programma?',
       },
       {
@@ -2947,7 +2951,7 @@ const supportSections = [
         title: 'L autista vede tutti i dati aziendali?',
       },
       {
-        body: 'Si. L autista puo aprire i documenti visibili nella sezione Documenti da mostrare.',
+        body: 'Si. L autista puo aprire i documenti visibili nella sezione Documenti, cosi se serve li ha subito sul telefono.',
         title: 'Si possono mostrare documenti alla polizia?',
       },
       {
@@ -2959,8 +2963,12 @@ const supportSections = [
         title: 'Le notifiche arrivano anche con app chiusa?',
       },
       {
-        body: 'Si. Guasti e riparazioni possono avere importi e note. Il report costi filtra per targa, periodo e storico interventi.',
+        body: 'Si. Guasti e riparazioni possono avere importi e note. Il Centro costi mostra mese, anno, targa e storico interventi: utile per capire quali mezzi stanno consumando piu soldi.',
         title: 'Posso controllare quanto spendo sui mezzi?',
+      },
+      {
+        body: 'Il prezzo parte da 300 euro/mese perche Camion Chiaro non e una semplice agenda: include app, notifiche, documenti, storico, costi, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
+        title: 'Perche vale il canone mensile?',
       },
     ],
   },
@@ -3001,46 +3009,50 @@ const supportSections = [
     ],
   },
   {
-    description: 'Traccia pronta per una presentazione clienti orientata all acquisto.',
+    description: 'Traccia pronta per far percepire il valore: controllo, tempo recuperato e meno rischi operativi.',
     icon: FileText,
     id: 'launch',
     titleKey: 'support.launch',
     items: [
       {
-        body: 'Camion Chiaro: la piattaforma semplice per non dimenticare scadenze, documenti, guasti e comunicazioni della flotta.',
+        body: 'Camion Chiaro: la flotta sotto controllo, ogni giorno. Una sola dashboard per vedere cosa manca, cosa scade, cosa e urgente e dove stai spendendo soldi.',
         title: 'Titolo',
       },
       {
-        body: 'Patenti, CQC, revisioni, assicurazioni, documenti dispersi, guasti comunicati male e autisti che chiamano per tutto.',
+        body: 'Patenti, CQC, revisioni, assicurazioni, documenti dispersi, guasti comunicati male, foto in chat e autisti che chiamano per tutto.',
         title: 'Il problema',
       },
       {
-        body: 'Dashboard azienda, app autista, notifiche, documenti da mostrare, chat e storico operativo.',
+        body: 'Il disordine costa: tempo, urgenze, fermo mezzo, clienti da richiamare, documenti cercati all ultimo minuto e decisioni prese senza dati.',
+        title: 'Il costo del caos',
+      },
+      {
+        body: 'Dashboard azienda, app autista, notifiche, documenti da mostrare, chat, check, guasti, storico operativo e Centro costi.',
         title: 'La soluzione',
       },
       {
-        body: 'Meno dimenticanze, meno telefonate, piu controllo, piu prove, piu ordine.',
+        body: 'Meno dimenticanze, meno telefonate, piu controllo, piu prove, piu ordine e una visione chiara dei costi per mezzo.',
         title: 'Benefici',
       },
       {
-        body: 'Acquisto abbonamento, attivazione rapida e onboarding iniziale per mettere ordine alla flotta.',
+        body: 'Acquisto abbonamento, attivazione rapida e start-up kit per mettere in ordine anagrafiche, mezzi, documenti e prime scadenze.',
         title: 'Chiusura',
       },
     ],
   },
   {
-    description: 'Idee video brevi da usare su sito, social, WhatsApp e vendita diretta.',
+    description: 'Idee video brevi per far vedere il problema, il sollievo e il valore economico.',
     icon: Smartphone,
     id: 'videos',
     titleKey: 'support.videos',
     items: [
       {
-        body: 'Titolare con fogli e telefono. Poi dashboard ordinata. Messaggio: basta una scadenza dimenticata per fermare tutto.',
-        title: 'La scadenza dimenticata',
+        body: 'Titolare con fogli e telefono. Poi dashboard ordinata. Messaggio: una scadenza dimenticata puo fermare un mezzo, Camion Chiaro la fa emergere prima.',
+        title: 'La scadenza che ti ferma',
       },
       {
-        body: 'Autista vede una spia, scatta foto, segnala guasto. L azienda riceve tutto in dashboard.',
-        title: 'Il guasto senza telefonate',
+        body: 'Autista vede una spia, scatta foto, segnala guasto. L azienda riceve tutto in dashboard, lo archivia e aggiunge il costo.',
+        title: 'Il guasto non e una foto persa',
       },
       {
         body: 'Controllo stradale. L autista apre Documenti da mostrare e trova subito quello che serve.',
@@ -3051,7 +3063,11 @@ const supportSections = [
         title: 'Check mattutino',
       },
       {
-        body: '60 secondi: problema, dashboard, app autista, guasto con foto, documento, chat, invito ad acquistare.',
+        body: 'Titolare guarda fatture officina. Poi Centro costi: mese, anno, targa e interventi. Messaggio: sai finalmente dove vanno i soldi.',
+        title: 'Dove vanno i soldi?',
+      },
+      {
+        body: '60 secondi: problema, dashboard, app autista, guasto con foto, documento, chat, Centro costi, invito ad acquistare.',
         title: 'Video prodotto completo',
       },
     ],
@@ -3778,7 +3794,7 @@ function getDisplayCompanyName(name) {
 }
 
 function getBillingPlanLabel(plan) {
-  return billingPlanLabels[plan] ?? plan ?? 'Starter'
+  return billingPlanLabels[plan] ?? plan ?? 'Start 5'
 }
 
 function getBillingStatusLabel(status) {
@@ -7518,10 +7534,11 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
 
       <section className="public-hero" id="prodotto">
         <div className="public-hero-copy">
-          <p className="overline">Gestionale flotta e autisti</p>
+          <p className="overline">Centro operativo per trasportatori</p>
           <h1>Camion Chiaro</h1>
           <p>
-            Scadenze, documenti, check mattutini, guasti, chat e notifiche in una sola app per aziende di logistica e trasporto.
+            Basta documenti sparsi, scadenze ricordate a memoria e guasti persi in chat. Camion Chiaro mette flotta,
+            autisti, documenti, notifiche, guasti, chat e costi in un unico posto semplice da usare.
           </p>
           <div className="public-hero-actions">
             <button className="primary-button" onClick={() => openAccess('company', 'signup')} type="button">
@@ -7537,6 +7554,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
             <span><ShieldCheck size={17} /> Scadenze sotto controllo</span>
             <span><Wrench size={17} /> Guasti tracciati</span>
             <span><FileText size={17} /> Documenti sempre disponibili</span>
+            <span><Banknote size={17} /> Costi mezzi piu chiari</span>
           </div>
         </div>
 
@@ -7691,6 +7709,10 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
               <strong>2</strong>
               <span>Guasti aperti</span>
             </div>
+            <div>
+              <strong>1.240€</strong>
+              <span>Costi mese</span>
+            </div>
           </div>
           <div className="public-mock-list">
             <div>
@@ -7729,32 +7751,43 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
       <section className="public-section">
         <div className="public-section-heading">
           <p className="overline">Perche serve</p>
-          <h2>Il problema non e guidare. E ricordarsi tutto.</h2>
+          <h2>Il problema non e guidare. E non perdere il controllo.</h2>
           <p>
-            Patenti, revisioni, assicurazioni, visite mediche, documenti autista, guasti e messaggi finiscono spesso in posti diversi.
-            Camion Chiaro li porta in un unico flusso leggibile.
+            Patenti, revisioni, assicurazioni, visite mediche, documenti autista, guasti, messaggi e costi finiscono spesso
+            in posti diversi. Camion Chiaro li porta in un unico flusso leggibile, cosi l ufficio sa cosa fare e il titolare
+            vede cosa sta succedendo anche fuori sede.
           </p>
         </div>
         <div className="public-feature-grid">
           <article>
             <CalendarClock size={22} />
             <h3>Scadenze automatiche</h3>
-            <p>Promemoria per mezzi, autisti e azienda prima che diventino un problema.</p>
+            <p>Promemoria per mezzi, autisti e azienda prima che una data dimenticata diventi urgenza, fermo o perdita di tempo.</p>
           </article>
           <article>
             <ClipboardCheck size={22} />
             <h3>Check e guasti</h3>
-            <p>L autista invia check mattutini e segnalazioni con foto, semirimorchio agganciato e storico.</p>
+            <p>L autista invia check e segnalazioni con foto, mezzo, semirimorchio agganciato e storico. L ufficio apre tutto in modo chiaro.</p>
           </article>
           <article>
             <Mail size={22} />
             <h3>Chat e notifiche</h3>
-            <p>Messaggi live, spunte di lettura, reaction e notifiche telefono per azienda e autisti.</p>
+            <p>Messaggi live, gruppi, spunte, reaction e notifiche telefono per smettere di inseguire le persone su mille canali.</p>
           </article>
           <article>
             <FileText size={22} />
             <h3>Documenti sempre pronti</h3>
-            <p>L autista conserva i documenti nell app e puo mostrarli quando servono.</p>
+            <p>L autista conserva i documenti visibili nell app e puo mostrarli quando servono, senza chiamare l ufficio in emergenza.</p>
+          </article>
+          <article>
+            <Banknote size={22} />
+            <h3>Centro costi</h3>
+            <p>Ogni guasto puo avere importo e note, cosi inizi a vedere quali targhe generano piu spese mese dopo mese.</p>
+          </article>
+          <article>
+            <Users size={22} />
+            <h3>Ufficio e magazzino</h3>
+            <p>Non solo autisti: puoi organizzare persone, reparti, strumenti, muletti e comunicazioni operative aziendali.</p>
           </article>
         </div>
       </section>
@@ -7762,27 +7795,30 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
       <section className="public-section public-workflow">
         <div className="public-section-heading">
           <p className="overline">Come lavora</p>
-          <h2>Una giornata normale, con meno telefonate.</h2>
+          <h2>Una giornata normale, finalmente ordinata.</h2>
         </div>
         <div className="public-steps">
-          <div><strong>1</strong><span>L azienda inserisce autisti, mezzi, semirimorchi e scadenze.</span></div>
-          <div><strong>2</strong><span>L autista entra con il suo nome utente e fa check o segnala guasti.</span></div>
-          <div><strong>3</strong><span>La dashboard mostra solo cio che richiede attenzione.</span></div>
-          <div><strong>4</strong><span>Ogni segnalazione resta archiviata e ricercabile.</span></div>
+          <div><strong>1</strong><span>L azienda inserisce persone, mezzi, semirimorchi, strumenti e prime scadenze.</span></div>
+          <div><strong>2</strong><span>Autisti e personale entrano nell app, ricevono notifiche e fanno check o segnalazioni.</span></div>
+          <div><strong>3</strong><span>La dashboard mostra check critici, guasti aperti, scadenze e costi del mese.</span></div>
+          <div><strong>4</strong><span>Ogni pratica viene lavorata, archiviata e ritrovata quando serve.</span></div>
         </div>
       </section>
 
       <section className="public-section" id="prezzi">
         <div className="public-section-heading">
           <p className="overline">Piani</p>
-          <h2>Prezzi per dimensione reale della flotta.</h2>
-          <p>Il piano cresce con mezzi, strumenti e account. Chat aziendale, storage extra e start-up kit restano separati e trasparenti.</p>
+          <h2>Prezzi pensati per il valore reale che portiamo.</h2>
+          <p>
+            Il piano cresce con mezzi, strumenti e account. Il canone non compra solo una app: compra ordine operativo,
+            notifiche, storico, documenti, report, supporto e meno tempo perso ogni settimana.
+          </p>
         </div>
         <div className="public-price-grid">
           <article>
             <span>Start 5</span>
             <strong>300 euro/mese</strong>
-            <p>Per piccole flotte che vogliono controllo serio da subito.</p>
+            <p>Per piccole flotte che vogliono smettere subito di lavorare con scadenze e documenti sparsi.</p>
             <ul>
               <li>Fino a 5 mezzi</li>
               <li>Fino a 3 strumenti o muletti</li>
@@ -7794,7 +7830,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           <article className="is-featured">
             <span>Fleet 10</span>
             <strong>450 euro/mese</strong>
-            <p>Per aziende con ufficio operativo, autisti e magazzino collegati.</p>
+            <p>Per aziende con ufficio operativo, autisti e magazzino collegati che vogliono piu controllo ogni giorno.</p>
             <ul>
               <li>Fino a 10 mezzi</li>
               <li>Fino a 5 strumenti o muletti</li>
@@ -7806,7 +7842,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           <article>
             <span>Fleet 20+</span>
             <strong>da 650 euro/mese</strong>
-            <p>Per flotte strutturate con report economici, reparti e storico completo.</p>
+            <p>Per flotte strutturate che vogliono storico, reparti, report economici e controllo su mezzi e strumenti.</p>
             <ul>
               <li>20, 30 o 50 mezzi</li>
               <li>Strumenti e muletti inclusi</li>
@@ -7826,9 +7862,13 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
       <section className="public-section public-faq" id="faq">
         <div className="public-section-heading">
           <p className="overline">FAQ</p>
-          <h2>Domande veloci prima di iniziare.</h2>
+          <h2>Domande veloci prima di mettere ordine.</h2>
         </div>
         <div className="public-faq-list">
+          <article>
+            <h3>Cosa cambia davvero rispetto a oggi?</h3>
+            <p>Invece di cercare informazioni tra WhatsApp, fogli, telefono e cartelle, apri Camion Chiaro e vedi cosa scade, cosa manca, chi deve agire e quali mezzi hanno problemi.</p>
+          </article>
           <article>
             <h3>L autista deve scaricare un app dallo store?</h3>
             <p>Si: Camion Chiaro e previsto come app iOS/Android per autisti, magazzino e azienda. L azienda puo continuare a lavorare anche da browser desktop.</p>
@@ -7844,6 +7884,14 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           <article>
             <h3>I costi di guasti e manutenzioni vengono tracciati?</h3>
             <p>Si. L azienda puo registrare costi su guasti e interventi, filtrare per periodo e mezzo, e preparare report economici operativi.</p>
+          </article>
+          <article>
+            <h3>Perche non basta WhatsApp?</h3>
+            <p>WhatsApp serve per parlare, non per gestire. Camion Chiaro collega messaggi, documenti, guasti, scadenze, notifiche e storico operativo.</p>
+          </article>
+          <article>
+            <h3>Quanto tempo serve per partire?</h3>
+            <p>Con lo start-up kit partiamo ordinati: anagrafiche, mezzi, prime scadenze e formazione. Il cliente non compra solo accesso, compra ordine iniziale.</p>
           </article>
         </div>
       </section>

@@ -88,31 +88,30 @@ Magazzino:
 
 ## Piani a pagamento
 
-Ipotesi iniziale:
+Ipotesi commerciale aggiornata:
 
-1. Starter - 49 euro/mese
-   - fino a 5 autisti
+1. Start 5 - 300 euro/mese
    - fino a 5 mezzi
-   - documenti e scadenze
-   - chat base
+   - fino a 3 strumenti o muletti
+   - fino a 10 account
+   - 10 GB file inclusi
 
-2. Pro - 99 euro/mese
-   - fino a 20 autisti
-   - fino a 25 mezzi
-   - app nativa
-   - guasti, check, push
-   - storage piu alto
+2. Fleet 10 - 450 euro/mese
+   - fino a 10 mezzi
+   - fino a 5 strumenti o muletti
+   - fino a 20 account
+   - 20 GB file inclusi
 
-3. Business - 199 euro/mese
-   - fino a 60 autisti
-   - fino a 80 mezzi
-   - ufficio e magazzino
-   - gruppi chat
-   - report e storico avanzato
+3. Fleet 20+ - da 650 euro/mese
+   - 20, 30 o 50 mezzi
+   - ufficio, magazzino e reparti
+   - report costi, storico e storage maggiore
+   - account proporzionati alla flotta
 
 4. Enterprise - prezzo su richiesta
    - multi sede
    - ruoli avanzati
+   - storage e onboarding dedicati
    - audit
    - import massivo
    - assistenza prioritaria
@@ -138,4 +137,3 @@ Ipotesi iniziale:
    - azienda crea scadenza attrezzatura
    - autista invia foto in chat e la vede subito
 6. Dopo il test, passare a chat gruppi e letture per persona.
-

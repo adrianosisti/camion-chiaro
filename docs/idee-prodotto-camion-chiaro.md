@@ -62,9 +62,13 @@ Questa roadmap raccoglie idee pratiche per trasformare Camion Chiaro da app util
 
 ## Prezzi possibili
 
-- Starter: 29-39 euro/mese, fino a 5 autisti e 5 mezzi.
-- Pro: 69-99 euro/mese, fino a 25 autisti/mezzi, notifiche, documenti, chat e report base.
-- Business: 149-249 euro/mese, multi-sede, ruoli, report, export e storico avanzato.
-- Enterprise: prezzo su richiesta, API, white label, supporto dedicato e migrazione dati.
+- Start 5: 300 euro/mese, fino a 5 mezzi, 3 strumenti o muletti, 10 account e 10 GB file.
+- Fleet 10: 450 euro/mese, fino a 10 mezzi, 5 strumenti o muletti, 20 account e 20 GB file.
+- Fleet 20: 650 euro/mese, fino a 20 mezzi, 10 strumenti o muletti, 40 account e 30 GB file.
+- Fleet 30/50: 850-1.200 euro/mese, flotte strutturate, reparti, report e storage maggiore.
+- Enterprise: prezzo su richiesta, API, supporto dedicato, storage personalizzato e migrazione dati.
+- Chat aziendale completa: +100 euro/mese.
+- Start-up kit: 1.500 euro una tantum.
+- Storage extra: pacchetti 20 GB, 50 GB e 100 GB.
 
-L idea piu importante: vendere serenita. Il cliente non compra "un app", compra meno multe, meno scadenze dimenticate, meno telefonate inutili e piu controllo sui mezzi.
+L idea piu importante: vendere serenita e controllo. Il cliente non compra "un app", compra meno scadenze dimenticate, meno telefonate inutili, documenti trovati subito, storico dei guasti e piu controllo economico sui mezzi.

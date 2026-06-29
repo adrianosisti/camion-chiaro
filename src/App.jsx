@@ -3143,12 +3143,20 @@ const homeDashboardTranslations = {
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Scadenze',
     'homeAssistant.documents': 'Documenti',
+    'homeAssistant.errorMessage': 'Non riesco a rispondere adesso. Scrivi cosa stavi facendo oppure apri la guida: ti porto comunque al punto giusto.',
     'homeAssistant.faults': 'Guasti',
+    'homeAssistant.guidedMode': 'Risposta guidata',
+    'homeAssistant.initialMessage': 'Ciao, sono l assistente Camion Chiaro. Dimmi cosa non riesci a fare e ti guido passo passo.',
+    'homeAssistant.openAssistant': 'Apri assistente',
     'homeAssistant.openChat': 'Apri chat',
     'homeAssistant.openGuide': 'Apri guida',
+    'homeAssistant.placeholder': 'Scrivi qui il problema o cosa vuoi fare...',
     'homeAssistant.question': 'Come posso aiutarti oggi?',
+    'homeAssistant.quickHelp': 'Aiutami con',
+    'homeAssistant.send': 'Invia',
     'homeAssistant.status': 'Assistente live',
     'homeAssistant.title': 'Assistente Camion Chiaro',
+    'homeAssistant.typing': 'Sto preparando la risposta...',
     'support.assistant': 'Assistente AI',
   },
   en: {
@@ -3169,12 +3177,20 @@ const homeDashboardTranslations = {
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Deadlines',
     'homeAssistant.documents': 'Documents',
+    'homeAssistant.errorMessage': 'I cannot answer right now. Tell me what you were doing or open the guide and I will still point you to the right place.',
     'homeAssistant.faults': 'Faults',
+    'homeAssistant.guidedMode': 'Guided answer',
+    'homeAssistant.initialMessage': 'Hi, I am the Camion Chiaro assistant. Tell me what you cannot do and I will guide you step by step.',
+    'homeAssistant.openAssistant': 'Open assistant',
     'homeAssistant.openChat': 'Open chat',
     'homeAssistant.openGuide': 'Open guide',
+    'homeAssistant.placeholder': 'Write the problem or what you want to do...',
     'homeAssistant.question': 'How can I help today?',
+    'homeAssistant.quickHelp': 'Help me with',
+    'homeAssistant.send': 'Send',
     'homeAssistant.status': 'Live assistant',
     'homeAssistant.title': 'Camion Chiaro Assistant',
+    'homeAssistant.typing': 'Preparing the answer...',
     'support.assistant': 'AI assistant',
   },
   es: {
@@ -3195,12 +3211,20 @@ const homeDashboardTranslations = {
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Vencimientos',
     'homeAssistant.documents': 'Documentos',
+    'homeAssistant.errorMessage': 'No puedo responder ahora. Escribe lo que estabas haciendo o abre la guia: te llevo al punto correcto.',
     'homeAssistant.faults': 'Averias',
+    'homeAssistant.guidedMode': 'Respuesta guiada',
+    'homeAssistant.initialMessage': 'Hola, soy el asistente Camion Chiaro. Dime que no puedes hacer y te guio paso a paso.',
+    'homeAssistant.openAssistant': 'Abrir asistente',
     'homeAssistant.openChat': 'Abrir chat',
     'homeAssistant.openGuide': 'Abrir guia',
+    'homeAssistant.placeholder': 'Escribe el problema o lo que quieres hacer...',
     'homeAssistant.question': 'Como puedo ayudarte hoy?',
+    'homeAssistant.quickHelp': 'Ayudame con',
+    'homeAssistant.send': 'Enviar',
     'homeAssistant.status': 'Asistente live',
     'homeAssistant.title': 'Asistente Camion Chiaro',
+    'homeAssistant.typing': 'Preparando la respuesta...',
     'support.assistant': 'Asistente AI',
   },
   fr: {
@@ -3221,12 +3245,20 @@ const homeDashboardTranslations = {
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Echeances',
     'homeAssistant.documents': 'Documents',
+    'homeAssistant.errorMessage': 'Je ne peux pas repondre maintenant. Ecris ce que tu faisais ou ouvre le guide: je te dirige quand meme.',
     'homeAssistant.faults': 'Pannes',
+    'homeAssistant.guidedMode': 'Reponse guidee',
+    'homeAssistant.initialMessage': 'Bonjour, je suis l assistant Camion Chiaro. Dis-moi ce que tu veux faire et je te guide pas a pas.',
+    'homeAssistant.openAssistant': 'Ouvrir assistant',
     'homeAssistant.openChat': 'Ouvrir chat',
     'homeAssistant.openGuide': 'Ouvrir guide',
+    'homeAssistant.placeholder': 'Ecris le probleme ou ce que tu veux faire...',
     'homeAssistant.question': 'Comment puis-je aider aujourd hui?',
+    'homeAssistant.quickHelp': 'Aide-moi avec',
+    'homeAssistant.send': 'Envoyer',
     'homeAssistant.status': 'Assistant live',
     'homeAssistant.title': 'Assistant Camion Chiaro',
+    'homeAssistant.typing': 'Preparation de la reponse...',
     'support.assistant': 'Assistant IA',
   },
   de: {
@@ -3247,12 +3279,20 @@ const homeDashboardTranslations = {
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Fristen',
     'homeAssistant.documents': 'Dokumente',
+    'homeAssistant.errorMessage': 'Ich kann gerade nicht antworten. Schreibe, was du tun wolltest, oder offne die Hilfe: ich leite dich trotzdem weiter.',
     'homeAssistant.faults': 'Schaden',
+    'homeAssistant.guidedMode': 'Gefuhrte Antwort',
+    'homeAssistant.initialMessage': 'Hallo, ich bin der Camion Chiaro Assistent. Sag mir, was nicht klappt, und ich fuhre dich Schritt fur Schritt.',
+    'homeAssistant.openAssistant': 'Assistent offnen',
     'homeAssistant.openChat': 'Chat offnen',
     'homeAssistant.openGuide': 'Hilfe offnen',
+    'homeAssistant.placeholder': 'Schreibe das Problem oder was du tun mochtest...',
     'homeAssistant.question': 'Wie kann ich heute helfen?',
+    'homeAssistant.quickHelp': 'Hilf mir mit',
+    'homeAssistant.send': 'Senden',
     'homeAssistant.status': 'Live-Assistent',
     'homeAssistant.title': 'Camion Chiaro Assistent',
+    'homeAssistant.typing': 'Antwort wird vorbereitet...',
     'support.assistant': 'KI-Assistent',
   },
   ro: {
@@ -3273,12 +3313,20 @@ const homeDashboardTranslations = {
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Scadente',
     'homeAssistant.documents': 'Documente',
+    'homeAssistant.errorMessage': 'Nu pot raspunde acum. Scrie ce incercai sa faci sau deschide ghidul: te duc oricum la locul potrivit.',
     'homeAssistant.faults': 'Defectiuni',
+    'homeAssistant.guidedMode': 'Raspuns ghidat',
+    'homeAssistant.initialMessage': 'Buna, sunt asistentul Camion Chiaro. Spune-mi ce nu poti face si te ghidez pas cu pas.',
+    'homeAssistant.openAssistant': 'Deschide asistent',
     'homeAssistant.openChat': 'Deschide chat',
     'homeAssistant.openGuide': 'Deschide ghid',
+    'homeAssistant.placeholder': 'Scrie problema sau ce vrei sa faci...',
     'homeAssistant.question': 'Cum te pot ajuta azi?',
+    'homeAssistant.quickHelp': 'Ajuta-ma cu',
+    'homeAssistant.send': 'Trimite',
     'homeAssistant.status': 'Asistent live',
     'homeAssistant.title': 'Asistent Camion Chiaro',
+    'homeAssistant.typing': 'Pregatesc raspunsul...',
     'support.assistant': 'Asistent AI',
   },
   pl: {
@@ -3299,12 +3347,20 @@ const homeDashboardTranslations = {
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Terminy',
     'homeAssistant.documents': 'Dokumenty',
+    'homeAssistant.errorMessage': 'Nie moge teraz odpowiedziec. Napisz, co robiles, albo otworz pomoc: nadal wskaze wlasciwe miejsce.',
     'homeAssistant.faults': 'Usterki',
+    'homeAssistant.guidedMode': 'Odpowiedz prowadzona',
+    'homeAssistant.initialMessage': 'Czesc, jestem asystentem Camion Chiaro. Napisz, czego nie mozesz zrobic, a poprowadze cie krok po kroku.',
+    'homeAssistant.openAssistant': 'Otworz asystenta',
     'homeAssistant.openChat': 'Otworz chat',
     'homeAssistant.openGuide': 'Otworz pomoc',
+    'homeAssistant.placeholder': 'Napisz problem albo co chcesz zrobic...',
     'homeAssistant.question': 'Jak moge dzis pomoc?',
+    'homeAssistant.quickHelp': 'Pomoz mi z',
+    'homeAssistant.send': 'Wyslij',
     'homeAssistant.status': 'Asystent live',
     'homeAssistant.title': 'Asystent Camion Chiaro',
+    'homeAssistant.typing': 'Przygotowuje odpowiedz...',
     'support.assistant': 'Asystent AI',
   },
 }
@@ -7613,7 +7669,17 @@ function App() {
               />
               <HomeCommandPanel actions={homeCommandActions} t={t} />
               <HomeAssistantStrip
-                onOpenChat={() => setActiveView('chat')}
+                companyName={companyName}
+                contextSummary={{
+                  activeDriverCount,
+                  activeVehicleCount,
+                  criticalCheckCount,
+                  deadlineCount: summary.next30,
+                  notificationCount,
+                  openFaultCount,
+                  unreadChatCount: companyUnreadChatCount,
+                }}
+                language={language}
                 onOpenSupport={() => setActiveView('support')}
                 topics={homeAssistantTopics}
                 t={t}
@@ -9321,9 +9387,98 @@ function HomeStatusBar({ items = [] }) {
   )
 }
 
-function HomeAssistantStrip({ onOpenChat, onOpenSupport, topics = [], t }) {
-  const [activeTopicId, setActiveTopicId] = useState(topics[0]?.id ?? '')
-  const activeTopic = topics.find((topic) => topic.id === activeTopicId) ?? topics[0]
+function HomeAssistantStrip({
+  companyName = 'Azienda',
+  contextSummary = {},
+  language = defaultLanguage,
+  onOpenSupport,
+  topics = [],
+  t,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [inputValue, setInputValue] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [messages, setMessages] = useState(() => [
+    {
+      content: t('homeAssistant.initialMessage'),
+      id: 'assistant-welcome',
+      role: 'assistant',
+    },
+  ])
+  const messageListRef = useRef(null)
+
+  useEffect(() => {
+    if (!isOpen || !messageListRef.current) return
+    messageListRef.current.scrollTo({
+      behavior: 'smooth',
+      top: messageListRef.current.scrollHeight,
+    })
+  }, [isOpen, isSending, messages.length])
+
+  async function sendAssistantMessage(rawMessage) {
+    const cleanMessage = rawMessage.trim()
+    if (!cleanMessage || isSending) return
+    const baseMessageId = `${messages.length}-${cleanMessage.length}`
+
+    const userMessage = {
+      content: cleanMessage,
+      id: `user-${baseMessageId}`,
+      role: 'user',
+    }
+    const history = messages.slice(-10)
+
+    setMessages((currentMessages) => [...currentMessages, userMessage])
+    setInputValue('')
+    setIsOpen(true)
+    setIsSending(true)
+
+    try {
+      const response = await fetch('/.netlify/functions/ai-support', {
+        body: JSON.stringify({
+          companyContext: contextSummary,
+          companyName,
+          history,
+          language,
+          message: cleanMessage,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload.error || t('homeAssistant.errorMessage'))
+      }
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          content: payload.reply || t('homeAssistant.errorMessage'),
+          id: `assistant-${baseMessageId}-${String(payload.reply || '').length}`,
+          mode: payload.mode || 'guided',
+          role: 'assistant',
+        },
+      ])
+    } catch {
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          content: t('homeAssistant.errorMessage'),
+          id: `assistant-error-${baseMessageId}`,
+          role: 'assistant',
+        },
+      ])
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    sendAssistantMessage(inputValue)
+  }
+
+  function handleTopicClick(topic) {
+    sendAssistantMessage(`${t('homeAssistant.quickHelp')} ${topic.label}`)
+  }
 
   return (
     <section className="home-assistant-strip" aria-label={t('homeAssistant.title')}>
@@ -9338,16 +9493,13 @@ function HomeAssistantStrip({ onOpenChat, onOpenSupport, topics = [], t }) {
       </div>
       <div className="home-assistant-message">
         <small>{t('homeAssistant.question')}</small>
-        <strong>{activeTopic?.answer ?? t('homeAssistant.body')}</strong>
+        <strong>{t('homeAssistant.body')}</strong>
       </div>
-      <div className="home-assistant-topics" role="tablist" aria-label={t('homeAssistant.question')}>
+      <div className="home-assistant-topics" aria-label={t('homeAssistant.question')}>
         {topics.map((topic) => (
           <button
-            aria-selected={activeTopic?.id === topic.id}
-            className={activeTopic?.id === topic.id ? 'is-active' : ''}
             key={topic.id}
-            onClick={() => setActiveTopicId(topic.id)}
-            role="tab"
+            onClick={() => handleTopicClick(topic)}
             type="button"
           >
             {topic.label}
@@ -9359,11 +9511,77 @@ function HomeAssistantStrip({ onOpenChat, onOpenSupport, topics = [], t }) {
           <BookOpen size={15} />
           {t('homeAssistant.openGuide')}
         </button>
-        <button className="primary-button compact-button" onClick={onOpenChat} type="button">
+        <button className="primary-button compact-button" onClick={() => setIsOpen(true)} type="button">
           <Send size={15} />
-          {t('homeAssistant.openChat')}
+          {t('homeAssistant.openAssistant')}
         </button>
       </div>
+      {isOpen && (
+        <div className="assistant-chat-backdrop" onClick={() => setIsOpen(false)}>
+          <section
+            aria-label={t('homeAssistant.title')}
+            className="assistant-chat-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="assistant-chat-header">
+              <span className="assistant-chat-avatar">
+                <Bot size={20} />
+              </span>
+              <span>
+                <strong>{t('homeAssistant.title')}</strong>
+                <small>{companyName}</small>
+              </span>
+              <button
+                aria-label={t('common.close')}
+                className="icon-button"
+                onClick={() => setIsOpen(false)}
+                type="button"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <div className="assistant-chat-body" ref={messageListRef}>
+              {messages.map((message) => (
+                <article className={`assistant-chat-message is-${message.role}`} key={message.id}>
+                  <p>{message.content}</p>
+                  {message.mode === 'guided' && <small>{t('homeAssistant.guidedMode')}</small>}
+                </article>
+              ))}
+              {isSending && (
+                <article className="assistant-chat-message is-assistant is-loading" aria-live="polite">
+                  <p>{t('homeAssistant.typing')}</p>
+                </article>
+              )}
+            </div>
+            <div className="assistant-chat-quick">
+              {topics.map((topic) => (
+                <button key={topic.id} onClick={() => handleTopicClick(topic)} type="button">
+                  {topic.label}
+                </button>
+              ))}
+            </div>
+            <form className="assistant-chat-input" onSubmit={handleSubmit}>
+              <textarea
+                aria-label={t('homeAssistant.placeholder')}
+                onChange={(event) => setInputValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault()
+                    sendAssistantMessage(inputValue)
+                  }
+                }}
+                placeholder={t('homeAssistant.placeholder')}
+                rows={1}
+                value={inputValue}
+              />
+              <button className="primary-button compact-button" disabled={isSending || !inputValue.trim()} type="submit">
+                <Send size={16} />
+                {t('homeAssistant.send')}
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
     </section>
   )
 }

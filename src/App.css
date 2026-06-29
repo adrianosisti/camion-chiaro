@@ -1817,7 +1817,7 @@
 
 .assistant-chat-modal {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
   width: min(460px, calc(100vw - 32px));
   height: min(680px, calc(100vh - 48px));
   overflow: hidden;
@@ -1937,6 +1937,10 @@
 }
 
 .assistant-chat-quick button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   flex: 0 0 auto;
   min-height: 32px;
   padding: 0 11px;
@@ -1948,6 +1952,47 @@
   font-size: 0.75rem;
   font-weight: 820;
   cursor: pointer;
+}
+
+.assistant-chat-quick .assistant-ticket-button {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.assistant-chat-ticket {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  background:
+    linear-gradient(135deg, rgba(18, 198, 223, 0.1), rgba(255, 255, 255, 0)),
+    #ffffff;
+}
+
+.assistant-chat-ticket strong {
+  color: #0f172a;
+  font-size: 0.86rem;
+  font-weight: 860;
+}
+
+.assistant-chat-ticket p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.assistant-chat-ticket-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assistant-chat-ticket-actions .primary-button,
+.assistant-chat-ticket-actions .secondary-button {
+  min-height: 34px;
+  text-decoration: none;
 }
 
 .assistant-chat-input {

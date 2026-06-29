@@ -180,6 +180,7 @@ const emptyCompanyStorageSummary = {
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
 const demoCompanyName = 'Spedifast SRL'
+const supportEmail = 'assistenza@camionchiaro.it'
 const placeholderCompanyNames = new Set(['Camion Chiaro', 'Camion Chiaro Demo'])
 const fleetTypeOptions = [
   { value: 'furgone', label: 'Furgone' },
@@ -3147,14 +3148,19 @@ const homeDashboardTranslations = {
     'homeAssistant.faults': 'Guasti',
     'homeAssistant.guidedMode': 'Risposta guidata',
     'homeAssistant.initialMessage': 'Ciao, sono l assistente Camion Chiaro. Dimmi cosa non riesci a fare e ti guido passo passo.',
+    'homeAssistant.notHelpful': 'Non e stato utile?',
     'homeAssistant.openAssistant': 'Apri assistente',
     'homeAssistant.openChat': 'Apri chat',
     'homeAssistant.openGuide': 'Apri guida',
+    'homeAssistant.openTicket': 'Apri ticket email',
     'homeAssistant.placeholder': 'Scrivi qui il problema o cosa vuoi fare...',
     'homeAssistant.question': 'Come posso aiutarti oggi?',
     'homeAssistant.quickHelp': 'Aiutami con',
     'homeAssistant.send': 'Invia',
-    'homeAssistant.status': 'Assistente live',
+    'homeAssistant.status': 'Supporto guidato',
+    'homeAssistant.ticketBody': 'Se la risposta non ti ha aiutato, scrivi all assistenza Camion Chiaro. Prepariamo una email con azienda e ultima domanda, cosi il supporto capisce subito il caso.',
+    'homeAssistant.ticketMessage': 'Mi dispiace, allora apriamo un ticket. Usa il pulsante qui sotto: prepara una email a {email} con azienda, ultima domanda e spazio per descrivere cosa non funziona.',
+    'homeAssistant.ticketTitle': 'Apri una richiesta assistenza',
     'homeAssistant.title': 'Assistente Camion Chiaro',
     'homeAssistant.typing': 'Sto preparando la risposta...',
     'support.assistant': 'Assistente guidato',
@@ -3181,14 +3187,19 @@ const homeDashboardTranslations = {
     'homeAssistant.faults': 'Faults',
     'homeAssistant.guidedMode': 'Guided answer',
     'homeAssistant.initialMessage': 'Hi, I am the Camion Chiaro assistant. Tell me what you cannot do and I will guide you step by step.',
+    'homeAssistant.notHelpful': 'Was this not useful?',
     'homeAssistant.openAssistant': 'Open assistant',
     'homeAssistant.openChat': 'Open chat',
     'homeAssistant.openGuide': 'Open guide',
+    'homeAssistant.openTicket': 'Open email ticket',
     'homeAssistant.placeholder': 'Write the problem or what you want to do...',
     'homeAssistant.question': 'How can I help today?',
     'homeAssistant.quickHelp': 'Help me with',
     'homeAssistant.send': 'Send',
     'homeAssistant.status': 'Guided support',
+    'homeAssistant.ticketBody': 'If the answer did not help, contact Camion Chiaro support. We prepare an email with company and last question so support understands the case quickly.',
+    'homeAssistant.ticketMessage': 'Sorry, let us open a ticket. Use the button below: it prepares an email to {email} with company, last question and space to describe what is not working.',
+    'homeAssistant.ticketTitle': 'Open a support request',
     'homeAssistant.title': 'Camion Chiaro Assistant',
     'homeAssistant.typing': 'Preparing the answer...',
     'support.assistant': 'Guided assistant',
@@ -3215,14 +3226,19 @@ const homeDashboardTranslations = {
     'homeAssistant.faults': 'Averias',
     'homeAssistant.guidedMode': 'Respuesta guiada',
     'homeAssistant.initialMessage': 'Hola, soy el asistente Camion Chiaro. Dime que no puedes hacer y te guio paso a paso.',
+    'homeAssistant.notHelpful': 'No ha sido util?',
     'homeAssistant.openAssistant': 'Abrir asistente',
     'homeAssistant.openChat': 'Abrir chat',
     'homeAssistant.openGuide': 'Abrir guia',
+    'homeAssistant.openTicket': 'Abrir ticket email',
     'homeAssistant.placeholder': 'Escribe el problema o lo que quieres hacer...',
     'homeAssistant.question': 'Como puedo ayudarte hoy?',
     'homeAssistant.quickHelp': 'Ayudame con',
     'homeAssistant.send': 'Enviar',
     'homeAssistant.status': 'Soporte guiado',
+    'homeAssistant.ticketBody': 'Si la respuesta no te ha ayudado, escribe al soporte Camion Chiaro. Preparamos un email con empresa y ultima pregunta para entender rapido el caso.',
+    'homeAssistant.ticketMessage': 'Lo siento, abramos un ticket. Usa el boton de abajo: prepara un email a {email} con empresa, ultima pregunta y espacio para describir el problema.',
+    'homeAssistant.ticketTitle': 'Abrir solicitud de ayuda',
     'homeAssistant.title': 'Asistente Camion Chiaro',
     'homeAssistant.typing': 'Preparando la respuesta...',
     'support.assistant': 'Asistente guiado',
@@ -3249,14 +3265,19 @@ const homeDashboardTranslations = {
     'homeAssistant.faults': 'Pannes',
     'homeAssistant.guidedMode': 'Reponse guidee',
     'homeAssistant.initialMessage': 'Bonjour, je suis l assistant Camion Chiaro. Dis-moi ce que tu veux faire et je te guide pas a pas.',
+    'homeAssistant.notHelpful': 'Ce n etait pas utile?',
     'homeAssistant.openAssistant': 'Ouvrir assistant',
     'homeAssistant.openChat': 'Ouvrir chat',
     'homeAssistant.openGuide': 'Ouvrir guide',
+    'homeAssistant.openTicket': 'Ouvrir ticket email',
     'homeAssistant.placeholder': 'Ecris le probleme ou ce que tu veux faire...',
     'homeAssistant.question': 'Comment puis-je aider aujourd hui?',
     'homeAssistant.quickHelp': 'Aide-moi avec',
     'homeAssistant.send': 'Envoyer',
     'homeAssistant.status': 'Support guide',
+    'homeAssistant.ticketBody': 'Si la reponse ne t a pas aide, ecris au support Camion Chiaro. Nous preparons un email avec entreprise et derniere question pour comprendre vite le cas.',
+    'homeAssistant.ticketMessage': 'Desole, ouvrons un ticket. Utilise le bouton ci-dessous: il prepare un email a {email} avec entreprise, derniere question et espace pour decrire le probleme.',
+    'homeAssistant.ticketTitle': 'Ouvrir une demande support',
     'homeAssistant.title': 'Assistant Camion Chiaro',
     'homeAssistant.typing': 'Preparation de la reponse...',
     'support.assistant': 'Assistant guide',
@@ -3283,14 +3304,19 @@ const homeDashboardTranslations = {
     'homeAssistant.faults': 'Schaden',
     'homeAssistant.guidedMode': 'Gefuhrte Antwort',
     'homeAssistant.initialMessage': 'Hallo, ich bin der Camion Chiaro Assistent. Sag mir, was nicht klappt, und ich fuhre dich Schritt fur Schritt.',
+    'homeAssistant.notHelpful': 'War das nicht hilfreich?',
     'homeAssistant.openAssistant': 'Assistent offnen',
     'homeAssistant.openChat': 'Chat offnen',
     'homeAssistant.openGuide': 'Hilfe offnen',
+    'homeAssistant.openTicket': 'E-Mail-Ticket offnen',
     'homeAssistant.placeholder': 'Schreibe das Problem oder was du tun mochtest...',
     'homeAssistant.question': 'Wie kann ich heute helfen?',
     'homeAssistant.quickHelp': 'Hilf mir mit',
     'homeAssistant.send': 'Senden',
     'homeAssistant.status': 'Gefuhrter Support',
+    'homeAssistant.ticketBody': 'Wenn die Antwort nicht geholfen hat, schreibe dem Camion Chiaro Support. Wir bereiten eine E-Mail mit Firma und letzter Frage vor.',
+    'homeAssistant.ticketMessage': 'Tut mir leid, offnen wir ein Ticket. Der Button unten erstellt eine E-Mail an {email} mit Firma, letzter Frage und Platz fur die Problembeschreibung.',
+    'homeAssistant.ticketTitle': 'Supportanfrage offnen',
     'homeAssistant.title': 'Camion Chiaro Assistent',
     'homeAssistant.typing': 'Antwort wird vorbereitet...',
     'support.assistant': 'Gefuhrter Assistent',
@@ -3317,14 +3343,19 @@ const homeDashboardTranslations = {
     'homeAssistant.faults': 'Defectiuni',
     'homeAssistant.guidedMode': 'Raspuns ghidat',
     'homeAssistant.initialMessage': 'Buna, sunt asistentul Camion Chiaro. Spune-mi ce nu poti face si te ghidez pas cu pas.',
+    'homeAssistant.notHelpful': 'Nu a fost util?',
     'homeAssistant.openAssistant': 'Deschide asistent',
     'homeAssistant.openChat': 'Deschide chat',
     'homeAssistant.openGuide': 'Deschide ghid',
+    'homeAssistant.openTicket': 'Deschide ticket email',
     'homeAssistant.placeholder': 'Scrie problema sau ce vrei sa faci...',
     'homeAssistant.question': 'Cum te pot ajuta azi?',
     'homeAssistant.quickHelp': 'Ajuta-ma cu',
     'homeAssistant.send': 'Trimite',
     'homeAssistant.status': 'Suport ghidat',
+    'homeAssistant.ticketBody': 'Daca raspunsul nu te-a ajutat, scrie suportului Camion Chiaro. Pregatim un email cu firma si ultima intrebare pentru a intelege cazul rapid.',
+    'homeAssistant.ticketMessage': 'Imi pare rau, deschidem un ticket. Foloseste butonul de mai jos: pregateste un email catre {email} cu firma, ultima intrebare si spatiu pentru problema.',
+    'homeAssistant.ticketTitle': 'Deschide cerere suport',
     'homeAssistant.title': 'Asistent Camion Chiaro',
     'homeAssistant.typing': 'Pregatesc raspunsul...',
     'support.assistant': 'Asistent ghidat',
@@ -3351,14 +3382,19 @@ const homeDashboardTranslations = {
     'homeAssistant.faults': 'Usterki',
     'homeAssistant.guidedMode': 'Odpowiedz prowadzona',
     'homeAssistant.initialMessage': 'Czesc, jestem asystentem Camion Chiaro. Napisz, czego nie mozesz zrobic, a poprowadze cie krok po kroku.',
+    'homeAssistant.notHelpful': 'To nie pomoglo?',
     'homeAssistant.openAssistant': 'Otworz asystenta',
     'homeAssistant.openChat': 'Otworz chat',
     'homeAssistant.openGuide': 'Otworz pomoc',
+    'homeAssistant.openTicket': 'Otworz ticket email',
     'homeAssistant.placeholder': 'Napisz problem albo co chcesz zrobic...',
     'homeAssistant.question': 'Jak moge dzis pomoc?',
     'homeAssistant.quickHelp': 'Pomoz mi z',
     'homeAssistant.send': 'Wyslij',
     'homeAssistant.status': 'Wsparcie prowadzone',
+    'homeAssistant.ticketBody': 'Jesli odpowiedz nie pomogla, napisz do wsparcia Camion Chiaro. Przygotujemy email z firma i ostatnim pytaniem, aby szybciej zrozumiec sprawe.',
+    'homeAssistant.ticketMessage': 'Przykro mi, otworzmy ticket. Uzyj przycisku ponizej: przygotuje email do {email} z firma, ostatnim pytaniem i miejscem na opis problemu.',
+    'homeAssistant.ticketTitle': 'Otworz zgloszenie pomocy',
     'homeAssistant.title': 'Asystent Camion Chiaro',
     'homeAssistant.typing': 'Przygotowuje odpowiedz...',
     'support.assistant': 'Asystent prowadzony',
@@ -9398,6 +9434,7 @@ function HomeAssistantStrip({
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [isTicketVisible, setIsTicketVisible] = useState(false)
   const [messages, setMessages] = useState(() => [
     {
       content: t('homeAssistant.initialMessage'),
@@ -9480,6 +9517,38 @@ function HomeAssistantStrip({
     sendAssistantMessage(`${t('homeAssistant.quickHelp')} ${topic.label}`)
   }
 
+  function handleTicketRequest() {
+    setIsOpen(true)
+    setIsTicketVisible(true)
+    setMessages((currentMessages) => {
+      if (currentMessages.some((message) => message.id === 'assistant-ticket')) return currentMessages
+
+      return [
+        ...currentMessages,
+        {
+          content: t('homeAssistant.ticketMessage', { email: supportEmail }),
+          id: 'assistant-ticket',
+          role: 'assistant',
+        },
+      ]
+    })
+  }
+
+  const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')?.content ?? ''
+  const ticketSubject = encodeURIComponent(`Ticket Camion Chiaro - ${companyName}`)
+  const ticketBody = encodeURIComponent([
+    `Azienda: ${companyName}`,
+    'Sezione: Assistente guidato',
+    `Ultima domanda: ${lastUserMessage || 'Non indicata'}`,
+    '',
+    'Descrizione problema:',
+    '',
+    'Dispositivo usato: PC / iPhone / Android',
+    'Ruolo: azienda / autista / ufficio / magazzino',
+    'Priorita: bassa / media / urgente',
+  ].join('\n'))
+  const ticketMailto = `mailto:${supportEmail}?subject=${ticketSubject}&body=${ticketBody}`
+
   return (
     <section className="home-assistant-strip" aria-label={t('homeAssistant.title')}>
       <div className="home-assistant-title">
@@ -9559,7 +9628,27 @@ function HomeAssistantStrip({
                   {topic.label}
                 </button>
               ))}
+              <button className="assistant-ticket-button" onClick={handleTicketRequest} type="button">
+                <Mail size={14} />
+                {t('homeAssistant.notHelpful')}
+              </button>
             </div>
+            {isTicketVisible && (
+              <div className="assistant-chat-ticket">
+                <strong>{t('homeAssistant.ticketTitle')}</strong>
+                <p>{t('homeAssistant.ticketBody')}</p>
+                <div className="assistant-chat-ticket-actions">
+                  <a className="primary-button compact-button" href={ticketMailto}>
+                    <Mail size={15} />
+                    {t('homeAssistant.openTicket')}
+                  </a>
+                  <button className="secondary-button compact-button" onClick={onOpenSupport} type="button">
+                    <BookOpen size={15} />
+                    {t('homeAssistant.openGuide')}
+                  </button>
+                </div>
+              </div>
+            )}
             <form className="assistant-chat-input" onSubmit={handleSubmit}>
               <textarea
                 aria-label={t('homeAssistant.placeholder')}

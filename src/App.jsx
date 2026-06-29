@@ -269,7 +269,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['chat', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings', 'support'])
+const deepLinkViews = new Set(['chat', 'deadlines', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -349,6 +349,26 @@ const translations = {
     'driver.noteBody': 'Quando Supabase sara collegato, questa vista leggera solo le scadenze dell autista loggato e mostrera avvisi personali, documenti caricati, check mattutini e segnalazioni guasto.',
     'driver.noteOverline': 'Notifiche',
     'driver.noteTitle': 'Qui arrivano gli avvisi in app',
+    'homeCommand.aria': 'Comandi rapidi azienda',
+    'homeCommand.chatDetail': 'Singole, gruppi e reparti',
+    'homeCommand.chatLabel': 'Chat',
+    'homeCommand.costsDetail': 'Guasti, riparazioni e report',
+    'homeCommand.costsLabel': 'Centro costi',
+    'homeCommand.deadlinesDetail': 'Rinnovi, documenti e solleciti',
+    'homeCommand.deadlinesLabel': 'Scadenze',
+    'homeCommand.fleetDetail': 'Mezzi, targhe e semirimorchi',
+    'homeCommand.fleetLabel': 'Flotta',
+    'homeCommand.open': 'Apri',
+    'homeCommand.operationsDetail': 'Check, guasti e attivita da lavorare',
+    'homeCommand.operationsLabel': 'Registro operativo',
+    'homeCommand.peopleDetail': 'Autisti, ufficio e magazzino',
+    'homeCommand.peopleLabel': 'Persone',
+    'homeCommand.quickAddDetail': 'Nuovo dato aziendale',
+    'homeCommand.quickAddLabel': 'Aggiungi',
+    'homeCommand.settingsDetail': 'Logo, lingua, notifiche e fatture',
+    'homeCommand.settingsLabel': 'Impostazioni',
+    'homeCommand.subtitle': 'Ogni pulsante apre una sezione precisa: la home resta pulita, le pratiche restano lavorabili.',
+    'homeCommand.title': 'Comandi azienda',
     'hero.aria': 'Controllo scadenze',
     'hero.description': 'Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.',
     'hero.factDrivers': 'autisti attivi',
@@ -457,6 +477,26 @@ const translations = {
     'driver.noteBody': 'When Supabase is connected, this view will read only the signed-in driver data and show personal alerts, uploaded documents, morning checks and fault reports.',
     'driver.noteOverline': 'Notifications',
     'driver.noteTitle': 'In-app alerts arrive here',
+    'homeCommand.aria': 'Company quick commands',
+    'homeCommand.chatDetail': 'Direct chats, groups and departments',
+    'homeCommand.chatLabel': 'Chat',
+    'homeCommand.costsDetail': 'Faults, repairs and reports',
+    'homeCommand.costsLabel': 'Cost center',
+    'homeCommand.deadlinesDetail': 'Renewals, documents and reminders',
+    'homeCommand.deadlinesLabel': 'Deadlines',
+    'homeCommand.fleetDetail': 'Vehicles, plates and trailers',
+    'homeCommand.fleetLabel': 'Fleet',
+    'homeCommand.open': 'Open',
+    'homeCommand.operationsDetail': 'Checks, faults and work to handle',
+    'homeCommand.operationsLabel': 'Operations log',
+    'homeCommand.peopleDetail': 'Drivers, office and warehouse',
+    'homeCommand.peopleLabel': 'People',
+    'homeCommand.quickAddDetail': 'New company record',
+    'homeCommand.quickAddLabel': 'Add',
+    'homeCommand.settingsDetail': 'Logo, language, notifications and invoices',
+    'homeCommand.settingsLabel': 'Settings',
+    'homeCommand.subtitle': 'Each button opens a precise area: the home stays clean, every case stays workable.',
+    'homeCommand.title': 'Company commands',
     'hero.aria': 'Deadline control',
     'hero.description': 'A clean screen to see deadlines, morning checks and faults to manage right away.',
     'hero.factDrivers': 'active drivers',
@@ -565,6 +605,26 @@ const translations = {
     'driver.noteBody': 'Cuando Supabase este conectado, esta vista leera solo los datos del conductor conectado y mostrara avisos personales, documentos, checks matinales y averias.',
     'driver.noteOverline': 'Notificaciones',
     'driver.noteTitle': 'Aqui llegan los avisos en app',
+    'homeCommand.aria': 'Comandos rapidos empresa',
+    'homeCommand.chatDetail': 'Chats directos, grupos y departamentos',
+    'homeCommand.chatLabel': 'Chat',
+    'homeCommand.costsDetail': 'Averias, reparaciones e informes',
+    'homeCommand.costsLabel': 'Centro costes',
+    'homeCommand.deadlinesDetail': 'Renovaciones, documentos y avisos',
+    'homeCommand.deadlinesLabel': 'Vencimientos',
+    'homeCommand.fleetDetail': 'Vehiculos, matriculas y semirremolques',
+    'homeCommand.fleetLabel': 'Flota',
+    'homeCommand.open': 'Abrir',
+    'homeCommand.operationsDetail': 'Checks, averias y tareas pendientes',
+    'homeCommand.operationsLabel': 'Registro operativo',
+    'homeCommand.peopleDetail': 'Conductores, oficina y almacen',
+    'homeCommand.peopleLabel': 'Personas',
+    'homeCommand.quickAddDetail': 'Nuevo dato de empresa',
+    'homeCommand.quickAddLabel': 'Añadir',
+    'homeCommand.settingsDetail': 'Logo, idioma, avisos y facturas',
+    'homeCommand.settingsLabel': 'Ajustes',
+    'homeCommand.subtitle': 'Cada boton abre un area precisa: la home queda limpia y las tareas siguen listas.',
+    'homeCommand.title': 'Comandos empresa',
     'hero.aria': 'Control de vencimientos',
     'hero.description': 'Una pantalla limpia para ver vencimientos, checks matinales y averias pendientes.',
     'hero.factDrivers': 'conductores activos',
@@ -673,6 +733,26 @@ const translations = {
     'driver.noteBody': 'Quand Supabase sera connecte, cette vue lira seulement les donnees du chauffeur connecte et affichera alertes personnelles, documents, checks du matin et pannes.',
     'driver.noteOverline': 'Notifications',
     'driver.noteTitle': 'Les alertes app arrivent ici',
+    'homeCommand.aria': 'Commandes rapides entreprise',
+    'homeCommand.chatDetail': 'Chats directs, groupes et services',
+    'homeCommand.chatLabel': 'Chat',
+    'homeCommand.costsDetail': 'Pannes, reparations et rapports',
+    'homeCommand.costsLabel': 'Centre couts',
+    'homeCommand.deadlinesDetail': 'Renouvellements, documents et relances',
+    'homeCommand.deadlinesLabel': 'Echeances',
+    'homeCommand.fleetDetail': 'Vehicules, plaques et semi-remorques',
+    'homeCommand.fleetLabel': 'Flotte',
+    'homeCommand.open': 'Ouvrir',
+    'homeCommand.operationsDetail': 'Checks, pannes et actions a traiter',
+    'homeCommand.operationsLabel': 'Registre operationnel',
+    'homeCommand.peopleDetail': 'Chauffeurs, bureau et entrepot',
+    'homeCommand.peopleLabel': 'Personnes',
+    'homeCommand.quickAddDetail': 'Nouvelle donnee entreprise',
+    'homeCommand.quickAddLabel': 'Ajouter',
+    'homeCommand.settingsDetail': 'Logo, langue, alertes et factures',
+    'homeCommand.settingsLabel': 'Reglages',
+    'homeCommand.subtitle': 'Chaque bouton ouvre une zone precise : l accueil reste clair et les dossiers restent traitables.',
+    'homeCommand.title': 'Commandes entreprise',
     'hero.aria': 'Controle des echeances',
     'hero.description': 'Un ecran clair pour voir tout de suite echeances, checks du matin et pannes a gerer.',
     'hero.factDrivers': 'chauffeurs actifs',
@@ -781,6 +861,26 @@ const translations = {
     'driver.noteBody': 'Wenn Supabase verbunden ist, liest diese Ansicht nur die Daten des angemeldeten Fahrers und zeigt personliche Hinweise, Dokumente, Morgenchecks und Schadenmeldungen.',
     'driver.noteOverline': 'Benachrichtigungen',
     'driver.noteTitle': 'App-Hinweise kommen hier an',
+    'homeCommand.aria': 'Schnellbefehle Firma',
+    'homeCommand.chatDetail': 'Direktchats, Gruppen und Abteilungen',
+    'homeCommand.chatLabel': 'Chat',
+    'homeCommand.costsDetail': 'Schaden, Reparaturen und Berichte',
+    'homeCommand.costsLabel': 'Kostenstelle',
+    'homeCommand.deadlinesDetail': 'Verlangerungen, Dokumente und Erinnerungen',
+    'homeCommand.deadlinesLabel': 'Fristen',
+    'homeCommand.fleetDetail': 'Fahrzeuge, Kennzeichen und Auflieger',
+    'homeCommand.fleetLabel': 'Flotte',
+    'homeCommand.open': 'Offnen',
+    'homeCommand.operationsDetail': 'Checks, Schaden und offene Aufgaben',
+    'homeCommand.operationsLabel': 'Betriebsregister',
+    'homeCommand.peopleDetail': 'Fahrer, Buro und Lager',
+    'homeCommand.peopleLabel': 'Personen',
+    'homeCommand.quickAddDetail': 'Neue Firmendaten',
+    'homeCommand.quickAddLabel': 'Hinzufugen',
+    'homeCommand.settingsDetail': 'Logo, Sprache, Hinweise und Rechnungen',
+    'homeCommand.settingsLabel': 'Einstellungen',
+    'homeCommand.subtitle': 'Jeder Button offnet einen klaren Bereich: Startseite sauber, Vorgange weiter bearbeitbar.',
+    'homeCommand.title': 'Firmenbefehle',
     'hero.aria': 'Fristenkontrolle',
     'hero.description': 'Eine klare Ansicht fur Fristen, Morgenchecks und offene Schaden.',
     'hero.factDrivers': 'aktive Fahrer',
@@ -6852,14 +6952,6 @@ function App() {
     )
   }
 
-  function openNewDeadlinePanel() {
-    setRecordsTab('documents')
-    setActiveView('records')
-    window.setTimeout(() => {
-      document.getElementById('new-deadline-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 0)
-  }
-
   function openDashboardHome() {
     setActiveView('dashboard')
     window.setTimeout(() => {
@@ -6887,7 +6979,7 @@ function App() {
 
   function openComplianceFilter(filter) {
     setActiveFilter(filter)
-    setActiveView('dashboard')
+    setActiveView('deadlines')
     window.setTimeout(() => {
       document.getElementById('compliance-board-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 0)
@@ -6911,6 +7003,73 @@ function App() {
 
     setActiveView(viewId)
   }
+
+  const homeCommandActions = [
+    {
+      detail: t('homeCommand.operationsDetail'),
+      icon: Bell,
+      label: t('homeCommand.operationsLabel'),
+      onClick: () => openNotifications('inbox'),
+      tone: notificationCount > 0 ? 'warning' : 'info',
+      value: notificationCount,
+    },
+    {
+      detail: t('homeCommand.deadlinesDetail'),
+      icon: CalendarClock,
+      label: t('homeCommand.deadlinesLabel'),
+      onClick: () => openComplianceFilter('month'),
+      tone: summary.next30 > 0 ? 'warning' : 'info',
+      value: summary.next30,
+    },
+    {
+      detail: t('homeCommand.costsDetail'),
+      icon: Banknote,
+      label: t('homeCommand.costsLabel'),
+      onClick: openCostReport,
+      tone: faultCostSummary.monthCents > 0 ? 'cost' : 'info',
+      value: formatCompactMoneyCents(faultCostSummary.monthCents, defaultCurrency),
+    },
+    {
+      detail: t('homeCommand.peopleDetail'),
+      icon: Users,
+      label: t('homeCommand.peopleLabel'),
+      onClick: () => openRecords('people'),
+      tone: 'info',
+      value: activePeopleCount,
+    },
+    {
+      detail: t('homeCommand.fleetDetail'),
+      icon: Truck,
+      label: t('homeCommand.fleetLabel'),
+      onClick: () => openRecords('fleet'),
+      tone: 'info',
+      value: activeVehicleCount,
+    },
+    {
+      detail: t('homeCommand.chatDetail'),
+      icon: Mail,
+      label: t('homeCommand.chatLabel'),
+      onClick: () => setActiveView('chat'),
+      tone: companyUnreadChatCount > 0 ? 'warning' : 'info',
+      value: companyUnreadChatCount,
+    },
+    {
+      detail: t('homeCommand.quickAddDetail'),
+      icon: Plus,
+      label: t('homeCommand.quickAddLabel'),
+      onClick: () => openRecords('people'),
+      tone: 'info',
+      value: '',
+    },
+    {
+      detail: t('homeCommand.settingsDetail'),
+      icon: SettingsIcon,
+      label: t('homeCommand.settingsLabel'),
+      onClick: () => setActiveView('settings'),
+      tone: 'info',
+      value: '',
+    },
+  ]
 
   return (
     <I18nContext.Provider value={i18nValue}>
@@ -7035,6 +7194,40 @@ function App() {
             syncStatus={companySettingsStatus}
             t={t}
           />
+        ) : activeView === 'deadlines' ? (
+          <section className="content-grid content-grid-full">
+            <div className="main-column">
+              <ComplianceBoard
+                activeFilter={activeFilter}
+                allItemCount={decoratedItems.length}
+                complianceShowAll={complianceShowAll}
+                filteredItems={filteredItems}
+                onToggleShowAll={() => setComplianceShowAll((currentValue) => !currentValue)}
+                onClose={closeItem}
+                onFilter={setActiveFilter}
+                onOpenDetail={setSelectedDeadline}
+                onReminder={sendReminder}
+                onRenew={setSelectedDeadline}
+                workItemCount={complianceWorkItemCount}
+              />
+              <DeadlineDetailModal
+                item={selectedDeadline}
+                onClose={() => setSelectedDeadline(null)}
+                onMarkDone={async (itemId) => {
+                  const closed = await closeItem(itemId)
+                  if (closed !== false) setSelectedDeadline(null)
+                }}
+                onOpenFile={openComplianceItemFile}
+                onReminder={sendReminder}
+                onRenew={async (item, payload, file) => {
+                  const renewed = await renewComplianceItem(item, payload, file)
+                  if (renewed) setSelectedDeadline(null)
+                  return renewed
+                }}
+                statusMessage={documentsSyncStatus || driverDocumentUploadStatus}
+              />
+            </div>
+          </section>
         ) : (
           <>
             <section className="overview-grid" aria-label="Panoramica scadenze">
@@ -7057,71 +7250,7 @@ function App() {
                 summary={summary}
                 t={t}
               />
-              <CostHomeCard
-                faultReportRecords={visibleFaultReportRecords}
-                onOpenReport={openCostReport}
-                vehicleRecords={vehicleRecords}
-              />
-              <DashboardActivityFeed
-                acknowledgedCheckIds={acknowledgedCheckIds}
-                assetPreviewUrl={getAssetPreviewUrl}
-                driverRecords={driverRecords}
-                faultReportRecords={visibleFaultReportRecords}
-                items={decoratedItems}
-                onAcknowledgeCheck={acknowledgeCheck}
-                onMarkCheckUnread={markCheckUnread}
-                onOpenDeadline={setSelectedDeadline}
-                onUpdateFaultStatus={updateFaultReportStatus}
-                vehicleCheckRecords={vehicleCheckRecords}
-                vehicleRecords={vehicleRecords}
-              />
-              <OnboardingPanel
-                activeDriverCount={activeDriverCount}
-                activePeopleCount={activePeopleCount}
-                activeVehicleCount={activeVehicleCount}
-                companyProfile={companyProfile}
-                complianceItemCount={items.length + documentRecords.length}
-                notificationEnabled={phoneNotificationEnabled}
-                onAddDeadline={openNewDeadlinePanel}
-                onOpenDocuments={() => openRecords('documents')}
-                onOpenDrivers={() => openRecords('people')}
-                onOpenFleet={() => openRecords('fleet')}
-                onOpenSettings={() => setActiveView('settings')}
-                t={t}
-              />
-            </section>
-            <section className="content-grid content-grid-full">
-              <div className="main-column">
-                <ComplianceBoard
-                  activeFilter={activeFilter}
-                  allItemCount={decoratedItems.length}
-                  complianceShowAll={complianceShowAll}
-                  filteredItems={filteredItems}
-                  onToggleShowAll={() => setComplianceShowAll((currentValue) => !currentValue)}
-                  onClose={closeItem}
-                  onFilter={setActiveFilter}
-                  onOpenDetail={setSelectedDeadline}
-                  onReminder={sendReminder}
-                  onRenew={setSelectedDeadline}
-                  workItemCount={complianceWorkItemCount}
-                />
-                <DeadlineDetailModal
-                  item={selectedDeadline}
-                  onClose={() => setSelectedDeadline(null)}
-                  onMarkDone={async (itemId) => {
-                    const closed = await closeItem(itemId)
-                    if (closed !== false) setSelectedDeadline(null)
-                  }}
-                  onOpenFile={openComplianceItemFile}
-                  onReminder={sendReminder}
-                  onRenew={async (item, payload, file) => {
-                    const renewed = await renewComplianceItem(item, payload, file)
-                    if (renewed) setSelectedDeadline(null)
-                    return renewed
-                  }}
-                  statusMessage={documentsSyncStatus || driverDocumentUploadStatus}
-                />
-              </div>
+              <HomeCommandPanel actions={homeCommandActions} t={t} />
             </section>
           </>
         )}
@@ -8660,102 +8789,6 @@ function DailyMotivation({ role, t }) {
   )
 }
 
-function OnboardingPanel({
-  activeDriverCount,
-  activePeopleCount = activeDriverCount,
-  activeVehicleCount,
-  companyProfile,
-  complianceItemCount,
-  notificationEnabled,
-  onAddDeadline,
-  onOpenDocuments,
-  onOpenDrivers,
-  onOpenFleet,
-  onOpenSettings,
-  t,
-}) {
-  const companyProfileReady = Boolean(
-    companyProfile.name &&
-    !placeholderCompanyNames.has(companyProfile.name) &&
-    companyProfile.logoPath,
-  )
-  const steps = [
-    {
-      action: onOpenSettings,
-      body: t('onboarding.companyBody'),
-      done: companyProfileReady,
-      icon: Building2,
-      title: t('onboarding.companyTitle'),
-    },
-    {
-      action: onOpenDrivers,
-      body: t('onboarding.driversBody'),
-      done: activePeopleCount > 0,
-      icon: Users,
-      title: t('onboarding.driversTitle'),
-    },
-    {
-      action: onOpenFleet,
-      body: t('onboarding.fleetBody'),
-      done: activeVehicleCount > 0,
-      icon: Truck,
-      title: t('onboarding.fleetTitle'),
-    },
-    {
-      action: complianceItemCount > 0 ? onOpenDocuments : onAddDeadline,
-      body: t('onboarding.deadlinesBody'),
-      done: complianceItemCount > 0,
-      icon: CalendarClock,
-      title: t('onboarding.deadlinesTitle'),
-    },
-    {
-      action: onOpenSettings,
-      body: t('onboarding.notificationsBody'),
-      done: notificationEnabled,
-      icon: Bell,
-      title: t('onboarding.notificationsTitle'),
-    },
-  ]
-  const completedCount = steps.filter((step) => step.done).length
-  const progressValue = Math.round((completedCount / steps.length) * 100)
-
-  if (completedCount === steps.length) return null
-
-  return (
-    <article className="panel setup-panel" aria-label={t('onboarding.title')}>
-      <div className="panel-header compact">
-        <div>
-          <p className="overline">{t('onboarding.overline')}</p>
-          <h2>{t('onboarding.title')}</h2>
-        </div>
-        <span className="setup-summary">{t('onboarding.completed', { count: completedCount, total: steps.length })}</span>
-      </div>
-      <p className="setup-intro">{t('onboarding.body')}</p>
-      <div className="setup-progress" aria-label={t('onboarding.progress')}>
-        <span style={{ width: `${progressValue}%` }} />
-      </div>
-      <div className="setup-list">
-        {steps.map((step, index) => (
-          <button
-            className={step.done ? 'setup-row is-done' : 'setup-row'}
-            key={step.title}
-            onClick={step.action}
-            type="button"
-          >
-            <span className="setup-index">{step.done ? <Check size={15} /> : index + 1}</span>
-            <step.icon size={20} />
-            <span>
-              <strong>{step.title}</strong>
-              <small>{step.body}</small>
-            </span>
-            <b>{step.done ? t('onboarding.done') : t('common.open')}</b>
-          </button>
-        ))}
-      </div>
-    </article>
-  )
-}
-
 function HeroPanel({
   activeDriverCount,
   activeVehicleCount,
@@ -8869,166 +8902,39 @@ function HeroPanel({
   )
 }
 
-function DashboardActivityFeed({
-  acknowledgedCheckIds = [],
-  assetPreviewUrl = () => '',
-  driverRecords = [],
-  faultReportRecords = [],
-  items = [],
-  onAcknowledgeCheck,
-  onMarkCheckUnread,
-  onOpenDeadline,
-  onUpdateFaultStatus,
-  vehicleCheckRecords = [],
-  vehicleRecords = [],
-}) {
-  const { t } = useI18n()
-  const [modalOperationKey, setModalOperationKey] = useState('')
-  const [showAllEvents, setShowAllEvents] = useState(false)
-  const operations = useMemo(
-    () => [
-      ...faultReportRecords.map((report) => ({
-        createdAt: report.createdAt,
-        data: report,
-        id: report.id,
-        kind: 'fault',
-      })),
-      ...vehicleCheckRecords.map((check) => ({
-        createdAt: check.createdAt,
-        data: check,
-        id: check.id,
-        kind: 'check',
-      })),
-    ],
-    [faultReportRecords, vehicleCheckRecords],
-  )
-  const allEvents = useMemo(() => {
-    const deadlineEvents = items
-      .filter((item) => item.dueDate)
-      .sort((first, second) => first.urgency.days - second.urgency.days)
-      .slice(0, 12)
-      .map((item) => ({
-        action: () => onOpenDeadline?.(item),
-        detail: `${item.assignee} · ${formatDate(item.dueDate)}`,
-        icon: CalendarClock,
-        id: `deadline-${item.id}`,
-        isActionable: !['archived', 'done'].includes(item.status) && item.urgency.days <= 30,
-        priority: ['expired', 'critical'].includes(item.urgency.key) ? 3 : item.urgency.days <= 7 ? 2 : 1,
-        sortAt: new Date(item.dueDate).getTime(),
-        status: item.status === 'done' ? t('common.archived') : getUrgencyLabel(item.urgency, t),
-        title: item.type,
-        tone: item.status === 'done' ? 'info' : item.urgency.tone,
-        type: 'Scadenza',
-      }))
-
-    const operationEvents = operations
-      .slice()
-      .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))
-      .slice(0, 16)
-      .map((operation) => {
-        if (operation.kind === 'fault') {
-          const report = operation.data
-          const driver = driverRecords.find((entry) => entry.id === report.driverId)
-          const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
-          const isRead = isFaultArchived(report)
-          const isCritical = ['high', 'stop_vehicle'].includes(report.severity) && !isRead
-
-          return {
-            action: () => setModalOperationKey(`${operation.kind}-${operation.id}`),
-            detail: `${driver?.name ?? t('common.driverMissing')} · ${vehicle?.plate ?? t('common.vehicleMissing')}`,
-            icon: Wrench,
-            id: `${operation.kind}-${operation.id}`,
-            isActionable: !isRead,
-            priority: isCritical ? 3 : isRead ? 0 : 2,
-            sortAt: new Date(report.createdAt).getTime(),
-            status: isRead ? t('common.archived') : getFaultSeverityLabel(report.severity, t),
-            title: report.title,
-            tone: isCritical ? 'danger' : isRead ? 'info' : 'warning',
-            type: t('operations.fault'),
-          }
-        }
-
-        const check = operation.data
-        const driver = driverRecords.find((entry) => entry.id === check.driverId)
-        const vehicle = vehicleRecords.find((entry) => entry.id === check.tractorId)
-        const isRead = isVehicleCheckArchived(check, acknowledgedCheckIds)
-        const isCritical = hasCheckIssues(check)
-
-        return {
-          action: () => setModalOperationKey(`${operation.kind}-${operation.id}`),
-          detail: `${driver?.name ?? t('common.driverMissing')} · ${vehicle?.plate ?? t('common.vehicleMissing')} · ${formatShortDateTime(check.createdAt)}`,
-          icon: ClipboardCheck,
-          id: `${operation.kind}-${operation.id}`,
-          isActionable: !isRead,
-          priority: isCritical && !isRead ? 3 : isRead ? 0 : 1,
-          sortAt: new Date(check.createdAt).getTime(),
-          status: isCritical ? t('operations.checkCritical') : 'Tutto ok',
-          title: isCritical ? 'Check con criticita' : 'Check mattutino ricevuto',
-          tone: isCritical ? 'danger' : 'success',
-          type: t('operations.check'),
-        }
-      })
-
-    return [...deadlineEvents, ...operationEvents]
-      .sort((first, second) => {
-        if (first.priority !== second.priority) return second.priority - first.priority
-        return second.sortAt - first.sortAt
-      })
-      .slice(0, 24)
-  }, [acknowledgedCheckIds, driverRecords, items, onOpenDeadline, operations, t, vehicleRecords])
-  const actionableEvents = allEvents.filter((event) => event.isActionable)
-  const events = (showAllEvents ? allEvents : actionableEvents).slice(0, showAllEvents ? 24 : 10)
-  const modalOperation = operations.find((operation) => `${operation.kind}-${operation.id}` === modalOperationKey)
-
+function HomeCommandPanel({ actions = [], t }) {
   return (
-    <section className="panel activity-feed-panel" aria-label="Registro operativo azienda">
-      <div className="panel-header compact">
+    <section className="home-command-panel" aria-label={t('homeCommand.aria')}>
+      <div className="home-command-header">
         <div>
-          <p className="overline">Registro operativo</p>
-          <h2>{showAllEvents ? 'Storico operativo' : 'Da lavorare'}</h2>
+          <p className="overline">{t('homeCommand.open')}</p>
+          <h2>{t('homeCommand.title')}</h2>
         </div>
-        <div className="activity-feed-header-actions">
-          <span className="status-pill tone-warning">{actionableEvents.length} da lavorare</span>
-          <button className="small-button" onClick={() => setShowAllEvents((currentValue) => !currentValue)} type="button">
-            {showAllEvents ? 'Mostra da lavorare' : 'Mostra tutto'}
-          </button>
-        </div>
+        <p>{t('homeCommand.subtitle')}</p>
       </div>
-      <div className="activity-feed-list">
-        {events.map((event) => (
-          <button className="activity-feed-row" key={event.id} onClick={event.action} type="button">
-            <span className={`operation-icon tone-${event.tone}`}>
-              <event.icon size={18} />
+      <div className="home-command-grid">
+        {actions.map((action) => (
+          <button
+            aria-label={`${t('homeCommand.open')} ${action.label}`}
+            className={`home-command-button tone-${action.tone ?? 'info'}`}
+            key={action.label}
+            onClick={action.onClick}
+            type="button"
+          >
+            <span className="home-command-icon">
+              <action.icon size={20} />
             </span>
-            <span>
-              <small>{event.type}</small>
-              <strong>{event.title}</strong>
-              <em>{event.detail}</em>
+            <span className="home-command-copy">
+              <strong>{action.label}</strong>
+              <small>{action.detail}</small>
             </span>
-            <b className={`status-pill tone-${event.tone}`}>{event.status}</b>
+            {action.value !== '' && action.value !== null && action.value !== undefined && (
+              <b className="home-command-value">{action.value}</b>
+            )}
+            <ChevronRight className="home-command-arrow" size={18} />
           </button>
         ))}
-        {events.length === 0 && (
-          <div className="empty-state-row">
-            <Bell size={20} />
-            <div>
-              <strong>Nessuna novita operativa</strong>
-              <span>Check, guasti e scadenze importanti compariranno qui.</span>
-            </div>
-          </div>
-        )}
       </div>
-      <OperationDetailModal
-        acknowledgedCheckIds={acknowledgedCheckIds}
-        assetPreviewUrl={assetPreviewUrl}
-        driverRecords={driverRecords}
-        operation={modalOperation}
-        onAcknowledgeCheck={onAcknowledgeCheck}
-        onClose={() => setModalOperationKey('')}
-        onMarkCheckUnread={onMarkCheckUnread}
-        onUpdateFaultStatus={onUpdateFaultStatus}
-        vehicleRecords={vehicleRecords}
-      />
     </section>
   )
 }
@@ -10825,51 +10731,6 @@ function getFaultCostSummary(faultReportRecords = []) {
     monthCents: sumFaults(monthFaults),
     yearCents: sumFaults(yearFaults),
   }
-}
-
-function CostHomeCard({ faultReportRecords = [], onOpenReport, vehicleRecords = [] }) {
-  const { language } = useI18n()
-  const summary = getFaultCostSummary(faultReportRecords)
-  const latestVehicle = vehicleRecords.find((vehicle) => vehicle.id === summary.latest?.vehicleId)
-  const defaultCurrency = getDefaultCurrency(language)
-
-  return (
-    <section className="cost-home-card" aria-label="Costi operativi">
-      <div className="cost-home-header">
-        <div>
-          <p className="overline">Costi</p>
-          <h2>Spese guasti e riparazioni</h2>
-          <span>Controllo immediato per targa, mese e anno.</span>
-        </div>
-        <Wrench size={24} />
-      </div>
-      <div className="cost-home-metrics">
-        <div>
-          <strong>{formatMoneyCents(summary.monthCents)}</strong>
-          <span>Questo mese</span>
-        </div>
-        <div>
-          <strong>{formatMoneyCents(summary.yearCents)}</strong>
-          <span>Quest anno</span>
-        </div>
-        <div>
-          <strong>{summary.count}</strong>
-          <span>Interventi con costo</span>
-        </div>
-      </div>
-      <div className="cost-home-footer">
-        <p>
-          {summary.latest
-            ? `Ultimo costo: ${summary.latest.title} · ${latestVehicle?.plate ?? 'targa mancante'} · ${formatMoneyCents(summary.latest.repairCostCents, summary.latest.repairCostCurrency || defaultCurrency)}`
-            : 'Nessun costo registrato: salva l importo da un guasto per iniziare il report.'}
-        </p>
-        <button className="primary-button compact-button" onClick={onOpenReport} type="button">
-          <ExternalLink size={16} />
-          Apri report costi
-        </button>
-      </div>
-    </section>
-  )
 }
 
 function FaultCostReport({ faultReportRecords = [], vehicleRecords = [] }) {

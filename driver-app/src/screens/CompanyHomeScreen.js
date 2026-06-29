@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Ionicons } from '@expo/vector-icons'
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { MetricPill } from '../components/MetricPill'
-import { Panel } from '../components/Panel'
 import { getLocale, t } from '../i18n/native'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
-import { DeadlineRenewModal } from './CompanyManagementScreen'
 
 function formatDateTime(value, language = 'it') {
   if (!value) return ''
@@ -230,6 +229,23 @@ function DetailRow({ label, value }) {
   )
 }
 
+function HomeCommandButton({ detail, icon = 'grid-outline', label, onPress, tone = 'info', value }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.homeCommandButton, styles[`${tone}CommandButton`]]}>
+      <View style={[styles.homeCommandIcon, styles[`${tone}CommandIcon`]]}>
+        <Ionicons color={tone === 'danger' ? colors.danger : tone === 'warning' ? '#92400e' : tone === 'cost' ? '#065f46' : colors.cyanDark} name={icon} size={20} />
+      </View>
+      <View style={styles.homeCommandCopy}>
+        <Text numberOfLines={1} style={styles.homeCommandLabel}>{label}</Text>
+        <Text numberOfLines={2} style={styles.homeCommandDetail}>{detail}</Text>
+      </View>
+      {value !== '' && value !== null && value !== undefined ? (
+        <Text numberOfLines={1} style={styles.homeCommandValue}>{value}</Text>
+      ) : null}
+    </Pressable>
+  )
+}
+
 function DeadlineDetailPanel({ assets = [], detail, drivers, language = 'it', onClose, onOpenArchive, people = [], vehicles }) {
   if (!detail) return null
 
@@ -414,34 +430,27 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
 
 export function CompanyHomeScreen({
   context,
-  isRefreshing = false,
   language = 'it',
   logoUrl,
-  onCloseDeadline,
   onOpenChat,
   onOpenManagement,
-  onRefresh,
-  onRenewDeadline,
+  onOpenSettings,
   onResolveCheck,
   onResolveFault,
-  onSendDeadlineReminder,
   onUpdateFaultRepair,
 }) {
   const [selectedDetail, setSelectedDetail] = useState(null)
-  const [selectedDeadline, setSelectedDeadline] = useState(null)
   const [isResolvingDetail, setIsResolvingDetail] = useState(false)
   const company = context?.companyProfile ?? {}
   const drivers = context?.drivers ?? []
-  const people = context?.people ?? []
+  const peopleCount = (context?.people ?? []).length
   const vehicles = context?.vehicles ?? []
-  const assets = context?.assets ?? []
   const checks = context?.vehicleChecks ?? []
   const faults = context?.faultReports ?? []
   const complianceItems = context?.complianceItems ?? []
   const unreadMessages = Number(context?.unreadDriverMessages ?? 0) + Number(context?.unreadTeamMessages ?? 0)
   const openFaults = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
   const repairCostSummary = getRepairCostSummary(faults)
-  const latestCostVehicle = vehicles.find((vehicle) => vehicle.id === repairCostSummary.latest?.vehicleId)
   const defaultCurrency = getDefaultCurrency(language)
   const activeChecks = checks.filter((check) => !isCheckResolved(check))
   const criticalChecks = checks.filter(isCheckCritical)
@@ -450,11 +459,11 @@ export function CompanyHomeScreen({
     .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
     .slice()
     .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
-  const nextDeadlines = activeDeadlines.slice(0, 5)
   const hasExpiredDeadlines = activeDeadlines.some((item) => getDeadlineDays(item.dueDate) < 0)
   const hasSoonDeadlines = activeDeadlines.some((item) => getDeadlineDays(item.dueDate) <= 30)
   const deadlineTone = hasExpiredDeadlines ? 'danger' : hasSoonDeadlines ? 'warning' : 'info'
   const dailyPhrase = getDailyPhrase()
+  const operationsToWork = openFaults.length + activeChecks.length
 
   async function resolveSelectedDetail(detail = selectedDetail, repair = undefined) {
     if (!detail?.item?.id) return
@@ -509,130 +518,77 @@ export function CompanyHomeScreen({
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
       </View>
 
-      <Pressable onPress={() => onOpenManagement?.('costs')} style={styles.costAlertCard}>
-        <View style={styles.costAlertHeader}>
+      <View style={styles.homeCommandPanel}>
+        <View style={styles.homeCommandHeader}>
           <View>
-            <Text style={styles.costAlertKicker}>Costi</Text>
-            <Text style={styles.costAlertTitle}>Spese guasti e riparazioni</Text>
+            <Text style={styles.homeCommandKicker}>Apri</Text>
+            <Text style={styles.homeCommandTitle}>Comandi azienda</Text>
           </View>
-          <Text style={styles.costAlertCount}>{repairCostSummary.count}</Text>
+          <Text style={styles.homeCommandSubtitle}>Una schermata pulita, ogni area a un tocco.</Text>
         </View>
-        <View style={styles.costMetricRow}>
-          <View style={styles.costMetricBox}>
-            <Text style={styles.costMetricValue}>{formatMoneyCents(repairCostSummary.monthCents, defaultCurrency)}</Text>
-            <Text style={styles.costMetricLabel}>Mese</Text>
-          </View>
-          <View style={styles.costMetricBox}>
-            <Text style={styles.costMetricValue}>{formatMoneyCents(repairCostSummary.yearCents, defaultCurrency)}</Text>
-            <Text style={styles.costMetricLabel}>Anno</Text>
-          </View>
+        <View style={styles.homeCommandGrid}>
+          <HomeCommandButton
+            detail="Check e guasti da lavorare"
+            icon="notifications-outline"
+            label="Registro"
+            onPress={() => onOpenManagement?.(openFaults.length ? 'faults' : 'checks')}
+            tone={operationsToWork ? 'warning' : 'info'}
+            value={operationsToWork}
+          />
+          <HomeCommandButton
+            detail="Rinnovi, documenti e solleciti"
+            icon="calendar-outline"
+            label="Scadenze"
+            onPress={() => onOpenManagement?.('deadlines')}
+            tone={deadlineTone}
+            value={activeDeadlines.length}
+          />
+          <HomeCommandButton
+            detail="Spese e report riparazioni"
+            icon="cash-outline"
+            label="Costi"
+            onPress={() => onOpenManagement?.('costs')}
+            tone={repairCostSummary.monthCents ? 'cost' : 'info'}
+            value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
+          />
+          <HomeCommandButton
+            detail="Ufficio, magazzino e reparti"
+            icon="people-outline"
+            label="Persone"
+            onPress={() => onOpenManagement?.('people')}
+            value={peopleCount}
+          />
+          <HomeCommandButton
+            detail="Profili e credenziali"
+            icon="person-circle-outline"
+            label="Autisti"
+            onPress={() => onOpenManagement?.('drivers')}
+            value={drivers.length}
+          />
+          <HomeCommandButton
+            detail="Mezzi, targhe e semirimorchi"
+            icon="bus-outline"
+            label="Flotta"
+            onPress={() => onOpenManagement?.('vehicles')}
+            value={vehicles.length}
+          />
+          <HomeCommandButton
+            detail="Singole, gruppi e reparti"
+            icon="chatbubbles-outline"
+            label="Chat"
+            onPress={onOpenChat}
+            tone={unreadMessages ? 'warning' : 'info'}
+            value={unreadMessages}
+          />
+          <HomeCommandButton
+            detail="Lingua, notifiche e profilo"
+            icon="settings-outline"
+            label="Menu"
+            onPress={onOpenSettings}
+            value=""
+          />
         </View>
-        <Text numberOfLines={1} style={styles.costAlertMeta}>
-          {repairCostSummary.latest
-            ? `${repairCostSummary.latest.title} · ${latestCostVehicle?.plate ?? 'targa mancante'} · ${formatMoneyCents(repairCostSummary.latest.repairCostCents, repairCostSummary.latest.repairCostCurrency || defaultCurrency)}`
-            : 'Nessun costo registrato. Apri un guasto e salva l importo.'}
-        </Text>
-      </Pressable>
-
-      {activeDeadlines.length ? (
-        <Pressable
-          onPress={() => onOpenManagement?.('deadlines')}
-          style={[
-            styles.deadlineAlertCard,
-            deadlineTone === 'danger' && styles.deadlineAlertDanger,
-            deadlineTone === 'warning' && styles.deadlineAlertWarning,
-          ]}
-        >
-          <View style={styles.deadlineAlertIcon}>
-            <Text style={styles.deadlineAlertIconText}>!</Text>
-          </View>
-          <View style={styles.deadlineAlertCopy}>
-            <Text style={styles.deadlineAlertKicker}>Scadenze documentali</Text>
-            <Text style={styles.deadlineAlertTitle}>
-              {hasExpiredDeadlines ? 'Scadenze scadute' : hasSoonDeadlines ? 'Scadenze entro 30 giorni' : 'Scadenze sotto controllo'}
-            </Text>
-            <Text numberOfLines={1} style={styles.deadlineAlertMeta}>
-              {nextDeadlines[0]?.type} · {getDeadlineMeta(nextDeadlines[0], drivers, vehicles, people, assets, language)}
-            </Text>
-          </View>
-          <Text style={styles.deadlineAlertCount}>{activeDeadlines.length}</Text>
-        </Pressable>
-      ) : null}
-
-      <Panel
-        kicker="Flotta"
-        right={
-          <Pressable onPress={() => onOpenManagement?.('vehicles')} style={styles.smallButton}>
-            <Text style={styles.smallButtonText}>Gestisci</Text>
-          </Pressable>
-        }
-        title={`${drivers.length} autisti · ${vehicles.length} mezzi`}
-      >
-        <Text style={styles.helper}>
-          {isRefreshing ? 'Aggiornamento dati...' : t(language, 'companyFleetHelp')}
-        </Text>
-      </Panel>
-
-      <Panel kicker="Guasti aperti" title={openFaults.length ? 'Da gestire' : 'Nessun guasto aperto'}>
-        {openFaults.slice(0, 4).map((fault) => (
-          <Pressable key={fault.id} onPress={() => setSelectedDetail({ item: fault, type: 'fault' })} style={styles.listRow}>
-            <View style={[styles.statusDot, fault.severity === 'high' && styles.statusDotDanger]} />
-            <View style={styles.listCopy}>
-              <Text style={styles.listTitle}>{fault.title}</Text>
-              <Text style={styles.listMeta}>
-                {getDriverName(drivers, fault.driverId)} · {getVehiclePlate(vehicles, fault.vehicleId)} · {formatDateTime(fault.createdAt, language)}
-              </Text>
-            </View>
-            <Text style={styles.openText}>Apri</Text>
-          </Pressable>
-        ))}
-        {!openFaults.length ? <Text style={styles.emptyText}>Tutto pulito al momento.</Text> : null}
-      </Panel>
-
-      <Panel kicker="Check ricevuti" title={recentChecks.length ? `${recentChecks.length} da aprire` : 'Nessun check nuovo'}>
-        {recentChecks.map((check) => {
-          const checkIssues = getCheckIssues(check)
-          const hasIssues = checkIssues.length > 0
-
-          return (
-            <Pressable key={check.id} onPress={() => setSelectedDetail({ item: check, type: 'check' })} style={styles.listRow}>
-              <View style={hasIssues ? styles.statusDotDanger : styles.statusDotSuccess} />
-              <View style={styles.listCopy}>
-                <Text style={styles.listTitle}>
-                  {hasIssues ? 'Criticita check' : 'Check completato'} · {getVehiclePlate(vehicles, check.tractorId)}
-                </Text>
-                <Text style={styles.listMeta}>
-                  {getDriverName(drivers, check.driverId)} · {formatDateTime(check.createdAt, language)}
-                </Text>
-              </View>
-              <Text style={hasIssues ? styles.openText : styles.okOpenText}>{hasIssues ? 'Apri' : 'Vedi'}</Text>
-            </Pressable>
-          )
-        })}
-        {!recentChecks.length ? <Text style={styles.emptyText}>I check archiviati restano nello storico, qui arrivano quelli nuovi da vedere.</Text> : null}
-      </Panel>
-
-      <Panel
-        kicker="Scadenze"
-        right={
-          <Pressable onPress={() => onOpenManagement?.('deadlines')} style={styles.smallButton}>
-            <Text style={styles.smallButtonText}>Apri</Text>
-          </Pressable>
-        }
-        title={nextDeadlines.length ? 'Prossime pratiche' : 'Nessuna pratica'}
-      >
-        {nextDeadlines.map((item) => (
-          <Pressable key={item.id} onPress={() => setSelectedDeadline(item)} style={styles.deadlineRow}>
-            <View style={[styles.deadlineDot, styles[`${getDeadlineTone(item)}Dot`]]} />
-            <View style={styles.deadlineCopy}>
-              <Text style={styles.deadlineTitle}>{item.type}</Text>
-              <Text style={styles.deadlineMeta}>{getDeadlineMeta(item, drivers, vehicles, people, assets, language)}</Text>
-            </View>
-            <Text style={[styles.deadlineDate, styles[`${getDeadlineTone(item)}Text`]]}>{formatDate(item.dueDate, language)}</Text>
-          </Pressable>
-        ))}
-        {!nextDeadlines.length ? <Text style={styles.emptyText}>Nessuna scadenza imminente caricata.</Text> : null}
-      </Panel>
+      </View>
 
       <OperationsDetailPanel
         detail={selectedDetail}
@@ -644,23 +600,6 @@ export function CompanyHomeScreen({
         onSaveFaultRepair={onUpdateFaultRepair}
         vehicles={vehicles}
       />
-      <DeadlineRenewModal
-        item={selectedDeadline}
-        assets={assets}
-        drivers={drivers}
-        language={language}
-        onClose={() => setSelectedDeadline(null)}
-        onMarkDone={onCloseDeadline}
-        onSave={async (item, payload, file) => {
-          const saved = await onRenewDeadline?.(item, payload, file)
-          if (saved) setSelectedDeadline(null)
-          return saved
-        }}
-        onSendReminder={onSendDeadlineReminder}
-        people={people}
-        vehicles={vehicles}
-      />
-
     </ScrollView>
   )
 }
@@ -703,6 +642,115 @@ const styles = StyleSheet.create({
   content: {
     padding: layout.screenPadding,
     paddingBottom: 28,
+  },
+  homeCommandPanel: {
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 14,
+    padding: 14,
+  },
+  homeCommandHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  homeCommandKicker: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  homeCommandTitle: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  homeCommandSubtitle: {
+    color: colors.muted,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
+    maxWidth: 170,
+    textAlign: 'right',
+  },
+  homeCommandGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 9,
+  },
+  homeCommandButton: {
+    alignItems: 'center',
+    backgroundColor: '#f8fbff',
+    borderColor: '#d8e7ee',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexBasis: '48.5%',
+    flexDirection: 'row',
+    gap: 9,
+    minHeight: 82,
+    padding: 10,
+  },
+  warningCommandButton: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+  },
+  dangerCommandButton: {
+    backgroundColor: '#fff1f2',
+    borderColor: '#fecdd3',
+  },
+  costCommandButton: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#bbf7d0',
+  },
+  homeCommandIcon: {
+    alignItems: 'center',
+    backgroundColor: '#cffafe',
+    borderRadius: 12,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  warningCommandIcon: {
+    backgroundColor: '#fef3c7',
+  },
+  dangerCommandIcon: {
+    backgroundColor: '#fee2e2',
+  },
+  costCommandIcon: {
+    backgroundColor: '#d1fae5',
+  },
+  homeCommandCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  homeCommandLabel: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  homeCommandDetail: {
+    color: colors.muted,
+    fontSize: 10.8,
+    fontWeight: '700',
+    lineHeight: 14,
+    marginTop: 3,
+  },
+  homeCommandValue: {
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+    maxWidth: 58,
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    textAlign: 'center',
   },
   costAlertCard: {
     backgroundColor: '#ecfeff',

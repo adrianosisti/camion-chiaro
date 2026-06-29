@@ -13,7 +13,7 @@ const assistantTopics = [
     keywords: ['scadenza', 'scadenze', 'patente', 'visita', 'assicurazione', 'revisione', 'documento'],
   },
   {
-    answer: 'Per un guasto apri Registro o Guasti, entra nel dettaglio, aggiungi eventuale costo riparazione e poi archivia quando e risolto. Lo ritrovi nello storico costi.',
+    answer: 'Per un guasto apri Registro o Guasti, entra nel dettaglio, aggiungi eventuale costo riparazione e poi archivia quando e risolto. Lo ritrovi nello storico costi e nei report per targa o periodo.',
     id: 'faults',
     label: 'Guasti',
     keywords: ['guasto', 'riparazione', 'costo', 'officina', 'danno'],
@@ -31,10 +31,34 @@ const assistantTopics = [
     keywords: ['chat', 'messaggio', 'messaggi', 'gruppo', 'notifica', 'notifiche'],
   },
   {
-    answer: 'Il Centro costi raccoglie importi di guasti, riparazioni e manutenzioni. Filtra per periodo, targa o strumento per capire dove spendi di piu.',
+    answer: 'Il Centro costi raccoglie importi di guasti, riparazioni, manutenzioni e sanzioni. Dal web azienda apri Report per stampare o scaricare CSV filtrati per periodo, targa, autista o attrezzatura.',
     id: 'costs',
     label: 'Costi',
-    keywords: ['costi', 'spese', 'report', 'mese', 'anno'],
+    keywords: ['costi', 'spese', 'report', 'csv', 'excel', 'mese', 'anno'],
+  },
+  {
+    answer: 'Per una sanzione apri Nuova sanzione o Centro costi, scegli categoria Sanzione, inserisci importo, data, autista responsabile e targa collegata. Se in classifica appare Non assegnate, usa Assegna e collega l autista.',
+    id: 'fines',
+    label: 'Sanzioni',
+    keywords: ['multa', 'multe', 'sanzione', 'sanzioni', 'non assegnate', 'assegna'],
+  },
+  {
+    answer: 'Le notifiche si attivano da Menu o Impostazioni del telefono. Se non arrivano, verifica permessi iOS/Android, telefono registrato e ruolo corretto. Per testare, chiudi l app e fatti mandare un messaggio.',
+    id: 'mobile',
+    label: 'App/notifiche',
+    keywords: ['app', 'telefono', 'notifica', 'notifiche', 'push', 'iphone', 'android', 'permessi'],
+  },
+  {
+    answer: 'Per ufficio e magazzino l azienda crea persone da Anagrafiche. Ogni persona puo avere chat, gruppi, documenti, scadenze e, per magazzino, controlli su muletti o strumenti.',
+    id: 'workforce',
+    label: 'Reparti',
+    keywords: ['ufficio', 'magazzino', 'magazziniere', 'persona', 'reparto', 'dipendente'],
+  },
+  {
+    answer: 'Le funzioni premium piu forti sono report mensile automatico, indice salute flotta, budget per targa, classifica multe, alert guasti ricorrenti, osservatorio trasporti e profilo formazione autista.',
+    id: 'future',
+    label: 'Idee premium',
+    keywords: ['idea', 'idee', 'premium', 'futuro', 'valore', 'report mensile', 'salute flotta'],
   },
   {
     answer: 'Da Menu puoi cambiare lingua, attivare notifiche telefono, controllare suoni chat e uscire dall account.',

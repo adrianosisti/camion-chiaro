@@ -53,10 +53,13 @@ Documenti autista: l autista puo caricare foto o file, aggiornarli, mostrarli da
 Check mattutino: se tutto e ok va nello storico; se manca qualcosa diventa criticita azienda. L azienda lo apre, vede dettaglio e puo segnare risolto.
 Guasti: autista o personale segnala con mezzo, descrizione, gravita, foto. L azienda apre dettaglio, lavora, archivia e puo inserire costo riparazione.
 Centro costi: registra costi di guasti, manutenzioni, assicurazioni, revisioni e interventi su mezzi, strumenti e muletti; filtra per periodo, targa, asset e categoria.
+Report e CSV: sezione dedicata per esportare o stampare dati filtrati. Permette dettaglio costi, solo multe/sanzioni e classifica multe autisti. I filtri principali sono periodo, targa/mezzo, autista, attrezzatura, azienda generale e tipologia.
+Sanzioni: si inseriscono da Nuova sanzione o Centro costi scegliendo categoria Sanzione. Devono avere importo, data, autista responsabile e, quando disponibile, targa collegata. Se in classifica compare Non assegnate, significa che una multa non ha autista: usare Assegna per aprire la modifica e collegarlo.
 Chat: dirette e gruppi/reparti. I messaggi mostrano nome, ruolo e foto di chi scrive. L azienda vede solo chat in cui e partecipante. Sono previsti audio, foto, video, reazioni, risposte e conferme lettura.
 Notifiche: si attivano dalle impostazioni sul dispositivo. Devono avvisare per messaggi, guasti, check critici, scadenze e solleciti.
 Magazzino: puo avere check muletti/strumenti, documenti e visite mediche. Ufficio puo usare chat, documenti e scadenze persona.
 Piani commerciali: Start 5 300 euro/mese; Fleet 10 450 euro/mese; Fleet 20 da 650 euro/mese; Fleet 30 850 euro/mese; Fleet 50 1200 euro/mese. Chat aziendale +100 euro/mese. Start-up kit 1500 euro una tantum. Storage extra 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.
+Progetti premium futuri: report mensile automatico via email, indice salute flotta, budget costi per targa, alert recidive guasti, classifica multe/autisti, osservatorio strada e normative, QR mezzo, check magazzino, profilo formazione autista, esportazioni PDF/CSV avanzate.
 Regola supporto: dare sempre passi pratici. Se serve assistenza umana, raccogliere azienda, utente, sezione, cosa stava facendo, messaggio errore, dispositivo e priorita.
 `.trim()
 
@@ -101,6 +104,33 @@ const supportPlaybooks = [
     ],
   },
   {
+    id: 'reports_exports',
+    keywords: ['report', 'csv', 'excel', 'stampa', 'stampare', 'esporta', 'esportare', 'scarica', 'classifica', 'aprile', 'maggio', 'periodo'],
+    title: 'report, CSV e stampa',
+    response: [
+      'Per generare un report preciso:',
+      '1. Apri Report dalla dashboard o dal menu laterale.',
+      '2. Scegli il tipo: dettaglio costi, solo multe/sanzioni oppure classifica multe autisti.',
+      '3. Imposta il filtro: tutti, targa/mezzo, autista, attrezzatura o azienda generale.',
+      '4. Scegli periodo: oggi, mese, anno, sempre oppure periodo personalizzato dal/al.',
+      '5. Controlla l elenco a video: il CSV e la stampa devono contenere gli stessi dati filtrati.',
+      '6. Usa Scarica CSV per Excel o Stampa/PDF per un report leggibile da consegnare.',
+    ],
+  },
+  {
+    id: 'fines_assignment',
+    keywords: ['non assegnate', 'assegna', 'assegnare', 'responsabile', 'sanzione senza autista', 'multa senza autista'],
+    title: 'multe non assegnate',
+    response: [
+      'Se nella classifica multe vedi Non assegnate:',
+      '1. Vuol dire che una o piu sanzioni hanno importo e data, ma non hanno autista collegato.',
+      '2. Premi Assegna accanto alla voce Non assegnate.',
+      '3. Si apre la modifica della sanzione: scegli Autista responsabile e, se serve, Mezzo/targa collegata.',
+      '4. Salva. La multa uscira da Non assegnate e rientrera nella classifica dell autista.',
+      '5. Se il salvataggio non passa, verifica di aver eseguito lo SQL 42 sulle sanzioni autista+targa.',
+    ],
+  },
+  {
     id: 'morning_check',
     keywords: ['check', 'mattut', 'controllo', 'anomalia', 'trattore', 'semirimorchio', 'mezzo preso'],
     title: 'check mattutino e anomalie',
@@ -124,6 +154,19 @@ const supportPlaybooks = [
       '3. Dentro un gruppo ogni fumetto deve mostrare nome, ruolo e foto della persona che scrive.',
       '4. Se non arrivano notifiche, apri Impostazioni sul telefono e premi attiva notifiche.',
       '5. Per foto, audio, video o reazioni usa i comandi dentro la chat; le spunte indicano consegna e lettura.',
+    ],
+  },
+  {
+    id: 'push_troubleshooting',
+    keywords: ['push', 'notifica telefono', 'notifiche non arrivano', 'non arriva', 'permesso', 'abilita notifiche'],
+    title: 'notifiche telefono',
+    response: [
+      'Se le notifiche telefono non arrivano:',
+      '1. Apri Impostazioni nell app Camion Chiaro sul telefono interessato.',
+      '2. Premi Attiva notifiche o Verifica notifiche.',
+      '3. Controlla che i permessi iOS/Android siano attivi per Camion Chiaro.',
+      '4. Se e una chat, prova da app chiusa: con chat aperta alcune notifiche possono restare solo dentro l app.',
+      '5. Se dice nessun telefono registrato, esci e rientra dall app sul telefono giusto, poi riattiva notifiche.',
     ],
   },
   {
@@ -176,6 +219,32 @@ const supportPlaybooks = [
       '3. Fleet 20+: da 650 euro/mese per flotte piu strutturate.',
       '4. Chat aziendale: +100 euro/mese. Start-up kit: 1500 euro una tantum.',
       '5. Storage extra: 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.',
+    ],
+  },
+  {
+    id: 'privacy_legal',
+    keywords: ['privacy', 'contratto', 'termini', 'gdpr', 'legale', 'dipendenti', 'chat controllata', 'consenso'],
+    title: 'privacy e condizioni',
+    response: [
+      'Per privacy e uso chat/documenti:',
+      '1. Prima del rilascio servono Termini d uso e Privacy Policy approvati dal cliente.',
+      '2. Ogni utente deve accettare condizioni chiare su chat, documenti, notifiche e trattamento dati aziendali.',
+      '3. L azienda deve informare il personale su quali dati vengono gestiti e per quale finalita operativa.',
+      '4. Camion Chiaro deve evitare promesse legali automatiche: per GDPR, lavoro e conservazione dati va validato con consulente.',
+      '5. In caso di dubbio apri ticket assistenza e indica paese, ruolo utenti e tipo di dato trattato.',
+    ],
+  },
+  {
+    id: 'future_value',
+    keywords: ['idea', 'idee', 'premium', 'valore', 'futuro', 'sviluppo', 'must', 'straordin', 'migliorare', 'funzione nuova'],
+    title: 'idee premium e valore prodotto',
+    response: [
+      'Le funzioni piu forti per far percepire Camion Chiaro come indispensabile sono:',
+      '1. Report mensile automatico: spese, multe, guasti, scadenze chiuse e pratiche aperte via email al titolare.',
+      '2. Indice salute flotta: ogni mezzo ha un punteggio basato su guasti, costi, scadenze, fermi e check critici.',
+      '3. Budget per targa: se un mezzo supera la soglia mensile di costi, parte un alert.',
+      '4. Osservatorio trasporti: blocchi, divieti, meteo pesante, normative e valichi in una sezione operativa.',
+      '5. Profilo formazione autista: non per punire, ma per capire chi ha bisogno di supporto su documenti, check o multe.',
     ],
   },
 ]

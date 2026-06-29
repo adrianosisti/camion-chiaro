@@ -109,6 +109,15 @@ Perche molte aziende sanno che spendono tanto, ma non vedono bene dove. Con il C
 ### Il report costi sara solo per i guasti?
 No. La direzione prodotto e avere un conto economico operativo: guasti, manutenzioni, revisioni, assicurazioni, muletti, strumenti e documenti onerosi.
 
+### Posso gestire multe e sanzioni?
+Si. Una sanzione puo essere registrata con importo, data, targa collegata e autista responsabile. In questo modo il titolare puo vedere quanto pesano le multe nel periodo e quali situazioni richiedono attenzione o formazione.
+
+### Cosa significa "Non assegnate" nella classifica multe?
+Significa che una o piu sanzioni hanno importo e data, ma non hanno ancora un autista responsabile collegato. Il pulsante Assegna serve proprio ad aprire la modifica, scegliere l autista e far rientrare la multa nella classifica corretta.
+
+### Posso esportare report precisi?
+Si. La sezione Report permette di scegliere cosa scaricare o stampare: dettaglio costi, solo multe/sanzioni, classifica multe autisti, filtri per periodo, targa, autista, attrezzatura o categoria.
+
 ### La chat sostituisce WhatsApp?
 Non deve per forza sostituirlo per tutto, ma mette le comunicazioni operative dove servono. La differenza e che la chat di Camion Chiaro resta collegata al contesto aziendale: autisti, gruppi, reparti, notifiche e storico.
 

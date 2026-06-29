@@ -433,6 +433,8 @@ const translations = {
     'homeAssistant.answer.deadlines': 'Apri Scadenze, filtra quelle da lavorare e rinnova con nuovo documento, nuova data o sollecito alla persona.',
     'homeAssistant.answer.documents': 'Da Anagrafiche e Documenti puoi caricare file, foto e scadenze. L autista vede solo cio che rendi visibile.',
     'homeAssistant.answer.faults': 'Apri Guasti, guarda foto e dettagli, poi registra stato, costo riparazione e storico per targa o periodo.',
+    'homeAssistant.answer.mobileApp': 'Da telefono entra con il ruolo corretto, poi apri Impostazioni per notifiche, lingua, suoni e permessi. Se una notifica non arriva, verifica che quel telefono sia registrato.',
+    'homeAssistant.answer.reports': 'Apri Report, scegli dettaglio costi, multe o classifica autisti, poi filtra per periodo, targa, autista o attrezzatura. Il CSV e la stampa devono seguire gli stessi filtri mostrati a video.',
     'homeAssistant.body': 'Guida rapida su scadenze, guasti, documenti e chat. Se non basta, apre il centro supporto Camion Chiaro.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Scadenze',
@@ -441,6 +443,8 @@ const translations = {
     'homeAssistant.openChat': 'Apri chat',
     'homeAssistant.openGuide': 'Apri guida',
     'homeAssistant.question': 'Come posso aiutarti oggi?',
+    'homeAssistant.mobileApp': 'App',
+    'homeAssistant.reports': 'Report',
     'homeAssistant.status': 'Supporto guidato',
     'homeAssistant.title': 'Assistente Camion Chiaro',
     'hero.aria': 'Controllo scadenze',
@@ -611,6 +615,8 @@ const translations = {
     'homeAssistant.answer.deadlines': 'Open Deadlines, filter items to work on, then renew with a new document, new date or reminder.',
     'homeAssistant.answer.documents': 'From Records and Documents you can upload files, photos and expiry dates. Drivers only see what you make visible.',
     'homeAssistant.answer.faults': 'Open Faults, review photos and details, then record status, repair cost and history by plate or period.',
+    'homeAssistant.answer.mobileApp': 'On mobile, sign in with the correct role, then open Settings for notifications, language, sounds and permissions. If a notification does not arrive, verify that phone is registered.',
+    'homeAssistant.answer.reports': 'Open Reports, choose cost detail, fines or driver fine ranking, then filter by period, plate, driver or equipment. CSV and print must follow the same data shown on screen.',
     'homeAssistant.body': 'Quick guidance for deadlines, faults, documents and chat. If that is not enough, open Camion Chiaro support.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Deadlines',
@@ -619,6 +625,8 @@ const translations = {
     'homeAssistant.openChat': 'Open chat',
     'homeAssistant.openGuide': 'Open guide',
     'homeAssistant.question': 'How can I help today?',
+    'homeAssistant.mobileApp': 'App',
+    'homeAssistant.reports': 'Reports',
     'homeAssistant.status': 'Live assistant',
     'homeAssistant.title': 'Camion Chiaro Assistant',
     'hero.aria': 'Deadline control',
@@ -3531,8 +3539,16 @@ const supportSections = [
         title: 'Posso controllare quanto spendo sui mezzi?',
       },
       {
+        body: 'Si. Le sanzioni possono essere registrate con importo, data, autista responsabile e targa collegata. Nei Report puoi vedere totale multe, classifica autisti e CSV filtrati per periodo o mezzo.',
+        title: 'Posso controllare multe e sanzioni?',
+      },
+      {
         body: 'Il prezzo parte da 300 euro/mese + IVA perche Camion Chiaro non e una semplice agenda: include app, notifiche, documenti, storico, costi, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
         title: 'Perche vale il canone mensile?',
+      },
+      {
+        body: 'Il pacchetto report puo diventare premium perche trasforma guasti, multe, manutenzioni e scadenze in decisioni: quali mezzi costano troppo, quali autisti hanno bisogno di formazione e dove conviene intervenire prima.',
+        title: 'Cosa giustifica il pacchetto premium?',
       },
     ],
   },
@@ -3567,8 +3583,8 @@ const supportSections = [
         title: '6. Guasti e storico',
       },
       {
-        points: ['Apri il riquadro Costi in home.', 'Filtra per targa e periodo.', 'Controlla totale mese, anno e interventi con costo.', 'Usa questi dati per capire quali mezzi assorbono piu soldi.'],
-        title: '7. Report costi',
+        points: ['Apri Report dalla dashboard o dal menu.', 'Scegli dettaglio costi, multe/sanzioni o classifica multe autisti.', 'Filtra per periodo, targa, autista, attrezzatura o categoria.', 'Scarica CSV per Excel oppure stampa/PDF per consegnare il riepilogo.'],
+        title: '7. Report, CSV e multe',
       },
     ],
   },
@@ -3657,6 +3673,46 @@ const supportSections = [
       {
         body: 'Notizie operative filtrate: blocchi, divieti, valichi, scioperi, normative, meteo pesante e carburante.',
         title: 'Osservatorio trasporti',
+      },
+      {
+        body: 'Ogni mese il titolare riceve un riepilogo automatico: spese per targa, multe per autista, guasti ricorrenti, scadenze chiuse e pratiche ancora da lavorare.',
+        title: 'Report mensile automatico',
+      },
+      {
+        body: 'Classifica dei mezzi che costano di piu: guasti, manutenzioni, assicurazioni, revisioni, gomme e sanzioni in un unico storico economico.',
+        title: 'Classifica mezzi costosi',
+      },
+      {
+        body: 'Per ogni autista: multe, check critici, documenti rinnovati in ritardo, guasti segnalati e chat operative. Non per punire, ma per capire dove serve formazione.',
+        title: 'Profilo operativo autista',
+      },
+      {
+        body: 'Magazzino con check muletti, batterie, acqua, forche, DPI, visite mediche e scadenze patentini. La stessa logica dei camion applicata agli strumenti di piazzale.',
+        title: 'Modulo magazzino avanzato',
+      },
+      {
+        body: 'Quando un costo supera una soglia o una targa accumula troppi interventi, il sistema suggerisce controllo, fermo programmato o valutazione sostituzione mezzo.',
+        title: 'Alert economici intelligenti',
+      },
+      {
+        body: 'Ogni targa riceve un punteggio: documenti ok, guasti recenti, costi mensili, check critici e storico interventi. Il titolare capisce subito quali mezzi meritano attenzione.',
+        title: 'Indice salute flotta',
+      },
+      {
+        body: 'Per ogni mezzo o attrezzatura si imposta una soglia mensile. Se manutenzioni, multe o guasti la superano, Camion Chiaro evidenzia il problema prima che diventi invisibile nei conti.',
+        title: 'Budget per targa',
+      },
+      {
+        body: 'Quando lo stesso guasto torna piu volte su una targa o su un tipo di mezzo, il sistema lo segnala come recidiva e propone un controllo mirato.',
+        title: 'Alert recidiva guasti',
+      },
+      {
+        body: 'Una vista per capire chi ha piu documenti rinnovati in ritardo, multe o check critici. Serve a programmare formazione e ridurre errori operativi.',
+        title: 'Formazione mirata',
+      },
+      {
+        body: 'Un riepilogo operativo che incrocia tratte, scadenze, guasti e costi. L obiettivo e aiutare il titolare a decidere prima, non a rincorrere problemi dopo.',
+        title: 'Cruscotto decisionale',
       },
       {
         body: 'OCR documenti, report mensili, ruoli avanzati, multi-sede, export Excel, white label e integrazioni.',
@@ -7848,6 +7904,16 @@ function App() {
       answer: t('homeAssistant.answer.chat'),
       id: 'chat',
       label: t('homeAssistant.chat'),
+    },
+    {
+      answer: t('homeAssistant.answer.reports'),
+      id: 'reports',
+      label: t('homeAssistant.reports'),
+    },
+    {
+      answer: t('homeAssistant.answer.mobileApp'),
+      id: 'mobileApp',
+      label: t('homeAssistant.mobileApp'),
     },
   ]
 

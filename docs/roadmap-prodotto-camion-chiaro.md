@@ -125,15 +125,22 @@ Ipotesi commerciale aggiornata:
 
 ## Prossimi passi consigliati
 
-1. Eseguire SQL 31 in Supabase.
-2. Pubblicare commit su GitHub.
-3. Lasciare Netlify fare il deploy web.
-4. Mandare EAS update preview per iOS e Android.
-5. Provare da due telefoni:
-   - azienda crea persona ufficio
-   - azienda crea magazziniere/carrellista
-   - azienda crea muletto
-   - azienda crea scadenza persona
-   - azienda crea scadenza attrezzatura
-   - autista invia foto in chat e la vede subito
-6. Dopo il test, passare a chat gruppi e letture per persona.
+1. Pubblicare commit su GitHub e lasciare Netlify aggiornare il web.
+2. Mandare EAS update preview per iOS e Android quando cambiano solo schermate JavaScript.
+3. Rifare build native quando cambiano permessi, estensioni, notifiche o configurazioni app.
+4. Provare da tre telefoni o ruoli:
+   - azienda apre dashboard, chat, report e scadenze;
+   - autista rinnova documento, fa check e segnala guasto;
+   - magazzino apre gruppo reparto, controlla strumento e segnala anomalia.
+5. Provare report:
+   - inserire una spesa libera;
+   - inserire una sanzione con autista e targa;
+   - modificare ed eliminare una spesa;
+   - filtrare per periodo, targa, autista e categoria;
+   - scaricare CSV e stampare report.
+6. Prima del rilascio commerciale:
+   - Stripe e fatturazione;
+   - email brandizzate;
+   - privacy/termini validati;
+   - backup/export dati;
+   - onboarding cliente e start-up kit.

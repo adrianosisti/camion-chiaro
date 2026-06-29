@@ -120,6 +120,8 @@ Camion Chiaro trasforma guasti, manutenzioni e fatture in dati:
 - costo anno;
 - interventi con costo;
 - spese libere per targa o attrezzatura;
+- sanzioni collegate ad autista e targa;
+- classifica multe e importi per periodo;
 - modifica ed eliminazione spese;
 - allegati fattura o foto;
 - filtri per targa;
@@ -229,11 +231,12 @@ Risposta: lo start-up kit serve proprio a partire ordinati, con dati iniziali e 
 3. Aprire una scadenza e spiegare rinnovo/sollecito.
 4. Aprire un guasto con foto.
 5. Salvare costo riparazione.
-6. Mostrare Centro costi.
-7. Aprire app autista.
-8. Mostrare documenti da aprire.
-9. Aprire chat.
-10. Chiudere con piano e start-up kit.
+6. Mostrare Report con filtri, CSV e stampa.
+7. Inserire una sanzione e assegnarla a un autista.
+8. Aprire app autista.
+9. Mostrare documenti da aprire.
+10. Aprire chat e gruppi.
+11. Chiudere con piano, modulo chat, Centro costi Premium e start-up kit.
 
 ## Slide 18 - Chiusura
 Camion Chiaro e per chi vuole smettere di rincorrere informazioni.

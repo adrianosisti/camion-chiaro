@@ -188,6 +188,11 @@ function mapFaultReport(row) {
     driverId: row.driver_id,
     id: row.id,
     photoPath: row.photo_path ?? '',
+    repairCostCents: Number(row.repair_cost_cents ?? 0),
+    repairCostCurrency: row.repair_cost_currency ?? 'EUR',
+    repairNotes: row.repair_notes ?? '',
+    repairRecordedAt: row.repair_recorded_at ?? '',
+    repairRecordedBy: row.repair_recorded_by ?? '',
     semitrailerId: row.semitrailer_id,
     severity: row.severity,
     status: row.status,
@@ -429,6 +434,41 @@ const teamChatMessageSelectColumns = `
   body,
   attachment_path,
   created_at
+`
+
+const faultReportSelectColumns = `
+  id,
+  company_id,
+  driver_id,
+  vehicle_id,
+  semitrailer_id,
+  severity,
+  title,
+  description,
+  photo_path,
+  repair_cost_cents,
+  repair_cost_currency,
+  repair_notes,
+  repair_recorded_at,
+  repair_recorded_by,
+  status,
+  created_at,
+  updated_at
+`
+
+const faultReportLegacySelectColumns = `
+  id,
+  company_id,
+  driver_id,
+  vehicle_id,
+  semitrailer_id,
+  severity,
+  title,
+  description,
+  photo_path,
+  status,
+  created_at,
+  updated_at
 `
 
 function isMissingReactionsColumn(error) {
@@ -1304,27 +1344,24 @@ export async function fetchFaultReports(companyId = configuredCompanyId) {
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('fault_reports')
-    .select(
-      `
-        id,
-        company_id,
-        driver_id,
-        vehicle_id,
-        semitrailer_id,
-        severity,
-        title,
-        description,
-        photo_path,
-        status,
-        created_at,
-        updated_at
-      `,
-    )
+    .select(faultReportSelectColumns)
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(50)
+
+  if (error?.code === '42703') {
+    const fallbackResult = await supabase
+      .from('fault_reports')
+      .select(faultReportLegacySelectColumns)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   return { data: data?.map(mapFaultReport) ?? null, error }
 }
@@ -1718,22 +1755,7 @@ export async function createFaultReportRecord(report, companyId = configuredComp
   const { data, error } = await supabase
     .from('fault_reports')
     .insert(toFaultReportPayload({ ...report, photoPath }, companyId))
-    .select(
-      `
-        id,
-        company_id,
-        driver_id,
-        vehicle_id,
-        semitrailer_id,
-        severity,
-        title,
-        description,
-        photo_path,
-        status,
-        created_at,
-        updated_at
-      `,
-    )
+    .select(faultReportLegacySelectColumns)
     .single()
 
   if (error && photoPath) {
@@ -1991,7 +2013,7 @@ export async function updateChatMessageReaction(message, actorRole, reaction) {
   return { data: data ? mapChatMessage(data) : null, error }
 }
 
-export async function updateFaultReportStatus(reportId, status) {
+export async function updateFaultReportStatus(reportId, status, repair = {}) {
   const supabase = await getSupabaseClient()
 
   if (!supabase || !reportId) {
@@ -2004,7 +2026,7 @@ export async function updateFaultReportStatus(reportId, status) {
   if (accessToken) {
     try {
       const response = await fetch('/.netlify/functions/update-fault', {
-        body: JSON.stringify({ reportId, status }),
+        body: JSON.stringify({ repair, reportId, status }),
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -2025,27 +2047,42 @@ export async function updateFaultReportStatus(reportId, status) {
     }
   }
 
-  const { data, error } = await supabase
+  const updatePayload = { status }
+  const hasRepairUpdate = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
+    Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+
+  if (hasRepairUpdate) {
+    updatePayload.repair_cost_cents = Number(repair.repairCostCents ?? 0)
+    updatePayload.repair_cost_currency = repair.repairCostCurrency || 'EUR'
+    updatePayload.repair_notes = repair.repairNotes?.trim() || null
+    updatePayload.repair_recorded_at = new Date().toISOString()
+  }
+
+  let { data, error } = await supabase
     .from('fault_reports')
-    .update({ status })
+    .update(updatePayload)
     .eq('id', reportId)
-    .select(
-      `
-        id,
-        company_id,
-        driver_id,
-        vehicle_id,
-        semitrailer_id,
-        severity,
-        title,
-        description,
-        photo_path,
-        status,
-        created_at,
-        updated_at
-      `,
-    )
+    .select(faultReportSelectColumns)
     .single()
+
+  if (error?.code === '42703' && hasRepairUpdate) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL costi guasti. Esegui il file 39_costi_riparazione_guasti.sql in Supabase.' },
+    }
+  }
+
+  if (error?.code === '42703') {
+    const fallbackResult = await supabase
+      .from('fault_reports')
+      .update({ status })
+      .eq('id', reportId)
+      .select(faultReportLegacySelectColumns)
+      .single()
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   return { data: data ? mapFaultReport(data) : null, error }
 }

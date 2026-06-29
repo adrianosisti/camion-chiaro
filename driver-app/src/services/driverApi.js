@@ -57,6 +57,10 @@ const vehicleCheckSelect =
   'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, status, resolved_at, created_at'
 const vehicleCheckLegacySelect =
   'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, created_at'
+const faultReportSelect =
+  'id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, repair_cost_cents, repair_cost_currency, repair_notes, repair_recorded_at, repair_recorded_by, status, created_at, updated_at'
+const faultReportLegacySelect =
+  'id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at'
 
 function mapCompanyProfile(row = {}) {
   return {
@@ -303,6 +307,33 @@ async function fetchVehicleChecksForCompany(companyId, limit = 30) {
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .limit(limit)
+  }
+
+  return result
+}
+
+async function fetchFaultReportsForCompany(companyId, limit = 50, driverId = '') {
+  let query = supabase
+    .from('fault_reports')
+    .select(faultReportSelect)
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (driverId) query = query.eq('driver_id', driverId)
+
+  let result = await query
+
+  if (result.error?.code === '42703') {
+    let fallbackQuery = supabase
+      .from('fault_reports')
+      .select(faultReportLegacySelect)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (driverId) fallbackQuery = fallbackQuery.eq('driver_id', driverId)
+    result = await fallbackQuery
   }
 
   return result
@@ -643,13 +674,7 @@ async function fetchDriverContextDirect() {
       .eq('visible_to_driver', true)
       .order('expires_at', { ascending: true, nullsFirst: false }),
     fetchVehicleChecksForDriver(driver.company_id, driver.id, 50),
-    supabase
-      .from('fault_reports')
-      .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
-      .eq('company_id', driver.company_id)
-      .eq('driver_id', driver.id)
-      .order('created_at', { ascending: false })
-      .limit(50),
+    fetchFaultReportsForCompany(driver.company_id, 50, driver.id),
     fetchCurrentCompanyPerson(driver.company_id, user.id, driver.id),
     supabase
       .from('company_people')
@@ -842,12 +867,7 @@ export async function fetchCompanyContext() {
       .eq('company_id', companyId)
       .order('expires_at', { ascending: true, nullsFirst: false }),
     fetchVehicleChecksForCompany(companyId, 30),
-    supabase
-      .from('fault_reports')
-      .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false })
-      .limit(30),
+    fetchFaultReportsForCompany(companyId, 30),
     fetchCompanyComplianceItems(companyId, 50),
     supabase
       .from('chat_messages')
@@ -1415,7 +1435,7 @@ export async function createDriverDocumentSignedUrl(filePath) {
   return supabase.storage.from(driverDocumentsBucket).createSignedUrl(filePath, 600)
 }
 
-export async function updateFaultReportStatus(reportId, status) {
+export async function updateFaultReportStatus(reportId, status, repair = {}) {
   if (!isSupabaseConfigured || !reportId) return { data: null, error: null }
 
   const accessToken = await getAccessToken()
@@ -1423,7 +1443,7 @@ export async function updateFaultReportStatus(reportId, status) {
   if (apiBaseUrl && accessToken) {
     try {
       const response = await fetch(`${apiBaseUrl}/.netlify/functions/update-fault`, {
-        body: JSON.stringify({ reportId, status }),
+        body: JSON.stringify({ repair, reportId, status }),
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -1444,12 +1464,42 @@ export async function updateFaultReportStatus(reportId, status) {
     }
   }
 
-  const { data, error } = await supabase
+  const updatePayload = { status }
+  const hasRepairUpdate = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
+    Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+
+  if (hasRepairUpdate) {
+    updatePayload.repair_cost_cents = Number(repair.repairCostCents ?? 0)
+    updatePayload.repair_cost_currency = repair.repairCostCurrency || 'EUR'
+    updatePayload.repair_notes = repair.repairNotes?.trim() || null
+    updatePayload.repair_recorded_at = new Date().toISOString()
+  }
+
+  let { data, error } = await supabase
     .from('fault_reports')
-    .update({ status })
+    .update(updatePayload)
     .eq('id', reportId)
-    .select('id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at')
+    .select(faultReportSelect)
     .single()
+
+  if (error?.code === '42703' && hasRepairUpdate) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL costi guasti. Esegui il file 39_costi_riparazione_guasti.sql in Supabase.' },
+    }
+  }
+
+  if (error?.code === '42703') {
+    const fallbackResult = await supabase
+      .from('fault_reports')
+      .update({ status })
+      .eq('id', reportId)
+      .select(faultReportLegacySelect)
+      .single()
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   return { data: data ? mapFaultReport(data) : null, error }
 }

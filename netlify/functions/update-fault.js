@@ -22,6 +22,11 @@ function mapFaultReport(row) {
     driverId: row.driver_id,
     id: row.id,
     photoPath: row.photo_path ?? '',
+    repairCostCents: Number(row.repair_cost_cents ?? 0),
+    repairCostCurrency: row.repair_cost_currency ?? 'EUR',
+    repairNotes: row.repair_notes ?? '',
+    repairRecordedAt: row.repair_recorded_at ?? '',
+    repairRecordedBy: row.repair_recorded_by ?? '',
     semitrailerId: row.semitrailer_id,
     severity: row.severity,
     status: row.status,
@@ -78,6 +83,7 @@ export async function handler(event) {
 
   const reportId = String(body.reportId ?? '')
   const status = String(body.status ?? '')
+  const repair = body.repair && typeof body.repair === 'object' ? body.repair : {}
 
   if (!reportId || !allowedStatuses.has(status)) {
     return jsonResponse(400, { error: 'Guasto o stato non valido.' })
@@ -121,9 +127,21 @@ export async function handler(event) {
     return jsonResponse(403, { error: 'Solo un operatore azienda puo aggiornare i guasti.' })
   }
 
+  const updatePayload = { status }
+  const hasRepairUpdate = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
+    Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+
+  if (hasRepairUpdate) {
+    updatePayload.repair_cost_cents = Number(repair.repairCostCents ?? 0)
+    updatePayload.repair_cost_currency = repair.repairCostCurrency || 'EUR'
+    updatePayload.repair_notes = repair.repairNotes?.trim() || null
+    updatePayload.repair_recorded_at = new Date().toISOString()
+    updatePayload.repair_recorded_by = authData.user.id
+  }
+
   const { data, error } = await serviceClient
     .from('fault_reports')
-    .update({ status })
+    .update(updatePayload)
     .eq('id', reportId)
     .select(
       `
@@ -136,6 +154,11 @@ export async function handler(event) {
         title,
         description,
         photo_path,
+        repair_cost_cents,
+        repair_cost_currency,
+        repair_notes,
+        repair_recorded_at,
+        repair_recorded_by,
         status,
         created_at,
         updated_at
@@ -144,6 +167,12 @@ export async function handler(event) {
     .single()
 
   if (error) {
+    if (error.code === '42703' && hasRepairUpdate) {
+      return jsonResponse(500, {
+        error: 'Manca SQL costi guasti. Esegui il file 39_costi_riparazione_guasti.sql in Supabase.',
+      })
+    }
+
     return jsonResponse(500, { error: error.message })
   }
 

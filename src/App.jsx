@@ -3752,6 +3752,28 @@ function formatInvoiceAmount(invoice) {
   }).format((invoice.amountCents ?? 0) / 100)
 }
 
+function formatMoneyCents(cents = 0, currency = 'EUR') {
+  return new Intl.NumberFormat('it-IT', {
+    currency: currency || 'EUR',
+    style: 'currency',
+  }).format((Number(cents) || 0) / 100)
+}
+
+function parseMoneyToCents(value = '') {
+  const normalized = String(value)
+    .replace(/\s/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+  const amount = Number.parseFloat(normalized)
+
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0
+}
+
+function formatMoneyInput(cents = 0) {
+  if (!cents) return ''
+  return String((Number(cents) / 100).toFixed(2)).replace('.', ',')
+}
+
 function getInvoiceStatusLabel(status) {
   const labels = {
     cancelled: 'Annullata',
@@ -6424,10 +6446,27 @@ function App() {
     return true
   }
 
-  async function updateFaultReportStatus(reportId, status) {
-    setOperationsSyncStatus(status === 'closed' ? 'Archiviazione guasto...' : 'Segno il guasto da leggere...')
+  async function updateFaultReportStatus(reportId, status, repair = {}) {
+    const hasRepairUpdate = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
+      Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+    const localRepairPatch = hasRepairUpdate
+      ? {
+          repairCostCents: Number(repair.repairCostCents ?? 0),
+          repairCostCurrency: repair.repairCostCurrency || 'EUR',
+          repairNotes: repair.repairNotes ?? '',
+          repairRecordedAt: new Date().toISOString(),
+        }
+      : {}
+
+    setOperationsSyncStatus(
+      hasRepairUpdate
+        ? 'Salvataggio costo guasto...'
+        : status === 'closed'
+          ? 'Archiviazione guasto...'
+          : 'Segno il guasto da leggere...',
+    )
     setFaultReportRecords((currentReports) =>
-      currentReports.map((report) => (report.id === reportId ? { ...report, status } : report)),
+      currentReports.map((report) => (report.id === reportId ? { ...report, ...localRepairPatch, status } : report)),
     )
 
     if (status === 'closed') {
@@ -6437,7 +6476,7 @@ function App() {
     }
 
     if (hasCompanyDataConnection && session?.role === 'company') {
-      const result = await updateSupabaseFaultReportStatus(reportId, status)
+      const result = await updateSupabaseFaultReportStatus(reportId, status, repair)
 
       if (result.error) {
         setOperationsSyncStatus(`Guasto spostato localmente. Supabase: ${result.error.message}`)
@@ -6447,10 +6486,22 @@ function App() {
       setFaultReportRecords((currentReports) =>
         currentReports.map((report) => (report.id === reportId ? result.data : report)),
       )
-      setOperationsSyncStatus(status === 'closed' ? 'Guasto archiviato.' : 'Guasto rimesso da leggere.')
+      setOperationsSyncStatus(
+        hasRepairUpdate
+          ? 'Costo riparazione salvato.'
+          : status === 'closed'
+            ? 'Guasto archiviato.'
+            : 'Guasto rimesso da leggere.',
+      )
       return true
     }
-    setOperationsSyncStatus(status === 'closed' ? 'Guasto archiviato in modalità locale.' : 'Guasto rimesso da leggere.')
+    setOperationsSyncStatus(
+      hasRepairUpdate
+        ? 'Costo riparazione salvato in modalità locale.'
+        : status === 'closed'
+          ? 'Guasto archiviato in modalità locale.'
+          : 'Guasto rimesso da leggere.',
+    )
     return true
   }
 
@@ -10579,6 +10630,103 @@ function DocumentCreatePanel({ driverRecords, onAddDocument, onDriverDocumentUpl
   )
 }
 
+function getFaultCostDate(report) {
+  return report.repairRecordedAt || report.updatedAt || report.createdAt
+}
+
+function getFaultCostPeriodStart(period) {
+  const now = new Date()
+
+  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1)
+  if (period === 'year') return new Date(now.getFullYear(), 0, 1)
+
+  return null
+}
+
+function FaultCostReport({ faultReportRecords = [], vehicleRecords = [] }) {
+  const [period, setPeriod] = useState('month')
+  const [vehicleId, setVehicleId] = useState('all')
+  const costFaults = faultReportRecords.filter((report) => Number(report.repairCostCents ?? 0) > 0)
+  const periodStart = getFaultCostPeriodStart(period)
+  const filteredFaults = costFaults
+    .filter((report) => vehicleId === 'all' || report.vehicleId === vehicleId)
+    .filter((report) => {
+      if (!periodStart) return true
+
+      const costDate = new Date(getFaultCostDate(report))
+      return !Number.isNaN(costDate.getTime()) && costDate >= periodStart
+    })
+    .sort((first, second) => new Date(getFaultCostDate(second)) - new Date(getFaultCostDate(first)))
+  const totalCents = filteredFaults.reduce((total, report) => total + Number(report.repairCostCents ?? 0), 0)
+  const averageCents = filteredFaults.length ? Math.round(totalCents / filteredFaults.length) : 0
+  const selectedVehicle = vehicleRecords.find((vehicle) => vehicle.id === vehicleId)
+
+  return (
+    <section className="fault-cost-report">
+      <div className="fault-cost-report-header">
+        <div>
+          <p className="overline">Costi riparazioni</p>
+          <h3>{selectedVehicle ? selectedVehicle.plate : 'Tutti i mezzi'}</h3>
+        </div>
+        <Wrench size={20} />
+      </div>
+      <div className="fault-cost-controls">
+        <label>
+          Targa
+          <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
+            <option value="all">Tutti i mezzi</option>
+            {vehicleRecords.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Periodo
+          <select value={period} onChange={(event) => setPeriod(event.target.value)}>
+            <option value="today">Oggi</option>
+            <option value="month">Questo mese</option>
+            <option value="year">Quest anno</option>
+            <option value="all">Sempre</option>
+          </select>
+        </label>
+      </div>
+      <div className="fault-cost-summary">
+        <div>
+          <strong>{formatMoneyCents(totalCents)}</strong>
+          <span>Totale danni</span>
+        </div>
+        <div>
+          <strong>{filteredFaults.length}</strong>
+          <span>Interventi</span>
+        </div>
+        <div>
+          <strong>{formatMoneyCents(averageCents)}</strong>
+          <span>Media</span>
+        </div>
+      </div>
+      <div className="fault-cost-list">
+        {filteredFaults.slice(0, 5).map((report) => {
+          const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
+
+          return (
+            <article className="fault-cost-row" key={report.id}>
+              <div>
+                <strong>{report.title}</strong>
+                <span>{vehicle?.plate ?? 'Targa mancante'} · {formatShortDateTime(getFaultCostDate(report))}</span>
+              </div>
+              <b>{formatMoneyCents(report.repairCostCents, report.repairCostCurrency)}</b>
+            </article>
+          )
+        })}
+        {!filteredFaults.length ? <p className="archive-note">Nessun costo riparazione registrato per questo filtro.</p> : null}
+      </div>
+    </section>
+  )
+}
+
 function OperationsWorkspace({
   acknowledgedCheckIds,
   assetPreviewUrl,
@@ -10689,6 +10837,7 @@ function OperationsWorkspace({
             <span>{t('operations.archivedCount')}</span>
           </div>
         </div>
+        <FaultCostReport faultReportRecords={faultReportRecords} vehicleRecords={vehicleRecords} />
         <div className="filter-tabs operations-filters" role="tablist" aria-label={t('notifications.filterAria')}>
           <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('inbox')} type="button">
             {t('operations.inbox')} ({newFaults.length + unreadChecks.length})
@@ -12220,6 +12369,7 @@ function FaultOperationRow({ driver, onOpen, onUpdateStatus, report, selected, t
           {getFaultSeverityLabel(report.severity, t)} · {formatShortDateTime(report.createdAt)}
           {trailer ? ` · ${t('common.trailer')} ${trailer.plate}` : ''}
           {report.photoPath ? ` · ${t('chat.photoAttached').toLowerCase()}` : ''}
+          {report.repairCostCents ? ` · ${formatMoneyCents(report.repairCostCents, report.repairCostCurrency)}` : ''}
         </small>
         {report.description && <em>{report.description}</em>}
       </div>
@@ -12366,6 +12516,17 @@ function OperationDetailShell({
           role: 'dialog',
         }
       : {}
+  const currentFault = operation?.kind === 'fault' ? operation.data : null
+  const [repairAmount, setRepairAmount] = useState('')
+  const [repairNotes, setRepairNotes] = useState('')
+  const [isSavingRepair, setIsSavingRepair] = useState(false)
+
+  useEffect(() => {
+    if (!currentFault?.id) return
+    setRepairAmount(formatMoneyInput(currentFault.repairCostCents))
+    setRepairNotes(currentFault.repairNotes ?? '')
+    setIsSavingRepair(false)
+  }, [currentFault?.id, currentFault?.repairCostCents, currentFault?.repairNotes])
 
   if (!operation) {
     return (
@@ -12389,6 +12550,17 @@ function OperationDetailShell({
     const trailer = vehicleRecords.find((entry) => entry.id === report.semitrailerId)
     const isClosed = isFaultArchived(report)
     const faultPhotoUrl = assetPreviewUrl(report.photoPath)
+    const repairCostCents = parseMoneyToCents(repairAmount)
+
+    async function saveRepair(nextStatus = report.status) {
+      setIsSavingRepair(true)
+      await onUpdateFaultStatus?.(report.id, nextStatus, {
+        repairCostCents,
+        repairCostCurrency: report.repairCostCurrency || 'EUR',
+        repairNotes,
+      })
+      setIsSavingRepair(false)
+    }
 
     return (
       <Shell className={shellClassName} {...shellProps}>
@@ -12414,6 +12586,8 @@ function OperationDetailShell({
           {trailer && <DetailLine label={t('common.trailer')} value={`${trailer.plate} · ${trailer.model}`} />}
           <DetailLine label={t('operations.created')} value={formatShortDateTime(report.createdAt)} />
           <DetailLine label={t('operations.updated')} value={formatShortDateTime(report.updatedAt)} />
+          <DetailLine label="Costo riparazione" value={report.repairCostCents ? formatMoneyCents(report.repairCostCents, report.repairCostCurrency) : 'Non inserito'} />
+          {report.repairRecordedAt ? <DetailLine label="Costo registrato" value={formatShortDateTime(report.repairRecordedAt)} /> : null}
           {report.description && (
             <div className="detail-note">
               <strong>{t('fault.description')}</strong>
@@ -12428,15 +12602,45 @@ function OperationDetailShell({
               </a>
             </div>
           )}
+          <div className="fault-cost-panel">
+            <div>
+              <strong>Costo riparazione</strong>
+              <span>Importo opzionale, utile per report per targa, giorno, mese e anno.</span>
+            </div>
+            <div className="fault-cost-grid">
+              <label>
+                Importo speso
+                <input
+                  inputMode="decimal"
+                  onChange={(event) => setRepairAmount(event.target.value)}
+                  placeholder="Es. 450,00"
+                  value={repairAmount}
+                />
+              </label>
+              <label>
+                Note officina/intervento
+                <input
+                  onChange={(event) => setRepairNotes(event.target.value)}
+                  placeholder="Es. sostituita valvola EGR"
+                  value={repairNotes}
+                />
+              </label>
+            </div>
+            <small>{repairCostCents ? `Totale inserito: ${formatMoneyCents(repairCostCents, report.repairCostCurrency)}` : 'Lascia 0 se il costo non e ancora noto.'}</small>
+          </div>
         </div>
         <div className="operation-detail-actions">
+          <button className="small-button" disabled={isSavingRepair} onClick={() => saveRepair(report.status)} type="button">
+            <Save size={15} />
+            {isSavingRepair ? 'Salvo...' : 'Salva costo'}
+          </button>
           {isClosed ? (
             <button className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'open')} type="button">
               {t('operations.markUnread')}
             </button>
           ) : (
-            <button className="small-button danger-action" onClick={() => onUpdateFaultStatus(report.id, 'closed')} type="button">
-              {t('operations.archive')}
+            <button className="small-button danger-action" disabled={isSavingRepair} onClick={() => saveRepair('closed')} type="button">
+              {repairCostCents ? 'Archivia con costo' : t('operations.archive')}
             </button>
           )}
         </div>

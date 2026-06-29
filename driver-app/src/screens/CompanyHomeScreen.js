@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { MetricPill } from '../components/MetricPill'
 import { Panel } from '../components/Panel'
 import { getLocale, t } from '../i18n/native'
@@ -15,6 +15,25 @@ function formatDateTime(value, language = 'it') {
     minute: '2-digit',
     month: '2-digit',
   }).format(new Date(value))
+}
+
+function formatMoneyCents(cents = 0, currency = 'EUR') {
+  return new Intl.NumberFormat('it-IT', {
+    currency: currency || 'EUR',
+    style: 'currency',
+  }).format((Number(cents) || 0) / 100)
+}
+
+function formatMoneyInput(cents = 0) {
+  if (!cents) return ''
+  return String((Number(cents) / 100).toFixed(2)).replace('.', ',')
+}
+
+function parseMoneyToCents(value = '') {
+  const normalized = String(value).replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+  const amount = Number.parseFloat(normalized)
+
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0
 }
 
 function getDriverName(drivers, driverId) {
@@ -199,8 +218,11 @@ function DeadlineDetailPanel({ assets = [], detail, drivers, language = 'it', on
   )
 }
 
-function OperationsDetailPanel({ detail, drivers, isResolving = false, language = 'it', onClose, onResolve, vehicles }) {
+function OperationsDetailPanel({ detail, drivers, isResolving = false, language = 'it', onClose, onResolve, onSaveFaultRepair, vehicles }) {
   const [photoUrl, setPhotoUrl] = useState('')
+  const [repairAmount, setRepairAmount] = useState('')
+  const [repairNotes, setRepairNotes] = useState('')
+  const [isSavingRepair, setIsSavingRepair] = useState(false)
   const item = detail?.item
   const isFault = detail?.type === 'fault'
   const isCheck = detail?.type === 'check'
@@ -228,7 +250,28 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
     }
   }, [isFault, item?.photoPath])
 
+  useEffect(() => {
+    if (!isFault || !item?.id) return
+    setRepairAmount(formatMoneyInput(item.repairCostCents))
+    setRepairNotes(item.repairNotes ?? '')
+    setIsSavingRepair(false)
+  }, [isFault, item?.id, item?.repairCostCents, item?.repairNotes])
+
   if (!detail || !item) return null
+
+  const repairCostCents = parseMoneyToCents(repairAmount)
+  const repairPayload = {
+    repairCostCents,
+    repairCostCurrency: item.repairCostCurrency || 'EUR',
+    repairNotes,
+  }
+
+  async function saveFaultRepair() {
+    if (!isFault) return
+    setIsSavingRepair(true)
+    await onSaveFaultRepair?.(item.id, repairPayload)
+    setIsSavingRepair(false)
+  }
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} visible>
@@ -273,13 +316,42 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
             <>
               <DetailRow label="Gravita" value={formatSeverity(item.severity)} />
               <DetailRow label="Descrizione" value={item.description || 'Nessuna descrizione'} />
+              <DetailRow label="Costo riparazione" value={item.repairCostCents ? formatMoneyCents(item.repairCostCents, item.repairCostCurrency) : 'Non inserito'} />
+              {item.repairRecordedAt ? <DetailRow label="Costo registrato" value={formatDateTime(item.repairRecordedAt, language)} /> : null}
               {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.detailPhoto} /> : null}
+              <View style={styles.repairBox}>
+                <Text style={styles.repairTitle}>Costo riparazione</Text>
+                <Text style={styles.repairHelp}>Opzionale: puoi salvarlo ora o anche dopo dall archivio guasti.</Text>
+                <TextInput
+                  inputMode="decimal"
+                  keyboardType="decimal-pad"
+                  onChangeText={setRepairAmount}
+                  placeholder="Importo speso, es. 450,00"
+                  placeholderTextColor="#94a3b8"
+                  style={styles.repairInput}
+                  value={repairAmount}
+                />
+                <TextInput
+                  multiline
+                  onChangeText={setRepairNotes}
+                  placeholder="Note officina/intervento"
+                  placeholderTextColor="#94a3b8"
+                  style={[styles.repairInput, styles.repairTextArea]}
+                  value={repairNotes}
+                />
+                <Text style={styles.repairHelp}>
+                  {repairCostCents ? `Totale inserito: ${formatMoneyCents(repairCostCents, item.repairCostCurrency)}` : 'Lascia vuoto se il costo non e ancora noto.'}
+                </Text>
+                <Pressable disabled={isSavingRepair} onPress={saveFaultRepair} style={[styles.secondaryResolveButton, isSavingRepair && styles.resolveButtonDisabled]}>
+                  <Text style={styles.secondaryResolveButtonText}>{isSavingRepair ? 'Salvo...' : 'Salva costo'}</Text>
+                </Pressable>
+              </View>
             </>
           ) : null}
 
           {!isArchived ? (
-            <Pressable disabled={isResolving} onPress={() => onResolve?.(detail)} style={[styles.resolveButton, isResolving && styles.resolveButtonDisabled]}>
-              <Text style={styles.resolveButtonText}>{resolveLabel}</Text>
+            <Pressable disabled={isResolving || isSavingRepair} onPress={() => onResolve?.(detail, isFault ? repairPayload : undefined)} style={[styles.resolveButton, (isResolving || isSavingRepair) && styles.resolveButtonDisabled]}>
+              <Text style={styles.resolveButtonText}>{isFault && repairCostCents ? 'Archivia con costo' : resolveLabel}</Text>
             </Pressable>
           ) : null}
         </ScrollView>
@@ -301,6 +373,7 @@ export function CompanyHomeScreen({
   onResolveCheck,
   onResolveFault,
   onSendDeadlineReminder,
+  onUpdateFaultRepair,
 }) {
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedDeadline, setSelectedDeadline] = useState(null)
@@ -328,12 +401,12 @@ export function CompanyHomeScreen({
   const deadlineTone = hasExpiredDeadlines ? 'danger' : hasSoonDeadlines ? 'warning' : 'info'
   const dailyPhrase = getDailyPhrase()
 
-  async function resolveSelectedDetail(detail = selectedDetail) {
+  async function resolveSelectedDetail(detail = selectedDetail, repair = undefined) {
     if (!detail?.item?.id) return
 
     setIsResolvingDetail(true)
     const resolved = detail.type === 'fault'
-      ? await onResolveFault?.(detail.item.id)
+      ? await onResolveFault?.(detail.item.id, repair)
       : await onResolveCheck?.(detail.item.id)
     setIsResolvingDetail(false)
 
@@ -480,6 +553,7 @@ export function CompanyHomeScreen({
         language={language}
         onClose={() => setSelectedDetail(null)}
         onResolve={resolveSelectedDetail}
+        onSaveFaultRepair={onUpdateFaultRepair}
         vehicles={vehicles}
       />
       <DeadlineRenewModal
@@ -725,6 +799,42 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 20,
   },
+  repairBox: {
+    backgroundColor: '#ecfeff',
+    borderColor: '#a5f3fc',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+    marginTop: 14,
+    padding: 12,
+  },
+  repairHelp: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  repairInput: {
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '800',
+    minHeight: 44,
+    paddingHorizontal: 12,
+  },
+  repairTextArea: {
+    minHeight: 72,
+    paddingTop: 12,
+    textAlignVertical: 'top',
+  },
+  repairTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
   emptyText: {
     color: colors.muted,
     fontSize: 13,
@@ -834,6 +944,21 @@ const styles = StyleSheet.create({
   },
   resolveButtonText: {
     color: colors.white,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  secondaryResolveButton: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: colors.cyanDark,
+    borderRadius: 999,
+    borderWidth: 1,
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  secondaryResolveButtonText: {
+    color: colors.cyanDark,
     fontSize: 13,
     fontWeight: '900',
   },

@@ -2102,10 +2102,10 @@ function CamionChiaroApp() {
     return true
   }
 
-  async function handleResolveCompanyFault(reportId) {
+  async function handleResolveCompanyFault(reportId, repair = {}) {
     if (!reportId) return false
 
-    const result = await updateFaultReportStatus(reportId, 'closed')
+    const result = await updateFaultReportStatus(reportId, 'closed', repair)
 
     if (result.error) {
       Alert.alert('Guasto non chiuso', result.error.message)
@@ -2120,6 +2120,32 @@ function CamionChiaroApp() {
         ...currentContext,
         faultReports: currentContext.faultReports.map((report) => (
           report.id === reportId ? { ...report, ...(updatedReport ?? {}), status: 'closed' } : report
+        )),
+      }
+    })
+
+    return true
+  }
+
+  async function handleUpdateCompanyFaultRepair(reportId, repair = {}) {
+    if (!reportId) return false
+
+    const currentReport = companyContext?.faultReports?.find((report) => report.id === reportId)
+    const result = await updateFaultReportStatus(reportId, currentReport?.status || 'open', repair)
+
+    if (result.error) {
+      Alert.alert('Costo non salvato', result.error.message)
+      return false
+    }
+
+    setCompanyContext((currentContext) => {
+      if (!currentContext) return currentContext
+      const updatedReport = result.data
+
+      return {
+        ...currentContext,
+        faultReports: currentContext.faultReports.map((report) => (
+          report.id === reportId ? { ...report, ...(updatedReport ?? {}) } : report
         )),
       }
     })
@@ -2239,6 +2265,7 @@ function CamionChiaroApp() {
             onCloseDeadline={handleCloseCompanyDeadline}
             onRenewDeadline={handleRenewCompanyDeadline}
             onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
+            onUpdateFaultRepair={handleUpdateCompanyFaultRepair}
           />
         )
       }
@@ -2257,6 +2284,7 @@ function CamionChiaroApp() {
           onRenewDeadline={handleRenewCompanyDeadline}
           onResolveCheck={handleResolveCompanyCheck}
           onResolveFault={handleResolveCompanyFault}
+          onUpdateFaultRepair={handleUpdateCompanyFaultRepair}
           onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
         />
       )

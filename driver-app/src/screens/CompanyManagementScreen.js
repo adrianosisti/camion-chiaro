@@ -102,6 +102,37 @@ function formatDateTime(value, language = 'it') {
   }).format(new Date(value))
 }
 
+function formatMoneyCents(cents = 0, currency = 'EUR') {
+  return new Intl.NumberFormat('it-IT', {
+    currency: currency || 'EUR',
+    style: 'currency',
+  }).format((Number(cents) || 0) / 100)
+}
+
+function formatMoneyInput(cents = 0) {
+  if (!cents) return ''
+  return String((Number(cents) / 100).toFixed(2)).replace('.', ',')
+}
+
+function parseMoneyToCents(value = '') {
+  const normalized = String(value).replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+  const amount = Number.parseFloat(normalized)
+
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0
+}
+
+function getRepairCostDate(fault = {}) {
+  return fault.repairRecordedAt || fault.updatedAt || fault.createdAt
+}
+
+function getRepairPeriodStart(period) {
+  const now = new Date()
+  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1)
+  if (period === 'year') return new Date(now.getFullYear(), 0, 1)
+  return null
+}
+
 function getDriverName(drivers, driverId) {
   return drivers.find((driver) => driver.id === driverId)?.name ?? 'Autista'
 }
@@ -193,7 +224,7 @@ function Chip({ active, label, onPress }) {
   )
 }
 
-function TextField({ keyboardType, label, onChangeText, placeholder, secureTextEntry = false, value }) {
+function TextField({ keyboardType, label, multiline = false, onChangeText, placeholder, secureTextEntry = false, value }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
@@ -201,11 +232,13 @@ function TextField({ keyboardType, label, onChangeText, placeholder, secureTextE
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType={keyboardType}
+        multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor="#94a3b8"
         secureTextEntry={secureTextEntry}
-        style={styles.input}
+        style={[styles.input, multiline && styles.textAreaInput]}
+        textAlignVertical={multiline ? 'top' : 'center'}
         value={value}
       />
     </View>
@@ -440,6 +473,67 @@ export function DeadlineRenewModal({
   )
 }
 
+function FaultRepairModal({ fault, language = 'it', onClose, onSave, vehicles = [] }) {
+  const [amount, setAmount] = useState('')
+  const [notes, setNotes] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (!fault?.id) return
+    setAmount(formatMoneyInput(fault.repairCostCents))
+    setNotes(fault.repairNotes ?? '')
+    setIsSaving(false)
+  }, [fault?.id, fault?.repairCostCents, fault?.repairNotes])
+
+  if (!fault) return null
+
+  const repairCostCents = parseMoneyToCents(amount)
+  const vehicle = vehicles.find((entry) => entry.id === fault.vehicleId)
+
+  async function saveRepair() {
+    setIsSaving(true)
+    const saved = await onSave?.(fault.id, {
+      repairCostCents,
+      repairCostCurrency: fault.repairCostCurrency || 'EUR',
+      repairNotes: notes,
+    })
+    setIsSaving(false)
+
+    if (saved !== false) {
+      Alert.alert('Costo salvato', 'Il costo riparazione e stato aggiornato.')
+      onClose?.()
+    }
+  }
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} visible>
+      <View style={styles.detailScreen}>
+        <View style={styles.detailHeader}>
+          <Pressable disabled={isSaving} onPress={onClose} style={styles.detailCloseButton}>
+            <Text style={styles.detailCloseText}>‹</Text>
+          </Pressable>
+          <View style={styles.listCopy}>
+            <Text style={styles.detailKicker}>Costo riparazione</Text>
+            <Text numberOfLines={1} style={styles.detailHeaderTitle}>{fault.title}</Text>
+          </View>
+        </View>
+        <ScrollView contentContainerStyle={styles.detailContent}>
+          <View style={styles.renewSummaryBox}>
+            <Text style={styles.renewSummaryTitle}>{vehicle?.plate ?? 'Mezzo non indicato'}</Text>
+            <Text style={styles.renewSummaryMeta}>{formatDateTime(fault.createdAt, language)} · {fault.description || 'Nessuna descrizione'}</Text>
+          </View>
+          <TextField label="Importo speso" keyboardType="decimal-pad" onChangeText={setAmount} placeholder="Es. 450,00" value={amount} />
+          <TextField label="Note officina/intervento" multiline onChangeText={setNotes} placeholder="Es. sostituito alternatore" value={notes} />
+          <Text style={styles.repairTotalText}>
+            {repairCostCents ? `Totale: ${formatMoneyCents(repairCostCents, fault.repairCostCurrency)}` : 'Lascia vuoto se il costo non e ancora noto.'}
+          </Text>
+          <PrimaryButton loading={isSaving} onPress={saveRepair} title="Salva costo" />
+        </ScrollView>
+      </View>
+    </Modal>
+  )
+}
+
 function CreateTypeSelector({ activeForm, onSelect }) {
   const activeIndex = Math.max(0, createFormOptions.findIndex((option) => option.id === activeForm))
   const activeOption = createFormOptions[activeIndex] ?? createFormOptions[0]
@@ -483,6 +577,7 @@ export function CompanyManagementScreen({
   onCloseDeadline,
   onRenewDeadline,
   onSendDeadlineReminder,
+  onUpdateFaultRepair,
 }) {
   const workforceSchemaReady = context?.workforceSchemaReady !== false
   const drivers = context?.drivers ?? []
@@ -513,6 +608,7 @@ export function CompanyManagementScreen({
   const [activeForm, setActiveForm] = useState('driver')
   const [activeList, setActiveList] = useState(initialSection)
   const [selectedDeadline, setSelectedDeadline] = useState(null)
+  const [selectedFault, setSelectedFault] = useState(null)
   const [mode, setMode] = useState(initialMode)
   const [driverForm, setDriverForm] = useState({
     adrDueDate: '',
@@ -574,6 +670,8 @@ export function CompanyManagementScreen({
     type: '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [costPeriod, setCostPeriod] = useState('month')
+  const [costVehicleId, setCostVehicleId] = useState('all')
   const currentScopes = workforceSchemaReady ? workforceScopes : scopes
   const deadlineAssignees = useMemo(() => {
     if (deadlineForm.scope === 'driver') return drivers
@@ -586,6 +684,22 @@ export function CompanyManagementScreen({
     .filter((item) => item.dueDate)
     .slice()
     .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
+  const repairCostFaults = useMemo(() => {
+    const periodStart = getRepairPeriodStart(costPeriod)
+
+    return faults
+      .filter((fault) => Number(fault.repairCostCents ?? 0) > 0)
+      .filter((fault) => costVehicleId === 'all' || fault.vehicleId === costVehicleId)
+      .filter((fault) => {
+        if (!periodStart) return true
+        const costDate = new Date(getRepairCostDate(fault))
+        return Number.isFinite(costDate.getTime()) && costDate >= periodStart
+      })
+      .slice()
+      .sort((first, second) => new Date(getRepairCostDate(second)) - new Date(getRepairCostDate(first)))
+  }, [costPeriod, costVehicleId, faults])
+  const repairCostTotalCents = repairCostFaults.reduce((total, fault) => total + Number(fault.repairCostCents ?? 0), 0)
+  const repairCostAverageCents = repairCostFaults.length ? Math.round(repairCostTotalCents / repairCostFaults.length) : 0
 
   useEffect(() => {
     if (initialSection) {
@@ -1211,6 +1325,7 @@ export function CompanyManagementScreen({
             <Chip active={activeList === 'faults'} label="Guasti" onPress={() => setActiveList('faults')} />
             <Chip active={activeList === 'checks'} label="Check" onPress={() => setActiveList('checks')} />
             <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
+            <Chip active={activeList === 'costs'} label="Costi" onPress={() => setActiveList('costs')} />
           </View>
 
         {activeList === 'people' ? (
@@ -1336,7 +1451,7 @@ export function CompanyManagementScreen({
         {activeList === 'faults' ? (
           <View style={styles.archiveList}>
             {archivedFaults.map((fault) => (
-              <View key={fault.id} style={styles.registryCard}>
+              <Pressable key={fault.id} onPress={() => setSelectedFault(fault)} style={styles.registryCard}>
                 <View style={styles.registryHeader}>
                   <View style={styles.listIconMuted}>
                     <Ionicons color={colors.muted} name="construct-outline" size={18} />
@@ -1346,10 +1461,12 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>
                       {getDriverName(drivers, fault.driverId)} · {getVehiclePlate(vehicles, fault.vehicleId)} · {formatDateTime(fault.createdAt, language)}
                     </Text>
-                    <Text style={styles.listMeta}>{fault.description || 'Nessuna descrizione'} · risolto</Text>
+                    <Text style={styles.listMeta}>
+                      {fault.description || 'Nessuna descrizione'} · {fault.repairCostCents ? formatMoneyCents(fault.repairCostCents, fault.repairCostCurrency) : 'costo non inserito'}
+                    </Text>
                   </View>
                 </View>
-              </View>
+              </Pressable>
             ))}
             {!archivedFaults.length ? <Text style={styles.emptyText}>Nessun guasto archiviato.</Text> : null}
           </View>
@@ -1406,6 +1523,71 @@ export function CompanyManagementScreen({
             {!nextDeadlines.length ? <Text style={styles.emptyText}>Nessuna scadenza caricata.</Text> : null}
           </View>
         ) : null}
+
+        {activeList === 'costs' ? (
+          <View style={styles.archiveList}>
+            <View style={styles.costReportCard}>
+              <View style={styles.registryHeader}>
+                <View style={styles.listIcon}>
+                  <Ionicons color={colors.cyanDark} name="cash-outline" size={18} />
+                </View>
+                <View style={styles.listCopy}>
+                  <Text style={styles.listTitle}>Costi riparazioni</Text>
+                  <Text style={styles.listMeta}>Filtra per targa e periodo, poi apri il guasto per modificare il costo.</Text>
+                </View>
+              </View>
+              <Text style={styles.costFilterLabel}>Periodo</Text>
+              <View style={styles.chipGrid}>
+                <Chip active={costPeriod === 'today'} label="Oggi" onPress={() => setCostPeriod('today')} />
+                <Chip active={costPeriod === 'month'} label="Mese" onPress={() => setCostPeriod('month')} />
+                <Chip active={costPeriod === 'year'} label="Anno" onPress={() => setCostPeriod('year')} />
+                <Chip active={costPeriod === 'all'} label="Sempre" onPress={() => setCostPeriod('all')} />
+              </View>
+              <Text style={styles.costFilterLabel}>Targa</Text>
+              <View style={styles.chipGrid}>
+                <Chip active={costVehicleId === 'all'} label="Tutte" onPress={() => setCostVehicleId('all')} />
+                {vehicles.map((vehicle) => (
+                  <Chip
+                    active={costVehicleId === vehicle.id}
+                    key={vehicle.id}
+                    label={vehicle.plate}
+                    onPress={() => setCostVehicleId(vehicle.id)}
+                  />
+                ))}
+              </View>
+              <Text style={styles.costTotal}>{formatMoneyCents(repairCostTotalCents)}</Text>
+              <View style={styles.costMetricRow}>
+                <View style={styles.costMetricCard}>
+                  <Text style={styles.summaryLabel}>Interventi</Text>
+                  <Text style={styles.summaryValue}>{repairCostFaults.length}</Text>
+                </View>
+                <View style={styles.costMetricCard}>
+                  <Text style={styles.summaryLabel}>Media</Text>
+                  <Text style={styles.summaryValue}>{formatMoneyCents(repairCostAverageCents)}</Text>
+                </View>
+              </View>
+            </View>
+
+            {repairCostFaults.map((fault) => (
+              <Pressable key={fault.id} onPress={() => setSelectedFault(fault)} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIconMuted}>
+                    <Ionicons color={colors.muted} name="construct-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{fault.title}</Text>
+                    <Text style={styles.listMeta}>
+                      {getVehiclePlate(vehicles, fault.vehicleId)} · {getDriverName(drivers, fault.driverId)} · {formatDateTime(getRepairCostDate(fault), language)}
+                    </Text>
+                    <Text style={styles.listMeta}>{fault.description || 'Nessuna descrizione'}</Text>
+                  </View>
+                  <Text style={styles.costRowAmount}>{formatMoneyCents(fault.repairCostCents, fault.repairCostCurrency)}</Text>
+                </View>
+              </Pressable>
+            ))}
+            {!repairCostFaults.length ? <Text style={styles.emptyText}>Nessun costo riparazione trovato per questo filtro.</Text> : null}
+          </View>
+        ) : null}
       </Panel>
       ) : null}
       <DeadlineRenewModal
@@ -1418,6 +1600,13 @@ export function CompanyManagementScreen({
         onSave={renewDeadline}
         onSendReminder={onSendDeadlineReminder}
         people={allPeople}
+        vehicles={activeVehicles}
+      />
+      <FaultRepairModal
+        fault={selectedFault}
+        language={language}
+        onClose={() => setSelectedFault(null)}
+        onSave={onUpdateFaultRepair}
         vehicles={activeVehicles}
       />
     </ScrollView>
@@ -1469,6 +1658,42 @@ const styles = StyleSheet.create({
     color: colors.cyanDark,
     fontSize: 12,
     fontWeight: '900',
+  },
+  costFilterLabel: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+    marginBottom: 7,
+    marginTop: 14,
+  },
+  costMetricCard: {
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    flex: 1,
+    padding: 12,
+  },
+  costMetricRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  costReportCard: {
+    backgroundColor: '#ecfeff',
+    borderColor: colors.cyan,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+  },
+  costRowAmount: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  costTotal: {
+    color: colors.ink,
+    fontSize: 28,
+    fontWeight: '900',
+    marginBottom: 8,
+    marginTop: 4,
   },
   attachmentRenewBox: {
     alignItems: 'center',
@@ -1757,6 +1982,11 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: 12,
   },
+  textAreaInput: {
+    minHeight: 82,
+    paddingTop: 12,
+    textAlignVertical: 'top',
+  },
   label: {
     color: colors.ink,
     fontSize: 12,
@@ -1872,6 +2102,12 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 13,
     fontWeight: '900',
+  },
+  repairTotalText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
   },
   selectorList: {
     flexDirection: 'row',

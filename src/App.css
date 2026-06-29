@@ -1688,7 +1688,7 @@
 
 .home-assistant-strip {
   display: grid;
-  grid-template-columns: minmax(210px, 0.26fr) minmax(0, 1fr) minmax(240px, auto) auto;
+  grid-template-columns: minmax(210px, 0.28fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   min-height: 64px;
@@ -1759,7 +1759,7 @@
 }
 
 .home-assistant-topics {
-  display: grid;
+  display: none;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
@@ -1811,15 +1811,18 @@
   align-items: flex-end;
   justify-content: flex-end;
   padding: 24px;
+  overflow: hidden;
   background: rgba(2, 6, 23, 0.42);
   backdrop-filter: blur(8px);
+  overscroll-behavior: contain;
 }
 
 .assistant-chat-modal {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(460px, calc(100vw - 32px));
-  height: min(680px, calc(100vh - 48px));
+  height: min(620px, calc(100dvh - 48px));
+  min-height: 480px;
   overflow: hidden;
   border: 1px solid rgba(18, 198, 223, 0.32);
   border-radius: 8px;
@@ -1881,6 +1884,7 @@
   min-height: 0;
   padding: 16px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background:
     radial-gradient(circle at top left, rgba(18, 198, 223, 0.12), transparent 36%),
     #eef6fb;
@@ -1927,10 +1931,16 @@
   animation: assistantPulse 1.2s ease-in-out infinite;
 }
 
+.assistant-chat-footer {
+  display: grid;
+  min-height: 0;
+  background: #ffffff;
+}
+
 .assistant-chat-quick {
   display: flex;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 9px 12px;
   overflow-x: auto;
   border-top: 1px solid rgba(148, 163, 184, 0.2);
   background: #ffffff;
@@ -1963,7 +1973,7 @@
 .assistant-chat-ticket {
   display: grid;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-top: 1px solid rgba(148, 163, 184, 0.22);
   background:
     linear-gradient(135deg, rgba(18, 198, 223, 0.1), rgba(255, 255, 255, 0)),
@@ -2000,16 +2010,16 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 8px;
-  padding: 12px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(148, 163, 184, 0.2);
   background: #ffffff;
 }
 
 .assistant-chat-input textarea {
   width: 100%;
-  max-height: 110px;
-  min-height: 42px;
-  padding: 11px 12px;
+  max-height: 92px;
+  min-height: 40px;
+  padding: 10px 12px;
   resize: none;
   border: 1px solid rgba(15, 23, 42, 0.13);
   border-radius: 8px;
@@ -7760,12 +7770,7 @@
   }
 
   .workspace.is-dashboard-home .home-assistant-title small,
-  .workspace.is-dashboard-home .home-assistant-message small,
-  .workspace.is-dashboard-home .home-assistant-topics {
-    display: none;
-  }
-
-  .workspace.is-dashboard-home .home-assistant-actions .secondary-button {
+  .workspace.is-dashboard-home .home-assistant-message small {
     display: none;
   }
 }
@@ -7803,28 +7808,46 @@
     align-items: stretch;
   }
 
-  .home-assistant-topics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .home-assistant-actions {
     justify-content: stretch;
   }
 
-  .home-assistant-actions .primary-button,
-  .home-assistant-actions .secondary-button {
+  .home-assistant-actions .primary-button {
     flex: 1;
   }
 
   .assistant-chat-backdrop {
     align-items: flex-end;
     justify-content: center;
-    padding: 12px;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
   }
 
   .assistant-chat-modal {
     width: min(520px, 100%);
-    height: min(720px, calc(100dvh - 24px));
+    height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 0;
+  }
+
+  .assistant-chat-header {
+    padding: 12px;
+  }
+
+  .assistant-chat-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .assistant-chat-body {
+    padding: 12px;
+  }
+
+  .assistant-chat-message {
+    max-width: 92%;
+  }
+
+  .assistant-chat-ticket-actions .primary-button,
+  .assistant-chat-ticket-actions .secondary-button {
+    flex: 1 1 160px;
   }
 
   .license-gate-heading {
@@ -8129,7 +8152,6 @@
     grid-template-columns: 1fr;
   }
 
-  .home-assistant-topics,
   .home-assistant-actions {
     grid-template-columns: 1fr;
     flex-direction: column;

@@ -9564,22 +9564,7 @@ function HomeAssistantStrip({
         <small>{t('homeAssistant.question')}</small>
         <strong>{t('homeAssistant.body')}</strong>
       </div>
-      <div className="home-assistant-topics" aria-label={t('homeAssistant.question')}>
-        {topics.map((topic) => (
-          <button
-            key={topic.id}
-            onClick={() => handleTopicClick(topic)}
-            type="button"
-          >
-            {topic.label}
-          </button>
-        ))}
-      </div>
       <div className="home-assistant-actions">
-        <button className="secondary-button compact-button" onClick={onOpenSupport} type="button">
-          <BookOpen size={15} />
-          {t('homeAssistant.openGuide')}
-        </button>
         <button className="primary-button compact-button" onClick={() => setIsOpen(true)} type="button">
           <Send size={15} />
           {t('homeAssistant.openAssistant')}
@@ -9622,52 +9607,54 @@ function HomeAssistantStrip({
                 </article>
               )}
             </div>
-            <div className="assistant-chat-quick">
-              {topics.map((topic) => (
-                <button key={topic.id} onClick={() => handleTopicClick(topic)} type="button">
-                  {topic.label}
-                </button>
-              ))}
-              <button className="assistant-ticket-button" onClick={handleTicketRequest} type="button">
-                <Mail size={14} />
-                {t('homeAssistant.notHelpful')}
-              </button>
-            </div>
-            {isTicketVisible && (
-              <div className="assistant-chat-ticket">
-                <strong>{t('homeAssistant.ticketTitle')}</strong>
-                <p>{t('homeAssistant.ticketBody')}</p>
-                <div className="assistant-chat-ticket-actions">
-                  <a className="primary-button compact-button" href={ticketMailto}>
-                    <Mail size={15} />
-                    {t('homeAssistant.openTicket')}
-                  </a>
-                  <button className="secondary-button compact-button" onClick={onOpenSupport} type="button">
-                    <BookOpen size={15} />
-                    {t('homeAssistant.openGuide')}
+            <div className="assistant-chat-footer">
+              <div className="assistant-chat-quick">
+                {topics.map((topic) => (
+                  <button key={topic.id} onClick={() => handleTopicClick(topic)} type="button">
+                    {topic.label}
                   </button>
-                </div>
+                ))}
+                <button className="assistant-ticket-button" onClick={handleTicketRequest} type="button">
+                  <Mail size={14} />
+                  {t('homeAssistant.notHelpful')}
+                </button>
               </div>
-            )}
-            <form className="assistant-chat-input" onSubmit={handleSubmit}>
-              <textarea
-                aria-label={t('homeAssistant.placeholder')}
-                onChange={(event) => setInputValue(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    sendAssistantMessage(inputValue)
-                  }
-                }}
-                placeholder={t('homeAssistant.placeholder')}
-                rows={1}
-                value={inputValue}
-              />
-              <button className="primary-button compact-button" disabled={isSending || !inputValue.trim()} type="submit">
-                <Send size={16} />
-                {t('homeAssistant.send')}
-              </button>
-            </form>
+              {isTicketVisible && (
+                <div className="assistant-chat-ticket">
+                  <strong>{t('homeAssistant.ticketTitle')}</strong>
+                  <p>{t('homeAssistant.ticketBody')}</p>
+                  <div className="assistant-chat-ticket-actions">
+                    <a className="primary-button compact-button" href={ticketMailto}>
+                      <Mail size={15} />
+                      {t('homeAssistant.openTicket')}
+                    </a>
+                    <button className="secondary-button compact-button" onClick={onOpenSupport} type="button">
+                      <BookOpen size={15} />
+                      {t('homeAssistant.openGuide')}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <form className="assistant-chat-input" onSubmit={handleSubmit}>
+                <textarea
+                  aria-label={t('homeAssistant.placeholder')}
+                  onChange={(event) => setInputValue(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault()
+                      sendAssistantMessage(inputValue)
+                    }
+                  }}
+                  placeholder={t('homeAssistant.placeholder')}
+                  rows={1}
+                  value={inputValue}
+                />
+                <button className="primary-button compact-button" disabled={isSending || !inputValue.trim()} type="submit">
+                  <Send size={16} />
+                  {t('homeAssistant.send')}
+                </button>
+              </form>
+            </div>
           </section>
         </div>
       )}

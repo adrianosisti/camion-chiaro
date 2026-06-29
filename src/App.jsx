@@ -60,7 +60,9 @@ import {
   createCompanyAssetSignedUrl,
   createBillingCheckoutSession,
   createBillingPortalSession,
+  createCompanyPerson as createSupabaseCompanyPerson,
   createCompanyInvoiceSignedUrl,
+  createComplianceItemRecord as createSupabaseComplianceItem,
   createCostEntryRecord as createSupabaseCostEntry,
   fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
@@ -192,6 +194,23 @@ const fleetTypeOptions = [
   { value: 'trattore', label: 'Trattore' },
   { value: 'semirimorchio', label: 'Semirimorchio' },
 ]
+
+const workforceDepartmentOptions = [
+  { value: 'office', label: 'Ufficio' },
+  { value: 'warehouse', label: 'Magazzino' },
+]
+
+const workforcePersonTypeOptions = {
+  office: [
+    { value: 'office', label: 'Impiegato ufficio' },
+    { value: 'manager', label: 'Responsabile ufficio' },
+  ],
+  warehouse: [
+    { value: 'warehouse_worker', label: 'Magazziniere' },
+    { value: 'forklift_operator', label: 'Carrellista' },
+    { value: 'manager', label: 'Responsabile magazzino' },
+  ],
+}
 
 const vehicleStatusOptions = ['Operativo', 'Da controllare', 'In manutenzione']
 const billingPlanLabels = {
@@ -4284,17 +4303,6 @@ function getWorkforceRoleLabel(value = '') {
   return labels[value] ?? 'Persona'
 }
 
-function getWorkforceAssetLabel(value = '') {
-  const labels = {
-    forklift: 'Muletto',
-    other: 'Altro',
-    pallet_truck: 'Transpallet',
-    warehouse_equipment: 'Attrezzatura',
-  }
-
-  return labels[value] ?? 'Attrezzatura'
-}
-
 function getFaultSeverityLabel(value, t) {
   const fallback = faultSeverityOptions.find((option) => option.value === value)?.label ?? value
   return t ? translatedValue(t, faultSeverityTranslationKeys, value, fallback) : fallback
@@ -4420,6 +4428,23 @@ function getDriverCreateDefaults() {
     role: 'Autista bilico',
     username: '',
     vehicleId: '',
+  }
+}
+
+function getPersonCreateDefaults() {
+  return {
+    department: 'office',
+    depot: '',
+    email: '',
+    forkliftLicenseDueDate: '',
+    jobTitle: 'Impiegato ufficio',
+    medicalDueDate: '',
+    name: '',
+    password: generateTemporaryPassword(),
+    personType: 'office',
+    phone: '',
+    safetyTrainingDueDate: '',
+    username: '',
   }
 }
 
@@ -4874,6 +4899,7 @@ function App() {
   const [driversSyncStatus, setDriversSyncStatus] = useState('')
   const [documentsSyncStatus, setDocumentsSyncStatus] = useState('')
   const [fleetSyncStatus, setFleetSyncStatus] = useState('')
+  const [peopleSyncStatus, setPeopleSyncStatus] = useState('')
   const [operationsSyncStatus, setOperationsSyncStatus] = useState('')
   const [companySettingsStatus, setCompanySettingsStatus] = useState('')
   const [billingCheckoutStatus, setBillingCheckoutStatus] = useState('')
@@ -6197,6 +6223,110 @@ function App() {
     setDriverRecords((currentDrivers) => [cleanDriver, ...currentDrivers])
     setDriversSyncStatus('Autista aggiunto in modalità locale.')
     return true
+  }
+
+  async function addPersonRecord(person) {
+    const temporaryPassword = person.password?.trim() ?? ''
+    const initialDeadlines = person.initialDeadlines ?? []
+    const personWithoutPassword = { ...person }
+    delete personWithoutPassword.password
+    delete personWithoutPassword.initialDeadlines
+
+    const cleanUsername = normalizeDriverUsername(person.username)
+    const cleanPerson = {
+      ...personWithoutPassword,
+      authEmail: buildDriverAuthEmail(cleanUsername),
+      email: person.email || buildDriverAuthEmail(cleanUsername),
+      jobTitle: person.jobTitle || getWorkforceRoleLabel(person.personType),
+      status: 'active',
+      username: cleanUsername,
+    }
+
+    async function saveInitialDeadlines(savedPerson) {
+      const validDeadlines = initialDeadlines.filter((deadline) => deadline?.dueDate && deadline?.type)
+
+      if (!savedPerson?.id || validDeadlines.length === 0) return 0
+
+      let savedDeadlineCount = 0
+
+      for (const deadline of validDeadlines) {
+        if (hasCompanyDataConnection && session?.role === 'company') {
+          const result = await createSupabaseComplianceItem(
+            {
+              assigneeId: savedPerson.id,
+              dueDate: deadline.dueDate,
+              owner: savedPerson.name,
+              scope: 'person',
+              type: deadline.type,
+            },
+            activeCompanyId,
+          )
+
+          if (result.error) {
+            setPeopleSyncStatus(`Persona creata. Scadenza non salvata: ${result.error.message}`)
+            continue
+          }
+
+          if (result.data) {
+            setItems((currentItems) => upsertRecordById(currentItems, result.data))
+            savedDeadlineCount += 1
+          }
+        } else {
+          setItems((currentItems) => [
+            {
+              assigneeId: savedPerson.id,
+              documentNumber: '',
+              dueDate: deadline.dueDate,
+              id: `person-deadline-${Date.now()}-${savedDeadlineCount}`,
+              owner: savedPerson.name,
+              personId: savedPerson.id,
+              reminderDays: [60, 30, 15, 7],
+              scope: 'person',
+              status: 'open',
+              type: deadline.type,
+            },
+            ...currentItems,
+          ])
+          savedDeadlineCount += 1
+        }
+      }
+
+      return savedDeadlineCount
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setPeopleSyncStatus('Creo account persona e salvo anagrafica...')
+      const result = await createSupabaseCompanyPerson({ ...cleanPerson, password: temporaryPassword }, activeCompanyId)
+
+      if (result.error) {
+        setPeopleSyncStatus(`Errore Supabase: ${result.error.message}`)
+        return false
+      }
+
+      const savedPerson = result.data
+      if (!savedPerson?.id) {
+        setPeopleSyncStatus('Persona non salvata: risposta server incompleta.')
+        return false
+      }
+
+      setPersonRecords((currentPeople) => [savedPerson, ...currentPeople])
+      const savedDeadlineCount = await saveInitialDeadlines(savedPerson)
+      setPeopleSyncStatus(
+        `Persona creata. Username: ${cleanPerson.username}. Password temporanea: ${temporaryPassword}${savedDeadlineCount ? `. Scadenze create: ${savedDeadlineCount}.` : ''}`,
+      )
+      return savedPerson
+    }
+
+    const localPerson = {
+      ...cleanPerson,
+      companyId: activeCompanyId,
+      id: person.id ?? `person-${Date.now()}`,
+    }
+
+    setPersonRecords((currentPeople) => [localPerson, ...currentPeople])
+    const savedDeadlineCount = await saveInitialDeadlines(localPerson)
+    setPeopleSyncStatus(`Persona aggiunta in modalità locale${savedDeadlineCount ? ` con ${savedDeadlineCount} scadenze.` : '.'}`)
+    return localPerson
   }
 
   async function updateDriverRecord(driverId, updates) {
@@ -7726,6 +7856,7 @@ function App() {
             onAddDriver={addDriverRecord}
             onAddDeadline={addComplianceItem}
             onAddDocument={addDriverDocumentRecord}
+            onAddPerson={addPersonRecord}
             onArchiveDriver={archiveDriverRecord}
             onBackHome={openDashboardHome}
             onDriverDocumentUpload={uploadDriverDocumentFile}
@@ -7742,6 +7873,7 @@ function App() {
             driversSyncStatus={driversSyncStatus}
             fleetSyncStatus={fleetSyncStatus}
             itemRecords={items}
+            peopleSyncStatus={peopleSyncStatus}
             personRecords={personRecords}
             t={t}
             vehicleCheckRecords={vehicleCheckRecords}
@@ -9840,6 +9972,7 @@ function RecordsWorkspace({
   onAddDriver,
   onAddDeadline,
   onAddDocument,
+  onAddPerson,
   onAddVehicle,
   onArchiveDriver,
   onArchiveVehicle,
@@ -9854,6 +9987,7 @@ function RecordsWorkspace({
   onUpdateDriver,
   onUpdateVehicle,
   itemRecords = [],
+  peopleSyncStatus,
   personRecords = [],
   t,
   vehicleCheckRecords = [],
@@ -9862,7 +9996,6 @@ function RecordsWorkspace({
   const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato')
   const activeVehicles = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato')
   const activePeople = personRecords.filter((person) => !['archived', 'Archiviato'].includes(person.status))
-  const activeAssets = assetRecords.filter((asset) => !['archived', 'Archiviato'].includes(asset.status))
   const staffPeople = activePeople.filter((person) => person.department !== 'drivers')
   const archivedDrivers = driverRecords.filter((driver) => driver.status === 'Archiviato')
   const archivedVehicles = vehicleRecords.filter((vehicle) => vehicle.status === 'Archiviato')
@@ -9870,11 +10003,11 @@ function RecordsWorkspace({
   const archivedChecks = vehicleCheckRecords.filter((check) => isVehicleCheckArchived(check, acknowledgedCheckIds))
   const tabs = [
     {
-      count: staffPeople.length + activeAssets.length,
+      count: staffPeople.length,
       icon: Building2,
       id: 'people',
       label: 'Persone',
-      text: 'Ufficio, magazzino, muletti e reparti',
+      text: 'Ufficio, magazzino e reparti',
     },
     {
       count: activeDrivers.length,
@@ -9941,7 +10074,9 @@ function RecordsWorkspace({
         <PeopleWorkspace
           assetRecords={assetRecords}
           itemRecords={itemRecords}
+          onAddPerson={onAddPerson}
           personRecords={personRecords}
+          syncStatus={peopleSyncStatus}
         />
       ) : activeTab === 'archive' ? (
         <ArchiveWorkspace
@@ -10285,7 +10420,7 @@ function getUpcomingWorkforceDeadlines(itemRecords, matcher) {
     .slice(0, 3)
 }
 
-function PeopleWorkspace({ assetRecords = [], itemRecords = [], personRecords = [] }) {
+function PeopleWorkspace({ assetRecords = [], itemRecords = [], onAddPerson, personRecords = [], syncStatus }) {
   const officePeople = personRecords.filter((person) => person.department === 'office')
   const warehousePeople = personRecords.filter((person) => person.department === 'warehouse')
   const warehouseAssets = assetRecords.filter((asset) => !['archived', 'Archiviato'].includes(asset.status))
@@ -10347,8 +10482,185 @@ function PeopleWorkspace({ assetRecords = [], itemRecords = [], personRecords = 
           </div>
         </div>
       </div>
-      <WarehouseAssetsPanel assetRecords={warehouseAssets} itemRecords={itemRecords} />
+      <PersonCreatePanel onAddPerson={onAddPerson} syncStatus={syncStatus} />
     </section>
+  )
+}
+
+function PersonCreatePanel({ onAddPerson, syncStatus }) {
+  const { t } = useI18n()
+  const [isSaving, setIsSaving] = useState(false)
+  const [form, setForm] = useState(getPersonCreateDefaults)
+  const [showValidation, setShowValidation] = useState(false)
+  const authEmail = form.username ? buildDriverAuthEmail(form.username) : ''
+  const currentPersonTypes = workforcePersonTypeOptions[form.department] ?? workforcePersonTypeOptions.office
+  const missingRequiredFields = [
+    form.name.trim() ? null : 'nome e cognome',
+    form.department ? null : 'reparto',
+    form.personType ? null : 'ruolo',
+    form.username.trim() ? null : 'username app',
+    form.password.trim() ? null : 'password temporanea',
+    form.password.trim() && form.password.trim().length < 8 ? 'password min 8' : null,
+  ].filter(Boolean)
+  const canSubmit = missingRequiredFields.length === 0
+
+  function updateField(field, value) {
+    setForm((currentForm) => {
+      if (field === 'name' && !currentForm.username) {
+        return {
+          ...currentForm,
+          name: value,
+          username: normalizeDriverUsername(value),
+        }
+      }
+
+      if (field === 'department') {
+        const nextPersonType = value === 'warehouse' ? 'warehouse_worker' : 'office'
+
+        return {
+          ...currentForm,
+          department: value,
+          jobTitle: getWorkforceRoleLabel(nextPersonType),
+          personType: nextPersonType,
+        }
+      }
+
+      if (field === 'personType') {
+        return {
+          ...currentForm,
+          jobTitle: currentForm.jobTitle ? currentForm.jobTitle : getWorkforceRoleLabel(value),
+          personType: value,
+        }
+      }
+
+      return { ...currentForm, [field]: value }
+    })
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    setShowValidation(true)
+    if (!canSubmit) return
+
+    setIsSaving(true)
+    const added = await onAddPerson?.({
+      id: `person-${Date.now()}`,
+      department: form.department,
+      depot: form.depot,
+      email: form.email,
+      initialDeadlines: [
+        { dueDate: form.medicalDueDate, type: 'Visita medica' },
+        { dueDate: form.safetyTrainingDueDate, type: 'Formazione sicurezza' },
+        form.personType === 'forklift_operator'
+          ? { dueDate: form.forkliftLicenseDueDate, type: 'Patentino carrello' }
+          : null,
+      ].filter((deadline) => deadline?.dueDate),
+      jobTitle: form.jobTitle || getWorkforceRoleLabel(form.personType),
+      name: form.name,
+      password: form.password,
+      personType: form.personType,
+      phone: form.phone,
+      status: 'active',
+      username: normalizeDriverUsername(form.username),
+    })
+    setIsSaving(false)
+
+    if (!added) return
+
+    setShowValidation(false)
+    setForm(getPersonCreateDefaults())
+  }
+
+  return (
+    <form className="panel driver-create-panel person-create-panel" noValidate onSubmit={handleSubmit}>
+      <div className="panel-header compact">
+        <div>
+          <p className="overline">Nuova anagrafica</p>
+          <h2>Aggiungi persona</h2>
+        </div>
+        <UserPlus size={20} />
+      </div>
+      <div className="form-grid single-column">
+        <label>
+          Nome e cognome
+          <input required value={form.name} onChange={(event) => updateField('name', event.target.value)} />
+        </label>
+        <label>
+          Reparto
+          <select value={form.department} onChange={(event) => updateField('department', event.target.value)}>
+            {workforceDepartmentOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Ruolo
+          <select value={form.personType} onChange={(event) => updateField('personType', event.target.value)}>
+            {currentPersonTypes.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Mansione libera
+          <input value={form.jobTitle} onChange={(event) => updateField('jobTitle', event.target.value)} />
+        </label>
+        <label>
+          Telefono
+          <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} />
+        </label>
+        <label>
+          Email
+          <input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} />
+        </label>
+        <label>
+          Username app
+          <input required value={form.username} onChange={(event) => updateField('username', event.target.value)} />
+        </label>
+        <label>
+          Password temporanea
+          <span className="password-field-row">
+            <input
+              minLength={8}
+              required
+              value={form.password}
+              onChange={(event) => updateField('password', event.target.value)}
+            />
+            <button className="small-button" onClick={() => updateField('password', generateTemporaryPassword())} type="button">
+              Genera
+            </button>
+          </span>
+        </label>
+        <label>
+          Sede o reparto
+          <input value={form.depot} onChange={(event) => updateField('depot', event.target.value)} />
+        </label>
+        <label>
+          Visita medica
+          <input value={form.medicalDueDate} onChange={(event) => updateField('medicalDueDate', event.target.value)} type="date" />
+        </label>
+        <label>
+          Formazione sicurezza
+          <input value={form.safetyTrainingDueDate} onChange={(event) => updateField('safetyTrainingDueDate', event.target.value)} type="date" />
+        </label>
+        {form.personType === 'forklift_operator' && (
+          <label>
+            Patentino carrello
+            <input value={form.forkliftLicenseDueDate} onChange={(event) => updateField('forkliftLicenseDueDate', event.target.value)} type="date" />
+          </label>
+        )}
+      </div>
+      <div className="auth-email-box">
+        <strong>Email tecnica accesso app</strong>
+        <span>{authEmail || 'Si genera dallo username.'}</span>
+      </div>
+      {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields, t)} />}
+      {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
+      <button className="primary-button full-button" disabled={isSaving} type="submit">
+        <UserPlus size={17} />
+        {isSaving ? 'Creazione...' : 'Aggiungi persona'}
+      </button>
+    </form>
   )
 }
 
@@ -10375,37 +10687,6 @@ function PeopleDepartmentBlock({ emptyText, icon: Icon, itemRecords, people, tit
       })}
       {people.length === 0 && <p className="archive-note">{emptyText}</p>}
     </section>
-  )
-}
-
-function WarehouseAssetsPanel({ assetRecords, itemRecords }) {
-  return (
-    <aside className="panel people-assets-panel">
-      <div className="panel-header compact">
-        <div>
-          <p className="overline">Magazzino</p>
-          <h2>Muletti e attrezzature</h2>
-        </div>
-        <Wrench size={20} />
-      </div>
-      <div className="people-assets-list">
-        {assetRecords.map((asset) => {
-          const deadlines = getUpcomingWorkforceDeadlines(itemRecords, (item) => item.assetId === asset.id)
-
-          return (
-            <article className="people-asset-row" key={asset.id}>
-              <div>
-                <strong>{asset.code}</strong>
-                <span>{getWorkforceAssetLabel(asset.assetType)} · {asset.model || 'modello non indicato'}</span>
-                <small>{[asset.serialNumber && `Matricola ${asset.serialNumber}`, asset.location].filter(Boolean).join(' · ') || 'Posizione non indicata'}</small>
-              </div>
-              <WorkforceDeadlineMiniList deadlines={deadlines} />
-            </article>
-          )
-        })}
-        {assetRecords.length === 0 && <p className="archive-note">Nessun muletto o attrezzatura caricata.</p>}
-      </div>
-    </aside>
   )
 }
 
@@ -11829,13 +12110,22 @@ function FaultCostReport({
   }
 
   useEffect(() => {
-    if (startAddingCostKey) openNewCostForm()
+    if (!startAddingCostKey) return undefined
+
+    const timeoutId = window.setTimeout(() => openNewCostForm(), 0)
+    return () => window.clearTimeout(timeoutId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startAddingCostKey])
 
   useEffect(() => {
-    if (!resetCostFormKey) return
-    resetCostForm()
-    cancelFaultCostEdit()
+    if (!resetCostFormKey) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      resetCostForm()
+      cancelFaultCostEdit()
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetCostFormKey])
 
   function resetCostForm() {

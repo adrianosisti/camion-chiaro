@@ -603,6 +603,52 @@ function toDriverDocumentPayload(document, companyId = configuredCompanyId) {
   }
 }
 
+function toCompanyPersonPayload(person, companyId = configuredCompanyId) {
+  return {
+    auth_email: person.authEmail || null,
+    company_id: companyId,
+    department: person.department || 'office',
+    depot: person.depot || null,
+    email: person.email || person.authEmail || null,
+    full_name: person.name,
+    job_title: person.jobTitle || null,
+    person_type: person.personType || 'office',
+    phone: person.phone || null,
+    status: person.status || 'active',
+    username: person.username,
+  }
+}
+
+function toComplianceItemPayload(item, companyId = configuredCompanyId) {
+  return {
+    asset_id: item.scope === 'asset' ? item.assigneeId : null,
+    company_id: companyId,
+    document_number: item.documentNumber || null,
+    driver_id: item.scope === 'driver' ? item.assigneeId : null,
+    due_date: item.dueDate,
+    owner: item.owner || null,
+    person_id: item.scope === 'person' ? item.assigneeId : null,
+    scope: item.scope,
+    status: 'open',
+    type: item.type,
+    vehicle_id: item.scope === 'vehicle' ? item.assigneeId : null,
+  }
+}
+
+function toLegacyComplianceItemPayload(item, companyId = configuredCompanyId) {
+  return {
+    company_id: companyId,
+    document_number: item.documentNumber || null,
+    driver_id: item.scope === 'driver' ? item.assigneeId : null,
+    due_date: item.dueDate,
+    owner: item.owner || null,
+    scope: item.scope,
+    status: 'open',
+    type: item.type,
+    vehicle_id: item.scope === 'vehicle' ? item.assigneeId : null,
+  }
+}
+
 function toDriverDocumentUpdatePayload(updates) {
   const payload = {}
 
@@ -1672,6 +1718,93 @@ export async function createDriverAccount(driver, password, companyId = configur
       },
     }
   }
+}
+
+export async function createCompanyPerson(person, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const password = String(person.password ?? '').trim()
+
+  if (password) {
+    const sessionResult = await supabase.auth.getSession()
+    const accessToken = sessionResult.data?.session?.access_token
+
+    if (!accessToken) {
+      return { data: null, error: { message: 'Sessione azienda mancante. Fai login e riprova.' } }
+    }
+
+    const cleanPerson = { ...person }
+    delete cleanPerson.password
+
+    try {
+      const response = await fetch('/.netlify/functions/create-person', {
+        body: JSON.stringify({ companyId, password, person: cleanPerson }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      })
+      const payload = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        return { data: null, error: { message: payload.error ?? 'Creazione persona non riuscita.' } }
+      }
+
+      return { data: payload.person ?? null, error: null }
+    } catch {
+      return {
+        data: null,
+        error: {
+          message: 'Funzione Netlify non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+        },
+      }
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('company_people')
+    .insert(toCompanyPersonPayload(person, companyId))
+    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: { message: 'Manca SQL persone/reparti. Esegui i file SQL 31 in Supabase.' } }
+  }
+
+  return { data: data ? mapCompanyPerson(data) : null, error }
+}
+
+export async function createComplianceItemRecord(item, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  let result = await supabase
+    .from('compliance_items')
+    .insert(toComplianceItemPayload(item, companyId))
+    .select('id, type, scope, driver_id, vehicle_id, person_id, asset_id, due_date, reminder_days, owner, status, document_number, last_reminder_at, file_bucket, file_path')
+    .single()
+
+  if (isMissingWorkforceSchemaError(result.error) && ['person', 'asset'].includes(item.scope)) {
+    return { data: null, error: { message: 'Manca SQL persone/reparti per scadenze persona e attrezzatura.' } }
+  }
+
+  if (result.error?.code === 'PGRST204' || result.error?.code === '42703') {
+    result = await supabase
+      .from('compliance_items')
+      .insert(toLegacyComplianceItemPayload(item, companyId))
+      .select('id, type, scope, driver_id, vehicle_id, due_date, reminder_days, owner, status, document_number, last_reminder_at')
+      .single()
+  }
+
+  return { data: result.data ? mapComplianceItem(result.data) : null, error: result.error }
 }
 
 export async function updateDriverRecord(driverId, updates) {

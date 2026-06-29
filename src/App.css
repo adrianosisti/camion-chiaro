@@ -1688,10 +1688,10 @@
 
 .home-assistant-strip {
   display: grid;
-  grid-template-columns: minmax(210px, 0.28fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  min-height: 64px;
+  gap: 12px;
+  min-height: 56px;
   padding: 10px 12px;
   overflow: hidden;
   border: 1px solid rgba(18, 198, 223, 0.34);
@@ -1722,17 +1722,14 @@
   background: #67e8f9;
 }
 
-.home-assistant-title span:last-child,
-.home-assistant-message {
+.home-assistant-title span:last-child {
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
 .home-assistant-title strong,
-.home-assistant-title small,
-.home-assistant-message small,
-.home-assistant-message strong {
+.home-assistant-title small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1740,22 +1737,14 @@
 
 .home-assistant-title strong {
   color: #ffffff;
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   font-weight: 880;
 }
 
-.home-assistant-title small,
-.home-assistant-message small {
+.home-assistant-title small {
   color: #67e8f9;
-  font-size: 0.68rem;
-  font-weight: 820;
-  text-transform: uppercase;
-}
-
-.home-assistant-message strong {
-  color: #dbeafe;
   font-size: 0.78rem;
-  font-weight: 680;
+  font-weight: 760;
 }
 
 .home-assistant-topics {
@@ -7765,7 +7754,7 @@
   }
 
   .workspace.is-dashboard-home .home-assistant-strip {
-    grid-template-columns: minmax(190px, 0.26fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     min-height: 46px;
     padding: 7px 9px;
   }
@@ -7779,9 +7768,8 @@
     grid-template-columns: 32px minmax(0, 1fr);
   }
 
-  .workspace.is-dashboard-home .home-assistant-title small,
-  .workspace.is-dashboard-home .home-assistant-message small {
-    display: none;
+  .workspace.is-dashboard-home .home-assistant-title small {
+    font-size: 0.7rem;
   }
 }
 

@@ -3147,9 +3147,11 @@ const homeDashboardTranslations = {
     'homeAssistant.errorMessage': 'Non riesco a rispondere adesso. Scrivi cosa stavi facendo oppure apri la guida: ti porto comunque al punto giusto.',
     'homeAssistant.faults': 'Guasti',
     'homeAssistant.guidedMode': 'Risposta guidata',
+    'homeAssistant.homeSubtitle': 'Assistente Camion Chiaro',
+    'homeAssistant.homeTitle': 'Serve aiuto?',
     'homeAssistant.initialMessage': 'Ciao, sono l assistente Camion Chiaro. Dimmi cosa non riesci a fare e ti guido passo passo.',
     'homeAssistant.notHelpful': 'Non e stato utile?',
-    'homeAssistant.openAssistant': 'Apri assistente',
+    'homeAssistant.openAssistant': 'Chiedi aiuto',
     'homeAssistant.openChat': 'Apri chat',
     'homeAssistant.openGuide': 'Apri guida',
     'homeAssistant.openTicket': 'Apri ticket email',
@@ -3187,9 +3189,11 @@ const homeDashboardTranslations = {
     'homeAssistant.errorMessage': 'I cannot answer right now. Tell me what you were doing or open the guide and I will still point you to the right place.',
     'homeAssistant.faults': 'Faults',
     'homeAssistant.guidedMode': 'Guided answer',
+    'homeAssistant.homeSubtitle': 'Camion Chiaro Assistant',
+    'homeAssistant.homeTitle': 'Need help?',
     'homeAssistant.initialMessage': 'Hi, I am the Camion Chiaro assistant. Tell me what you cannot do and I will guide you step by step.',
     'homeAssistant.notHelpful': 'Was this not useful?',
-    'homeAssistant.openAssistant': 'Open assistant',
+    'homeAssistant.openAssistant': 'Get help',
     'homeAssistant.openChat': 'Open chat',
     'homeAssistant.openGuide': 'Open guide',
     'homeAssistant.openTicket': 'Open email ticket',
@@ -3227,9 +3231,11 @@ const homeDashboardTranslations = {
     'homeAssistant.errorMessage': 'No puedo responder ahora. Escribe lo que estabas haciendo o abre la guia: te llevo al punto correcto.',
     'homeAssistant.faults': 'Averias',
     'homeAssistant.guidedMode': 'Respuesta guiada',
+    'homeAssistant.homeSubtitle': 'Asistente Camion Chiaro',
+    'homeAssistant.homeTitle': 'Necesitas ayuda?',
     'homeAssistant.initialMessage': 'Hola, soy el asistente Camion Chiaro. Dime que no puedes hacer y te guio paso a paso.',
     'homeAssistant.notHelpful': 'No ha sido util?',
-    'homeAssistant.openAssistant': 'Abrir asistente',
+    'homeAssistant.openAssistant': 'Pedir ayuda',
     'homeAssistant.openChat': 'Abrir chat',
     'homeAssistant.openGuide': 'Abrir guia',
     'homeAssistant.openTicket': 'Abrir ticket email',
@@ -3267,9 +3273,11 @@ const homeDashboardTranslations = {
     'homeAssistant.errorMessage': 'Je ne peux pas repondre maintenant. Ecris ce que tu faisais ou ouvre le guide: je te dirige quand meme.',
     'homeAssistant.faults': 'Pannes',
     'homeAssistant.guidedMode': 'Reponse guidee',
+    'homeAssistant.homeSubtitle': 'Assistant Camion Chiaro',
+    'homeAssistant.homeTitle': 'Besoin d aide?',
     'homeAssistant.initialMessage': 'Bonjour, je suis l assistant Camion Chiaro. Dis-moi ce que tu veux faire et je te guide pas a pas.',
     'homeAssistant.notHelpful': 'Ce n etait pas utile?',
-    'homeAssistant.openAssistant': 'Ouvrir assistant',
+    'homeAssistant.openAssistant': 'Demander aide',
     'homeAssistant.openChat': 'Ouvrir chat',
     'homeAssistant.openGuide': 'Ouvrir guide',
     'homeAssistant.openTicket': 'Ouvrir ticket email',
@@ -3307,9 +3315,11 @@ const homeDashboardTranslations = {
     'homeAssistant.errorMessage': 'Ich kann gerade nicht antworten. Schreibe, was du tun wolltest, oder offne die Hilfe: ich leite dich trotzdem weiter.',
     'homeAssistant.faults': 'Schaden',
     'homeAssistant.guidedMode': 'Gefuhrte Antwort',
+    'homeAssistant.homeSubtitle': 'Camion Chiaro Assistent',
+    'homeAssistant.homeTitle': 'Brauchst du Hilfe?',
     'homeAssistant.initialMessage': 'Hallo, ich bin der Camion Chiaro Assistent. Sag mir, was nicht klappt, und ich fuhre dich Schritt fur Schritt.',
     'homeAssistant.notHelpful': 'War das nicht hilfreich?',
-    'homeAssistant.openAssistant': 'Assistent offnen',
+    'homeAssistant.openAssistant': 'Hilfe holen',
     'homeAssistant.openChat': 'Chat offnen',
     'homeAssistant.openGuide': 'Hilfe offnen',
     'homeAssistant.openTicket': 'E-Mail-Ticket offnen',
@@ -3347,9 +3357,11 @@ const homeDashboardTranslations = {
     'homeAssistant.errorMessage': 'Nu pot raspunde acum. Scrie ce incercai sa faci sau deschide ghidul: te duc oricum la locul potrivit.',
     'homeAssistant.faults': 'Defectiuni',
     'homeAssistant.guidedMode': 'Raspuns ghidat',
+    'homeAssistant.homeSubtitle': 'Asistent Camion Chiaro',
+    'homeAssistant.homeTitle': 'Ai nevoie de ajutor?',
     'homeAssistant.initialMessage': 'Buna, sunt asistentul Camion Chiaro. Spune-mi ce nu poti face si te ghidez pas cu pas.',
     'homeAssistant.notHelpful': 'Nu a fost util?',
-    'homeAssistant.openAssistant': 'Deschide asistent',
+    'homeAssistant.openAssistant': 'Cere ajutor',
     'homeAssistant.openChat': 'Deschide chat',
     'homeAssistant.openGuide': 'Deschide ghid',
     'homeAssistant.openTicket': 'Deschide ticket email',
@@ -3387,9 +3399,11 @@ const homeDashboardTranslations = {
     'homeAssistant.errorMessage': 'Nie moge teraz odpowiedziec. Napisz, co robiles, albo otworz pomoc: nadal wskaze wlasciwe miejsce.',
     'homeAssistant.faults': 'Usterki',
     'homeAssistant.guidedMode': 'Odpowiedz prowadzona',
+    'homeAssistant.homeSubtitle': 'Asystent Camion Chiaro',
+    'homeAssistant.homeTitle': 'Potrzebujesz pomocy?',
     'homeAssistant.initialMessage': 'Czesc, jestem asystentem Camion Chiaro. Napisz, czego nie mozesz zrobic, a poprowadze cie krok po kroku.',
     'homeAssistant.notHelpful': 'To nie pomoglo?',
-    'homeAssistant.openAssistant': 'Otworz asystenta',
+    'homeAssistant.openAssistant': 'Popros o pomoc',
     'homeAssistant.openChat': 'Otworz chat',
     'homeAssistant.openGuide': 'Otworz pomoc',
     'homeAssistant.openTicket': 'Otworz ticket email',
@@ -9563,13 +9577,9 @@ function HomeAssistantStrip({
           <Bot size={18} />
         </span>
         <span>
-          <strong>{t('homeAssistant.title')}</strong>
-          <small>{t('homeAssistant.status')}</small>
+          <strong>{t('homeAssistant.homeTitle')}</strong>
+          <small>{t('homeAssistant.homeSubtitle')}</small>
         </span>
-      </div>
-      <div className="home-assistant-message">
-        <small>{t('homeAssistant.question')}</small>
-        <strong>{t('homeAssistant.body')}</strong>
       </div>
       <div className="home-assistant-actions">
         <button className="primary-button compact-button" onClick={() => setIsOpen(true)} type="button">

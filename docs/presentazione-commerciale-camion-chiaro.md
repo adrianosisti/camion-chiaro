@@ -115,12 +115,17 @@ Il check mattutino aiuta a vedere subito anomalie su luci, gomme, documenti e me
 ## Slide 10 - Centro costi
 Molte aziende sanno di spendere, ma non vedono bene dove.
 
-Camion Chiaro trasforma i guasti in dati:
+Camion Chiaro trasforma guasti, manutenzioni e fatture in dati:
 - costo mese;
 - costo anno;
 - interventi con costo;
+- spese libere per targa o attrezzatura;
+- modifica ed eliminazione spese;
+- allegati fattura o foto;
 - filtri per targa;
 - storico per mezzo.
+- esportazione CSV per Excel;
+- stampa A4 del report.
 
 Obiettivo: capire quali mezzi costano troppo e prendere decisioni con dati reali.
 
@@ -181,6 +186,8 @@ Fleet 20+ - da 650 euro/mese
 
 Extra:
 - chat aziendale completa: +100 euro/mese;
+- Centro costi Premium: +150 euro/mese;
+- report automatici mensili email/PDF/CSV: +250 euro/mese quando attiviamo il servizio email;
 - start-up kit: 1.500 euro una tantum;
 - storage extra a pacchetti.
 

@@ -52,6 +52,20 @@ const assetTypes = [
   { id: 'other', label: 'Altro' },
 ]
 
+const costCategoryOptions = [
+  { id: 'maintenance', label: 'Manutenzione' },
+  { id: 'repair', label: 'Riparazione' },
+  { id: 'tires', label: 'Gomme' },
+  { id: 'insurance', label: 'Assicurazione' },
+  { id: 'revision', label: 'Revisione' },
+  { id: 'tax', label: 'Bollo / tasse' },
+  { id: 'fuel', label: 'Carburante' },
+  { id: 'cleaning', label: 'Lavaggio' },
+  { id: 'toll', label: 'Pedaggi' },
+  { id: 'fine', label: 'Sanzione' },
+  { id: 'other', label: 'Altro' },
+]
+
 const createFormOptions = [
   { icon: 'person-add-outline', id: 'driver', label: 'Autista' },
   { icon: 'people-outline', id: 'person', label: 'Persona' },
@@ -139,6 +153,14 @@ function getRepairCostDate(fault = {}) {
   return fault.repairRecordedAt || fault.updatedAt || fault.createdAt
 }
 
+function getCostEntryDate(entry = {}) {
+  return entry.spentAt || entry.updatedAt || entry.createdAt
+}
+
+function getTodayInputDate() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function getRepairPeriodStart(period) {
   const now = new Date()
   if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -169,6 +191,10 @@ function getCheckIssues(check = {}) {
 
 function getAssetTypeLabel(value = '') {
   return assetTypes.find((entry) => entry.id === value)?.label ?? 'Attrezzatura'
+}
+
+function getCostCategoryLabel(value = '') {
+  return costCategoryOptions.find((entry) => entry.id === value)?.label ?? 'Spesa'
 }
 
 function getDepartmentLabel(value = '') {
@@ -520,6 +546,35 @@ function FaultRepairModal({ fault, language = 'it', onClose, onSave, vehicles = 
     }
   }
 
+  function deleteRepair() {
+    Alert.alert(
+      'Eliminare costo?',
+      'Il guasto restera nello storico, ma il costo riparazione verra azzerato.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          onPress: async () => {
+            setIsSaving(true)
+            const saved = await onSave?.(fault.id, {
+              repairCleared: true,
+              repairCostCents: 0,
+              repairCostCurrency: repairCurrency,
+              repairNotes: '',
+            })
+            setIsSaving(false)
+
+            if (saved !== false) {
+              Alert.alert('Costo eliminato', 'Il costo riparazione e stato tolto dal guasto.')
+              onClose?.()
+            }
+          },
+          style: 'destructive',
+          text: 'Elimina costo',
+        },
+      ],
+    )
+  }
+
   return (
     <Modal animationType="slide" onRequestClose={onClose} visible>
       <View style={styles.detailScreen}>
@@ -543,6 +598,12 @@ function FaultRepairModal({ fault, language = 'it', onClose, onSave, vehicles = 
             {repairCostCents ? `Totale: ${formatMoneyCents(repairCostCents, repairCurrency)}` : 'Lascia vuoto se il costo non e ancora noto.'}
           </Text>
           <PrimaryButton loading={isSaving} onPress={saveRepair} title="Salva costo" />
+          {fault.repairCostCents ? (
+            <Pressable disabled={isSaving} onPress={deleteRepair} style={[styles.rowActionButtonDanger, styles.repairDeleteButton]}>
+              <Ionicons color={colors.danger} name="trash-outline" size={16} />
+              <Text style={styles.rowActionDangerText}>Elimina costo riparazione</Text>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </View>
     </Modal>
@@ -584,14 +645,18 @@ export function CompanyManagementScreen({
   initialSection = 'drivers',
   initialMode = 'archive',
   language = 'it',
+  startCostEntryKey = 0,
   onCreateDeadline,
+  onCreateCostEntry,
   onCreateDriver,
   onCreatePerson,
   onCreateVehicle,
   onCreateWarehouseAsset,
   onCloseDeadline,
+  onDeleteCostEntry,
   onRenewDeadline,
   onSendDeadlineReminder,
+  onUpdateCostEntry,
   onUpdateFaultRepair,
 }) {
   const workforceSchemaReady = context?.workforceSchemaReady !== false
@@ -601,6 +666,7 @@ export function CompanyManagementScreen({
   const assets = context?.assets ?? []
   const deadlines = context?.complianceItems ?? []
   const faults = context?.faultReports ?? []
+  const costEntries = context?.costEntries ?? []
   const checks = context?.vehicleChecks ?? []
   const defaultCurrency = getDefaultCurrency(language)
   const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
@@ -685,7 +751,22 @@ export function CompanyManagementScreen({
     scope: 'vehicle',
     type: '',
   })
+  const [costForm, setCostForm] = useState({
+    amount: '',
+    assetId: '',
+    category: 'maintenance',
+    file: null,
+    id: '',
+    notes: '',
+    odometerKm: '',
+    spentAt: getTodayInputDate(),
+    supplier: '',
+    targetType: 'vehicle',
+    title: '',
+    vehicleId: '',
+  })
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingCost, setIsSavingCost] = useState(false)
   const [costPeriod, setCostPeriod] = useState('month')
   const [costVehicleId, setCostVehicleId] = useState('all')
   const currentScopes = workforceSchemaReady ? workforceScopes : scopes
@@ -700,22 +781,51 @@ export function CompanyManagementScreen({
     .filter((item) => item.dueDate)
     .slice()
     .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
-  const repairCostFaults = useMemo(() => {
+  const costRows = useMemo(() => {
     const periodStart = getRepairPeriodStart(costPeriod)
-
-    return faults
+    const faultRows = faults
       .filter((fault) => Number(fault.repairCostCents ?? 0) > 0)
-      .filter((fault) => costVehicleId === 'all' || fault.vehicleId === costVehicleId)
-      .filter((fault) => {
+      .map((fault) => ({
+        amountCents: Number(fault.repairCostCents ?? 0),
+        assetId: '',
+        category: 'repair',
+        currency: fault.repairCostCurrency || defaultCurrency,
+        date: getRepairCostDate(fault),
+        description: fault.description ?? '',
+        fault,
+        id: `fault-${fault.id}`,
+        kind: 'fault',
+        title: fault.title,
+        vehicleId: fault.vehicleId,
+      }))
+    const entryRows = costEntries
+      .filter((entry) => Number(entry.amountCents ?? 0) > 0)
+      .map((entry) => ({
+        amountCents: Number(entry.amountCents ?? 0),
+        assetId: entry.assetId ?? '',
+        category: entry.category ?? 'maintenance',
+        currency: entry.currency || defaultCurrency,
+        date: getCostEntryDate(entry),
+        description: entry.notes ?? '',
+        entry,
+        id: `entry-${entry.id}`,
+        kind: 'entry',
+        title: entry.title,
+        vehicleId: entry.vehicleId ?? '',
+      }))
+
+    return [...faultRows, ...entryRows]
+      .filter((row) => costVehicleId === 'all' || row.vehicleId === costVehicleId)
+      .filter((row) => {
         if (!periodStart) return true
-        const costDate = new Date(getRepairCostDate(fault))
+        const costDate = new Date(row.date)
         return Number.isFinite(costDate.getTime()) && costDate >= periodStart
       })
       .slice()
-      .sort((first, second) => new Date(getRepairCostDate(second)) - new Date(getRepairCostDate(first)))
-  }, [costPeriod, costVehicleId, faults])
-  const repairCostTotalCents = repairCostFaults.reduce((total, fault) => total + Number(fault.repairCostCents ?? 0), 0)
-  const repairCostAverageCents = repairCostFaults.length ? Math.round(repairCostTotalCents / repairCostFaults.length) : 0
+      .sort((first, second) => new Date(second.date) - new Date(first.date))
+  }, [costEntries, costPeriod, costVehicleId, defaultCurrency, faults])
+  const repairCostTotalCents = costRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const repairCostAverageCents = costRows.length ? Math.round(repairCostTotalCents / costRows.length) : 0
 
   useEffect(() => {
     if (initialSection) {
@@ -723,6 +833,13 @@ export function CompanyManagementScreen({
     }
     setMode(initialMode)
   }, [initialMode, initialSection])
+
+  useEffect(() => {
+    if (!startCostEntryKey) return
+    setActiveList('costs')
+    setMode('archive')
+    resetCostForm()
+  }, [startCostEntryKey])
 
   function openArchive(section = activeList) {
     setActiveList(section)
@@ -767,6 +884,10 @@ export function CompanyManagementScreen({
     setDeadlineForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
+  function updateCostForm(field, value) {
+    setCostForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
   async function pickAttachment(onSelected) {
     const result = await DocumentPicker.getDocumentAsync({
       copyToCacheDirectory: true,
@@ -782,6 +903,119 @@ export function CompanyManagementScreen({
       type: file.mimeType || 'application/octet-stream',
       uri: file.uri,
     })
+  }
+
+  async function submitCostEntry() {
+    const amountCents = parseMoneyToCents(costForm.amount)
+    const payload = {
+      amountCents,
+      assetId: costForm.targetType === 'asset' ? costForm.assetId : '',
+      category: costForm.category,
+      currency: defaultCurrency,
+      notes: costForm.notes.trim(),
+      odometerKm: costForm.odometerKm.trim(),
+      spentAt: costForm.spentAt.trim(),
+      supplier: costForm.supplier.trim(),
+      title: costForm.title.trim(),
+      vehicleId: costForm.targetType === 'vehicle' ? costForm.vehicleId : '',
+    }
+
+    if (!payload.title || !payload.amountCents || !payload.spentAt) {
+      Alert.alert('Dati mancanti', 'Inserisci titolo, importo e data della spesa.')
+      return
+    }
+
+    setIsSavingCost(true)
+    const previousEntry = costEntries.find((entry) => entry.id === costForm.id)
+    const saved = costForm.id
+      ? await onUpdateCostEntry?.(costForm.id, payload, costForm.file, previousEntry)
+      : await onCreateCostEntry?.(payload, costForm.file)
+    setIsSavingCost(false)
+
+    if (saved) {
+      resetCostForm()
+      Alert.alert(costForm.id ? 'Spesa aggiornata' : 'Spesa salvata', 'Il Centro costi e stato aggiornato.')
+    }
+  }
+
+  function resetCostForm() {
+    setCostForm({
+      amount: '',
+      assetId: '',
+      category: 'maintenance',
+      file: null,
+      id: '',
+      notes: '',
+      odometerKm: '',
+      spentAt: getTodayInputDate(),
+      supplier: '',
+      targetType: 'vehicle',
+      title: '',
+      vehicleId: '',
+    })
+  }
+
+  function startEditCostEntry(entry = {}) {
+    setCostForm({
+      amount: entry.amountCents ? String((Number(entry.amountCents) / 100).toFixed(2)).replace('.', ',') : '',
+      assetId: entry.assetId ?? '',
+      category: entry.category ?? 'maintenance',
+      file: null,
+      id: entry.id ?? '',
+      notes: entry.notes ?? '',
+      odometerKm: entry.odometerKm ? String(entry.odometerKm) : '',
+      spentAt: entry.spentAt ?? getTodayInputDate(),
+      supplier: entry.supplier ?? '',
+      targetType: entry.assetId ? 'asset' : entry.vehicleId ? 'vehicle' : 'company',
+      title: entry.title ?? '',
+      vehicleId: entry.vehicleId ?? '',
+    })
+  }
+
+  function deleteCostEntry(entry = {}) {
+    Alert.alert(
+      'Eliminare spesa?',
+      `Vuoi eliminare "${entry.title}" dal Centro costi?`,
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          onPress: async () => {
+            const deleted = await onDeleteCostEntry?.(entry)
+            if (deleted && costForm.id === entry.id) resetCostForm()
+          },
+          style: 'destructive',
+          text: 'Elimina',
+        },
+      ],
+    )
+  }
+
+  function deleteFaultRepair(fault = {}) {
+    Alert.alert(
+      'Eliminare costo guasto?',
+      `Vuoi azzerare il costo registrato su "${fault.title}"?`,
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          onPress: async () => {
+            await onUpdateFaultRepair?.(fault.id, {
+              repairCleared: true,
+              repairCostCents: 0,
+              repairCostCurrency: fault.repairCostCurrency || defaultCurrency,
+              repairNotes: '',
+            })
+          },
+          style: 'destructive',
+          text: 'Elimina costo',
+        },
+      ],
+    )
+  }
+
+  function getCostTargetLabel(row = {}) {
+    if (row.vehicleId) return getVehiclePlate(vehicles, row.vehicleId)
+    if (row.assetId) return warehouseAssets.find((asset) => asset.id === row.assetId)?.code ?? 'Attrezzatura'
+    return 'Azienda'
   }
 
   async function submitDriver() {
@@ -1341,7 +1575,7 @@ export function CompanyManagementScreen({
             <Chip active={activeList === 'faults'} label="Guasti" onPress={() => setActiveList('faults')} />
             <Chip active={activeList === 'checks'} label="Check" onPress={() => setActiveList('checks')} />
             <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
-            <Chip active={activeList === 'costs'} label="Costi" onPress={() => setActiveList('costs')} />
+            <Chip active={activeList === 'costs'} label="Centro costi" onPress={() => setActiveList('costs')} />
           </View>
 
         {activeList === 'people' ? (
@@ -1548,10 +1782,73 @@ export function CompanyManagementScreen({
                   <Ionicons color={colors.cyanDark} name="cash-outline" size={18} />
                 </View>
                 <View style={styles.listCopy}>
-                  <Text style={styles.listTitle}>Costi riparazioni</Text>
-                  <Text style={styles.listMeta}>Filtra per targa e periodo, poi apri il guasto per modificare il costo.</Text>
+                  <Text style={styles.listTitle}>Centro costi</Text>
+                  <Text style={styles.listMeta}>Guasti, manutenzioni e spese libere per targa o attrezzatura.</Text>
+                  {costForm.id ? <Text style={styles.fileMeta}>Stai modificando una spesa già registrata.</Text> : null}
                 </View>
               </View>
+              <View style={styles.costEntryIntro}>
+                <Text style={styles.costEntryIntroTitle}>{costForm.id ? 'Modifica spesa libera' : 'Nuova spesa libera'}</Text>
+                <Text style={styles.costEntryIntroText}>Inserisci costi senza guasto: tagliandi, gomme, assicurazioni, revisioni, muletti o spese aziendali.</Text>
+              </View>
+              <TextField label="Titolo spesa" onChangeText={(value) => updateCostForm('title', value)} placeholder="Tagliando, gomme, assicurazione..." value={costForm.title} />
+              <TextField keyboardType="decimal-pad" label="Importo + IVA" onChangeText={(value) => updateCostForm('amount', value)} placeholder="2000,00" value={costForm.amount} />
+              <Text style={styles.costFilterLabel}>Categoria</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                <View style={styles.inlineChipRow}>
+                  {costCategoryOptions.map((option) => (
+                    <Chip
+                      active={costForm.category === option.id}
+                      key={option.id}
+                      label={option.label}
+                      onPress={() => updateCostForm('category', option.id)}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+              <Text style={styles.costFilterLabel}>Collegata a</Text>
+              <View style={styles.chipGrid}>
+                <Chip active={costForm.targetType === 'vehicle'} label="Mezzo" onPress={() => updateCostForm('targetType', 'vehicle')} />
+                <Chip active={costForm.targetType === 'asset'} label="Attrezzatura" onPress={() => updateCostForm('targetType', 'asset')} />
+                <Chip active={costForm.targetType === 'company'} label="Azienda" onPress={() => updateCostForm('targetType', 'company')} />
+              </View>
+              {costForm.targetType === 'vehicle' ? (
+                <>
+                  <Text style={styles.costFilterLabel}>Targa</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                    <View style={styles.inlineChipRow}>
+                      <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} />
+                      {vehicles.map((vehicle) => (
+                        <Chip active={costForm.vehicleId === vehicle.id} key={vehicle.id} label={vehicle.plate} onPress={() => updateCostForm('vehicleId', vehicle.id)} />
+                      ))}
+                    </View>
+                  </ScrollView>
+                </>
+              ) : null}
+              {costForm.targetType === 'asset' ? (
+                <>
+                  <Text style={styles.costFilterLabel}>Attrezzatura</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                    <View style={styles.inlineChipRow}>
+                      <Chip active={!costForm.assetId} label="Senza codice" onPress={() => updateCostForm('assetId', '')} />
+                      {warehouseAssets.map((asset) => (
+                        <Chip active={costForm.assetId === asset.id} key={asset.id} label={asset.code} onPress={() => updateCostForm('assetId', asset.id)} />
+                      ))}
+                    </View>
+                  </ScrollView>
+                </>
+              ) : null}
+              <DateField label="Data spesa" language={language} onChange={(value) => updateCostForm('spentAt', value)} value={costForm.spentAt} />
+              <TextField label="Fornitore" onChangeText={(value) => updateCostForm('supplier', value)} placeholder="Officina, gommista..." value={costForm.supplier} />
+              <TextField keyboardType="numeric" label="Km" onChangeText={(value) => updateCostForm('odometerKm', value)} placeholder="Opzionale" value={costForm.odometerKm} />
+              <TextField label="Note" multiline onChangeText={(value) => updateCostForm('notes', value)} placeholder="Numero fattura, dettagli intervento..." value={costForm.notes} />
+              <AttachmentButton file={costForm.file} label="Allega fattura o foto" onPress={() => pickAttachment((file) => updateCostForm('file', file))} onRemove={() => updateCostForm('file', null)} />
+              <PrimaryButton loading={isSavingCost} onPress={submitCostEntry} title={costForm.id ? 'Aggiorna spesa' : 'Salva spesa libera'} />
+              {costForm.id ? (
+                <Pressable onPress={resetCostForm} style={styles.secondaryInlineButton}>
+                  <Text style={styles.secondaryInlineButtonText}>Annulla modifica</Text>
+                </Pressable>
+              ) : null}
               <Text style={styles.costFilterLabel}>Periodo</Text>
               <View style={styles.chipGrid}>
                 <Chip active={costPeriod === 'today'} label="Oggi" onPress={() => setCostPeriod('today')} />
@@ -1574,8 +1871,8 @@ export function CompanyManagementScreen({
               <Text style={styles.costTotal}>{formatMoneyCents(repairCostTotalCents, defaultCurrency)}</Text>
               <View style={styles.costMetricRow}>
                 <View style={styles.costMetricCard}>
-                  <Text style={styles.summaryLabel}>Interventi</Text>
-                  <Text style={styles.summaryValue}>{repairCostFaults.length}</Text>
+                  <Text style={styles.summaryLabel}>Voci costo</Text>
+                  <Text style={styles.summaryValue}>{costRows.length}</Text>
                 </View>
                 <View style={styles.costMetricCard}>
                   <Text style={styles.summaryLabel}>Media</Text>
@@ -1584,24 +1881,47 @@ export function CompanyManagementScreen({
               </View>
             </View>
 
-            {repairCostFaults.map((fault) => (
-              <Pressable key={fault.id} onPress={() => setSelectedFault(fault)} style={styles.registryCard}>
+            {costRows.map((row) => (
+              <Pressable key={row.id} onPress={() => row.kind === 'fault' && setSelectedFault(row.fault)} style={styles.registryCard}>
                 <View style={styles.registryHeader}>
                   <View style={styles.listIconMuted}>
-                    <Ionicons color={colors.muted} name="construct-outline" size={18} />
+                    <Ionicons color={colors.muted} name={row.kind === 'fault' ? 'construct-outline' : 'receipt-outline'} size={18} />
                   </View>
                   <View style={styles.listCopy}>
-                    <Text style={styles.listTitle}>{fault.title}</Text>
+                    <Text style={styles.listTitle}>{row.title}</Text>
                     <Text style={styles.listMeta}>
-                      {getVehiclePlate(vehicles, fault.vehicleId)} · {getDriverName(drivers, fault.driverId)} · {formatDateTime(getRepairCostDate(fault), language)}
+                      {getCostTargetLabel(row)} · {getCostCategoryLabel(row.category)} · {formatDateTime(row.date, language)}
                     </Text>
-                    <Text style={styles.listMeta}>{fault.description || 'Nessuna descrizione'}</Text>
+                    <Text style={styles.listMeta}>{row.description || 'Nessuna descrizione'}</Text>
                   </View>
-                  <Text style={styles.costRowAmount}>{formatMoneyCents(fault.repairCostCents, fault.repairCostCurrency || defaultCurrency)}</Text>
+                  <Text style={styles.costRowAmount}>{formatMoneyCents(row.amountCents, row.currency || defaultCurrency)}</Text>
                 </View>
+                {row.kind === 'entry' ? (
+                  <View style={styles.rowActionBar}>
+                    <Pressable onPress={() => startEditCostEntry(row.entry)} style={styles.rowActionButton}>
+                      <Ionicons color={colors.cyanDark} name="create-outline" size={16} />
+                      <Text style={styles.rowActionText}>Modifica</Text>
+                    </Pressable>
+                    <Pressable onPress={() => deleteCostEntry(row.entry)} style={styles.rowActionButtonDanger}>
+                      <Ionicons color={colors.danger} name="trash-outline" size={16} />
+                      <Text style={styles.rowActionDangerText}>Elimina</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles.rowActionBar}>
+                    <Pressable onPress={() => setSelectedFault(row.fault)} style={styles.rowActionButton}>
+                      <Ionicons color={colors.cyanDark} name="create-outline" size={16} />
+                      <Text style={styles.rowActionText}>Modifica costo</Text>
+                    </Pressable>
+                    <Pressable onPress={() => deleteFaultRepair(row.fault)} style={styles.rowActionButtonDanger}>
+                      <Ionicons color={colors.danger} name="trash-outline" size={16} />
+                      <Text style={styles.rowActionDangerText}>Elimina costo</Text>
+                    </Pressable>
+                  </View>
+                )}
               </Pressable>
             ))}
-            {!repairCostFaults.length ? <Text style={styles.emptyText}>Nessun costo riparazione trovato per questo filtro.</Text> : null}
+            {!costRows.length ? <Text style={styles.emptyText}>Nessun costo trovato per questo filtro.</Text> : null}
           </View>
         ) : null}
       </Panel>
@@ -1682,6 +2002,26 @@ const styles = StyleSheet.create({
     marginBottom: 7,
     marginTop: 14,
   },
+  costEntryIntro: {
+    backgroundColor: '#ffffff',
+    borderColor: '#a5f3fc',
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 4,
+    marginTop: 12,
+    padding: 12,
+  },
+  costEntryIntroText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
+  },
+  costEntryIntroTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
   costMetricCard: {
     backgroundColor: colors.white,
     borderRadius: 14,
@@ -1751,6 +2091,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginBottom: 10,
+  },
+  inlineChipRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 12,
+  },
+  inlineScroller: {
     marginBottom: 10,
   },
   chipText: {
@@ -2125,6 +2473,50 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 18,
   },
+  repairDeleteButton: {
+    justifyContent: 'center',
+    marginTop: 8,
+    minHeight: 46,
+  },
+  rowActionBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'flex-end',
+    marginTop: 10,
+  },
+  rowActionButton: {
+    alignItems: 'center',
+    backgroundColor: '#ecfeff',
+    borderColor: '#b7ecf7',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    minHeight: 34,
+    paddingHorizontal: 10,
+  },
+  rowActionButtonDanger: {
+    alignItems: 'center',
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    minHeight: 34,
+    paddingHorizontal: 10,
+  },
+  rowActionDangerText: {
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  rowActionText: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+  },
   selectorList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2163,6 +2555,21 @@ const styles = StyleSheet.create({
   smallButtonText: {
     color: colors.ink,
     fontSize: 11,
+    fontWeight: '900',
+  },
+  secondaryInlineButton: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 46,
+    paddingHorizontal: 14,
+  },
+  secondaryInlineButtonText: {
+    color: colors.ink,
+    fontSize: 13,
     fontWeight: '900',
   },
   summaryCard: {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { getLocale, t } from '../i18n/native'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
@@ -61,6 +61,10 @@ function getRepairCostDate(fault = {}) {
   return fault.repairRecordedAt || fault.updatedAt || fault.createdAt
 }
 
+function getCostEntryDate(entry = {}) {
+  return entry.spentAt || entry.updatedAt || entry.createdAt
+}
+
 function getRepairPeriodStart(period) {
   const now = new Date()
   if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -68,20 +72,30 @@ function getRepairPeriodStart(period) {
   return null
 }
 
-function getRepairCostSummary(faults = []) {
-  const costFaults = faults
-    .filter((fault) => Number(fault.repairCostCents ?? 0) > 0)
-    .slice()
-    .sort((first, second) => new Date(getRepairCostDate(second)) - new Date(getRepairCostDate(first)))
+function getRepairCostSummary(faults = [], costEntries = []) {
+  const costRows = [
+    ...faults
+      .filter((fault) => Number(fault.repairCostCents ?? 0) > 0)
+      .map((fault) => ({
+        amountCents: Number(fault.repairCostCents ?? 0),
+        date: getRepairCostDate(fault),
+      })),
+    ...costEntries
+      .filter((entry) => Number(entry.amountCents ?? 0) > 0)
+      .map((entry) => ({
+        amountCents: Number(entry.amountCents ?? 0),
+        date: getCostEntryDate(entry),
+      })),
+  ].sort((first, second) => new Date(second.date) - new Date(first.date))
   const monthStart = getRepairPeriodStart('month')
   const yearStart = getRepairPeriodStart('year')
-  const sumFaults = (items) => items.reduce((total, fault) => total + Number(fault.repairCostCents ?? 0), 0)
+  const sumRows = (items) => items.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
 
   return {
-    count: costFaults.length,
-    latest: costFaults[0] ?? null,
-    monthCents: sumFaults(costFaults.filter((fault) => new Date(getRepairCostDate(fault)) >= monthStart)),
-    yearCents: sumFaults(costFaults.filter((fault) => new Date(getRepairCostDate(fault)) >= yearStart)),
+    count: costRows.length,
+    latest: costRows[0] ?? null,
+    monthCents: sumRows(costRows.filter((row) => new Date(row.date) >= monthStart)),
+    yearCents: sumRows(costRows.filter((row) => new Date(row.date) >= yearStart)),
   }
 }
 
@@ -348,6 +362,35 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
     setIsSavingRepair(false)
   }
 
+  function deleteFaultRepair() {
+    if (!isFault) return
+
+    Alert.alert(
+      'Eliminare costo?',
+      'Il guasto resta nello storico, ma il costo riparazione viene azzerato.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          onPress: () => {
+            setIsSavingRepair(true)
+            void onSaveFaultRepair?.(item.id, {
+              repairCleared: true,
+              repairCostCents: 0,
+              repairCostCurrency: repairCurrency,
+              repairNotes: '',
+            }).finally(() => {
+              setRepairAmount('')
+              setRepairNotes('')
+              setIsSavingRepair(false)
+            })
+          },
+          style: 'destructive',
+          text: 'Elimina costo',
+        },
+      ],
+    )
+  }
+
   return (
     <Modal animationType="slide" onRequestClose={onClose} visible>
       <View style={styles.detailScreen}>
@@ -420,6 +463,11 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
                 <Pressable disabled={isSavingRepair} onPress={saveFaultRepair} style={[styles.secondaryResolveButton, isSavingRepair && styles.resolveButtonDisabled]}>
                   <Text style={styles.secondaryResolveButtonText}>{isSavingRepair ? 'Salvo...' : 'Salva costo'}</Text>
                 </Pressable>
+                {item.repairCostCents ? (
+                  <Pressable disabled={isSavingRepair} onPress={deleteFaultRepair} style={[styles.secondaryDangerButton, isSavingRepair && styles.resolveButtonDisabled]}>
+                    <Text style={styles.secondaryDangerButtonText}>Elimina costo</Text>
+                  </Pressable>
+                ) : null}
               </View>
             </>
           ) : null}
@@ -454,10 +502,11 @@ export function CompanyHomeScreen({
   const vehicles = context?.vehicles ?? []
   const checks = context?.vehicleChecks ?? []
   const faults = context?.faultReports ?? []
+  const costEntries = context?.costEntries ?? []
   const complianceItems = context?.complianceItems ?? []
   const unreadMessages = Number(context?.unreadDriverMessages ?? 0) + Number(context?.unreadTeamMessages ?? 0)
   const openFaults = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
-  const repairCostSummary = getRepairCostSummary(faults)
+  const repairCostSummary = getRepairCostSummary(faults, costEntries)
   const defaultCurrency = getDefaultCurrency(language)
   const activeChecks = checks.filter((check) => !isCheckResolved(check))
   const criticalChecks = checks.filter(isCheckCritical)
@@ -511,7 +560,7 @@ export function CompanyHomeScreen({
           />
           <CompanyMetricMini label={t(language, 'deadlines')} onPress={() => onOpenManagement?.('deadlines')} tone={deadlineTone} value={activeDeadlines.length} />
           <CompanyMetricMini
-            label="Costi"
+            label="Centro costi"
             onPress={() => onOpenManagement?.('costs')}
             tone={repairCostSummary.monthCents ? 'info' : 'success'}
             value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
@@ -544,12 +593,20 @@ export function CompanyHomeScreen({
             value={activeDeadlines.length}
           />
           <HomeCommandButton
-            detail="Spese e report riparazioni"
+            detail="Spese libere e report"
             icon="cash-outline"
-            label="Costi"
+            label="Centro costi"
             onPress={() => onOpenManagement?.('costs')}
             tone={repairCostSummary.monthCents ? 'cost' : 'info'}
             value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
+          />
+          <HomeCommandButton
+            detail="Inserisci subito fatture, gomme, tagliandi o costi generali"
+            icon="add-circle-outline"
+            label="Nuova spesa"
+            onPress={() => onOpenManagement?.('costs', { addCost: true })}
+            tone="cost"
+            value=""
           />
           <HomeCommandButton
             detail="Ufficio, magazzino e reparti"
@@ -1196,6 +1253,21 @@ const styles = StyleSheet.create({
   },
   secondaryResolveButtonText: {
     color: colors.cyanDark,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  secondaryDangerButton: {
+    alignItems: 'center',
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderRadius: 999,
+    borderWidth: 1,
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  secondaryDangerButtonText: {
+    color: colors.danger,
     fontSize: 13,
     fontWeight: '900',
   },

@@ -61,6 +61,7 @@ import {
   createBillingCheckoutSession,
   createBillingPortalSession,
   createCompanyInvoiceSignedUrl,
+  createCostEntryRecord as createSupabaseCostEntry,
   fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
   createTeamChatMessageRecord as createSupabaseTeamChatMessage,
@@ -74,6 +75,7 @@ import {
   createOwnDriverDocumentRecord as createSupabaseOwnDriverDocument,
   createVehicleRecord as createSupabaseVehicle,
   createVehicleCheckRecord as createSupabaseVehicleCheck,
+  deleteCostEntryRecord as deleteSupabaseCostEntry,
   deleteDriverDocumentRecord as deleteSupabaseDriverDocument,
   fetchDriverDocumentEvents,
   ensureCompanyForCurrentUser,
@@ -83,6 +85,7 @@ import {
   fetchTeamChatMessages,
   fetchTeamChatThreads,
   fetchComplianceItems,
+  fetchCompanyCostEntries,
   fetchCompanyInvoices,
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
@@ -117,6 +120,7 @@ import {
   updateDriverRecord as updateSupabaseDriver,
   updateChatMessageReaction as updateSupabaseChatMessageReaction,
   updateCompanyProfile as updateSupabaseCompanyProfile,
+  updateCostEntryRecord as updateSupabaseCostEntry,
   updateFaultReportStatus as updateSupabaseFaultReportStatus,
   updateVehicleCheckStatus as updateSupabaseVehicleCheckStatus,
   updateVehicleRecord as updateSupabaseVehicle,
@@ -481,7 +485,7 @@ const translations = {
     'support.videos': 'Video',
     'support.vision': 'Visione prodotto',
     'sync.addKeys': 'Aggiungi le chiavi .env',
-    'sync.connected': 'Supabase collegato',
+    'sync.connected': 'Server connesso',
     'sync.demo': 'Demo locale',
     'topbar.searchPlaceholder': 'Cerca patente, targa, autista...',
     'topbar.searchSr': 'Cerca scadenze',
@@ -657,7 +661,7 @@ const translations = {
     'support.videos': 'Videos',
     'support.vision': 'Product vision',
     'sync.addKeys': 'Add .env keys',
-    'sync.connected': 'Supabase connected',
+    'sync.connected': 'Server online',
     'sync.demo': 'Local demo',
     'topbar.searchPlaceholder': 'Search licence, plate, driver...',
     'topbar.searchSr': 'Search deadlines',
@@ -785,7 +789,7 @@ const translations = {
     'support.videos': 'Videos',
     'support.vision': 'Vision producto',
     'sync.addKeys': 'Añade claves .env',
-    'sync.connected': 'Supabase conectado',
+    'sync.connected': 'Servidor conectado',
     'sync.demo': 'Demo local',
     'topbar.searchPlaceholder': 'Buscar permiso, matricula, conductor...',
     'topbar.searchSr': 'Buscar vencimientos',
@@ -913,7 +917,7 @@ const translations = {
     'support.videos': 'Videos',
     'support.vision': 'Vision produit',
     'sync.addKeys': 'Ajoute les cles .env',
-    'sync.connected': 'Supabase connecte',
+    'sync.connected': 'Serveur connecte',
     'sync.demo': 'Demo locale',
     'topbar.searchPlaceholder': 'Chercher permis, plaque, chauffeur...',
     'topbar.searchSr': 'Chercher echeances',
@@ -1041,7 +1045,7 @@ const translations = {
     'support.videos': 'Videos',
     'support.vision': 'Produktvision',
     'sync.addKeys': '.env-Schlussel hinzufugen',
-    'sync.connected': 'Supabase verbunden',
+    'sync.connected': 'Server verbunden',
     'sync.demo': 'Lokale Demo',
     'topbar.searchPlaceholder': 'Fuhrerschein, Kennzeichen, Fahrer suchen...',
     'topbar.searchSr': 'Fristen suchen',
@@ -4834,6 +4838,7 @@ function App() {
   const [teamChatMessageRecords, setTeamChatMessageRecords] = useState([])
   const [chatLiveState, setChatLiveState] = useState(emptyChatLiveState)
   const [documentEventRecords, setDocumentEventRecords] = useState([])
+  const [costEntryRecords, setCostEntryRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
   const [companyStorageSummary, setCompanyStorageSummary] = useState(emptyCompanyStorageSummary)
   const [activeCompanyId, setActiveCompanyId] = useState('')
@@ -4858,6 +4863,7 @@ function App() {
   const [phoneNotificationEnabled, setPhoneNotificationEnabled] = useState(false)
   const [phoneNotificationStatus, setPhoneNotificationStatus] = useState('')
   const [activeView, setActiveView] = useState(getInitialActiveView)
+  const [costReportStartAddingKey, setCostReportStartAddingKey] = useState(0)
   const [recordsTab, setRecordsTab] = useState(getInitialRecordsTab)
   const [activeFilter, setActiveFilter] = useState('all')
   const [complianceShowAll, setComplianceShowAll] = useState(false)
@@ -4910,10 +4916,11 @@ function App() {
         companyProfile.logoPath,
         ...driverRecords.map((driver) => driver.profileImagePath),
         ...faultReportRecords.map((report) => report.photoPath),
+        ...costEntryRecords.map((entry) => entry.filePath),
         ...chatMessageRecords.map((message) => message.attachmentPath),
       ]
         .filter(isPreviewableAssetPath),
-    [chatMessageRecords, companyProfile.logoPath, driverRecords, faultReportRecords],
+    [chatMessageRecords, companyProfile.logoPath, costEntryRecords, driverRecords, faultReportRecords],
   )
 
   useEffect(() => {
@@ -5008,6 +5015,7 @@ function App() {
   function handleAuthenticated(nextSession) {
     setActiveCompanyId('')
     setAssetPreviewUrls({})
+    setCostEntryRecords([])
     setCompanyInvoiceRecords([])
     setCompanyStorageSummary(emptyCompanyStorageSummary)
 
@@ -5030,6 +5038,7 @@ function App() {
     setVehicleRecords([])
     setVehicleCheckRecords([])
     setFaultReportRecords([])
+    setCostEntryRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
     setChatLiveState(emptyChatLiveState)
@@ -5526,6 +5535,7 @@ function App() {
         documentsResult,
         documentEventsResult,
         companyInvoicesResult,
+        costEntriesResult,
         checksResult,
         faultsResult,
         chatThreadsResult,
@@ -5542,6 +5552,7 @@ function App() {
         fetchDriverDocuments(companyId),
         fetchDriverDocumentEvents(companyId),
         fetchCompanyInvoices(companyId),
+        fetchCompanyCostEntries(companyId),
         fetchVehicleChecks(companyId),
         fetchFaultReports(companyId),
         fetchChatThreads(companyId),
@@ -5569,6 +5580,7 @@ function App() {
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
       if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
       if (companyInvoicesResult.data) setCompanyInvoiceRecords(companyInvoicesResult.data)
+      if (costEntriesResult.data) setCostEntryRecords(costEntriesResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
@@ -5893,6 +5905,7 @@ function App() {
     setVehicleRecords(vehicles)
     setVehicleCheckRecords([])
     setFaultReportRecords([])
+    setCostEntryRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
     setChatLiveState(emptyChatLiveState)
@@ -6252,6 +6265,109 @@ function App() {
 
     setVehicleRecords((currentVehicles) => [cleanVehicle, ...currentVehicles])
     setFleetSyncStatus('Mezzo aggiunto in modalità locale.')
+    return true
+  }
+
+  async function addCostEntryRecord(entry, receiptFile = null) {
+    const cleanEntry = {
+      ...entry,
+      amountCents: Number(entry.amountCents ?? 0),
+      currency: entry.currency || getDefaultCurrency(language),
+      spentAt: entry.spentAt || new Date().toISOString().slice(0, 10),
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Salvataggio spesa nel Centro costi...')
+      const result = await createSupabaseCostEntry(cleanEntry, activeCompanyId, receiptFile)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Errore Centro costi: ${result.error.message}`)
+        return false
+      }
+
+      setCostEntryRecords((currentEntries) => [result.data, ...currentEntries])
+      void refreshStorageSummary(activeCompanyId)
+      setOperationsSyncStatus('Spesa salvata nel Centro costi.')
+      return result.data
+    }
+
+    const localEntry = {
+      ...cleanEntry,
+      createdAt: new Date().toISOString(),
+      filePath: receiptFile ? URL.createObjectURL(receiptFile) : '',
+      id: `cost-${Date.now()}`,
+      sourceType: 'manual',
+      updatedAt: new Date().toISOString(),
+    }
+
+    setCostEntryRecords((currentEntries) => [localEntry, ...currentEntries])
+    setOperationsSyncStatus('Spesa aggiunta in modalità locale.')
+    return localEntry
+  }
+
+  async function editCostEntryRecord(entryId, updates, receiptFile = null, previousEntry = null) {
+    const cleanEntry = {
+      ...updates,
+      amountCents: Number(updates.amountCents ?? 0),
+      currency: updates.currency || getDefaultCurrency(language),
+      spentAt: updates.spentAt || new Date().toISOString().slice(0, 10),
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Aggiornamento spesa nel Centro costi...')
+      const result = await updateSupabaseCostEntry(
+        entryId,
+        cleanEntry,
+        activeCompanyId,
+        receiptFile,
+        previousEntry?.filePath ?? '',
+      )
+
+      if (result.error) {
+        setOperationsSyncStatus(`Errore Centro costi: ${result.error.message}`)
+        return false
+      }
+
+      setCostEntryRecords((currentEntries) => currentEntries.map((entry) => (entry.id === entryId ? result.data : entry)))
+      void refreshStorageSummary(activeCompanyId)
+      setOperationsSyncStatus('Spesa aggiornata nel Centro costi.')
+      return result.data
+    }
+
+    const localEntry = {
+      ...previousEntry,
+      ...cleanEntry,
+      filePath: receiptFile ? URL.createObjectURL(receiptFile) : previousEntry?.filePath ?? '',
+      id: entryId,
+      sourceType: previousEntry?.sourceType ?? 'manual',
+      updatedAt: new Date().toISOString(),
+    }
+
+    setCostEntryRecords((currentEntries) => currentEntries.map((entry) => (entry.id === entryId ? localEntry : entry)))
+    setOperationsSyncStatus('Spesa aggiornata in modalità locale.')
+    return localEntry
+  }
+
+  async function removeCostEntryRecord(entry) {
+    if (!entry?.id) return false
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Eliminazione spesa dal Centro costi...')
+      const result = await deleteSupabaseCostEntry(entry)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Errore Centro costi: ${result.error.message}`)
+        return false
+      }
+
+      setCostEntryRecords((currentEntries) => currentEntries.filter((currentEntry) => currentEntry.id !== entry.id))
+      void refreshStorageSummary(activeCompanyId)
+      setOperationsSyncStatus('Spesa eliminata dal Centro costi.')
+      return true
+    }
+
+    setCostEntryRecords((currentEntries) => currentEntries.filter((currentEntry) => currentEntry.id !== entry.id))
+    setOperationsSyncStatus('Spesa eliminata in modalità locale.')
     return true
   }
 
@@ -7052,13 +7168,14 @@ function App() {
 
   async function updateFaultReportStatus(reportId, status, repair = {}) {
     const hasRepairUpdate = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
-      Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+      Object.prototype.hasOwnProperty.call(repair, 'repairNotes') ||
+      Boolean(repair.repairCleared)
     const localRepairPatch = hasRepairUpdate
       ? {
           repairCostCents: Number(repair.repairCostCents ?? 0),
           repairCostCurrency: repair.repairCostCurrency || getDefaultCurrency(language),
           repairNotes: repair.repairNotes ?? '',
-          repairRecordedAt: new Date().toISOString(),
+          repairRecordedAt: repair.repairCleared ? '' : new Date().toISOString(),
         }
       : {}
 
@@ -7274,7 +7391,7 @@ function App() {
   const unreadCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds)).length
   const openFaultCount = visibleFaultReportRecords.filter(isFaultUnread).length
   const criticalCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds) && hasCheckIssues(check)).length
-  const faultCostSummary = getFaultCostSummary(visibleFaultReportRecords)
+  const faultCostSummary = getFaultCostSummary(visibleFaultReportRecords, costEntryRecords)
   const defaultCurrency = getDefaultCurrency(language)
   const notificationCount = unreadCheckCount + openFaultCount
   const companyUnreadChatCount = chatMessageRecords.filter(
@@ -7390,7 +7507,13 @@ function App() {
     setActiveView('notifications')
   }
 
-  function openCostReport() {
+  function openCostReport(options = {}) {
+    const shouldStartAdding = options?.add === true
+
+    if (shouldStartAdding) {
+      setCostReportStartAddingKey(Date.now())
+    }
+
     setOperationsFilter('archive')
     setActiveView('notifications')
     window.setTimeout(() => {
@@ -7454,6 +7577,14 @@ function App() {
       onClick: openCostReport,
       tone: faultCostSummary.monthCents > 0 ? 'cost' : 'info',
       value: formatCompactMoneyCents(faultCostSummary.monthCents, defaultCurrency),
+    },
+    {
+      detail: 'Aggiungi subito manutenzioni, gomme, assicurazioni o costi generali',
+      icon: Plus,
+      label: 'Nuova spesa',
+      onClick: () => openCostReport({ add: true }),
+      tone: 'cost',
+      value: '',
     },
     {
       detail: t('homeCommand.peopleDetail'),
@@ -7613,14 +7744,20 @@ function App() {
         ) : activeView === 'notifications' ? (
           <OperationsWorkspace
             acknowledgedCheckIds={acknowledgedCheckIds}
+            assetRecords={assetRecords}
             assetPreviewUrl={getAssetPreviewUrl}
+            costEntryRecords={costEntryRecords}
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
             onAcknowledgeCheck={acknowledgeCheck}
+            onCreateCostEntry={addCostEntryRecord}
+            onDeleteCostEntry={removeCostEntryRecord}
             onFilterChange={setOperationsFilter}
             onMarkCheckUnread={markCheckUnread}
+            onUpdateCostEntry={editCostEntryRecord}
             onUpdateFaultStatus={updateFaultReportStatus}
             selectedFilter={operationsFilter}
+            startAddingCostKey={costReportStartAddingKey}
             syncStatus={operationsSyncStatus}
             vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
@@ -11445,6 +11582,28 @@ function getFaultCostDate(report) {
   return report.repairRecordedAt || report.updatedAt || report.createdAt
 }
 
+const costCategoryOptions = [
+  { id: 'maintenance', label: 'Manutenzione' },
+  { id: 'repair', label: 'Riparazione' },
+  { id: 'tires', label: 'Gomme' },
+  { id: 'insurance', label: 'Assicurazione' },
+  { id: 'revision', label: 'Revisione' },
+  { id: 'tax', label: 'Bollo / tasse' },
+  { id: 'fuel', label: 'Carburante' },
+  { id: 'cleaning', label: 'Lavaggio' },
+  { id: 'toll', label: 'Pedaggi' },
+  { id: 'fine', label: 'Sanzione' },
+  { id: 'other', label: 'Altro' },
+]
+
+function getCostCategoryLabel(value = 'maintenance') {
+  return costCategoryOptions.find((option) => option.id === value)?.label ?? 'Spesa'
+}
+
+function getDateInputToday() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function getFaultCostPeriodStart(period) {
   const now = new Date()
 
@@ -11455,55 +11614,426 @@ function getFaultCostPeriodStart(period) {
   return null
 }
 
-function getFaultCostSummary(faultReportRecords = []) {
-  const costFaults = faultReportRecords
+function getCostEntryDate(entry = {}) {
+  return entry.spentAt || entry.updatedAt || entry.createdAt
+}
+
+function buildCostReportRows(faultReportRecords = [], costEntryRecords = []) {
+  const faultRows = faultReportRecords
     .filter((report) => Number(report.repairCostCents ?? 0) > 0)
-    .slice()
-    .sort((first, second) => new Date(getFaultCostDate(second)) - new Date(getFaultCostDate(first)))
+    .map((report) => ({
+      amountCents: Number(report.repairCostCents ?? 0),
+      assetId: '',
+      category: 'repair',
+      currency: report.repairCostCurrency || 'EUR',
+      date: getFaultCostDate(report),
+      description: report.description ?? '',
+      id: `fault-${report.id}`,
+      kind: 'fault',
+      source: report,
+      title: report.title,
+      vehicleId: report.vehicleId,
+    }))
+  const entryRows = costEntryRecords
+    .filter((entry) => Number(entry.amountCents ?? 0) > 0)
+    .map((entry) => ({
+      amountCents: Number(entry.amountCents ?? 0),
+      assetId: entry.assetId ?? '',
+      category: entry.category ?? 'maintenance',
+      currency: entry.currency || 'EUR',
+      date: getCostEntryDate(entry),
+      description: entry.notes ?? '',
+      id: `entry-${entry.id}`,
+      kind: 'entry',
+      source: entry,
+      title: entry.title,
+      vehicleId: entry.vehicleId ?? '',
+    }))
+
+  return [...faultRows, ...entryRows].sort((first, second) => new Date(second.date) - new Date(first.date))
+}
+
+function getFaultCostSummary(faultReportRecords = [], costEntryRecords = []) {
+  const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
   const monthStart = getFaultCostPeriodStart('month')
   const yearStart = getFaultCostPeriodStart('year')
-  const sumFaults = (reports) => reports.reduce((total, report) => total + Number(report.repairCostCents ?? 0), 0)
-  const monthFaults = costFaults.filter((report) => new Date(getFaultCostDate(report)) >= monthStart)
-  const yearFaults = costFaults.filter((report) => new Date(getFaultCostDate(report)) >= yearStart)
+  const sumRows = (rows) => rows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const monthRows = costRows.filter((row) => new Date(row.date) >= monthStart)
+  const yearRows = costRows.filter((row) => new Date(row.date) >= yearStart)
 
   return {
-    allCents: sumFaults(costFaults),
-    count: costFaults.length,
-    latest: costFaults[0] ?? null,
-    monthCents: sumFaults(monthFaults),
-    yearCents: sumFaults(yearFaults),
+    allCents: sumRows(costRows),
+    count: costRows.length,
+    latest: costRows[0] ?? null,
+    monthCents: sumRows(monthRows),
+    yearCents: sumRows(yearRows),
   }
 }
 
-function FaultCostReport({ faultReportRecords = [], vehicleRecords = [] }) {
+function FaultCostReport({
+  assetRecords = [],
+  costEntryRecords = [],
+  faultReportRecords = [],
+  onCreateCostEntry,
+  onDeleteCostEntry,
+  onUpdateCostEntry,
+  onUpdateFaultStatus,
+  startAddingCostKey = 0,
+  vehicleRecords = [],
+}) {
   const { language } = useI18n()
   const [period, setPeriod] = useState('month')
   const [vehicleId, setVehicleId] = useState('all')
+  const [isAddingCost, setIsAddingCost] = useState(false)
+  const [isSavingCost, setIsSavingCost] = useState(false)
+  const [costForm, setCostForm] = useState({
+    amount: '',
+    assetId: '',
+    category: 'maintenance',
+    file: null,
+    id: '',
+    notes: '',
+    odometerKm: '',
+    spentAt: getDateInputToday(),
+    supplier: '',
+    targetType: 'vehicle',
+    title: '',
+    vehicleId: vehicleRecords[0]?.id ?? '',
+  })
+  const [faultCostForm, setFaultCostForm] = useState({
+    amount: '',
+    id: '',
+    notes: '',
+  })
   const defaultCurrency = getDefaultCurrency(language)
-  const costFaults = faultReportRecords.filter((report) => Number(report.repairCostCents ?? 0) > 0)
+  const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
   const periodStart = getFaultCostPeriodStart(period)
-  const filteredFaults = costFaults
-    .filter((report) => vehicleId === 'all' || report.vehicleId === vehicleId)
-    .filter((report) => {
+  const filteredCosts = costRows
+    .filter((row) => vehicleId === 'all' || row.vehicleId === vehicleId)
+    .filter((row) => {
       if (!periodStart) return true
 
-      const costDate = new Date(getFaultCostDate(report))
+      const costDate = new Date(row.date)
       return !Number.isNaN(costDate.getTime()) && costDate >= periodStart
     })
-    .sort((first, second) => new Date(getFaultCostDate(second)) - new Date(getFaultCostDate(first)))
-  const totalCents = filteredFaults.reduce((total, report) => total + Number(report.repairCostCents ?? 0), 0)
-  const averageCents = filteredFaults.length ? Math.round(totalCents / filteredFaults.length) : 0
+    .sort((first, second) => new Date(second.date) - new Date(first.date))
+  const totalCents = filteredCosts.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const averageCents = filteredCosts.length ? Math.round(totalCents / filteredCosts.length) : 0
   const selectedVehicle = vehicleRecords.find((vehicle) => vehicle.id === vehicleId)
+
+  function updateCostForm(field, value) {
+    setCostForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  function getEmptyCostForm() {
+    return {
+      amount: '',
+      assetId: '',
+      category: 'maintenance',
+      file: null,
+      id: '',
+      notes: '',
+      odometerKm: '',
+      spentAt: getDateInputToday(),
+      supplier: '',
+      targetType: 'vehicle',
+      title: '',
+      vehicleId: vehicleRecords[0]?.id ?? '',
+    }
+  }
+
+  function openNewCostForm() {
+    setCostForm(getEmptyCostForm())
+    setFaultCostForm({ amount: '', id: '', notes: '' })
+    setIsAddingCost(true)
+  }
+
+  useEffect(() => {
+    if (startAddingCostKey) openNewCostForm()
+  }, [startAddingCostKey])
+
+  function resetCostForm() {
+    setCostForm(getEmptyCostForm())
+    setIsAddingCost(false)
+  }
+
+  async function handleSubmitCostEntry(event) {
+    event.preventDefault()
+    const amountCents = parseMoneyToCents(costForm.amount)
+
+    if (!amountCents || !costForm.title.trim() || !costForm.spentAt) return
+
+    const payload = {
+      amountCents,
+      assetId: costForm.targetType === 'asset' ? costForm.assetId : '',
+      category: costForm.category,
+      currency: defaultCurrency,
+      notes: costForm.notes,
+      odometerKm: costForm.odometerKm,
+      spentAt: costForm.spentAt,
+      supplier: costForm.supplier,
+      title: costForm.title,
+      vehicleId: costForm.targetType === 'vehicle' ? costForm.vehicleId : '',
+    }
+    const previousEntry = costEntryRecords.find((entry) => entry.id === costForm.id)
+
+    setIsSavingCost(true)
+    const saved = costForm.id
+      ? await onUpdateCostEntry?.(costForm.id, payload, costForm.file, previousEntry)
+      : await onCreateCostEntry?.(payload, costForm.file)
+    setIsSavingCost(false)
+
+    if (!saved) return
+
+    resetCostForm()
+  }
+
+  function startEditingCostEntry(entry = {}) {
+    setCostForm({
+      amount: entry.amountCents ? String((Number(entry.amountCents) / 100).toFixed(2)).replace('.', ',') : '',
+      assetId: entry.assetId ?? '',
+      category: entry.category ?? 'maintenance',
+      file: null,
+      id: entry.id ?? '',
+      notes: entry.notes ?? '',
+      odometerKm: entry.odometerKm ? String(entry.odometerKm) : '',
+      spentAt: entry.spentAt ?? getDateInputToday(),
+      supplier: entry.supplier ?? '',
+      targetType: entry.assetId ? 'asset' : entry.vehicleId ? 'vehicle' : 'company',
+      title: entry.title ?? '',
+      vehicleId: entry.vehicleId ?? '',
+    })
+    setIsAddingCost(true)
+  }
+
+  async function deleteCostEntry(entry = {}) {
+    const confirmed = window.confirm(`Eliminare la spesa "${entry.title}" dal Centro costi?`)
+    if (!confirmed) return
+
+    const deleted = await onDeleteCostEntry?.(entry)
+    if (deleted && costForm.id === entry.id) resetCostForm()
+  }
+
+  function startEditingFaultCost(report = {}) {
+    setFaultCostForm({
+      amount: report.repairCostCents ? String((Number(report.repairCostCents) / 100).toFixed(2)).replace('.', ',') : '',
+      id: report.id ?? '',
+      notes: report.repairNotes ?? '',
+    })
+    setIsAddingCost(false)
+  }
+
+  function cancelFaultCostEdit() {
+    setFaultCostForm({ amount: '', id: '', notes: '' })
+  }
+
+  async function submitFaultCostEdit(event) {
+    event.preventDefault()
+    const report = faultReportRecords.find((entry) => entry.id === faultCostForm.id)
+    if (!report) return
+
+    const amountCents = parseMoneyToCents(faultCostForm.amount)
+    await onUpdateFaultStatus?.(report.id, report.status, {
+      repairCostCents: amountCents,
+      repairCostCurrency: report.repairCostCurrency || defaultCurrency,
+      repairNotes: faultCostForm.notes,
+    })
+    cancelFaultCostEdit()
+  }
+
+  async function deleteFaultCost(report = {}) {
+    const confirmed = window.confirm(`Eliminare il costo registrato sul guasto "${report.title}"?`)
+    if (!confirmed) return
+
+    await onUpdateFaultStatus?.(report.id, report.status, {
+      repairCleared: true,
+      repairCostCents: 0,
+      repairCostCurrency: report.repairCostCurrency || defaultCurrency,
+      repairNotes: '',
+    })
+
+    if (faultCostForm.id === report.id) cancelFaultCostEdit()
+  }
+
+  function getCostTargetLabel(row) {
+    if (row.vehicleId) {
+      const vehicle = vehicleRecords.find((entry) => entry.id === row.vehicleId)
+      return vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : 'Mezzo'
+    }
+
+    if (row.assetId) {
+      const asset = assetRecords.find((entry) => entry.id === row.assetId)
+      return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
+    }
+
+    return 'Azienda'
+  }
+
+  function downloadCostCsv() {
+    const formatCsvDate = (value) => {
+      if (!value) return ''
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) return String(value)
+      return new Intl.DateTimeFormat('it-IT').format(date)
+    }
+    const csvRows = [
+      ['Data', 'Titolo', 'Categoria', 'Soggetto', 'Importo', 'Valuta', 'Tipo', 'Fornitore', 'Km', 'Note'],
+      ...filteredCosts.map((row) => {
+        const source = row.source ?? {}
+        return [
+          formatCsvDate(row.date),
+          row.title,
+          getCostCategoryLabel(row.category),
+          getCostTargetLabel(row),
+          (Number(row.amountCents ?? 0) / 100).toFixed(2),
+          row.currency || defaultCurrency,
+          row.kind === 'fault' ? 'Guasto' : 'Spesa libera',
+          source.supplier ?? '',
+          source.odometerKm ?? '',
+          row.description ?? '',
+        ]
+      }),
+    ]
+    const csv = csvRows
+      .map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';'))
+      .join('\n')
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `camion-chiaro-centro-costi-${period}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <section className="fault-cost-report" id="fault-cost-report">
       <div className="fault-cost-report-header">
         <div>
-          <p className="overline">Costi riparazioni</p>
+          <p className="overline">Centro costi</p>
           <h3>{selectedVehicle ? selectedVehicle.plate : 'Tutti i mezzi'}</h3>
         </div>
-        <Wrench size={20} />
+        <div className="fault-cost-report-actions">
+          <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
+            <Download size={16} />
+            CSV / Excel
+          </button>
+          <button className="secondary-button compact-button" onClick={() => window.print()} type="button">
+            <FileText size={16} />
+            Stampa A4
+          </button>
+          <button className="primary-button compact-button" onClick={() => (isAddingCost ? resetCostForm() : openNewCostForm())} type="button">
+            <Plus size={16} />
+            {isAddingCost ? 'Chiudi' : 'Aggiungi spesa libera'}
+          </button>
+        </div>
       </div>
+      {isAddingCost ? (
+        <form className="fault-cost-entry-form" onSubmit={handleSubmitCostEntry}>
+          <div className="fault-cost-entry-title fault-cost-entry-wide">
+            <strong>{costForm.id ? 'Modifica spesa libera' : 'Nuova spesa libera'}</strong>
+            <span>Registra manutenzioni, gomme, assicurazioni, revisioni, muletti o costi aziendali anche senza guasto.</span>
+          </div>
+          <label>
+            Titolo spesa
+            <input required value={costForm.title} onChange={(event) => updateCostForm('title', event.target.value)} placeholder="Tagliando, gomme, fattura officina..." />
+          </label>
+          <label>
+            Importo + IVA
+            <input inputMode="decimal" required value={costForm.amount} onChange={(event) => updateCostForm('amount', event.target.value)} placeholder="2000,00" />
+          </label>
+          <label>
+            Categoria
+            <select value={costForm.category} onChange={(event) => updateCostForm('category', event.target.value)}>
+              {costCategoryOptions.map((option) => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Data
+            <input required type="date" value={costForm.spentAt} onChange={(event) => updateCostForm('spentAt', event.target.value)} />
+          </label>
+          <label>
+            Collegata a
+            <select value={costForm.targetType} onChange={(event) => updateCostForm('targetType', event.target.value)}>
+              <option value="vehicle">Mezzo / targa</option>
+              <option value="asset">Attrezzatura / muletto</option>
+              <option value="company">Azienda generale</option>
+            </select>
+          </label>
+          {costForm.targetType === 'vehicle' ? (
+            <label>
+              Mezzo
+              <select value={costForm.vehicleId} onChange={(event) => updateCostForm('vehicleId', event.target.value)}>
+                <option value="">Senza targa</option>
+                {vehicleRecords.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {costForm.targetType === 'asset' ? (
+            <label>
+              Attrezzatura
+              <select value={costForm.assetId} onChange={(event) => updateCostForm('assetId', event.target.value)}>
+                <option value="">Senza attrezzatura</option>
+                {assetRecords.map((asset) => (
+                  <option key={asset.id} value={asset.id}>{asset.code} · {asset.model || 'Attrezzatura'}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label>
+            Fornitore
+            <input value={costForm.supplier} onChange={(event) => updateCostForm('supplier', event.target.value)} placeholder="Officina, gommista, assicurazione..." />
+          </label>
+          <label>
+            Km mezzo
+            <input inputMode="numeric" value={costForm.odometerKm} onChange={(event) => updateCostForm('odometerKm', event.target.value)} placeholder="Opzionale" />
+          </label>
+          <label className="fault-cost-entry-wide">
+            Note
+            <textarea value={costForm.notes} onChange={(event) => updateCostForm('notes', event.target.value)} placeholder="Dettagli intervento, numero fattura, promemoria..." />
+          </label>
+          <label className="fault-cost-entry-wide">
+            Allegato fattura/foto
+            <input accept="image/*,.pdf" type="file" onChange={(event) => updateCostForm('file', event.target.files?.[0] ?? null)} />
+          </label>
+          <button className="primary-button fault-cost-entry-wide" disabled={isSavingCost} type="submit">
+            {isSavingCost ? 'Salvo...' : costForm.id ? 'Aggiorna spesa' : 'Salva spesa'}
+          </button>
+          {costForm.id ? (
+            <button className="secondary-button fault-cost-entry-wide" onClick={resetCostForm} type="button">
+              Annulla modifica
+            </button>
+          ) : null}
+        </form>
+      ) : null}
+      {faultCostForm.id ? (
+        <form className="fault-cost-entry-form" onSubmit={submitFaultCostEdit}>
+          <div className="fault-cost-entry-title fault-cost-entry-wide">
+            <strong>Modifica costo guasto</strong>
+            <span>Cambia o azzera il costo riparazione registrato su un guasto già archiviato o aperto.</span>
+          </div>
+          <label>
+            Importo speso
+            <input inputMode="decimal" value={faultCostForm.amount} onChange={(event) => setFaultCostForm((currentForm) => ({ ...currentForm, amount: event.target.value }))} placeholder="450,00" />
+          </label>
+          <label>
+            Note officina/intervento
+            <input value={faultCostForm.notes} onChange={(event) => setFaultCostForm((currentForm) => ({ ...currentForm, notes: event.target.value }))} placeholder="Dettaglio intervento" />
+          </label>
+          <button className="primary-button" type="submit">
+            Aggiorna costo guasto
+          </button>
+          <button className="secondary-button" onClick={cancelFaultCostEdit} type="button">
+            Annulla modifica
+          </button>
+        </form>
+      ) : null}
       <div className="fault-cost-controls">
         <label>
           Targa
@@ -11528,33 +12058,56 @@ function FaultCostReport({ faultReportRecords = [], vehicleRecords = [] }) {
       </div>
       <div className="fault-cost-summary">
         <div>
-          <strong>{formatMoneyCents(totalCents)}</strong>
-          <span>Totale danni</span>
+          <strong>{formatMoneyCents(totalCents, defaultCurrency)}</strong>
+          <span>Totale periodo</span>
         </div>
         <div>
-          <strong>{filteredFaults.length}</strong>
-          <span>Interventi</span>
+          <strong>{filteredCosts.length}</strong>
+          <span>Voci costo</span>
         </div>
         <div>
-          <strong>{formatMoneyCents(averageCents)}</strong>
+          <strong>{formatMoneyCents(averageCents, defaultCurrency)}</strong>
           <span>Media</span>
         </div>
       </div>
       <div className="fault-cost-list">
-        {filteredFaults.slice(0, 5).map((report) => {
-          const vehicle = vehicleRecords.find((entry) => entry.id === report.vehicleId)
-
-          return (
-            <article className="fault-cost-row" key={report.id}>
-              <div>
-                <strong>{report.title}</strong>
-                <span>{vehicle?.plate ?? 'Targa mancante'} · {formatShortDateTime(getFaultCostDate(report))}</span>
-              </div>
-              <b>{formatMoneyCents(report.repairCostCents, report.repairCostCurrency || defaultCurrency)}</b>
-            </article>
-          )
-        })}
-        {!filteredFaults.length ? <p className="archive-note">Nessun costo riparazione registrato per questo filtro.</p> : null}
+        {filteredCosts.map((row) => (
+          <article className="fault-cost-row" key={row.id}>
+            <div>
+              <strong>{row.title}</strong>
+              <span>
+                {getCostTargetLabel(row)} · {getCostCategoryLabel(row.category)} · {formatShortDateTime(row.date)}
+              </span>
+            </div>
+            <div className="fault-cost-row-side">
+              <b>{formatMoneyCents(row.amountCents, row.currency || defaultCurrency)}</b>
+              {row.kind === 'entry' ? (
+                <span className="fault-cost-row-actions">
+                  <button className="text-button" onClick={() => startEditingCostEntry(row.source)} type="button">
+                    <Pencil size={14} />
+                    Modifica
+                  </button>
+                  <button className="text-button danger-link" onClick={() => deleteCostEntry(row.source)} type="button">
+                    <X size={14} />
+                    Elimina
+                  </button>
+                </span>
+              ) : (
+                <span className="fault-cost-row-actions">
+                  <button className="text-button" onClick={() => startEditingFaultCost(row.source)} type="button">
+                    <Pencil size={14} />
+                    Modifica costo
+                  </button>
+                  <button className="text-button danger-link" onClick={() => deleteFaultCost(row.source)} type="button">
+                    <X size={14} />
+                    Elimina costo
+                  </button>
+                </span>
+              )}
+            </div>
+          </article>
+        ))}
+        {!filteredCosts.length ? <p className="archive-note">Nessun costo registrato per questo filtro.</p> : null}
       </div>
     </section>
   )
@@ -11562,14 +12115,20 @@ function FaultCostReport({ faultReportRecords = [], vehicleRecords = [] }) {
 
 function OperationsWorkspace({
   acknowledgedCheckIds,
+  assetRecords = [],
   assetPreviewUrl,
+  costEntryRecords = [],
   driverRecords,
   faultReportRecords,
   onAcknowledgeCheck,
+  onCreateCostEntry,
+  onDeleteCostEntry,
   onFilterChange,
   onMarkCheckUnread,
+  onUpdateCostEntry,
   onUpdateFaultStatus,
   selectedFilter = 'inbox',
+  startAddingCostKey = 0,
   syncStatus,
   vehicleCheckRecords,
   vehicleRecords,
@@ -11670,7 +12229,17 @@ function OperationsWorkspace({
             <span>{t('operations.archivedCount')}</span>
           </div>
         </div>
-        <FaultCostReport faultReportRecords={faultReportRecords} vehicleRecords={vehicleRecords} />
+        <FaultCostReport
+          assetRecords={assetRecords}
+          costEntryRecords={costEntryRecords}
+          faultReportRecords={faultReportRecords}
+          onCreateCostEntry={onCreateCostEntry}
+          onDeleteCostEntry={onDeleteCostEntry}
+          onUpdateCostEntry={onUpdateCostEntry}
+          onUpdateFaultStatus={onUpdateFaultStatus}
+          startAddingCostKey={startAddingCostKey}
+          vehicleRecords={vehicleRecords}
+        />
         <div className="filter-tabs operations-filters" role="tablist" aria-label={t('notifications.filterAria')}>
           <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('inbox')} type="button">
             {t('operations.inbox')} ({newFaults.length + unreadChecks.length})
@@ -12399,7 +12968,7 @@ function ChatWorkspace({
   const [isCompanyRecordingAudio, setIsCompanyRecordingAudio] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [isCompanyChatOpen, setIsCompanyChatOpen] = useState(false)
-  const [chatListMode, setChatListMode] = useState('direct')
+  const [chatListMode, setChatListMode] = useState('all')
   const [replyToMessage, setReplyToMessage] = useState(null)
   const [copiedMessageId, setCopiedMessageId] = useState('')
   const [highlightedMessageId, setHighlightedMessageId] = useState('')
@@ -12522,25 +13091,36 @@ function ChatWorkspace({
   )
   const directConversationCount = conversationDrivers.length + directTeamThreads.length
   const groupConversationCount = groupTeamThreads.length
-  const activeChatModeLabel = chatListMode === 'groups'
-      ? 'Gruppi e reparti'
-      : 'Chat singole'
-  const chatModeCards = [
+  const unreadDirectConversationCount = conversationDrivers.reduce((total, driver) => total + getDriverUnreadMessageCount(driver.id), 0)
+  const inboxFilters = [
+    {
+      count: directConversationCount + groupConversationCount,
+      id: 'all',
+      label: 'Tutte',
+    },
     {
       count: directConversationCount,
-      icon: UserRound,
       id: 'direct',
-      label: 'Chat singole',
-      subtitle: 'Autisti, ufficio, magazzino',
+      label: 'Singole',
     },
     {
       count: groupConversationCount,
-      icon: Users,
       id: 'groups',
-      label: 'Gruppi azienda',
-      subtitle: 'Dove il titolare scrive',
+      label: 'Gruppi',
+    },
+    {
+      count: unreadDirectConversationCount,
+      id: 'unread',
+      label: 'Da leggere',
     },
   ]
+  const showDirectRows = chatListMode === 'all' || chatListMode === 'direct' || chatListMode === 'unread'
+  const showGroupRows = chatListMode === 'all' || chatListMode === 'groups'
+  const visibleConversationDrivers = chatListMode === 'unread'
+    ? conversationDrivers.filter((driver) => getDriverUnreadMessageCount(driver.id) > 0)
+    : conversationDrivers
+  const visibleDirectTeamThreads = chatListMode === 'unread' ? [] : directTeamThreads
+  const visibleGroupTeamThreads = chatListMode === 'unread' ? [] : groupTeamThreads
   const selectedTeamThread = [...directTeamThreads, ...groupTeamThreads].find((thread) => thread.id === selectedTeamThreadId) ?? null
   const selectedDriver = selectedTeamThread
     ? null
@@ -12622,6 +13202,15 @@ function ChatWorkspace({
   function getLastTeamMessage(threadId) {
     const messages = teamMessagesByThread.get(threadId) ?? []
     return messages[messages.length - 1] ?? null
+  }
+
+  function getDriverUnreadMessageCount(driverId) {
+    const driverThread = getDriverThread(driverId)
+    return driverThread
+      ? (messagesByThread.get(driverThread.id) ?? []).filter(
+          (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
+        ).length
+      : 0
   }
 
   function handleAttachmentChange(event) {
@@ -12788,51 +13377,39 @@ function ChatWorkspace({
             <p className="overline">{t('chat.messages')}</p>
             <h2>{t('chat.companyTitle')}</h2>
           </div>
-          {chatListMode === 'direct' && (
-            <button
-              className={isStartingNewChat ? 'secondary-button compact-button is-active' : 'secondary-button compact-button'}
-              onClick={() => {
-                setIsStartingNewChat((currentValue) => !currentValue)
-              }}
-              type="button"
-            >
-              {isStartingNewChat ? <Mail size={17} /> : <Plus size={17} />}
-              {isStartingNewChat ? t('chat.showConversations') : 'Nuova singola'}
-            </button>
-          )}
+          <button
+            className={isStartingNewChat ? 'secondary-button compact-button is-active' : 'secondary-button compact-button'}
+            onClick={() => {
+              setChatListMode('direct')
+              setIsStartingNewChat((currentValue) => !currentValue)
+            }}
+            type="button"
+          >
+            {isStartingNewChat ? <Mail size={17} /> : <Plus size={17} />}
+            {isStartingNewChat ? t('chat.showConversations') : 'Nuova chat'}
+          </button>
         </div>
-        <div className="chat-mode-cards" role="tablist" aria-label="Tipo chat">
-          {chatModeCards.map((card) => {
-            const Icon = card.icon
-            const isActive = chatListMode === card.id
+        <div className="chat-inbox-toolbar" role="tablist" aria-label="Filtro chat">
+          {inboxFilters.map((filter) => {
+            const isActive = chatListMode === filter.id
 
             return (
               <button
                 aria-selected={isActive}
-                className={isActive ? 'chat-mode-card is-active' : 'chat-mode-card'}
-                key={card.id}
+                className={isActive ? 'chat-filter-chip is-active' : 'chat-filter-chip'}
+                key={filter.id}
                 onClick={() => {
-                  setChatListMode(card.id)
+                  setChatListMode(filter.id)
                   setIsStartingNewChat(false)
                 }}
                 role="tab"
                 type="button"
               >
-                <span className="chat-mode-card-icon">
-                  <Icon size={18} />
-                </span>
-                <span className="chat-mode-card-copy">
-                  <strong>{card.label}</strong>
-                  <small>{card.subtitle}</small>
-                </span>
-                <em>{card.count}</em>
+                <span>{filter.label}</span>
+                <em>{filter.count}</em>
               </button>
             )
           })}
-        </div>
-        <div className="chat-mode-current">
-          <span>Stai vedendo</span>
-          <strong>{activeChatModeLabel}</strong>
         </div>
         {isStartingNewChat && (
           <div className="new-chat-panel">
@@ -12879,10 +13456,10 @@ function ChatWorkspace({
           </div>
         )}
         <div className="chat-driver-list">
-          {chatListMode === 'direct' && conversationDrivers.length > 0 && (
+          {showDirectRows && visibleConversationDrivers.length > 0 && (
             <div className="chat-list-section-label">Chat singole con autisti</div>
           )}
-          {chatListMode === 'direct' && conversationDrivers.map((driver) => {
+          {showDirectRows && visibleConversationDrivers.map((driver) => {
             const lastMessage = getLastDriverMessage(driver.id)
             const isSelected = selectedDriver?.id === driver.id
             const driverThread = getDriverThread(driver.id)
@@ -12890,11 +13467,7 @@ function ChatWorkspace({
             const driverIsTyping = Boolean(
               driverThread?.id && getTypingActors(chatLiveState, driverThread.id, 'driver').length > 0,
             )
-            const unreadMessageCount = driverThread
-              ? (messagesByThread.get(driverThread.id) ?? []).filter(
-                  (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
-                ).length
-              : 0
+            const unreadMessageCount = getDriverUnreadMessageCount(driver.id)
 
             return (
               <button
@@ -12924,10 +13497,10 @@ function ChatWorkspace({
               </button>
             )
           })}
-          {chatListMode === 'direct' && directTeamThreads.length > 0 && (
+          {showDirectRows && visibleDirectTeamThreads.length > 0 && (
             <div className="chat-list-section-label">Chat singole con ufficio e magazzino</div>
           )}
-          {chatListMode === 'direct' && directTeamThreads.map((thread) => {
+          {showDirectRows && visibleDirectTeamThreads.map((thread) => {
             const lastMessage = getLastTeamMessage(thread.id)
             const isSelected = selectedTeamThread?.id === thread.id
 
@@ -12956,10 +13529,10 @@ function ChatWorkspace({
               </button>
             )
           })}
-          {chatListMode === 'groups' && groupTeamThreads.length > 0 && (
+          {showGroupRows && visibleGroupTeamThreads.length > 0 && (
             <div className="chat-list-section-label">Gruppi aziendali</div>
           )}
-          {chatListMode === 'groups' && groupTeamThreads.map((thread) => {
+          {showGroupRows && visibleGroupTeamThreads.map((thread) => {
             const lastMessage = getLastTeamMessage(thread.id)
             const isSelected = selectedTeamThread?.id === thread.id
 
@@ -12988,7 +13561,16 @@ function ChatWorkspace({
               </button>
             )
           })}
-          {chatListMode === 'direct' && conversationDrivers.length === 0 && directTeamThreads.length === 0 && (
+          {chatListMode === 'unread' && visibleConversationDrivers.length === 0 && (
+            <div className="empty-state-row">
+              <Users size={20} />
+              <div>
+                <strong>Tutto letto</strong>
+                <span>Non ci sono messaggi singoli da gestire in questo momento.</span>
+              </div>
+            </div>
+          )}
+          {chatListMode !== 'unread' && showDirectRows && conversationDrivers.length === 0 && directTeamThreads.length === 0 && (
             <div className="empty-state-row">
               <Users size={20} />
               <div>
@@ -12997,7 +13579,7 @@ function ChatWorkspace({
               </div>
             </div>
           )}
-          {chatListMode === 'groups' && groupTeamThreads.length === 0 && (
+          {showGroupRows && groupTeamThreads.length === 0 && (
             <div className="empty-state-row">
               <Users size={20} />
               <div>
@@ -13398,6 +13980,22 @@ function OperationDetailShell({
       setIsSavingRepair(false)
     }
 
+    async function deleteRepairCost() {
+      const confirmed = window.confirm(`Eliminare il costo riparazione dal guasto "${report.title}"?`)
+      if (!confirmed) return
+
+      setIsSavingRepair(true)
+      await onUpdateFaultStatus?.(report.id, report.status, {
+        repairCleared: true,
+        repairCostCents: 0,
+        repairCostCurrency: repairCurrency,
+        repairNotes: '',
+      })
+      setRepairAmount('')
+      setRepairNotes('')
+      setIsSavingRepair(false)
+    }
+
     return (
       <Shell className={shellClassName} {...shellProps}>
         <div className="panel-header compact">
@@ -13470,6 +14068,12 @@ function OperationDetailShell({
             <Save size={15} />
             {isSavingRepair ? 'Salvo...' : 'Salva costo'}
           </button>
+          {report.repairCostCents ? (
+            <button className="small-button danger-action" disabled={isSavingRepair} onClick={deleteRepairCost} type="button">
+              <X size={15} />
+              Elimina costo
+            </button>
+          ) : null}
           {isClosed ? (
             <button className="small-button" onClick={() => onUpdateFaultStatus(report.id, 'open')} type="button">
               {t('operations.markUnread')}

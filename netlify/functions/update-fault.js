@@ -129,14 +129,16 @@ export async function handler(event) {
 
   const updatePayload = { status }
   const hasRepairUpdate = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
-    Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+    Object.prototype.hasOwnProperty.call(repair, 'repairNotes') ||
+    Boolean(repair.repairCleared)
 
   if (hasRepairUpdate) {
+    const repairCleared = Boolean(repair.repairCleared)
     updatePayload.repair_cost_cents = Number(repair.repairCostCents ?? 0)
     updatePayload.repair_cost_currency = repair.repairCostCurrency || 'EUR'
     updatePayload.repair_notes = repair.repairNotes?.trim() || null
-    updatePayload.repair_recorded_at = new Date().toISOString()
-    updatePayload.repair_recorded_by = authData.user.id
+    updatePayload.repair_recorded_at = repairCleared ? null : new Date().toISOString()
+    updatePayload.repair_recorded_by = repairCleared ? null : authData.user.id
   }
 
   const { data, error } = await serviceClient

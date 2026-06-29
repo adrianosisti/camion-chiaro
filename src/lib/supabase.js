@@ -202,6 +202,28 @@ function mapFaultReport(row) {
   }
 }
 
+function mapCostEntry(row) {
+  return {
+    amountCents: Number(row.amount_cents ?? 0),
+    assetId: row.asset_id ?? '',
+    category: row.category ?? 'maintenance',
+    companyId: row.company_id,
+    createdAt: row.created_at,
+    currency: row.currency ?? 'EUR',
+    fileBucket: row.file_bucket ?? '',
+    filePath: row.file_path ?? '',
+    id: row.id,
+    notes: row.notes ?? '',
+    odometerKm: row.odometer_km ?? '',
+    sourceType: row.source_type ?? 'manual',
+    spentAt: row.spent_at,
+    supplier: row.supplier ?? '',
+    title: row.title ?? 'Spesa',
+    updatedAt: row.updated_at,
+    vehicleId: row.vehicle_id ?? '',
+  }
+}
+
 function mapCompanyProfile(row) {
   return {
     billingActivatedAt: row.billing_activated_at ?? '',
@@ -452,6 +474,26 @@ const faultReportSelectColumns = `
   repair_recorded_at,
   repair_recorded_by,
   status,
+  created_at,
+  updated_at
+`
+
+const costEntrySelectColumns = `
+  id,
+  company_id,
+  vehicle_id,
+  asset_id,
+  source_type,
+  category,
+  title,
+  supplier,
+  amount_cents,
+  currency,
+  spent_at,
+  odometer_km,
+  notes,
+  file_bucket,
+  file_path,
   created_at,
   updated_at
 `
@@ -1366,6 +1408,27 @@ export async function fetchFaultReports(companyId = configuredCompanyId) {
   return { data: data?.map(mapFaultReport) ?? null, error }
 }
 
+export async function fetchCompanyCostEntries(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('cost_entries')
+    .select(costEntrySelectColumns)
+    .eq('company_id', companyId)
+    .order('spent_at', { ascending: false })
+    .limit(200)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapCostEntry) ?? [], error }
+}
+
 export async function fetchChatThreads(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -1776,6 +1839,175 @@ export async function createFaultReportRecord(report, companyId = configuredComp
   return { data: data ? mapFaultReport(data) : null, error }
 }
 
+export async function createCostEntryRecord(entry, companyId = configuredCompanyId, receiptFile = null) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  let filePath = entry.filePath ?? ''
+
+  if (receiptFile) {
+    const cleanFileName = sanitizeStorageFileName(receiptFile.name ?? `spesa-${Date.now()}`)
+    filePath = `${companyId}/costs/${Date.now()}-${cleanFileName}`
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, receiptFile, {
+      cacheControl: '3600',
+      contentType: receiptFile.type || undefined,
+      upsert: false,
+    })
+
+    if (uploadError) {
+      return { data: null, error: uploadError }
+    }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const payload = {
+    amount_cents: Number(entry.amountCents ?? 0),
+    asset_id: entry.assetId || null,
+    category: entry.category || 'maintenance',
+    company_id: companyId,
+    created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
+    currency: entry.currency || 'EUR',
+    file_bucket: companyAssetsBucket,
+    file_path: filePath || null,
+    notes: entry.notes?.trim() || null,
+    odometer_km: entry.odometerKm ? Number(entry.odometerKm) : null,
+    source_type: entry.sourceType || 'manual',
+    spent_at: entry.spentAt,
+    supplier: entry.supplier?.trim() || null,
+    title: entry.title?.trim() || 'Spesa',
+    vehicle_id: entry.vehicleId || null,
+  }
+
+  const { data, error } = await supabase
+    .from('cost_entries')
+    .insert(payload)
+    .select(costEntrySelectColumns)
+    .single()
+
+  if (error && filePath) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+  }
+
+  if (!error && receiptFile && filePath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'other',
+      companyId,
+      file: receiptFile,
+      filePath,
+    })
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+    }
+  }
+
+  return { data: data ? mapCostEntry(data) : null, error }
+}
+
+export async function updateCostEntryRecord(entryId, updates = {}, companyId = configuredCompanyId, receiptFile = null, previousFilePath = '') {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !entryId) {
+    return { data: null, error: null }
+  }
+
+  let filePath = updates.filePath ?? previousFilePath ?? ''
+
+  if (receiptFile && companyId) {
+    const cleanFileName = sanitizeStorageFileName(receiptFile.name ?? `spesa-${Date.now()}`)
+    filePath = `${companyId}/costs/${Date.now()}-${cleanFileName}`
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, receiptFile, {
+      cacheControl: '3600',
+      contentType: receiptFile.type || undefined,
+      upsert: false,
+    })
+
+    if (uploadError) {
+      return { data: null, error: uploadError }
+    }
+  }
+
+  const payload = {
+    amount_cents: Number(updates.amountCents ?? 0),
+    asset_id: updates.assetId || null,
+    category: updates.category || 'maintenance',
+    currency: updates.currency || 'EUR',
+    file_bucket: companyAssetsBucket,
+    file_path: filePath || null,
+    notes: updates.notes?.trim() || null,
+    odometer_km: updates.odometerKm ? Number(updates.odometerKm) : null,
+    source_type: updates.sourceType || 'manual',
+    spent_at: updates.spentAt,
+    supplier: updates.supplier?.trim() || null,
+    title: updates.title?.trim() || 'Spesa',
+    updated_at: new Date().toISOString(),
+    vehicle_id: updates.vehicleId || null,
+  }
+
+  const { data, error } = await supabase
+    .from('cost_entries')
+    .update(payload)
+    .eq('id', entryId)
+    .select(costEntrySelectColumns)
+    .single()
+
+  if (error && receiptFile && filePath && filePath !== previousFilePath) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+  }
+
+  if (!error && receiptFile && filePath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'other',
+      companyId,
+      file: receiptFile,
+      filePath,
+    })
+    await markCompanyStorageFileDeleted({ bucket: companyAssetsBucket, filePath: previousFilePath })
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+    }
+  }
+
+  return { data: data ? mapCostEntry(data) : null, error }
+}
+
+export async function deleteCostEntryRecord(entry) {
+  const supabase = await getSupabaseClient()
+  const entryId = typeof entry === 'string' ? entry : entry?.id
+  const filePath = typeof entry === 'string' ? '' : entry?.filePath
+
+  if (!supabase || !entryId) {
+    return { data: null, error: null }
+  }
+
+  const { error } = await supabase.from('cost_entries').delete().eq('id', entryId)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+    }
+  }
+
+  if (!error && filePath) {
+    await markCompanyStorageFileDeleted({ bucket: companyAssetsBucket, filePath })
+  }
+
+  return { data: null, error }
+}
+
 export async function createChatThreadRecord(thread, companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -2049,13 +2281,15 @@ export async function updateFaultReportStatus(reportId, status, repair = {}) {
 
   const updatePayload = { status }
   const hasRepairUpdate = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
-    Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+    Object.prototype.hasOwnProperty.call(repair, 'repairNotes') ||
+    Boolean(repair.repairCleared)
 
   if (hasRepairUpdate) {
+    const repairCleared = Boolean(repair.repairCleared)
     updatePayload.repair_cost_cents = Number(repair.repairCostCents ?? 0)
     updatePayload.repair_cost_currency = repair.repairCostCurrency || 'EUR'
     updatePayload.repair_notes = repair.repairNotes?.trim() || null
-    updatePayload.repair_recorded_at = new Date().toISOString()
+    updatePayload.repair_recorded_at = repairCleared ? null : new Date().toISOString()
   }
 
   let { data, error } = await supabase

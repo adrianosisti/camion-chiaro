@@ -85,6 +85,28 @@ export function mapFaultReport(row = {}) {
   }
 }
 
+export function mapCostEntry(row = {}) {
+  return {
+    amountCents: Number(row.amount_cents ?? row.amountCents ?? 0),
+    assetId: row.asset_id ?? row.assetId ?? '',
+    category: row.category ?? 'maintenance',
+    companyId: row.company_id ?? row.companyId ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    currency: row.currency ?? 'EUR',
+    fileBucket: row.file_bucket ?? row.fileBucket ?? '',
+    filePath: row.file_path ?? row.filePath ?? '',
+    id: row.id,
+    notes: row.notes ?? '',
+    odometerKm: row.odometer_km ?? row.odometerKm ?? '',
+    sourceType: row.source_type ?? row.sourceType ?? 'manual',
+    spentAt: row.spent_at ?? row.spentAt ?? '',
+    supplier: row.supplier ?? '',
+    title: row.title ?? 'Spesa',
+    updatedAt: row.updated_at ?? row.updatedAt ?? '',
+    vehicleId: row.vehicle_id ?? row.vehicleId ?? '',
+  }
+}
+
 export function mapChatMessage(row = {}) {
   return {
     attachmentPath: row.attachment_path ?? row.attachmentPath ?? '',
@@ -173,6 +195,7 @@ export function mapDriverContext(data = {}) {
       filePath: entry.filePath ?? entry.file_path,
     })),
     drivers: (data.drivers ?? []).map(mapDriver),
+    costEntries: (data.costEntries ?? []).map(mapCostEntry),
     faultReports: (data.faultReports ?? []).map(mapFaultReport),
     currentPerson: data.currentPerson ? mapCompanyPerson(data.currentPerson) : null,
     people: (data.people ?? []).map(mapCompanyPerson),

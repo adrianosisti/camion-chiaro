@@ -177,6 +177,12 @@ Perche non vendiamo una piccola agenda. Vendiamo controllo operativo, notifiche,
 ### La chat e inclusa?
 La chat aziendale completa puo essere venduta come modulo separato, ad esempio +100 euro/mese. Ha valore perche include messaggi, gruppi, notifiche, foto, audio, allegati e storico operativo.
 
+### Perche dovrei pagare il Centro costi Premium?
+Perche non mostra solo una lista di fatture. Collega ogni spesa a targa, muletto, attrezzatura o azienda, filtra per periodo, permette di correggere o eliminare voci, scarica CSV per Excel e stampa un report A4. Il titolare vede quali mezzi costano di piu e puo decidere con numeri reali.
+
+### I report possono arrivare via email?
+Si, e il modulo giusto da vendere come extra. La base e gia pensata per CSV e stampa A4; per invii automatici mensili serve collegare un servizio email professionale. Il valore consigliato e +250 euro/mese per report automatici email/PDF/CSV.
+
 ### Quanto costa l avvio iniziale?
 Lo start-up kit consigliato e 1.500 euro una tantum: configurazione, anagrafiche iniziali, scadenze, formazione e supporto operativo.
 

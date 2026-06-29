@@ -4,6 +4,7 @@ import {
   mapChatMessage,
   mapChatThread,
   mapCompanyPerson as mapContextCompanyPerson,
+  mapCostEntry,
   mapDriver,
   mapDriverContext,
   mapDriverDocument,
@@ -61,6 +62,8 @@ const faultReportSelect =
   'id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, repair_cost_cents, repair_cost_currency, repair_notes, repair_recorded_at, repair_recorded_by, status, created_at, updated_at'
 const faultReportLegacySelect =
   'id, company_id, driver_id, vehicle_id, semitrailer_id, severity, title, description, photo_path, status, created_at, updated_at'
+const costEntrySelect =
+  'id, company_id, vehicle_id, asset_id, source_type, category, title, supplier, amount_cents, currency, spent_at, odometer_km, notes, file_bucket, file_path, created_at, updated_at'
 
 function mapCompanyProfile(row = {}) {
   return {
@@ -789,6 +792,21 @@ async function fetchCompanyPersonContextDirect(user, person) {
   }
 }
 
+async function fetchCompanyCostEntries(companyId) {
+  if (!companyId) return { data: [], error: null }
+
+  const { data, error } = await supabase
+    .from('cost_entries')
+    .select(costEntrySelect)
+    .eq('company_id', companyId)
+    .order('spent_at', { ascending: false })
+    .limit(200)
+
+  if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
+
+  return { data: (data ?? []).map(mapCostEntry), error }
+}
+
 export async function fetchCompanyContext() {
   if (!isSupabaseConfigured) return notConfiguredError()
 
@@ -824,6 +842,7 @@ export async function fetchCompanyContext() {
     documentsResult,
     checksResult,
     faultsResult,
+    costEntriesResult,
     complianceResult,
     unreadMessagesResult,
     chatThreadsResult,
@@ -868,6 +887,7 @@ export async function fetchCompanyContext() {
       .order('expires_at', { ascending: true, nullsFirst: false }),
     fetchVehicleChecksForCompany(companyId, 30),
     fetchFaultReportsForCompany(companyId, 30),
+    fetchCompanyCostEntries(companyId),
     fetchCompanyComplianceItems(companyId, 50),
     supabase
       .from('chat_messages')
@@ -906,6 +926,7 @@ export async function fetchCompanyContext() {
     documentsResult.error,
     checksResult.error,
     faultsResult.error,
+    costEntriesResult.error,
     complianceResult.error,
     unreadMessagesResult.error,
     chatThreadsResult.error,
@@ -937,6 +958,7 @@ export async function fetchCompanyContext() {
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
       documents: (documentsResult.data ?? []).map(mapDriverDocument),
       drivers: (driversResult.data ?? []).map(mapDriver),
+      costEntries: costEntriesResult.data ?? [],
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       membership: membershipResult.data,
       people: workforceSchemaReady ? (peopleResult.data ?? []).map(mapCompanyPerson) : [],
@@ -1466,13 +1488,15 @@ export async function updateFaultReportStatus(reportId, status, repair = {}) {
 
   const updatePayload = { status }
   const hasRepairUpdate = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
-    Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+    Object.prototype.hasOwnProperty.call(repair, 'repairNotes') ||
+    Boolean(repair.repairCleared)
 
   if (hasRepairUpdate) {
+    const repairCleared = Boolean(repair.repairCleared)
     updatePayload.repair_cost_cents = Number(repair.repairCostCents ?? 0)
     updatePayload.repair_cost_currency = repair.repairCostCurrency || 'EUR'
     updatePayload.repair_notes = repair.repairNotes?.trim() || null
-    updatePayload.repair_recorded_at = new Date().toISOString()
+    updatePayload.repair_recorded_at = repairCleared ? null : new Date().toISOString()
   }
 
   let { data, error } = await supabase
@@ -1956,6 +1980,161 @@ export async function createCompanyComplianceItem({ companyId, file = null, item
   }
 
   return { data: data ? mapComplianceItem(data) : null, error }
+}
+
+export async function createCompanyCostEntry({ companyId, entry, file = null }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
+
+  let filePath = ''
+  let fileBody = null
+
+  if (file?.uri) {
+    const cleanFileName = sanitizeFileName(file.name ?? `spesa-${Date.now()}`)
+    filePath = `${companyId}/costs/${Date.now()}-${cleanFileName}`
+    fileBody = await getFileBodyFromUri(file.uri)
+
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
+      cacheControl: '3600',
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    })
+
+    if (uploadError) return { data: null, error: uploadError }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const payload = {
+    amount_cents: Number(entry.amountCents ?? 0),
+    asset_id: entry.assetId || null,
+    category: entry.category || 'maintenance',
+    company_id: companyId,
+    created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
+    currency: entry.currency || 'EUR',
+    file_bucket: companyAssetsBucket,
+    file_path: filePath || null,
+    notes: entry.notes?.trim() || null,
+    odometer_km: entry.odometerKm ? Number(entry.odometerKm) : null,
+    source_type: entry.sourceType || 'manual',
+    spent_at: entry.spentAt,
+    supplier: entry.supplier?.trim() || null,
+    title: entry.title?.trim() || 'Spesa',
+    vehicle_id: entry.vehicleId || null,
+  }
+
+  const { data, error } = await supabase
+    .from('cost_entries')
+    .insert(payload)
+    .select(costEntrySelect)
+    .single()
+
+  if (error && filePath) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+  }
+
+  if (!error && filePath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'other',
+      companyId,
+      filePath,
+      sizeBytes: fileBody?.byteLength ?? 0,
+    })
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+    }
+  }
+
+  return { data: data ? mapCostEntry(data) : null, error }
+}
+
+export async function updateCompanyCostEntry({ companyId, entryId, entry, file = null, previousFilePath = '' }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !entryId) return { data: null, error: { message: 'Spesa non trovata.' } }
+
+  let filePath = entry.filePath ?? previousFilePath ?? ''
+  let fileBody = null
+
+  if (file?.uri) {
+    const cleanFileName = sanitizeFileName(file.name ?? `spesa-${Date.now()}`)
+    filePath = `${companyId}/costs/${Date.now()}-${cleanFileName}`
+    fileBody = await getFileBodyFromUri(file.uri)
+
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
+      cacheControl: '3600',
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    })
+
+    if (uploadError) return { data: null, error: uploadError }
+  }
+
+  const payload = {
+    amount_cents: Number(entry.amountCents ?? 0),
+    asset_id: entry.assetId || null,
+    category: entry.category || 'maintenance',
+    currency: entry.currency || 'EUR',
+    file_bucket: companyAssetsBucket,
+    file_path: filePath || null,
+    notes: entry.notes?.trim() || null,
+    odometer_km: entry.odometerKm ? Number(entry.odometerKm) : null,
+    source_type: entry.sourceType || 'manual',
+    spent_at: entry.spentAt,
+    supplier: entry.supplier?.trim() || null,
+    title: entry.title?.trim() || 'Spesa',
+    updated_at: new Date().toISOString(),
+    vehicle_id: entry.vehicleId || null,
+  }
+
+  const { data, error } = await supabase
+    .from('cost_entries')
+    .update(payload)
+    .eq('id', entryId)
+    .select(costEntrySelect)
+    .single()
+
+  if (error && filePath && filePath !== previousFilePath) {
+    await supabase.storage.from(companyAssetsBucket).remove([filePath])
+  }
+
+  if (!error && filePath && filePath !== previousFilePath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'other',
+      companyId,
+      filePath,
+      sizeBytes: fileBody?.byteLength ?? 0,
+    })
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+    }
+  }
+
+  return { data: data ? mapCostEntry(data) : null, error }
+}
+
+export async function deleteCompanyCostEntry({ entryId }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!entryId) return { data: null, error: { message: 'Spesa non trovata.' } }
+
+  const { error } = await supabase.from('cost_entries').delete().eq('id', entryId)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL Centro costi. Esegui il file 40_centro_costi_libero.sql in Supabase.' },
+    }
+  }
+
+  return { data: null, error }
 }
 
 export async function renewCompanyComplianceItem({ companyId, file = null, item, updates }) {

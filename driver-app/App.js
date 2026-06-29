@@ -31,6 +31,7 @@ import { WorkforceHomeScreen } from './src/screens/WorkforceHomeScreen'
 import {
   createCompanyAssetSignedUrl,
   createCompanyComplianceItem,
+  createCompanyCostEntry,
   createCompanyDriverAccount,
   createCompanyPerson,
   createCompanyVehicle,
@@ -38,6 +39,7 @@ import {
   createDriverDocument,
   createFaultReport,
   createVehicleCheck,
+  deleteCompanyCostEntry,
   ensureDirectTeamThread,
   fetchCompanyContext,
   fetchCompanyDriverChat,
@@ -62,6 +64,7 @@ import {
   subscribeToDriverPresence,
   updateChatMessageReaction,
   updateCompanyComplianceItemStatus,
+  updateCompanyCostEntry,
   updateFaultReportStatus,
   updateVehicleCheckStatus,
   uploadDriverDocumentFile,
@@ -360,6 +363,7 @@ function CamionChiaroApp() {
   const [language, setLanguage] = useState('it')
   const [logoUrl, setLogoUrl] = useState('')
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
+  const [managementCostStartKey, setManagementCostStartKey] = useState(0)
   const [nativePushStatus, setNativePushStatus] = useState('')
   const [onlineDriverIds, setOnlineDriverIds] = useState([])
   const [session, setSession] = useState(null)
@@ -1982,6 +1986,81 @@ function CamionChiaroApp() {
     return result.data
   }
 
+  async function handleCreateCompanyCostEntry(payload, file = null) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+
+    const result = await createCompanyCostEntry({
+      companyId,
+      entry: payload,
+      file,
+    })
+
+    if (result.error) {
+      Alert.alert('Spesa non salvata', result.error.message)
+      return null
+    }
+
+    setCompanyContext((currentContext) => {
+      if (!currentContext) return currentContext
+
+      return {
+        ...currentContext,
+        costEntries: [result.data, ...(currentContext.costEntries ?? [])],
+      }
+    })
+    return result.data
+  }
+
+  async function handleUpdateCompanyCostEntry(entryId, payload, file = null, previousEntry = null) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !entryId) return null
+
+    const result = await updateCompanyCostEntry({
+      companyId,
+      entry: payload,
+      entryId,
+      file,
+      previousFilePath: previousEntry?.filePath ?? '',
+    })
+
+    if (result.error) {
+      Alert.alert('Spesa non aggiornata', result.error.message)
+      return null
+    }
+
+    setCompanyContext((currentContext) => {
+      if (!currentContext) return currentContext
+
+      return {
+        ...currentContext,
+        costEntries: (currentContext.costEntries ?? []).map((entry) => (entry.id === entryId ? result.data : entry)),
+      }
+    })
+    return result.data
+  }
+
+  async function handleDeleteCompanyCostEntry(entry) {
+    if (!entry?.id) return false
+
+    const result = await deleteCompanyCostEntry({ entryId: entry.id })
+
+    if (result.error) {
+      Alert.alert('Spesa non eliminata', result.error.message)
+      return false
+    }
+
+    setCompanyContext((currentContext) => {
+      if (!currentContext) return currentContext
+
+      return {
+        ...currentContext,
+        costEntries: (currentContext.costEntries ?? []).filter((currentEntry) => currentEntry.id !== entry.id),
+      }
+    })
+    return true
+  }
+
   async function handleRenewCompanyDeadline(item, payload, file = null) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !item?.id) return null
@@ -2132,12 +2211,13 @@ function CamionChiaroApp() {
       if (!currentContext) return currentContext
       const updatedReport = result.data
       const localRepairPatch = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
-        Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+        Object.prototype.hasOwnProperty.call(repair, 'repairNotes') ||
+        Boolean(repair.repairCleared)
         ? {
             repairCostCents: Number(repair.repairCostCents ?? 0),
             repairCostCurrency: repair.repairCostCurrency || getDefaultCurrency(language),
             repairNotes: repair.repairNotes ?? '',
-            repairRecordedAt: new Date().toISOString(),
+            repairRecordedAt: repair.repairCleared ? '' : new Date().toISOString(),
           }
         : {}
 
@@ -2167,12 +2247,13 @@ function CamionChiaroApp() {
       if (!currentContext) return currentContext
       const updatedReport = result.data
       const localRepairPatch = Object.prototype.hasOwnProperty.call(repair, 'repairCostCents') ||
-        Object.prototype.hasOwnProperty.call(repair, 'repairNotes')
+        Object.prototype.hasOwnProperty.call(repair, 'repairNotes') ||
+        Boolean(repair.repairCleared)
         ? {
             repairCostCents: Number(repair.repairCostCents ?? 0),
             repairCostCurrency: repair.repairCostCurrency || getDefaultCurrency(language),
             repairNotes: repair.repairNotes ?? '',
-            repairRecordedAt: new Date().toISOString(),
+            repairRecordedAt: repair.repairCleared ? '' : new Date().toISOString(),
           }
         : {}
 
@@ -2212,8 +2293,11 @@ function CamionChiaroApp() {
     return true
   }
 
-  function openCompanyManagement(section = 'drivers') {
+  function openCompanyManagement(section = 'drivers', options = {}) {
     setManagementInitialSection(section)
+    if (section === 'costs' && options?.addCost) {
+      setManagementCostStartKey(Date.now())
+    }
     setActiveTab('archive')
   }
 
@@ -2292,14 +2376,18 @@ function CamionChiaroApp() {
             initialSection={managementInitialSection}
             initialMode={activeTab === 'manage' ? 'create' : 'archive'}
             language={language}
+            startCostEntryKey={managementCostStartKey}
             onCreateDeadline={handleCreateCompanyDeadline}
+            onCreateCostEntry={handleCreateCompanyCostEntry}
             onCreateDriver={handleCreateCompanyDriver}
             onCreatePerson={handleCreateCompanyPerson}
             onCreateVehicle={handleCreateCompanyVehicle}
             onCreateWarehouseAsset={handleCreateCompanyWarehouseAsset}
             onCloseDeadline={handleCloseCompanyDeadline}
+            onDeleteCostEntry={handleDeleteCompanyCostEntry}
             onRenewDeadline={handleRenewCompanyDeadline}
             onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
+            onUpdateCostEntry={handleUpdateCompanyCostEntry}
             onUpdateFaultRepair={handleUpdateCompanyFaultRepair}
           />
         )

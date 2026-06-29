@@ -74,7 +74,7 @@ export function CompanyChatScreen({
   unreadTeamByThreadId = {},
 }) {
   const [isStartingNewChat, setIsStartingNewChat] = useState(false)
-  const [chatListMode, setChatListMode] = useState('direct')
+  const [chatListMode, setChatListMode] = useState('all')
   const safeChatThreads = Array.isArray(chatThreads) ? chatThreads : []
   const safeDrivers = Array.isArray(drivers) ? drivers : []
   const safePeople = Array.isArray(people) ? people : []
@@ -161,10 +161,28 @@ export function CompanyChatScreen({
   const groupConversationCount = groupTeamThreads.length
   const directUnreadCount = directChatRows.reduce((total, row) => total + Number(row.unreadCount ?? 0), 0)
   const groupUnreadCount = groupTeamThreads.reduce((total, thread) => total + Number(unreadTeamByThreadId[thread.id] ?? 0), 0)
-  const activeModeTitle = chatListMode === 'groups' ? 'Gruppi' : 'Chat singole'
-  const hasVisibleRows = chatListMode === 'groups'
-    ? groupTeamThreads.length
-    : directChatRows.length || (isStartingNewChat && staffPeople.length)
+  const teamChatRows = groupTeamThreads.map((thread) => ({
+    id: `team-${thread.id}`,
+    lastMessageAt: thread.lastMessageAt ?? '',
+    thread,
+    timestamp: getSafeTimestamp(thread.lastMessageAt),
+    type: 'team',
+    unreadCount: unreadTeamByThreadId[thread.id] ?? 0,
+  }))
+  const allChatRows = [...directChatRows, ...teamChatRows].sort((firstRow, secondRow) => {
+    const dateDiff = secondRow.timestamp - firstRow.timestamp
+    if (dateDiff) return dateDiff
+
+    return getDirectRowTitle(firstRow).localeCompare(getDirectRowTitle(secondRow), 'it')
+  })
+  const visibleChatRows = allChatRows.filter((row) => {
+    if (chatListMode === 'direct') return row.type === 'driver' || isDirectThread(row.thread)
+    if (chatListMode === 'groups') return row.type === 'team' && !isDirectThread(row.thread)
+    if (chatListMode === 'unread') return Number(row.unreadCount ?? 0) > 0
+    return true
+  })
+  const totalUnreadCount = directUnreadCount + groupUnreadCount
+  const hasVisibleRows = visibleChatRows.length || (chatListMode === 'direct' && isStartingNewChat && staffPeople.length)
 
   if (selectedTeamThread && isCompanyVisibleThread(selectedTeamThread)) {
     return (
@@ -256,41 +274,43 @@ export function CompanyChatScreen({
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Messaggi azienda</Text>
-        <Text style={styles.heroText}>Chat singole e gruppi aziendali, sempre in ordine di ultimo messaggio.</Text>
+        <Text style={styles.heroText}>Una inbox unica: ultime conversazioni in alto, non letti evidenti, gruppi separabili con un tocco.</Text>
       </View>
 
-      <ChatModeCards
+      <View style={styles.inboxSummary}>
+        <View style={styles.inboxSummaryCopy}>
+          <Text style={styles.inboxKicker}>Inbox azienda</Text>
+          <Text style={styles.inboxTitle}>
+            {allChatRows.length} chat · {totalUnreadCount ? `${totalUnreadCount} da leggere` : 'tutto letto'}
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => {
+            setChatListMode('direct')
+            setIsStartingNewChat((currentValue) => !currentValue)
+          }}
+          style={[styles.newChatButton, isStartingNewChat && styles.newChatButtonActive]}
+        >
+          <Ionicons color={isStartingNewChat ? colors.white : colors.ink} name={isStartingNewChat ? 'chatbubbles-outline' : 'add-circle-outline'} size={18} />
+          <Text style={[styles.newChatText, isStartingNewChat && styles.newChatTextActive]}>
+            {isStartingNewChat ? 'Lista' : 'Nuova'}
+          </Text>
+        </Pressable>
+      </View>
+
+      <ChatFilterBar
         counts={{
+          all: allChatRows.length,
           direct: directConversationCount,
           groups: groupConversationCount,
+          unread: totalUnreadCount,
         }}
         mode={chatListMode}
         onChange={(nextMode) => {
           setChatListMode(nextMode)
           setIsStartingNewChat(false)
         }}
-        unreadCounts={{ direct: directUnreadCount, groups: groupUnreadCount }}
       />
-
-      <View style={styles.modeLead}>
-        <View style={styles.modeLeadCopy}>
-          <Text style={styles.modeLeadLabel}>Stai vedendo</Text>
-          <Text style={styles.modeLeadTitle}>{activeModeTitle}</Text>
-        </View>
-        {chatListMode === 'direct' ? (
-          <Pressable
-            onPress={() => {
-              setIsStartingNewChat((currentValue) => !currentValue)
-            }}
-            style={[styles.newChatButton, isStartingNewChat && styles.newChatButtonActive]}
-          >
-            <Ionicons color={isStartingNewChat ? colors.white : colors.ink} name={isStartingNewChat ? 'chatbubbles-outline' : 'add-circle-outline'} size={18} />
-            <Text style={[styles.newChatText, isStartingNewChat && styles.newChatTextActive]}>
-              {isStartingNewChat ? 'Mostra chat' : 'Nuova singola'}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
 
       {chatListMode === 'direct' && isStartingNewChat && staffPeople.length ? (
         <View style={styles.groupBlock}>
@@ -309,10 +329,10 @@ export function CompanyChatScreen({
         </View>
       ) : null}
 
-      {chatListMode === 'direct' && directChatRows.length ? (
+      {visibleChatRows.length ? (
         <View style={styles.groupBlock}>
-          <Text style={styles.groupBlockTitle}>Chat singole</Text>
-          {directChatRows.map((row) => (
+          <Text style={styles.groupBlockTitle}>Conversazioni</Text>
+          {visibleChatRows.map((row) => (
             row.type === 'driver' ? (
               <DriverChatRow
                 driver={row.driver}
@@ -343,32 +363,14 @@ export function CompanyChatScreen({
         </View>
       ) : null}
 
-      {chatListMode === 'groups' && groupTeamThreads.length ? (
-        <View style={styles.groupBlock}>
-          <Text style={styles.groupBlockTitle}>Gruppi</Text>
-          {groupTeamThreads.map((thread) => (
-            <TeamChatRow
-              key={thread.id}
-              onPress={() => {
-                setIsStartingNewChat(false)
-                onSelectTeamThread?.(thread)
-              }}
-              driverByPersonId={driverByPersonId}
-              driverPhotoUrls={driverPhotoUrls}
-              peopleById={personById}
-              thread={thread}
-              unreadCount={unreadTeamByThreadId[thread.id] ?? 0}
-            />
-          ))}
-        </View>
-      ) : null}
-
       {!hasVisibleRows ? (
         <Text style={styles.emptyText}>
           {isLoading
             ? 'Carico chat...'
             : isStartingNewChat
-              ? 'Nessun autista in anagrafica.'
+              ? 'Nessuna persona disponibile per una nuova chat.'
+              : chatListMode === 'unread'
+                ? 'Nessun messaggio da leggere.'
               : chatListMode === 'groups'
                 ? 'Nessun gruppo aziendale disponibile.'
                 : 'Nessuna conversazione presente. Premi Nuova singola.'}
@@ -410,11 +412,11 @@ function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount =
       <DriverAvatar name={driver.name} uri={photoUrl} />
       <View style={styles.driverCopy}>
         <Text style={styles.driverName}>{driver.name}</Text>
-        <Text style={styles.driverMeta}>{roleLabel} · {formatLastMessageDate(lastMessageAt)}</Text>
+        <Text style={styles.driverMeta}>{roleLabel}</Text>
       </View>
       <View style={styles.rowActions}>
-        <Text style={[styles.kindBadge, styles.kindBadgeDriver]}>{roleLabel}</Text>
-        {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Text style={styles.openText}>Apri</Text>}
+        <Text style={styles.rowTime}>{formatLastMessageDate(lastMessageAt)}</Text>
+        {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Ionicons color={colors.muted} name="chevron-forward" size={16} />}
       </View>
     </Pressable>
   )
@@ -424,12 +426,9 @@ function TeamChatRow({ driverByPersonId = new Map(), driverPhotoUrls = {}, onPre
   const kind = getThreadKind(thread)
   const isDirect = kind === 'direct'
   const targetPerson = getCompanyDirectPerson(thread, peopleById)
-  const badgeLabel = targetPerson
-    ? getPersonDepartmentLabel(targetPerson.department)
-    : getThreadKindLabel(thread)
   const subtitle = targetPerson
-    ? `${targetPerson.jobTitle || 'Operatore'} · ${formatLastMessageDate(thread.lastMessageAt)}`
-    : `${getAudienceLabel(thread.audienceType)} · ${formatLastMessageDate(thread.lastMessageAt)}`
+    ? `${targetPerson.jobTitle || 'Operatore'} · ${getPersonDepartmentLabel(targetPerson.department)}`
+    : `${getThreadKindLabel(thread)} · ${getAudienceLabel(thread.audienceType)}`
 
   return (
     <Pressable onPress={onPress} style={[styles.driverRow, isDirect && styles.directRow]}>
@@ -445,10 +444,8 @@ function TeamChatRow({ driverByPersonId = new Map(), driverPhotoUrls = {}, onPre
         <Text style={styles.driverMeta}>{subtitle}</Text>
       </View>
       <View style={styles.rowActions}>
-        <Text style={[styles.kindBadge, isDirect ? styles.kindBadgeDirect : styles.kindBadgeGroup]}>
-          {badgeLabel}
-        </Text>
-        {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Text style={styles.openText}>Apri</Text>}
+        <Text style={styles.rowTime}>{formatLastMessageDate(thread.lastMessageAt)}</Text>
+        {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Ionicons color={colors.muted} name="chevron-forward" size={16} />}
       </View>
     </Pressable>
   )
@@ -535,26 +532,37 @@ function getPersonAvatarUrl(person = {}, driverPhotoUrls = {}, driverByPersonId 
   return linkedDriverId ? driverPhotoUrls[linkedDriverId] ?? '' : ''
 }
 
-function ChatModeCards({ counts = {}, mode, onChange, unreadCounts = {} }) {
+function ChatFilterBar({ counts = {}, mode, onChange }) {
   const items = [
+    {
+      count: counts.all ?? 0,
+      id: 'all',
+      label: 'Tutte',
+    },
     {
       count: counts.direct ?? 0,
       id: 'direct',
-      icon: 'person-circle-outline',
-      label: 'Chat singole',
-      subtitle: 'Autisti, ufficio, magazzino',
+      label: 'Singole',
     },
     {
       count: counts.groups ?? 0,
       id: 'groups',
-      icon: 'people-outline',
-      label: 'Gruppi azienda',
-      subtitle: 'Solo gruppi con azienda',
+      label: 'Gruppi',
+    },
+    {
+      count: counts.unread ?? 0,
+      id: 'unread',
+      label: 'Da leggere',
     },
   ]
 
   return (
-    <View style={styles.modeCards}>
+    <ScrollView
+      contentContainerStyle={styles.filterBarContent}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.filterBar}
+    >
       {items.map((item) => {
         const isActive = mode === item.id
 
@@ -562,20 +570,14 @@ function ChatModeCards({ counts = {}, mode, onChange, unreadCounts = {} }) {
           <Pressable
             key={item.id}
             onPress={() => onChange?.(item.id)}
-            style={[styles.modeCard, isActive && styles.modeCardActive]}
+            style={[styles.filterChip, isActive && styles.filterChipActive, item.id === 'unread' && counts.unread > 0 && styles.filterChipUnread]}
           >
-            <View style={[styles.modeIconShell, isActive && styles.modeIconShellActive]}>
-              <Ionicons color={isActive ? colors.ink : colors.white} name={item.icon} size={21} />
-            </View>
-            <View style={styles.modeCardCopy}>
-              <Text numberOfLines={1} style={styles.modeCardTitle}>{item.label}</Text>
-              <Text numberOfLines={1} style={styles.modeCardSubtitle}>{item.subtitle}</Text>
-            </View>
-            {unreadCounts[item.id] > 0 ? <Text style={styles.modeUnreadCount}>{unreadCounts[item.id]}</Text> : null}
+            <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{item.label}</Text>
+            <Text style={[styles.filterChipCount, isActive && styles.filterChipCountActive]}>{item.count}</Text>
           </Pressable>
         )
       })}
-    </View>
+    </ScrollView>
   )
 }
 
@@ -713,6 +715,55 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 2,
   },
+  filterBar: {
+    marginBottom: 12,
+  },
+  filterBarContent: {
+    gap: 8,
+    paddingRight: 6,
+  },
+  filterChip: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#cfe8f3',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 38,
+    paddingHorizontal: 12,
+  },
+  filterChipActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  filterChipCount: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    minWidth: 22,
+    overflow: 'hidden',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    textAlign: 'center',
+  },
+  filterChipCountActive: {
+    backgroundColor: colors.cyan,
+    color: colors.ink,
+  },
+  filterChipText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  filterChipTextActive: {
+    color: colors.white,
+  },
+  filterChipUnread: {
+    borderColor: colors.danger,
+  },
   kindBadge: {
     borderRadius: 999,
     fontSize: 10,
@@ -761,6 +812,34 @@ const styles = StyleSheet.create({
   heroActions: {
     alignItems: 'flex-start',
     marginTop: 14,
+  },
+  inboxKicker: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  inboxSummary: {
+    alignItems: 'center',
+    backgroundColor: '#f8fdff',
+    borderColor: '#d7f2fb',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    padding: 12,
+  },
+  inboxSummaryCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  inboxTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+    marginTop: 2,
   },
   modeCard: {
     alignItems: 'center',
@@ -938,6 +1017,11 @@ const styles = StyleSheet.create({
   rowActions: {
     alignItems: 'flex-end',
     gap: 5,
+  },
+  rowTime: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '900',
   },
   unreadBadge: {
     backgroundColor: colors.cyan,

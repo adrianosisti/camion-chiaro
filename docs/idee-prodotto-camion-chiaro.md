@@ -38,6 +38,45 @@ Questa roadmap raccoglie idee pratiche per trasformare Camion Chiaro da app util
 - White label: logo e colori cliente nei piani alti.
 - Report mensili automatici: PDF con scadenze, guasti, check critici, documenti mancanti.
 
+## Idee premium nuove da valutare
+
+- Centro costi Premium: ogni spesa puo essere collegata a targa, muletto, attrezzatura o azienda generale, con categoria, fornitore, km, allegato, modifica ed eliminazione. Il valore non e "inserire una fattura", ma capire quali mezzi stanno bruciando soldi.
+- Report automatico titolare: ogni mese il proprietario riceve email con riepilogo costi, guasti, scadenze lavorate, scadenze future, top mezzi costosi e allegati CSV/PDF. Serve un servizio email dedicato prima del rilascio.
+- Budget per targa: l azienda imposta un budget mensile o annuale per ogni mezzo. Se una targa supera la soglia, Camion Chiaro avvisa titolare e amministrazione.
+- Classifica mezzi critici: dashboard con "mezzo piu costoso", "mezzo con piu guasti", "mezzo con piu check anomali", "mezzo da valutare per sostituzione".
+- Indice salute flotta: punteggio semplice 0-100 per ogni mezzo basato su scadenze, guasti, costi, check critici e documenti mancanti.
+- Fascicolo mezzo A4: pagina stampabile con dati mezzo, documenti, scadenze, ultimi guasti, costi periodo e allegati principali.
+- Sollecito intelligente: da una scadenza l azienda preme "Sollecita" e l utente riceve push e messaggio precompilato in chat con cosa deve rinnovare.
+- Audit premium: storico completo di chi ha modificato, cancellato, archiviato o scaricato documenti, costi e guasti.
+- Officina fornitori: anagrafica officine/gommisti/assicurazioni con totale speso per fornitore e valutazione interna.
+- Foto prima/dopo riparazione: guasto aperto con foto autista, riparazione chiusa con foto officina o azienda, costo finale e note.
+- Promemoria revisione costi: ogni lunedi riepilogo automatico "questa settimana hai speso X, questi mezzi hanno superato la media".
+- Centro decisioni: suggerimenti operativi tipo "questa targa ha 4 guasti in 30 giorni" o "questo muletto costa piu della media".
+- Pacchetto amministrazione: esportazione CSV per Excel, pagina A4 stampabile, report mensile e archivio fatture collegate.
+- Multi-valuta: costi in euro, sterline, dollari, zloty, leu, franchi o valuta lingua/paese, mantenendo report per azienda.
+- Storage controllato: dashboard spazio file per azienda, avvisi a 80% e vendita pacchetti extra prima che lo spazio diventi un problema.
+
+## Pacchetto Report e Centro costi
+
+Obiettivo: giustificare un prezzo alto con controllo economico reale.
+
+Incluso nel pacchetto:
+- spese libere per targa, attrezzatura, muletto o azienda;
+- modifica ed eliminazione spesa;
+- allegato fattura/foto;
+- filtro per periodo e targa;
+- CSV apribile in Excel;
+- stampa A4 pulita;
+- report mensile automatico via email quando collegheremo il servizio email;
+- riepilogo costi mese/anno;
+- classifica mezzi piu costosi.
+
+Prezzo consigliato:
+- Report Base incluso nei piani da Fleet 20 in su;
+- Centro costi Premium: +150 euro/mese;
+- Report automatico email + PDF/CSV mensile: +250 euro/mese;
+- pacchetto amministrazione completo con import storico iniziale: +500/1.000 euro una tantum, in base ai dati da caricare.
+
 ## Idee forti per trasportatori
 
 - Modalita controllo stradale: l autista apre una vista pulita con solo documenti da mostrare.

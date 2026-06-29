@@ -293,6 +293,7 @@ export function CompanyHomeScreen({
   isRefreshing = false,
   language = 'it',
   logoUrl,
+  onCloseDeadline,
   onOpenChat,
   onOpenManagement,
   onRefresh,
@@ -487,6 +488,7 @@ export function CompanyHomeScreen({
         drivers={drivers}
         language={language}
         onClose={() => setSelectedDeadline(null)}
+        onMarkDone={onCloseDeadline}
         onSave={async (item, payload, file) => {
           const saved = await onRenewDeadline?.(item, payload, file)
           if (saved) setSelectedDeadline(null)

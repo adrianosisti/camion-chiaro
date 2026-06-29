@@ -245,6 +245,7 @@ export function DeadlineRenewModal({
   item,
   language = 'it',
   onClose,
+  onMarkDone,
   onSave,
   onSendReminder,
   people = [],
@@ -259,6 +260,7 @@ export function DeadlineRenewModal({
     type: '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [isSendingReminder, setIsSendingReminder] = useState(false)
   const [isOpeningFile, setIsOpeningFile] = useState(false)
 
@@ -357,6 +359,19 @@ export function DeadlineRenewModal({
     }
   }
 
+  async function markDone() {
+    if (!onMarkDone) return
+
+    setIsClosing(true)
+    const closed = await onMarkDone(item.id)
+    setIsClosing(false)
+
+    if (closed !== false) {
+      Alert.alert('Pratica chiusa', 'La scadenza e stata archiviata dal registro operativo.')
+      onClose?.()
+    }
+  }
+
   return (
     <Modal animationType="slide" onRequestClose={onClose} visible>
       <View style={styles.detailScreen}>
@@ -413,6 +428,12 @@ export function DeadlineRenewModal({
           ) : null}
 
           <PrimaryButton loading={isSaving} onPress={saveRenewal} title="Salva rinnovo" />
+          {onMarkDone ? (
+            <Pressable disabled={isSaving || isClosing} onPress={markDone} style={[styles.closeDeadlineButton, (isSaving || isClosing) && styles.smallButtonDisabled]}>
+              <Ionicons color={colors.danger} name="checkmark-done-outline" size={18} />
+              <Text style={styles.closeDeadlineButtonText}>{isClosing ? 'Chiudo pratica...' : 'Chiudi senza rinnovo'}</Text>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </View>
     </Modal>
@@ -459,6 +480,7 @@ export function CompanyManagementScreen({
   onCreatePerson,
   onCreateVehicle,
   onCreateWarehouseAsset,
+  onCloseDeadline,
   onRenewDeadline,
   onSendDeadlineReminder,
 }) {
@@ -1392,6 +1414,7 @@ export function CompanyManagementScreen({
         item={selectedDeadline}
         language={language}
         onClose={() => setSelectedDeadline(null)}
+        onMarkDone={onCloseDeadline}
         onSave={renewDeadline}
         onSendReminder={onSendDeadlineReminder}
         people={allPeople}
@@ -1506,6 +1529,23 @@ const styles = StyleSheet.create({
   closeFormText: {
     color: colors.ink,
     fontSize: 11,
+    fontWeight: '900',
+  },
+  closeDeadlineButton: {
+    alignItems: 'center',
+    backgroundColor: '#fff1f2',
+    borderColor: '#fecaca',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 46,
+    paddingHorizontal: 14,
+  },
+  closeDeadlineButtonText: {
+    color: colors.danger,
+    fontSize: 13,
     fontWeight: '900',
   },
   content: {

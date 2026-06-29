@@ -60,6 +60,7 @@ import {
   subscribeToOperationalUpdates,
   subscribeToDriverPresence,
   updateChatMessageReaction,
+  updateCompanyComplianceItemStatus,
   updateFaultReportStatus,
   updateVehicleCheckStatus,
   uploadDriverDocumentFile,
@@ -1985,6 +1986,25 @@ function CamionChiaroApp() {
     return result.data
   }
 
+  async function handleCloseCompanyDeadline(itemId) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !itemId) return false
+
+    const result = await updateCompanyComplianceItemStatus({
+      companyId,
+      itemId,
+      status: 'done',
+    })
+
+    if (result.error) {
+      Alert.alert('Pratica non chiusa', result.error.message)
+      return false
+    }
+
+    await loadCompanyData({ silent: true })
+    return true
+  }
+
   function getCompanyDeadlineTarget(item = {}) {
     if (item.driverId) {
       const driverTarget = companyContext?.drivers?.find((entry) => entry.id === item.driverId)
@@ -2216,6 +2236,7 @@ function CamionChiaroApp() {
             onCreatePerson={handleCreateCompanyPerson}
             onCreateVehicle={handleCreateCompanyVehicle}
             onCreateWarehouseAsset={handleCreateCompanyWarehouseAsset}
+            onCloseDeadline={handleCloseCompanyDeadline}
             onRenewDeadline={handleRenewCompanyDeadline}
             onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
           />
@@ -2232,6 +2253,7 @@ function CamionChiaroApp() {
           onOpenManagement={openCompanyManagement}
           onOpenSettings={() => setActiveTab('settings')}
           onRefresh={() => loadCompanyData()}
+          onCloseDeadline={handleCloseCompanyDeadline}
           onRenewDeadline={handleRenewCompanyDeadline}
           onResolveCheck={handleResolveCompanyCheck}
           onResolveFault={handleResolveCompanyFault}

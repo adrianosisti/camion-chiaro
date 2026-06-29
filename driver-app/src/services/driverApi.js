@@ -2078,6 +2078,34 @@ export async function renewCompanyComplianceItem({ companyId, file = null, item,
   return { data: data ? mapComplianceItem(data) : null, error }
 }
 
+export async function updateCompanyComplianceItemStatus({ companyId, itemId, status }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId || !itemId || !status) return { data: null, error: { message: 'Scadenza mancante.' } }
+
+  let { data, error } = await supabase
+    .from('compliance_items')
+    .update({ status })
+    .eq('company_id', companyId)
+    .eq('id', itemId)
+    .select('id, type, scope, driver_id, vehicle_id, person_id, asset_id, due_date, document_number, status, file_bucket, file_path')
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    const fallbackResult = await supabase
+      .from('compliance_items')
+      .update({ status })
+      .eq('company_id', companyId)
+      .eq('id', itemId)
+      .select('id, type, scope, driver_id, vehicle_id, due_date, document_number, status')
+      .single()
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
+
+  return { data: data ? mapComplianceItem(data) : null, error }
+}
+
 export async function uploadDriverDocumentFile({ companyId, documentId, driverId, file }) {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!companyId || !documentId || !driverId || !file?.uri) {

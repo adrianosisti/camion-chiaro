@@ -64,6 +64,7 @@ import {
   createTeamChatMessageRecord as createSupabaseTeamChatMessage,
   createChatThreadRecord as createSupabaseChatThread,
   createDriverDocumentSignedUrl,
+  ensureDirectTeamThread,
   createDriverAccount as createSupabaseDriverAccount,
   createFaultReportRecord as createSupabaseFaultReport,
   createDriverRecord as createSupabaseDriver,
@@ -97,6 +98,7 @@ import {
   savePushSubscription,
   sendPushNotification,
   markChatMessagesRead as markSupabaseChatMessagesRead,
+  renewCompanyComplianceItem as renewSupabaseCompanyComplianceItem,
   signInDriver,
   signInCompany,
   signOut,
@@ -109,6 +111,7 @@ import {
   uploadDriverDocumentFile as uploadSupabaseDriverDocumentFile,
   uploadDriverProfileImageFile as uploadSupabaseDriverProfileImageFile,
   updateDriverDocumentRecord as updateSupabaseDriverDocument,
+  updateComplianceItemRecord as updateSupabaseComplianceItem,
   updateDriverRecord as updateSupabaseDriver,
   updateChatMessageReaction as updateSupabaseChatMessageReaction,
   updateCompanyProfile as updateSupabaseCompanyProfile,
@@ -3859,6 +3862,35 @@ function isPreviewableAssetPath(path) {
   return Boolean(path && !/^(blob:|data:|https?:)/.test(path))
 }
 
+function normalizeDocumentKey(value = '') {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function getDriverDocumentStatusFromExpiry(expiresAt, filePath = '') {
+  if (expiresAt && daysUntil(expiresAt) < 0) return 'Scaduto'
+  return filePath ? 'Caricato' : 'Mancante'
+}
+
+function findDriverDocumentForCompliance(documentRecords = [], item = {}, payload = {}) {
+  if (!item.driverId) return null
+
+  const wantedType = normalizeDocumentKey(payload.type || item.type)
+  const wantedNumber = normalizeDocumentKey(payload.documentNumber || item.documentNumber)
+
+  return documentRecords.find((document) => {
+    if (document.driverId !== item.driverId) return false
+
+    const typeMatches = wantedType && normalizeDocumentKey(document.type) === wantedType
+    const numberMatches = wantedNumber && normalizeDocumentKey(document.documentNumber) === wantedNumber
+
+    return typeMatches || numberMatches
+  }) ?? null
+}
+
 function getFileExtension(value = '') {
   const cleanValue = String(value ?? '').split('?')[0].split('#')[0].toLowerCase()
   const extension = cleanValue.slice(cleanValue.lastIndexOf('.') + 1)
@@ -5295,18 +5327,201 @@ function App() {
     )
   }
 
-  function sendReminder(id) {
+  async function sendReminder(id) {
+    const targetItem = decoratedItems.find((item) => item.id === id) ?? items.find((item) => item.id === id)
+    const reminderAt = new Date().toISOString()
+
     setItems((currentItems) =>
       currentItems.map((item) =>
-        item.id === id ? { ...item, lastReminderAt: new Date().toISOString() } : item,
+        item.id === id ? { ...item, lastReminderAt: reminderAt } : item,
       ),
     )
+
+    if (!targetItem) return false
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      const result = await updateSupabaseComplianceItem(id, { lastReminderAt: reminderAt }, activeCompanyId)
+
+      if (result.error) {
+        setDocumentsSyncStatus(`Sollecito locale, Supabase: ${result.error.message}`)
+      } else if (result.data) {
+        setItems((currentItems) => currentItems.map((item) => (item.id === id ? result.data : item)))
+      }
+    }
+
+    const reminderBody = `Sollecito Camion Chiaro: aggiorna ${targetItem.type || 'documento'} entro la scadenza ${formatOptionalDate(targetItem.dueDate)}. Se hai gia provveduto, carica il nuovo documento o avvisa l azienda.`
+
+    if (targetItem.driverId) {
+      const sent = await sendChatMessage({
+        body: reminderBody,
+        driverId: targetItem.driverId,
+        senderRole: 'company',
+      })
+      setDocumentsSyncStatus(sent ? 'Sollecito inviato all autista in chat/app.' : 'Sollecito segnato, ma chat non inviata.')
+      return sent
+    }
+
+    if (targetItem.personId && hasCompanyDataConnection) {
+      const threadResult = await ensureDirectTeamThread(activeCompanyId, targetItem.personId)
+
+      if (threadResult.error || !threadResult.data?.id) {
+        setDocumentsSyncStatus(`Sollecito segnato. Chat personale: ${threadResult.error?.message ?? 'non disponibile'}`)
+        return false
+      }
+
+      setTeamChatThreadRecords((currentThreads) => upsertRecordById(currentThreads, threadResult.data))
+      const sent = await sendTeamChatMessage({
+        body: reminderBody,
+        senderRole: 'company',
+        threadId: threadResult.data.id,
+      })
+
+      if (sent) {
+        await notifyPhone({
+          body: reminderBody,
+          notificationType: 'deadline_reminder',
+          tag: `deadline-${targetItem.id}`,
+          targetRole: 'team',
+          threadId: threadResult.data.id,
+          title: companyName,
+          url: '/?view=chat',
+        })
+      }
+
+      setDocumentsSyncStatus(sent ? 'Sollecito inviato alla persona in chat/app.' : 'Sollecito segnato, ma chat personale non inviata.')
+      return sent
+    }
+
+    setDocumentsSyncStatus('Sollecito registrato. Questa scadenza non e collegata a una persona con app.')
+    return true
   }
 
-  function closeItem(id) {
+  async function closeItem(id) {
     setItems((currentItems) =>
       currentItems.map((item) => (item.id === id ? { ...item, status: 'done' } : item)),
     )
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      const result = await updateSupabaseComplianceItem(id, { status: 'done' }, activeCompanyId)
+
+      if (result.error) {
+        setDocumentsSyncStatus(`Pratica chiusa in locale. Supabase: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setItems((currentItems) => currentItems.map((item) => (item.id === id ? result.data : item)))
+      }
+    }
+
+    setDocumentsSyncStatus('Pratica archiviata.')
+    return true
+  }
+
+  async function renewComplianceItem(item, payload, file = null) {
+    if (!item?.id) return false
+
+    let uploadFile = file
+
+    if (uploadFile) {
+      uploadFile = await prepareDriverDocumentUploadFile(uploadFile)
+      if (!uploadFile) return false
+    }
+
+    setDocumentsSyncStatus('Salvataggio rinnovo...')
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      const result = await renewSupabaseCompanyComplianceItem({
+        companyId: activeCompanyId,
+        file: uploadFile,
+        item,
+        updates: payload,
+      })
+
+      if (result.error) {
+        setDocumentsSyncStatus(`Rinnovo non salvato: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setItems((currentItems) => currentItems.map((currentItem) => (currentItem.id === item.id ? result.data : currentItem)))
+      }
+
+      const documentsResult = await fetchDriverDocuments(activeCompanyId)
+      if (documentsResult.data) setDocumentRecords(documentsResult.data)
+      void refreshStorageSummary(activeCompanyId)
+      setDocumentsSyncStatus('Rinnovo salvato. La criticita e stata aggiornata.')
+      return true
+    }
+
+    const nextFilePath = uploadFile ? URL.createObjectURL(uploadFile) : item.filePath
+    setItems((currentItems) =>
+      currentItems.map((currentItem) =>
+        currentItem.id === item.id
+          ? {
+              ...currentItem,
+              documentNumber: payload.documentNumber,
+              dueDate: payload.dueDate,
+              filePath: nextFilePath,
+              owner: payload.owner,
+              status: 'open',
+              type: payload.type,
+            }
+          : currentItem,
+      ),
+    )
+
+    if (item.driverId) {
+      const matchingDocument = findDriverDocumentForCompliance(documentRecords, item, payload)
+      const nextDocument = {
+        documentNumber: payload.documentNumber,
+        driverId: item.driverId,
+        expiresAt: payload.dueDate,
+        filePath: nextFilePath,
+        id: matchingDocument?.id ?? `doc-${Date.now()}`,
+        status: getDriverDocumentStatusFromExpiry(payload.dueDate, nextFilePath),
+        type: payload.type,
+        visibleToDriver: true,
+      }
+
+      setDocumentRecords((currentDocuments) =>
+        matchingDocument
+          ? currentDocuments.map((document) => (document.id === matchingDocument.id ? { ...document, ...nextDocument } : document))
+          : [nextDocument, ...currentDocuments],
+      )
+    }
+
+    setDocumentsSyncStatus('Rinnovo salvato in modalità locale.')
+    return true
+  }
+
+  async function openComplianceItemFile(item) {
+    if (!item) return false
+
+    if (item.filePath) {
+      if (/^(blob:|data:|https?:)/.test(item.filePath)) {
+        window.open(item.filePath, '_blank', 'noopener,noreferrer')
+        return true
+      }
+
+      setDocumentsSyncStatus('Apro allegato scadenza...')
+      const result = await createCompanyAssetSignedUrl(item.filePath)
+
+      if (result.data?.signedUrl) {
+        window.open(result.data.signedUrl, '_blank', 'noopener,noreferrer')
+        setDocumentsSyncStatus('Allegato aperto in una nuova scheda.')
+        return true
+      }
+
+      setDocumentsSyncStatus(`Allegato non disponibile: ${result.error?.message ?? 'link non creato'}`)
+      return false
+    }
+
+    const linkedDocument = findDriverDocumentForCompliance(documentRecords, item)
+    if (linkedDocument?.filePath) return openDriverDocumentFile(linkedDocument)
+
+    setDocumentsSyncStatus('Questa pratica non ha ancora un allegato.')
+    return false
   }
 
   async function addDriverRecord(driver) {
@@ -6732,19 +6947,23 @@ function App() {
                   onFilter={setActiveFilter}
                   onOpenDetail={setSelectedDeadline}
                   onReminder={sendReminder}
-                  onRenew={markRenewing}
+                  onRenew={setSelectedDeadline}
                 />
                 <DeadlineDetailModal
                   item={selectedDeadline}
                   onClose={() => setSelectedDeadline(null)}
-                  onMarkDone={(itemId) => {
-                    closeItem(itemId)
-                    setSelectedDeadline(null)
+                  onMarkDone={async (itemId) => {
+                    const closed = await closeItem(itemId)
+                    if (closed !== false) setSelectedDeadline(null)
                   }}
-                  onRenew={(itemId) => {
-                    markRenewing(itemId)
-                    setSelectedDeadline(null)
+                  onOpenFile={openComplianceItemFile}
+                  onReminder={sendReminder}
+                  onRenew={async (item, payload, file) => {
+                    const renewed = await renewComplianceItem(item, payload, file)
+                    if (renewed) setSelectedDeadline(null)
+                    return renewed
                   }}
+                  statusMessage={documentsSyncStatus || driverDocumentUploadStatus}
                 />
               </div>
             </section>
@@ -12342,7 +12561,7 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onOpe
             onClose={() => onClose(item.id)}
             onOpen={() => onOpenDetail?.(item)}
             onReminder={() => onReminder(item.id)}
-            onRenew={() => onRenew(item.id)}
+            onRenew={() => onRenew?.(item)}
           />
         ))}
         {filteredItems.length === 0 && (
@@ -12362,7 +12581,6 @@ function ComplianceBoard({ activeFilter, filteredItems, onClose, onFilter, onOpe
 function DeadlineRow({ item, onClose, onOpen, onReminder, onRenew }) {
   const { t } = useI18n()
   const isDone = item.status === 'done'
-  const isRenewing = item.status === 'renewing'
 
   return (
     <article className={isDone ? 'deadline-row is-done' : 'deadline-row'}>
@@ -12394,21 +12612,51 @@ function DeadlineRow({ item, onClose, onOpen, onReminder, onRenew }) {
           <Send size={15} />
           {t('deadline.inApp')}
         </button>
-        <button className="small-button" onClick={isRenewing ? onClose : onRenew} type="button">
-          {isRenewing ? <CheckCircle2 size={15} /> : <Clock3 size={15} />}
-          {isRenewing ? t('deadline.close') : t('deadline.renew')}
+        <button className="small-button" onClick={onRenew} type="button">
+          <Clock3 size={15} />
+          {t('deadline.renew')}
         </button>
+        {!isDone && (
+          <button className="small-button danger-action" onClick={onClose} type="button">
+            <CheckCircle2 size={15} />
+            {t('deadline.close')}
+          </button>
+        )}
       </div>
     </article>
   )
 }
 
-function DeadlineDetailModal({ item, onClose, onMarkDone, onRenew }) {
+function DeadlineDetailModal({ item, onClose, onMarkDone, onOpenFile, onReminder, onRenew, statusMessage }) {
   const { t } = useI18n()
+  const [form, setForm] = useState({
+    documentNumber: '',
+    dueDate: '',
+    owner: '',
+    type: '',
+  })
+  const [file, setFile] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSendingReminder, setIsSendingReminder] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
+
+  useEffect(() => {
+    if (!item) return
+
+    setForm({
+      documentNumber: item.documentNumber ?? '',
+      dueDate: item.dueDate ?? '',
+      owner: item.owner ?? '',
+      type: item.type ?? '',
+    })
+    setFile(null)
+    setShowValidation(false)
+  }, [item?.id])
 
   if (!item) return null
 
   const isDone = item.status === 'done'
+  const isLinkedToPerson = Boolean(item.driverId || item.personId)
   const subjectType = item.subjectKind ?? (item.scope === 'driver' ? 'Persona' : item.scope === 'vehicle' ? 'Mezzo' : 'Azienda')
   const daysLabel =
     item.urgency.days < 0
@@ -12416,6 +12664,41 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onRenew }) {
       : item.urgency.days === 0
         ? 'Oggi'
         : t('deadline.days', { count: item.urgency.days })
+  const cleanType = form.type.trim()
+  const cleanDueDate = form.dueDate.trim()
+  const canRenew = Boolean(cleanType && cleanDueDate)
+
+  function updateField(field, value) {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  async function handleRenew(event) {
+    event.preventDefault()
+    setShowValidation(true)
+
+    if (!canRenew) return
+
+    setIsSaving(true)
+    const renewed = await onRenew?.(item, {
+      documentNumber: form.documentNumber.trim(),
+      dueDate: cleanDueDate,
+      owner: form.owner.trim(),
+      type: cleanType,
+    }, file)
+    setIsSaving(false)
+
+    if (renewed) {
+      setShowValidation(false)
+    }
+  }
+
+  async function handleReminder() {
+    if (!onReminder) return
+
+    setIsSendingReminder(true)
+    await onReminder(item.id)
+    setIsSendingReminder(false)
+  }
 
   return (
     <div className="operation-modal-backdrop" onClick={onClose} role="presentation">
@@ -12447,25 +12730,78 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onRenew }) {
           <DetailLine label="File" value={item.filePath ? 'Allegato presente' : 'Nessun allegato'} />
         </div>
 
-        <div className="operation-detail-actions">
-          {isDone ? (
-            <button className="small-button" onClick={() => onRenew?.(item.id)} type="button">
-              <Clock3 size={15} />
-              {t('deadline.renew')}
+        <form className="deadline-renew-form" noValidate onSubmit={handleRenew}>
+          <div className="deadline-renew-copy">
+            <strong>Gestione pratica</strong>
+            <span>
+              Rinnova inserendo nuova data e nuovo documento, oppure sollecita la persona se deve caricarlo dall app.
+            </span>
+          </div>
+          <div className="form-grid deadline-renew-grid">
+            <label>
+              Tipo scadenza
+              <input list="deadline-renew-document-types" onChange={(event) => updateField('type', event.target.value)} value={form.type} />
+              <datalist id="deadline-renew-document-types">
+                {documentTypes.map((type) => (
+                  <option key={type} value={type} />
+                ))}
+              </datalist>
+            </label>
+            <label>
+              Nuova data scadenza
+              <input onChange={(event) => updateField('dueDate', event.target.value)} type="date" value={form.dueDate} />
+            </label>
+            <label>
+              Numero documento
+              <input onChange={(event) => updateField('documentNumber', event.target.value)} placeholder="Opzionale" value={form.documentNumber} />
+            </label>
+            <label>
+              Responsabile
+              <input onChange={(event) => updateField('owner', event.target.value)} placeholder="Opzionale" value={form.owner} />
+            </label>
+          </div>
+          <div className="deadline-file-row">
+            <button className="small-button" onClick={() => onOpenFile?.(item)} type="button">
+              <ExternalLink size={15} />
+              Apri file attuale
             </button>
-          ) : (
-            <>
-              <button className="small-button" onClick={() => onRenew?.(item.id)} type="button">
-                <Clock3 size={15} />
-                {t('deadline.renew')}
+            <label className="small-button document-upload-inline deadline-file-picker">
+              <Upload size={15} />
+              {file ? file.name : 'Carica nuovo file'}
+              <input
+                accept="application/pdf,image/*"
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                type="file"
+              />
+            </label>
+            {file && (
+              <button className="small-button" onClick={() => setFile(null)} type="button">
+                <X size={15} />
+                Rimuovi file
               </button>
-              <button className="small-button danger-action" onClick={() => onMarkDone?.(item.id)} type="button">
+            )}
+          </div>
+          {showValidation && !canRenew && <FormValidationAlert message="Inserisci tipo scadenza e nuova data." />}
+          {statusMessage && <small className="document-upload-status deadline-status-message">{statusMessage}</small>}
+          <div className="operation-detail-actions">
+            <button className="primary-button" disabled={isSaving || !canRenew} type="submit">
+              <Save size={17} />
+              {isSaving ? 'Salvataggio...' : 'Salva rinnovo'}
+            </button>
+            {isLinkedToPerson && (
+              <button className="small-button" disabled={isSendingReminder} onClick={handleReminder} type="button">
+                <Send size={15} />
+                {isSendingReminder ? 'Invio...' : 'Sollecita su app'}
+              </button>
+            )}
+            {!isDone && (
+              <button className="small-button danger-action" disabled={isSaving} onClick={() => onMarkDone?.(item.id)} type="button">
                 <CheckCircle2 size={15} />
-                {t('deadline.close')}
+                Chiudi senza rinnovo
               </button>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        </form>
       </section>
     </div>
   )

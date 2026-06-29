@@ -533,6 +533,38 @@ function toDriverDocumentUpdatePayload(updates) {
   return payload
 }
 
+function normalizeComparable(value = '') {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function getDocumentStatusFromExpiry(expiresAt, filePath = '') {
+  if (expiresAt) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const expiryDate = new Date(`${expiresAt}T00:00:00`)
+
+    if (!Number.isNaN(expiryDate.getTime()) && expiryDate < today) return 'expired'
+  }
+
+  return filePath ? 'uploaded' : 'missing'
+}
+
+function findMatchingDriverDocument(documents = [], item = {}, updates = {}) {
+  const wantedType = normalizeComparable(updates.type || item.type)
+  const wantedNumber = normalizeComparable(updates.documentNumber || item.documentNumber)
+
+  return documents.find((document) => {
+    const typeMatches = wantedType && normalizeComparable(document.type) === wantedType
+    const numberMatches = wantedNumber && normalizeComparable(document.document_number) === wantedNumber
+
+    return typeMatches || numberMatches
+  }) ?? null
+}
+
 function toVehicleCheckPayload(check, companyId = configuredCompanyId) {
   const odometerKm = check.odometerKm === '' || check.odometerKm == null ? null : Number(check.odometerKm)
 
@@ -884,6 +916,269 @@ export async function fetchComplianceItems(companyId = configuredCompanyId) {
   return { data: data?.map(mapComplianceItem) ?? null, error }
 }
 
+export async function updateComplianceItemRecord(itemId, updates = {}, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !itemId) {
+    return { data: null, error: null }
+  }
+
+  const payload = {}
+
+  if ('documentNumber' in updates) payload.document_number = updates.documentNumber || null
+  if ('dueDate' in updates) payload.due_date = updates.dueDate
+  if ('lastReminderAt' in updates) payload.last_reminder_at = updates.lastReminderAt || null
+  if ('owner' in updates) payload.owner = updates.owner || null
+  if ('status' in updates) payload.status = updates.status
+  if ('type' in updates) payload.type = updates.type
+
+  if (Object.keys(payload).length === 0) {
+    return { data: null, error: null }
+  }
+
+  let result = await supabase
+    .from('compliance_items')
+    .update(payload)
+    .eq('company_id', companyId)
+    .eq('id', itemId)
+    .select(
+      `
+        id,
+        type,
+        scope,
+        driver_id,
+        vehicle_id,
+        person_id,
+        asset_id,
+        due_date,
+        reminder_days,
+        owner,
+        status,
+        document_number,
+        last_reminder_at,
+        file_bucket,
+        file_path
+      `,
+    )
+    .single()
+
+  if (isMissingWorkforceSchemaError(result.error)) {
+    result = await supabase
+      .from('compliance_items')
+      .update(payload)
+      .eq('company_id', companyId)
+      .eq('id', itemId)
+      .select(
+        `
+          id,
+          type,
+          scope,
+          driver_id,
+          vehicle_id,
+          due_date,
+          reminder_days,
+          owner,
+          status,
+          document_number,
+          last_reminder_at
+        `,
+      )
+      .single()
+  }
+
+  return { data: result.data ? mapComplianceItem(result.data) : null, error: result.error }
+}
+
+export async function renewCompanyComplianceItem({ companyId = configuredCompanyId, file = null, item, updates = {} }) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !item?.id) {
+    return { data: null, error: null }
+  }
+
+  let filePath = ''
+
+  if (file) {
+    const cleanFileName = sanitizeStorageFileName(file.name ?? `scadenza-${Date.now()}`)
+    const subjectId = item.driverId || item.vehicleId || item.personId || item.assetId || 'azienda'
+    filePath = `${companyId}/compliance/${item.scope}/${subjectId}/${Date.now()}-${cleanFileName}`
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, file, {
+      cacheControl: '3600',
+      contentType: file.type || undefined,
+      upsert: false,
+    })
+
+    if (uploadError) return { data: null, error: uploadError }
+  }
+
+  const payload = {
+    document_number: updates.documentNumber || null,
+    due_date: updates.dueDate,
+    owner: updates.owner || null,
+    status: 'open',
+    type: updates.type,
+  }
+
+  if (filePath) {
+    payload.file_bucket = companyAssetsBucket
+    payload.file_path = filePath
+  }
+
+  let result = await supabase
+    .from('compliance_items')
+    .update(payload)
+    .eq('company_id', companyId)
+    .eq('id', item.id)
+    .select(
+      `
+        id,
+        type,
+        scope,
+        driver_id,
+        vehicle_id,
+        person_id,
+        asset_id,
+        due_date,
+        reminder_days,
+        owner,
+        status,
+        document_number,
+        last_reminder_at,
+        file_bucket,
+        file_path
+      `,
+    )
+    .single()
+
+  if ((result.error?.code === '42703' || result.error?.code === 'PGRST204') && filePath) {
+    const fallbackPayload = {
+      document_number: updates.documentNumber || null,
+      due_date: updates.dueDate,
+      owner: updates.owner || null,
+      status: 'open',
+      type: updates.type,
+    }
+
+    result = await supabase
+      .from('compliance_items')
+      .update(fallbackPayload)
+      .eq('company_id', companyId)
+      .eq('id', item.id)
+      .select(
+        `
+          id,
+          type,
+          scope,
+          driver_id,
+          vehicle_id,
+          due_date,
+          reminder_days,
+          owner,
+          status,
+          document_number,
+          last_reminder_at
+        `,
+      )
+      .single()
+  }
+
+  if (result.error) {
+    if (filePath) await supabase.storage.from(companyAssetsBucket).remove([filePath])
+    return { data: null, error: result.error }
+  }
+
+  if (file && filePath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'document',
+      companyId,
+      file,
+      filePath,
+    })
+  }
+
+  if (item.scope === 'driver' && item.driverId) {
+    const documentsResult = await supabase
+      .from('driver_documents')
+      .select('id, type, document_number, expires_at, file_path, status')
+      .eq('company_id', companyId)
+      .eq('driver_id', item.driverId)
+
+    if (documentsResult.error) return { data: null, error: documentsResult.error }
+
+    let targetDocument = findMatchingDriverDocument(documentsResult.data ?? [], item, updates)
+
+    if (!targetDocument) {
+      const insertResult = await supabase
+        .from('driver_documents')
+        .insert({
+          company_id: companyId,
+          document_number: updates.documentNumber || null,
+          driver_id: item.driverId,
+          expires_at: updates.dueDate || null,
+          file_path: null,
+          status: getDocumentStatusFromExpiry(updates.dueDate, ''),
+          type: updates.type,
+          visible_to_driver: true,
+        })
+        .select('id, type, document_number, expires_at, file_path, status')
+        .single()
+
+      if (insertResult.error) return { data: null, error: insertResult.error }
+      targetDocument = insertResult.data
+    }
+
+    let driverDocumentFilePath = ''
+
+    if (file) {
+      const cleanFileName = sanitizeStorageFileName(file.name ?? `documento-${Date.now()}`)
+      driverDocumentFilePath = `${companyId}/${item.driverId}/${targetDocument.id}/${Date.now()}-${cleanFileName}`
+      const { error: documentUploadError } = await supabase.storage.from(driverDocumentsBucket).upload(driverDocumentFilePath, file, {
+        cacheControl: '3600',
+        contentType: file.type || undefined,
+        upsert: false,
+      })
+
+      if (documentUploadError) return { data: null, error: documentUploadError }
+    }
+
+    const nextFilePath = driverDocumentFilePath || targetDocument.file_path || ''
+    const updateResult = await supabase
+      .from('driver_documents')
+      .update({
+        document_number: updates.documentNumber || null,
+        expires_at: updates.dueDate || null,
+        file_path: nextFilePath || null,
+        status: getDocumentStatusFromExpiry(updates.dueDate, nextFilePath),
+        type: updates.type,
+        visible_to_driver: true,
+      })
+      .eq('company_id', companyId)
+      .eq('id', targetDocument.id)
+      .select('id')
+      .single()
+
+    if (updateResult.error) {
+      if (driverDocumentFilePath) await supabase.storage.from(driverDocumentsBucket).remove([driverDocumentFilePath])
+      return { data: null, error: updateResult.error }
+    }
+
+    if (file && driverDocumentFilePath) {
+      await registerCompanyStorageFile({
+        bucket: driverDocumentsBucket,
+        category: 'document',
+        companyId,
+        documentId: targetDocument.id,
+        driverId: item.driverId,
+        file,
+        filePath: driverDocumentFilePath,
+      })
+    }
+  }
+
+  return { data: result.data ? mapComplianceItem(result.data) : null, error: null }
+}
+
 export async function fetchDriverDocuments(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -1154,6 +1449,32 @@ export async function fetchTeamChatMessages(companyId = configuredCompanyId) {
   }
 
   return { data: data?.map(mapTeamChatMessage) ?? null, error }
+}
+
+export async function ensureDirectTeamThread(companyId = configuredCompanyId, personId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !personId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('ensure_direct_team_thread', {
+    target_company_id: companyId,
+    target_person_id: personId,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL chat dirette personale. Esegui il file 32_chat_dirette_personale.sql in Supabase.' },
+    }
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: null }
+  }
+
+  return { data: data ? mapTeamChatThread(data) : null, error }
 }
 
 export async function fetchDriverSessionData() {

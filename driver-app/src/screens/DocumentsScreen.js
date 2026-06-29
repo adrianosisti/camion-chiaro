@@ -419,7 +419,10 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
       setDocumentNumber('')
       setDocumentType('')
       setExpiresAt('')
-      Alert.alert('Documento creato', 'Ora puoi caricare il file.')
+      Alert.alert(
+        created.updatedExisting ? 'Documento aggiornato' : 'Documento creato',
+        created.updatedExisting ? 'Ho aggiornato la scadenza del documento esistente.' : 'Ora puoi caricare il file.',
+      )
     }
   }
 

@@ -352,6 +352,7 @@ function CamionChiaroApp() {
   const [selectedDriverTeamThreadId, setSelectedDriverTeamThreadId] = useState('')
   const [settingsReady, setSettingsReady] = useState(false)
   const companyPresenceRef = useRef(null)
+  const companyRefreshInFlightRef = useRef(false)
   const companyTypingTimeoutRef = useRef(null)
   const presenceRef = useRef(null)
   const routedShareIdRef = useRef('')
@@ -558,13 +559,13 @@ function CamionChiaroApp() {
 
   async function loadCompanyData({ silent = false } = {}) {
     if (!silent) setAppStatus('Aggiorno dati azienda...')
-    setIsRefreshing(true)
+    if (!silent) setIsRefreshing(true)
 
     const contextResult = await fetchCompanyContext()
 
     if (contextResult.error) {
       setAppStatus(contextResult.error.message)
-      setIsRefreshing(false)
+      if (!silent) setIsRefreshing(false)
       return false
     }
 
@@ -580,7 +581,7 @@ function CamionChiaroApp() {
     await loadCompanyDriverPhotoUrls(contextResult.data)
     setDriverProfileUrl('')
     setAppStatus('')
-    setIsRefreshing(false)
+    if (!silent) setIsRefreshing(false)
     return true
   }
 
@@ -1040,6 +1041,30 @@ function CamionChiaroApp() {
   }, [accountType, companyContext?.companyProfile?.id])
 
   useEffect(() => {
+    const companyId = companyContext?.companyProfile?.id
+    if (accountType !== 'company' || !companyId) return undefined
+
+    const intervalMs = activeTab === 'chat' ? 3000 : 4500
+    const refreshCompanySilently = async () => {
+      if (companyRefreshInFlightRef.current) return
+
+      companyRefreshInFlightRef.current = true
+      try {
+        await loadCompanyData({ silent: true })
+      } finally {
+        companyRefreshInFlightRef.current = false
+      }
+    }
+    const refreshInterval = setInterval(() => {
+      void refreshCompanySilently()
+    }, intervalMs)
+
+    return () => {
+      clearInterval(refreshInterval)
+    }
+  }, [accountType, activeTab, companyContext?.companyProfile?.id])
+
+  useEffect(() => {
     if (accountType !== 'driver' || activeTab !== 'chat' || driverChatMode !== 'company' || !driver?.companyId || !driver?.id) return
     void loadDriverChatData(driver, { markAsRead: true })
   }, [accountType, activeTab, driver?.companyId, driver?.id, driverChatMode])
@@ -1290,6 +1315,23 @@ function CamionChiaroApp() {
     if (mode === 'company' && driver?.companyId && driver?.id) {
       void loadDriverChatData(driver, { markAsRead: true })
     }
+  }
+
+  function openDriverUnreadChat() {
+    if (unreadCompanyMessages > 0) {
+      openDriverChat('company')
+      return
+    }
+
+    const unreadByThreadId = context?.unreadTeamMessagesByThreadId ?? {}
+    const unreadThread = (context?.teamChatThreads ?? []).find((thread) => Number(unreadByThreadId[thread.id] ?? 0) > 0)
+    if (unreadThread) {
+      void handleSelectDriverTeamThread(unreadThread)
+      setActiveTab('chat')
+      return
+    }
+
+    openDriverChat('list')
   }
 
   function closeDriverChatDetail() {
@@ -1678,8 +1720,29 @@ function CamionChiaroApp() {
     })
   }
 
+  function normalizeDocumentType(value = '') {
+    return String(value).trim().toLowerCase().replace(/\s+/g, ' ')
+  }
+
   async function handleCreateDocument(payload) {
     if (!driver || !payload?.type?.trim()) return false
+
+    const cleanPayloadType = normalizeDocumentType(payload.type)
+    const sameTypeDocument = (context?.documents ?? []).find((document) => (
+      normalizeDocumentType(document.type) === cleanPayloadType
+      || normalizeDocumentType(document.type).includes(cleanPayloadType)
+      || cleanPayloadType.includes(normalizeDocumentType(document.type))
+    ))
+
+    if (sameTypeDocument) {
+      const renewed = await handleRenewDocument(sameTypeDocument, {
+        documentNumber: payload.documentNumber ?? sameTypeDocument.documentNumber,
+        expiresAt: payload.expiresAt ?? sameTypeDocument.expiresAt,
+        file: null,
+        type: payload.type,
+      })
+      return renewed ? { updatedExisting: true } : false
+    }
 
     const result = await createDriverDocument(payload)
 
@@ -1689,7 +1752,7 @@ function CamionChiaroApp() {
     }
 
     await loadDriverData({ silent: true })
-    return true
+    return { created: true }
   }
 
   async function handleUploadDocument(document, file) {
@@ -2279,7 +2342,7 @@ function CamionChiaroApp() {
         driverProfileUrl={driverProfileUrl}
         language={language}
         logoUrl={logoUrl}
-        onOpenChat={() => openDriverChat('list')}
+        onOpenChat={openDriverUnreadChat}
         onOpenDocuments={(nextDocumentId = '') => {
           setDocumentFocusId(nextDocumentId || '')
           setActiveTab('documents')

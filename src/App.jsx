@@ -7963,6 +7963,7 @@ function App() {
             costEntryRecords={costEntryRecords}
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
+            onUpdateCostEntry={editCostEntryRecord}
             vehicleRecords={vehicleRecords}
           />
         ) : activeView === 'support' ? (
@@ -9317,6 +9318,7 @@ function ReportsWorkspace({
   costEntryRecords = [],
   driverRecords = [],
   faultReportRecords = [],
+  onUpdateCostEntry,
   vehicleRecords = [],
 }) {
   const { language } = useI18n()
@@ -9363,6 +9365,7 @@ function ReportsWorkspace({
         costEntryRecords={costEntryRecords}
         driverRecords={driverRecords}
         faultReportRecords={faultReportRecords}
+        onUpdateCostEntry={onUpdateCostEntry}
         reportMode="reports"
         vehicleRecords={vehicleRecords}
       />
@@ -12181,6 +12184,7 @@ function FaultCostReport({
   const fineRanking = Array.from(fineRows.reduce((ranking, row) => {
     const key = row.driverId || 'unassigned'
     const current = ranking.get(key) ?? {
+      assignableEntry: null,
       count: 0,
       driverId: row.driverId,
       name: row.driverId ? driverRecords.find((driver) => driver.id === row.driverId)?.name ?? 'Autista' : 'Non assegnate',
@@ -12188,6 +12192,7 @@ function FaultCostReport({
     }
     ranking.set(key, {
       ...current,
+      assignableEntry: current.assignableEntry || (!row.driverId && row.kind === 'entry' ? row.source : null),
       count: current.count + 1,
       totalCents: current.totalCents + Number(row.amountCents ?? 0),
     })
@@ -12915,6 +12920,11 @@ function FaultCostReport({
                 <strong>{row.name}</strong>
                 <small>{row.count} multe</small>
                 <b>{formatMoneyCents(row.totalCents, defaultCurrency)}</b>
+                {!row.driverId && row.assignableEntry && onUpdateCostEntry ? (
+                  <button className="text-button fault-assign-button" onClick={() => startEditingCostEntry(row.assignableEntry)} type="button">
+                    Assegna
+                  </button>
+                ) : null}
               </article>
             ))}
           </div>
@@ -12931,6 +12941,11 @@ function FaultCostReport({
             </div>
             <div className="fault-cost-row-side">
               <b>{formatMoneyCents(row.totalCents, defaultCurrency)}</b>
+              {!row.driverId && row.assignableEntry && onUpdateCostEntry ? (
+                <button className="text-button fault-assign-button" onClick={() => startEditingCostEntry(row.assignableEntry)} type="button">
+                  Assegna
+                </button>
+              ) : null}
             </div>
           </article>
         )) : reportRows.map((row) => (

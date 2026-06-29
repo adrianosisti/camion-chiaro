@@ -4169,7 +4169,7 @@
 
 .fault-fines-ranking article {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
@@ -4179,6 +4179,11 @@
   color: #9a3412;
   font-size: 0.78rem;
   font-weight: 900;
+}
+
+.fault-assign-button {
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .fault-cost-summary div {

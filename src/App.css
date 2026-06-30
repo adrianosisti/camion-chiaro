@@ -4356,6 +4356,56 @@
   line-height: 1.45;
 }
 
+.deadline-current-document {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 14px;
+  border: 1px solid #d8e7ee;
+  border-radius: 8px;
+  background: #f8fcfd;
+}
+
+.deadline-current-document-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.deadline-current-document-copy strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.deadline-current-document-copy span {
+  color: #475569;
+  font-size: 0.78rem;
+  line-height: 1.42;
+}
+
+.deadline-renew-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 20px;
+}
+
+.deadline-renew-steps span {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid #c7eff8;
+  border-radius: 8px;
+  background: #f2fdff;
+  color: #075985;
+  font-size: 0.74rem;
+  font-weight: 820;
+  line-height: 1.2;
+}
+
 .deadline-renew-grid {
   padding-bottom: 0;
 }
@@ -4377,6 +4427,17 @@
 
 .deadline-status-message {
   padding: 0 20px;
+}
+
+@media (max-width: 680px) {
+  .deadline-current-document {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .deadline-renew-steps {
+    grid-template-columns: 1fr;
+  }
 }
 
 .operation-detail-actions .small-button:disabled {

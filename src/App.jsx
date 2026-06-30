@@ -3816,6 +3816,17 @@ function getUrgencyLabel(urgency, t) {
   return t(urgencyTranslationKeys[urgency.key] ?? urgency.label)
 }
 
+function isComplianceClosed(item) {
+  return ['done', 'archived'].includes(item?.status)
+}
+
+function isComplianceActionRequired(item) {
+  if (!item || isComplianceClosed(item)) return false
+
+  const days = typeof item.urgency?.days === 'number' ? item.urgency.days : daysUntil(item.dueDate)
+  return days <= 30
+}
+
 function getDailyMotivation(role, t, date = new Date()) {
   const keys = dailyMotivationKeys[role] ?? dailyMotivationKeys.company
   const dayStart = new Date(date.getFullYear(), 0, 0)
@@ -4999,7 +5010,11 @@ function App() {
     () => decorateComplianceWithWorkforce(items, driverRecords, vehicleRecords, personRecords, assetRecords),
     [assetRecords, driverRecords, items, personRecords, vehicleRecords],
   )
-  const summary = useMemo(() => getSummary(decoratedItems), [decoratedItems])
+  const actionableComplianceItems = useMemo(
+    () => decoratedItems.filter(isComplianceActionRequired),
+    [decoratedItems],
+  )
+  const summary = useMemo(() => getSummary(actionableComplianceItems), [actionableComplianceItems])
   const hasCompanyDataConnection = Boolean(isSupabaseConfigured && activeCompanyId)
   const visibleFaultReportRecords = useMemo(
     () =>
@@ -5959,7 +5974,7 @@ function App() {
     const needle = query.trim().toLowerCase()
     const visibleBaseItems = complianceShowAll
       ? decoratedItems
-      : decoratedItems.filter((item) => !['done', 'archived'].includes(item.status))
+      : actionableComplianceItems
 
     return visibleBaseItems.filter((item) => {
       const matchesFilter =
@@ -5977,8 +5992,8 @@ function App() {
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(needle))
     })
-  }, [activeFilter, complianceShowAll, decoratedItems, query])
-  const complianceWorkItemCount = decoratedItems.filter((item) => !['done', 'archived'].includes(item.status)).length
+  }, [actionableComplianceItems, activeFilter, complianceShowAll, decoratedItems, query])
+  const complianceWorkItemCount = actionableComplianceItems.length
 
   async function handleSignOut() {
     await signOut()
@@ -15330,6 +15345,8 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onOpenFile, onReminder
   const cleanType = form.type.trim()
   const cleanDueDate = form.dueDate.trim()
   const canRenew = Boolean(cleanType && cleanDueDate)
+  const hasCurrentFile = Boolean(item.filePath)
+  const lastReminderLabel = item.lastReminderAt ? formatShortDateTime(item.lastReminderAt) : 'Mai inviato'
 
   function updateField(field, value) {
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
@@ -15390,15 +15407,34 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onOpenFile, onReminder
           <DetailLine label={t('common.status')} value={`${getUrgencyLabel(item.urgency, t)} · ${daysLabel}`} />
           <DetailLine label="Numero documento" value={item.documentNumber} />
           <DetailLine label={t('deadline.owner')} value={item.owner} />
-          <DetailLine label="File" value={item.filePath ? 'Allegato presente' : 'Nessun allegato'} />
+          <DetailLine label="Ultimo sollecito" value={lastReminderLabel} />
+          <div className="deadline-current-document">
+            <div className="deadline-current-document-copy">
+              <strong>Documento attuale</strong>
+              <span>
+                {hasCurrentFile
+                  ? 'Apri il file presente prima di sostituirlo o rinnovare la scadenza.'
+                  : 'Nessun file collegato a questa pratica. Carica il nuovo documento nel rinnovo.'}
+              </span>
+            </div>
+            <button className="small-button" disabled={!hasCurrentFile} onClick={() => onOpenFile?.(item)} type="button">
+              <ExternalLink size={15} />
+              {hasCurrentFile ? 'Apri documento' : 'Nessun documento'}
+            </button>
+          </div>
         </div>
 
         <form className="deadline-renew-form" noValidate onSubmit={handleRenew}>
           <div className="deadline-renew-copy">
-            <strong>Gestione pratica</strong>
+            <strong>Rinnovo e sollecito</strong>
             <span>
-              Rinnova inserendo nuova data e nuovo documento, oppure sollecita la persona se deve caricarlo dall app.
+              Aggiorna data e documento per chiudere la criticita, oppure sollecita la persona se deve caricarlo dall app.
             </span>
+          </div>
+          <div className="deadline-renew-steps" aria-label="Passaggi rinnovo">
+            <span>1. Controlla documento</span>
+            <span>2. Carica rinnovo</span>
+            <span>3. Salva nuova scadenza</span>
           </div>
           <div className="form-grid deadline-renew-grid">
             <label>
@@ -15424,10 +15460,6 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onOpenFile, onReminder
             </label>
           </div>
           <div className="deadline-file-row">
-            <button className="small-button" onClick={() => onOpenFile?.(item)} type="button">
-              <ExternalLink size={15} />
-              Apri file attuale
-            </button>
             <label className="small-button document-upload-inline deadline-file-picker">
               <Upload size={15} />
               {file ? file.name : 'Carica nuovo file'}
@@ -15449,7 +15481,7 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onOpenFile, onReminder
           <div className="operation-detail-actions">
             <button className="primary-button" disabled={isSaving || !canRenew} type="submit">
               <Save size={17} />
-              {isSaving ? 'Salvataggio...' : 'Salva rinnovo'}
+              {isSaving ? 'Salvataggio...' : 'Salva rinnovo e aggiorna'}
             </button>
             {isLinkedToPerson && (
               <button className="small-button" disabled={isSendingReminder} onClick={handleReminder} type="button">
@@ -15460,7 +15492,7 @@ function DeadlineDetailModal({ item, onClose, onMarkDone, onOpenFile, onReminder
             {!isDone && (
               <button className="small-button danger-action" disabled={isSaving} onClick={() => onMarkDone?.(item.id)} type="button">
                 <CheckCircle2 size={15} />
-                Chiudi senza rinnovo
+                Segna gestita senza rinnovo
               </button>
             )}
           </div>

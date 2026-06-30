@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Ionicons } from '@expo/vector-icons'
@@ -67,6 +67,22 @@ const costCategoryOptions = [
   { id: 'other', label: 'Altro' },
 ]
 
+const costTargetTypeOptions = [
+  { id: 'vehicle', label: 'Mezzo', subtitle: 'Targa o veicolo della flotta' },
+  { id: 'asset', label: 'Attrezzatura', subtitle: 'Muletto o strumento di lavoro' },
+  { id: 'driver', label: 'Autista', subtitle: 'Persona responsabile o collegata' },
+  { id: 'company', label: 'Azienda', subtitle: 'Spesa generale non collegata' },
+]
+
+const costPeriodOptions = [
+  { id: 'today', label: 'Oggi' },
+  { id: 'month', label: 'Mese' },
+  { id: 'year', label: 'Anno' },
+  { id: 'all', label: 'Sempre' },
+]
+
+const wheelItemHeight = 58
+
 const createFormOptions = [
   { icon: 'person-add-outline', id: 'driver', label: 'Autista' },
   { icon: 'people-outline', id: 'person', label: 'Persona' },
@@ -89,6 +105,10 @@ function getDeadlineTone(item) {
   if (days < 0) return 'danger'
   if (days <= 30) return 'warning'
   return 'info'
+}
+
+function getOptionLabel(options = [], value = '', fallback = 'Seleziona') {
+  return options.find((option) => option.id === value)?.label ?? fallback
 }
 
 function getDeadlineStatusLabel(item) {
@@ -315,6 +335,107 @@ function Chip({ active, label, onPress, style, textStyle }) {
     <Pressable onPress={onPress} style={[styles.chip, style, active && styles.chipActive]}>
       <Text numberOfLines={2} style={[styles.chipText, textStyle, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
+  )
+}
+
+function WheelPickerField({ helper, label, onPress, value }) {
+  return (
+    <View style={styles.wheelField}>
+      <Text style={styles.costFilterLabel}>{label}</Text>
+      <Pressable onPress={onPress} style={styles.wheelFieldButton}>
+        <View style={styles.wheelFieldCopy}>
+          <Text numberOfLines={1} style={styles.wheelFieldValue}>{value || 'Seleziona'}</Text>
+          {helper ? <Text numberOfLines={1} style={styles.wheelFieldHelper}>{helper}</Text> : null}
+        </View>
+        <View style={styles.wheelFieldIcon}>
+          <Ionicons color={colors.cyanDark} name="chevron-expand-outline" size={19} />
+        </View>
+      </Pressable>
+    </View>
+  )
+}
+
+function SelectionWheelModal({ onClose, onConfirm, options = [], title = 'Seleziona', value = '', visible = false }) {
+  const scrollRef = useRef(null)
+  const [pendingValue, setPendingValue] = useState(value)
+
+  useEffect(() => {
+    if (!visible) return undefined
+
+    const safeOptions = options.length ? options : [{ id: '', label: 'Nessun dato' }]
+    const selectedIndex = Math.max(0, safeOptions.findIndex((option) => option.id === value))
+    const nextValue = safeOptions[selectedIndex]?.id ?? ''
+    setPendingValue(nextValue)
+
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollTo({ animated: false, y: selectedIndex * wheelItemHeight })
+    }, 60)
+
+    return () => clearTimeout(timer)
+  }, [options, value, visible])
+
+  if (!visible) return null
+
+  const safeOptions = options.length ? options : [{ id: '', label: 'Nessun dato' }]
+
+  function moveToIndex(index, animated = true) {
+    const nextIndex = Math.max(0, Math.min(index, safeOptions.length - 1))
+    setPendingValue(safeOptions[nextIndex]?.id ?? '')
+    scrollRef.current?.scrollTo({ animated, y: nextIndex * wheelItemHeight })
+  }
+
+  function handleScrollEnd(event) {
+    const offsetY = event.nativeEvent.contentOffset.y
+    moveToIndex(Math.round(offsetY / wheelItemHeight), false)
+  }
+
+  return (
+    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
+      <View style={styles.wheelBackdrop}>
+        <Pressable onPress={onClose} style={styles.wheelBackdropPressArea} />
+        <View style={styles.wheelSheet}>
+          <View style={styles.wheelGrip} />
+          <View style={styles.wheelHeader}>
+            <Pressable onPress={onClose} style={styles.wheelHeaderButton}>
+              <Text style={styles.wheelHeaderButtonText}>Annulla</Text>
+            </Pressable>
+            <Text numberOfLines={1} style={styles.wheelTitle}>{title}</Text>
+            <Pressable onPress={() => onConfirm?.(pendingValue)} style={styles.wheelHeaderButton}>
+              <Text style={styles.wheelHeaderConfirmText}>Conferma</Text>
+            </Pressable>
+          </View>
+          <View style={styles.wheelWindow}>
+            <View pointerEvents="none" style={styles.wheelHighlight} />
+            <ScrollView
+              decelerationRate="fast"
+              nestedScrollEnabled
+              onMomentumScrollEnd={handleScrollEnd}
+              onScrollEndDrag={handleScrollEnd}
+              ref={scrollRef}
+              showsVerticalScrollIndicator={false}
+              snapToInterval={wheelItemHeight}
+              style={styles.wheelScroller}
+            >
+              <View style={styles.wheelSpacer} />
+              {safeOptions.map((option, index) => {
+                const active = option.id === pendingValue
+                return (
+                  <Pressable key={`${option.id}-${index}`} onPress={() => moveToIndex(index)} style={styles.wheelOption}>
+                    <Text numberOfLines={1} style={[styles.wheelOptionText, active && styles.wheelOptionTextActive]}>{option.label}</Text>
+                    {option.subtitle ? (
+                      <Text numberOfLines={1} style={[styles.wheelOptionSubtitle, active && styles.wheelOptionSubtitleActive]}>
+                        {option.subtitle}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                )
+              })}
+              <View style={styles.wheelSpacer} />
+            </ScrollView>
+          </View>
+        </View>
+      </View>
+    </Modal>
   )
 }
 
@@ -826,7 +947,63 @@ export function CompanyManagementScreen({
   const [costTargetFilter, setCostTargetFilter] = useState('all')
   const [selectedArchiveMonthKey, setSelectedArchiveMonthKey] = useState(() => getMonthArchiveKey())
   const [showAllDeadlines, setShowAllDeadlines] = useState(false)
+  const [wheelPicker, setWheelPicker] = useState(null)
   const currentScopes = workforceSchemaReady ? workforceScopes : scopes
+  const costVehicleOptions = useMemo(
+    () => [
+      { id: '', label: 'Senza targa', subtitle: 'Non collegare a un mezzo' },
+      ...vehicles.map((vehicle) => ({
+        id: vehicle.id,
+        label: vehicle.plate,
+        subtitle: [vehicle.model, vehicle.fleetType].filter(Boolean).join(' · '),
+      })),
+    ],
+    [vehicles],
+  )
+  const costDriverOptions = useMemo(
+    () => [
+      { id: '', label: 'Senza autista', subtitle: 'Non collegare a una persona' },
+      ...drivers.map((driver) => ({
+        id: driver.id,
+        label: driver.name,
+        subtitle: driver.phone || driver.role || '',
+      })),
+    ],
+    [drivers],
+  )
+  const costAssetOptions = useMemo(
+    () => [
+      { id: '', label: 'Senza codice', subtitle: 'Non collegare ad attrezzatura' },
+      ...warehouseAssets.map((asset) => ({
+        id: asset.id,
+        label: asset.code,
+        subtitle: [asset.model, asset.location].filter(Boolean).join(' · '),
+      })),
+    ],
+    [warehouseAssets],
+  )
+  const costReportFilterOptions = useMemo(
+    () => [
+      { id: 'all', label: 'Tutti', subtitle: 'Tutte le spese' },
+      { id: 'company', label: 'Azienda', subtitle: 'Solo spese generali' },
+      ...vehicles.map((vehicle) => ({
+        id: `vehicle:${vehicle.id}`,
+        label: `Mezzo ${vehicle.plate}`,
+        subtitle: vehicle.model || vehicle.fleetType || '',
+      })),
+      ...drivers.map((driver) => ({
+        id: `driver:${driver.id}`,
+        label: `Autista ${driver.name}`,
+        subtitle: driver.phone || driver.role || '',
+      })),
+      ...warehouseAssets.map((asset) => ({
+        id: `asset:${asset.id}`,
+        label: `Attr. ${asset.code}`,
+        subtitle: asset.model || asset.location || '',
+      })),
+    ],
+    [drivers, vehicles, warehouseAssets],
+  )
   const deadlineAssignees = useMemo(() => {
     if (deadlineForm.scope === 'driver') return drivers
     if (deadlineForm.scope === 'vehicle') return activeVehicles
@@ -1052,6 +1229,19 @@ export function CompanyManagementScreen({
     setMode('archive')
     resetCostForm()
   }, [startCostEntryKey])
+
+  function openWheelPicker(config) {
+    setWheelPicker(config)
+  }
+
+  function closeWheelPicker() {
+    setWheelPicker(null)
+  }
+
+  function confirmWheelPicker(nextValue) {
+    wheelPicker?.onSelect?.(nextValue)
+    setWheelPicker(null)
+  }
 
   function openArchive(section = activeList) {
     setActiveList(section)
@@ -2049,76 +2239,87 @@ export function CompanyManagementScreen({
               </View>
               <TextField label="Titolo spesa" onChangeText={(value) => updateCostForm('title', value)} placeholder="Tagliando, gomme, assicurazione..." value={costForm.title} />
               <TextField keyboardType="decimal-pad" label="Importo + IVA" onChangeText={(value) => updateCostForm('amount', value)} placeholder="2000,00" value={costForm.amount} />
-              <Text style={styles.costFilterLabel}>Categoria</Text>
-              <View style={styles.costChoiceGrid}>
-                {costCategoryOptions.map((option) => (
-                  <Chip
-                    active={costForm.category === option.id}
-                    key={option.id}
-                    label={option.label}
-                    onPress={() => updateCostForm('category', option.id)}
-                    style={styles.costChoiceChip}
-                  />
-                ))}
-              </View>
+              <WheelPickerField
+                helper="Tocca per aprire la ruota"
+                label="Categoria"
+                onPress={() => openWheelPicker({
+                  onSelect: (value) => updateCostForm('category', value),
+                  options: costCategoryOptions,
+                  title: 'Categoria spesa',
+                  value: costForm.category,
+                })}
+                value={getOptionLabel(costCategoryOptions, costForm.category)}
+              />
               {costForm.category === 'fine' ? (
                 <>
-                  <Text style={styles.costFilterLabel}>Autista responsabile</Text>
-                  <View style={styles.costChoiceGrid}>
-                    <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} style={styles.costChoiceChip} />
-                    {drivers.map((driver) => (
-                      <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} style={styles.costChoiceChip} />
-                    ))}
-                  </View>
-                  <Text style={styles.costFilterLabel}>Targa collegata</Text>
-                  <View style={styles.costChoiceGrid}>
-                    <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} style={styles.costChoiceChip} />
-                    {vehicles.map((vehicle) => (
-                      <Chip active={costForm.vehicleId === vehicle.id} key={vehicle.id} label={vehicle.plate} onPress={() => updateCostForm('vehicleId', vehicle.id)} style={styles.costChoiceChip} />
-                    ))}
-                  </View>
+                  <WheelPickerField
+                    label="Autista responsabile"
+                    onPress={() => openWheelPicker({
+                      onSelect: (value) => updateCostForm('driverId', value),
+                      options: costDriverOptions,
+                      title: 'Autista responsabile',
+                      value: costForm.driverId,
+                    })}
+                    value={getOptionLabel(costDriverOptions, costForm.driverId)}
+                  />
+                  <WheelPickerField
+                    label="Targa collegata"
+                    onPress={() => openWheelPicker({
+                      onSelect: (value) => updateCostForm('vehicleId', value),
+                      options: costVehicleOptions,
+                      title: 'Targa collegata',
+                      value: costForm.vehicleId,
+                    })}
+                    value={getOptionLabel(costVehicleOptions, costForm.vehicleId)}
+                  />
                 </>
               ) : (
                 <>
-                  <Text style={styles.costFilterLabel}>Collegata a</Text>
-                  <View style={styles.costChoiceGrid}>
-                    <Chip active={costForm.targetType === 'vehicle'} label="Mezzo" onPress={() => updateCostForm('targetType', 'vehicle')} style={styles.costChoiceChip} />
-                    <Chip active={costForm.targetType === 'asset'} label="Attrezzatura" onPress={() => updateCostForm('targetType', 'asset')} style={styles.costChoiceChip} />
-                    <Chip active={costForm.targetType === 'driver'} label="Autista" onPress={() => updateCostForm('targetType', 'driver')} style={styles.costChoiceChip} />
-                    <Chip active={costForm.targetType === 'company'} label="Azienda" onPress={() => updateCostForm('targetType', 'company')} style={styles.costChoiceChip} />
-                  </View>
+                  <WheelPickerField
+                    label="Collegata a"
+                    onPress={() => openWheelPicker({
+                      onSelect: (value) => updateCostForm('targetType', value),
+                      options: costTargetTypeOptions,
+                      title: 'Collega spesa a',
+                      value: costForm.targetType,
+                    })}
+                    value={getOptionLabel(costTargetTypeOptions, costForm.targetType)}
+                  />
                   {costForm.targetType === 'vehicle' ? (
-                    <>
-                      <Text style={styles.costFilterLabel}>Targa</Text>
-                      <View style={styles.costChoiceGrid}>
-                        <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} style={styles.costChoiceChip} />
-                        {vehicles.map((vehicle) => (
-                          <Chip active={costForm.vehicleId === vehicle.id} key={vehicle.id} label={vehicle.plate} onPress={() => updateCostForm('vehicleId', vehicle.id)} style={styles.costChoiceChip} />
-                        ))}
-                      </View>
-                    </>
+                    <WheelPickerField
+                      label="Targa"
+                      onPress={() => openWheelPicker({
+                        onSelect: (value) => updateCostForm('vehicleId', value),
+                        options: costVehicleOptions,
+                        title: 'Scegli targa',
+                        value: costForm.vehicleId,
+                      })}
+                      value={getOptionLabel(costVehicleOptions, costForm.vehicleId)}
+                    />
                   ) : null}
                   {costForm.targetType === 'asset' ? (
-                    <>
-                      <Text style={styles.costFilterLabel}>Attrezzatura</Text>
-                      <View style={styles.costChoiceGrid}>
-                        <Chip active={!costForm.assetId} label="Senza codice" onPress={() => updateCostForm('assetId', '')} style={styles.costChoiceChip} />
-                        {warehouseAssets.map((asset) => (
-                          <Chip active={costForm.assetId === asset.id} key={asset.id} label={asset.code} onPress={() => updateCostForm('assetId', asset.id)} style={styles.costChoiceChip} />
-                        ))}
-                      </View>
-                    </>
+                    <WheelPickerField
+                      label="Attrezzatura"
+                      onPress={() => openWheelPicker({
+                        onSelect: (value) => updateCostForm('assetId', value),
+                        options: costAssetOptions,
+                        title: 'Scegli attrezzatura',
+                        value: costForm.assetId,
+                      })}
+                      value={getOptionLabel(costAssetOptions, costForm.assetId)}
+                    />
                   ) : null}
                   {costForm.targetType === 'driver' ? (
-                    <>
-                      <Text style={styles.costFilterLabel}>Autista</Text>
-                      <View style={styles.costChoiceGrid}>
-                        <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} style={styles.costChoiceChip} />
-                        {drivers.map((driver) => (
-                          <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} style={styles.costChoiceChip} />
-                        ))}
-                      </View>
-                    </>
+                    <WheelPickerField
+                      label="Autista"
+                      onPress={() => openWheelPicker({
+                        onSelect: (value) => updateCostForm('driverId', value),
+                        options: costDriverOptions,
+                        title: 'Scegli autista',
+                        value: costForm.driverId,
+                      })}
+                      value={getOptionLabel(costDriverOptions, costForm.driverId)}
+                    />
                   ) : null}
                 </>
               )}
@@ -2133,45 +2334,26 @@ export function CompanyManagementScreen({
                   <Text style={styles.secondaryInlineButtonText}>Annulla modifica</Text>
                 </Pressable>
               ) : null}
-              <Text style={styles.costFilterLabel}>Periodo</Text>
-              <View style={styles.chipGrid}>
-                <Chip active={costPeriod === 'today'} label="Oggi" onPress={() => setCostPeriod('today')} />
-                <Chip active={costPeriod === 'month'} label="Mese" onPress={() => setCostPeriod('month')} />
-                <Chip active={costPeriod === 'year'} label="Anno" onPress={() => setCostPeriod('year')} />
-                <Chip active={costPeriod === 'all'} label="Sempre" onPress={() => setCostPeriod('all')} />
-              </View>
-              <Text style={styles.costFilterLabel}>Filtro report</Text>
-              <View style={styles.costChoiceGrid}>
-                <Chip active={costTargetFilter === 'all'} label="Tutti" onPress={() => setCostTargetFilter('all')} style={styles.costChoiceChip} />
-                <Chip active={costTargetFilter === 'company'} label="Azienda" onPress={() => setCostTargetFilter('company')} style={styles.costChoiceChip} />
-                {vehicles.map((vehicle) => (
-                  <Chip
-                    active={costTargetFilter === `vehicle:${vehicle.id}`}
-                    key={vehicle.id}
-                    label={`Mezzo ${vehicle.plate}`}
-                    onPress={() => setCostTargetFilter(`vehicle:${vehicle.id}`)}
-                    style={styles.costChoiceChip}
-                  />
-                ))}
-                {drivers.map((driver) => (
-                  <Chip
-                    active={costTargetFilter === `driver:${driver.id}`}
-                    key={driver.id}
-                    label={`Autista ${driver.name}`}
-                    onPress={() => setCostTargetFilter(`driver:${driver.id}`)}
-                    style={styles.costChoiceChip}
-                  />
-                ))}
-                {warehouseAssets.map((asset) => (
-                  <Chip
-                    active={costTargetFilter === `asset:${asset.id}`}
-                    key={asset.id}
-                    label={`Attr. ${asset.code}`}
-                    onPress={() => setCostTargetFilter(`asset:${asset.id}`)}
-                    style={styles.costChoiceChip}
-                  />
-                ))}
-              </View>
+              <WheelPickerField
+                label="Periodo"
+                onPress={() => openWheelPicker({
+                  onSelect: setCostPeriod,
+                  options: costPeriodOptions,
+                  title: 'Periodo report',
+                  value: costPeriod,
+                })}
+                value={getOptionLabel(costPeriodOptions, costPeriod)}
+              />
+              <WheelPickerField
+                label="Filtro report"
+                onPress={() => openWheelPicker({
+                  onSelect: setCostTargetFilter,
+                  options: costReportFilterOptions,
+                  title: 'Filtro report',
+                  value: costTargetFilter,
+                })}
+                value={getOptionLabel(costReportFilterOptions, costTargetFilter)}
+              />
               <Text style={styles.costTotal}>{formatMoneyCents(repairCostTotalCents, defaultCurrency)}</Text>
               <View style={styles.costMetricRow}>
                 <View style={styles.costMetricCard}>
@@ -2340,6 +2522,14 @@ export function CompanyManagementScreen({
         ) : null}
       </Panel>
       ) : null}
+      <SelectionWheelModal
+        onClose={closeWheelPicker}
+        onConfirm={confirmWheelPicker}
+        options={wheelPicker?.options ?? []}
+        title={wheelPicker?.title ?? 'Seleziona'}
+        value={wheelPicker?.value ?? ''}
+        visible={Boolean(wheelPicker)}
+      />
       <DeadlineRenewModal
         assets={warehouseAssets}
         drivers={drivers}
@@ -2455,6 +2645,146 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 10,
+  },
+  wheelBackdrop: {
+    backgroundColor: 'rgba(2, 6, 23, 0.48)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  wheelBackdropPressArea: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  wheelField: {
+    marginBottom: 10,
+  },
+  wheelFieldButton: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#a5f3fc',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 54,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  wheelFieldCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  wheelFieldHelper: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  wheelFieldIcon: {
+    alignItems: 'center',
+    backgroundColor: '#ecfeff',
+    borderRadius: 14,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  wheelFieldValue: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  wheelGrip: {
+    alignSelf: 'center',
+    backgroundColor: '#cbd5e1',
+    borderRadius: 999,
+    height: 5,
+    marginBottom: 12,
+    width: 44,
+  },
+  wheelHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  wheelHeaderButton: {
+    alignItems: 'center',
+    minHeight: 38,
+    justifyContent: 'center',
+    minWidth: 72,
+  },
+  wheelHeaderButtonText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  wheelHeaderConfirmText: {
+    color: colors.cyanDark,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  wheelHighlight: {
+    backgroundColor: '#ecfeff',
+    borderColor: '#67e8f9',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: wheelItemHeight,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: wheelItemHeight * 2,
+  },
+  wheelOption: {
+    alignItems: 'center',
+    height: wheelItemHeight,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  wheelOptionSubtitle: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  wheelOptionSubtitleActive: {
+    color: colors.cyanDark,
+  },
+  wheelOptionText: {
+    color: '#64748b',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  wheelOptionTextActive: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  wheelScroller: {
+    zIndex: 1,
+  },
+  wheelSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    maxHeight: '76%',
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  wheelSpacer: {
+    height: wheelItemHeight * 2,
+  },
+  wheelTitle: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  wheelWindow: {
+    height: wheelItemHeight * 5,
+    marginTop: 12,
+    overflow: 'hidden',
   },
   costEntryIntro: {
     backgroundColor: '#ffffff',

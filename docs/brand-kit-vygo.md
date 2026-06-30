@@ -43,6 +43,8 @@ Diretto, concreto, da imprenditore a imprenditore. Vygo deve parlare a chi lavor
 
 Prima tavola concept: [vygo-logo-concepts.png](assets/vygo-logo-concepts.png).
 
+Selezione estesa con 20 proposte: [selezione-loghi-vygo.md](selezione-loghi-vygo.md).
+
 Direzione preferita: segno corto, riconoscibile anche come icona app, con idea di strada, percorso e controllo. Evitare camion disegnati in modo banale: il marchio deve sembrare una app forte, non un gestionale vecchio.
 
 ## Frase breve

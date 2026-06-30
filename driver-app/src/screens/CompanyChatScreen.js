@@ -406,17 +406,18 @@ function getDirectRowTitle(row = {}) {
 
 function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount = 0 }) {
   const roleLabel = driver.role || 'Autista'
+  const hasUnread = Number(unreadCount ?? 0) > 0
 
   return (
-    <Pressable onPress={onPress} style={styles.driverRow}>
+    <Pressable onPress={onPress} style={[styles.driverRow, hasUnread && styles.unreadRow]}>
       <DriverAvatar name={driver.name} uri={photoUrl} />
       <View style={styles.driverCopy}>
-        <Text style={styles.driverName}>{driver.name}</Text>
-        <Text style={styles.driverMeta}>{roleLabel}</Text>
+        <Text style={[styles.driverName, hasUnread && styles.unreadTitle]}>{driver.name}</Text>
+        <Text style={[styles.driverMeta, hasUnread && styles.unreadMeta]}>{roleLabel}</Text>
       </View>
       <View style={styles.rowActions}>
         <Text style={styles.rowTime}>{formatLastMessageDate(lastMessageAt)}</Text>
-        {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Ionicons color={colors.muted} name="chevron-forward" size={16} />}
+        {hasUnread ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Ionicons color={colors.muted} name="chevron-forward" size={16} />}
       </View>
     </Pressable>
   )
@@ -425,13 +426,14 @@ function DriverChatRow({ driver, lastMessageAt, onPress, photoUrl, unreadCount =
 function TeamChatRow({ driverByPersonId = new Map(), driverPhotoUrls = {}, onPress, peopleById, thread, unreadCount = 0 }) {
   const kind = getThreadKind(thread)
   const isDirect = kind === 'direct'
+  const hasUnread = Number(unreadCount ?? 0) > 0
   const targetPerson = getCompanyDirectPerson(thread, peopleById)
   const subtitle = targetPerson
     ? `${targetPerson.jobTitle || 'Operatore'} · ${getPersonDepartmentLabel(targetPerson.department)}`
     : `${getThreadKindLabel(thread)} · ${getAudienceLabel(thread.audienceType)}`
 
   return (
-    <Pressable onPress={onPress} style={[styles.driverRow, isDirect && styles.directRow]}>
+    <Pressable onPress={onPress} style={[styles.driverRow, isDirect && styles.directRow, hasUnread && styles.unreadRow]}>
       {targetPerson ? (
         <DriverAvatar name={targetPerson.name} uri={getPersonAvatarUrl(targetPerson, driverPhotoUrls, driverByPersonId)} />
       ) : (
@@ -440,12 +442,12 @@ function TeamChatRow({ driverByPersonId = new Map(), driverPhotoUrls = {}, onPre
         </View>
       )}
       <View style={styles.driverCopy}>
-        <Text style={styles.driverName}>{thread.title}</Text>
-        <Text style={styles.driverMeta}>{subtitle}</Text>
+        <Text style={[styles.driverName, hasUnread && styles.unreadTitle]}>{thread.title}</Text>
+        <Text style={[styles.driverMeta, hasUnread && styles.unreadMeta]}>{subtitle}</Text>
       </View>
       <View style={styles.rowActions}>
         <Text style={styles.rowTime}>{formatLastMessageDate(thread.lastMessageAt)}</Text>
-        {unreadCount > 0 ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Ionicons color={colors.muted} name="chevron-forward" size={16} />}
+        {hasUnread ? <Text style={styles.unreadBadge}>{unreadCount}</Text> : <Ionicons color={colors.muted} name="chevron-forward" size={16} />}
       </View>
     </Pressable>
   )
@@ -696,6 +698,17 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
     padding: 12,
+  },
+  unreadRow: {
+    backgroundColor: '#fff7f7',
+    borderColor: colors.danger,
+    borderWidth: 2,
+  },
+  unreadMeta: {
+    color: colors.ink,
+  },
+  unreadTitle: {
+    color: colors.danger,
   },
   groupAvatar: {
     alignItems: 'center',
@@ -1024,9 +1037,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   unreadBadge: {
-    backgroundColor: colors.cyan,
+    backgroundColor: colors.danger,
     borderRadius: 999,
-    color: colors.ink,
+    color: colors.white,
     fontSize: 12,
     fontWeight: '900',
     minWidth: 24,

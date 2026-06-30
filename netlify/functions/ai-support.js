@@ -58,7 +58,7 @@ Sanzioni: si inseriscono da Nuova sanzione o Centro costi scegliendo categoria S
 Chat: dirette e gruppi/reparti. I messaggi mostrano nome, ruolo e foto di chi scrive. L azienda vede solo chat in cui e partecipante. Sono previsti audio, foto, video, reazioni, risposte e conferme lettura.
 Notifiche: si attivano dalle impostazioni sul dispositivo. Devono avvisare per messaggi, guasti, check critici, scadenze e solleciti.
 Magazzino: puo avere check muletti/strumenti, documenti e visite mediche. Ufficio puo usare chat, documenti e scadenze persona.
-Piani commerciali: Start 5 300 euro/mese; Fleet 10 450 euro/mese; Fleet 20 da 650 euro/mese; Fleet 30 850 euro/mese; Fleet 50 1200 euro/mese. Chat aziendale +100 euro/mese. Start-up kit 1500 euro una tantum. Storage extra 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.
+Piani commerciali: Start 5 300 euro/mese + IVA; Fleet 10 450 euro/mese + IVA; Fleet 20 650 euro/mese + IVA; Fleet 30 850 euro/mese + IVA; Fleet 50 1200 euro/mese + IVA; Enterprise su preventivo. Chat aziendale completa +100 euro/mese + IVA. Centro costi Premium +150 euro/mese + IVA. Report direzionali avanzati +250 euro/mese + IVA. Start-up kit 1500 euro una tantum + IVA. Storage extra 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.
 Progetti premium futuri: report mensile automatico via email, indice salute flotta, budget costi per targa, alert recidive guasti, classifica multe/autisti, osservatorio strada e normative, QR mezzo, check magazzino, profilo formazione autista, esportazioni PDF/CSV avanzate.
 Regola supporto: dare sempre passi pratici. Se serve assistenza umana, raccogliere azienda, utente, sezione, cosa stava facendo, messaggio errore, dispositivo e priorita.
 `.trim()
@@ -216,9 +216,9 @@ const supportPlaybooks = [
       'I piani Vygo sono pensati per dimensione azienda:',
       '1. Start 5: 300 euro/mese, fino a 5 mezzi, 3 strumenti/muletti, 10 account e 10 GB.',
       '2. Fleet 10: 450 euro/mese, fino a 10 mezzi, 5 strumenti/muletti, 20 account e 20 GB.',
-      '3. Fleet 20+: da 650 euro/mese per flotte piu strutturate.',
-      '4. Chat aziendale: +100 euro/mese. Start-up kit: 1500 euro una tantum.',
-      '5. Storage extra: 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.',
+      '3. Fleet 20: 650 euro/mese, Fleet 30: 850 euro/mese, Fleet 50: 1200 euro/mese.',
+      '4. Chat aziendale completa: +100 euro/mese. Centro costi Premium: +150 euro/mese. Report direzionali avanzati: +250 euro/mese.',
+      '5. Start-up kit: 1500 euro una tantum. Storage extra: 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.',
     ],
   },
   {

@@ -20,6 +20,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import * as MediaLibrary from 'expo-media-library'
+import { VideoView, useVideoPlayer } from 'expo-video'
 import { Ionicons } from '@expo/vector-icons'
 import {
   RecordingPresets,
@@ -236,6 +237,10 @@ function isPreviewableImageUri(uri = '') {
   return /^(https?:|file:|content:|data:image\/)/i.test(String(uri ?? '').trim())
 }
 
+function isPreviewableMediaUri(uri = '') {
+  return /^(https?:|file:|content:|data:image\/)/i.test(String(uri ?? '').trim())
+}
+
 function getAttachmentKind(path = '') {
   if (isImagePath(path)) return 'image'
   if (isAudioPath(path)) return 'audio'
@@ -285,30 +290,34 @@ function getMediaFileExtension(path = '') {
   const match = cleanPath.match(/\.([a-z0-9]+)$/i)
   const extension = match?.[1]?.toLowerCase()
 
-  if (extension && ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(extension)) return extension
+  if (extension && ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'm4v', 'mov', 'mp4', 'webm'].includes(extension)) return extension
   return 'jpg'
 }
 
-async function saveImageToGallery(signedUrl, path = '') {
+async function saveMediaToGallery(signedUrl, path = '') {
   if (!signedUrl) return false
 
   try {
-    const permission = await MediaLibrary.requestPermissionsAsync(true, ['photo'])
+    const permission = await MediaLibrary.requestPermissionsAsync(true, ['photo', 'video'])
     if (!permission.granted) {
-      Alert.alert('Permesso necessario', 'Consenti l accesso alla galleria per salvare la foto.')
+      Alert.alert('Permesso necessario', 'Consenti l accesso alla galleria per salvare il file.')
       return false
     }
 
     const extension = getMediaFileExtension(path)
-    const localUri = `${FileSystem.cacheDirectory}camion-chiaro-${Date.now()}.${extension}`
+    const localUri = `${FileSystem.cacheDirectory}vygo-${Date.now()}.${extension}`
     const download = await FileSystem.downloadAsync(signedUrl, localUri)
     await MediaLibrary.saveToLibraryAsync(download.uri)
-    Alert.alert('Foto salvata', 'La foto è stata salvata nella galleria del telefono.')
+    Alert.alert('File salvato', 'Il file è stato salvato nella galleria del telefono.')
     return true
   } catch {
-    Alert.alert('Foto non salvata', 'Non sono riuscito a salvare questa foto. Riprova tra poco.')
+    Alert.alert('File non salvato', 'Non sono riuscito a salvare questo file. Riprova tra poco.')
     return false
   }
+}
+
+async function saveImageToGallery(signedUrl, path = '') {
+  return saveMediaToGallery(signedUrl, path)
 }
 
 function Avatar({ icon, initials, isDriver, onPress, uri }) {
@@ -393,9 +402,39 @@ function AudioAttachment({ signedUrl }) {
   )
 }
 
+function VideoAttachment({ onOpen, path, signedUrl }) {
+  const player = useVideoPlayer(signedUrl || null, (videoPlayer) => {
+    videoPlayer.loop = false
+  })
+
+  if (!signedUrl) return <View style={styles.imageSkeleton} />
+
+  return (
+    <View style={styles.videoAttachment}>
+      <VideoView
+        allowsFullscreen
+        contentFit="cover"
+        nativeControls
+        player={player}
+        style={styles.videoAttachmentPlayer}
+      />
+      <View style={styles.videoAttachmentActions}>
+        <Pressable onPress={() => onOpen?.(signedUrl, getAttachmentTitle(path), path)} style={styles.videoActionButton}>
+          <Ionicons color={colors.ink} name="expand-outline" size={16} />
+          <Text style={styles.videoActionText}>Apri</Text>
+        </Pressable>
+        <Pressable onPress={() => saveMediaToGallery(signedUrl, path)} style={styles.videoActionButton}>
+          <Ionicons color={colors.ink} name="download-outline" size={16} />
+          <Text style={styles.videoActionText}>Salva</Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
 function AttachmentPreview({ onOpenImage, path }) {
   const [signedUrl, setSignedUrl] = useState('')
-  const directUrl = isPreviewableImageUri(path) ? String(path).trim() : ''
+  const directUrl = isPreviewableMediaUri(path) ? String(path).trim() : ''
 
   useEffect(() => {
     let isActive = true
@@ -434,10 +473,15 @@ function AttachmentPreview({ onOpenImage, path }) {
     ) : <View style={styles.imageSkeleton} />
   }
 
+  if (isVideoPath(path)) {
+    return <VideoAttachment onOpen={onOpenImage} path={path} signedUrl={signedUrl} />
+  }
+
   return (
-    <View style={styles.fileAttachment}>
+    <Pressable disabled={!signedUrl} onPress={() => signedUrl && Linking.openURL(signedUrl)} style={styles.fileAttachment}>
+      <Ionicons color={colors.ink} name="document-attach-outline" size={18} />
       <Text style={styles.fileAttachmentText}>Allegato disponibile</Text>
-    </View>
+    </Pressable>
   )
 }
 
@@ -1117,8 +1161,8 @@ export function ChatScreen({
   }
 
   function openMediaPreview(uri, name, path = '') {
-    if (!isPreviewableImageUri(uri)) return
-    setPhotoPreview({ name, path, uri: String(uri).trim() })
+    if (!isPreviewableMediaUri(uri)) return
+    setPhotoPreview({ kind: getAttachmentKind(path), name, path, uri: String(uri).trim() })
   }
 
   async function copyMessage(message) {
@@ -1298,7 +1342,11 @@ export function ChatScreen({
       <Modal animationType="fade" transparent visible={Boolean(photoPreview)} onRequestClose={() => setPhotoPreview(null)}>
         <Pressable onPress={() => setPhotoPreview(null)} style={styles.photoModalBackdrop}>
           <View style={styles.photoModalCard}>
-            {isPreviewableImageUri(photoPreview?.uri) ? (
+            {photoPreview?.kind === 'video' ? (
+              <View style={styles.photoModalImageWrap}>
+                <VideoAttachment path={photoPreview.path} signedUrl={photoPreview.uri} />
+              </View>
+            ) : isPreviewableImageUri(photoPreview?.uri) ? (
               <Pressable onLongPress={() => saveImageToGallery(photoPreview.uri, photoPreview.path)} style={styles.photoModalImageWrap}>
                 <Image
                   onError={() => setPhotoPreview(null)}
@@ -1308,7 +1356,7 @@ export function ChatScreen({
               </Pressable>
             ) : null}
             <Text style={styles.photoModalTitle}>{photoPreview?.name}</Text>
-            <Text style={styles.photoModalHint}>Tieni premuto per salvare</Text>
+            <Text style={styles.photoModalHint}>{photoPreview?.kind === 'video' ? 'Usa Salva per scaricarlo' : 'Tieni premuto per salvare'}</Text>
           </View>
         </Pressable>
       </Modal>
@@ -1525,8 +1573,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   fileAttachment: {
+    alignItems: 'center',
     backgroundColor: '#f1f5f9',
     borderRadius: 12,
+    flexDirection: 'row',
+    gap: 8,
     marginBottom: 8,
     padding: 10,
   },
@@ -1734,6 +1785,40 @@ const styles = StyleSheet.create({
     height: 160,
     marginBottom: 8,
     width: 220,
+  },
+  videoActionButton: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 5,
+    justifyContent: 'center',
+    minHeight: 34,
+  },
+  videoActionText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  videoAttachment: {
+    backgroundColor: '#020617',
+    borderRadius: 14,
+    marginBottom: 8,
+    overflow: 'hidden',
+    width: 236,
+  },
+  videoAttachmentActions: {
+    backgroundColor: '#e0faff',
+    borderTopColor: '#164e63',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 8,
+  },
+  videoAttachmentPlayer: {
+    aspectRatio: 16 / 10,
+    width: '100%',
   },
   input: {
     backgroundColor: '#f8fbff',

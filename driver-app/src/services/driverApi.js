@@ -27,6 +27,26 @@ function getDriverEmail(username = '') {
   return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${driverAuthDomain}`
 }
 
+function getDriverLoginEmails(username = '') {
+  const cleanUsername = normalizeUsername(username)
+  if (!cleanUsername) return []
+  if (cleanUsername.includes('@')) return [cleanUsername]
+
+  return [
+    driverAuthDomain,
+    'drivers.camionchiaro.app',
+    'drivers.vy-go.com',
+    'drivers.vygo.app',
+  ]
+    .filter(Boolean)
+    .filter((domain, index, domains) => domains.indexOf(domain) === index)
+    .map((domain) => `${cleanUsername}@${domain}`)
+}
+
+function shouldTryNextDriverEmail(error) {
+  return String(error?.message ?? '').toLowerCase().includes('invalid')
+}
+
 async function getAccessToken() {
   const sessionResult = await supabase?.auth.getSession()
   return sessionResult?.data?.session?.access_token ?? ''
@@ -448,12 +468,22 @@ export async function getCurrentSession() {
 export async function signInDriver({ password, username }) {
   if (!isSupabaseConfigured) return notConfiguredError()
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: getDriverEmail(username),
-    password,
-  })
+  const loginEmails = getDriverLoginEmails(username)
+  let lastError = null
 
-  return { data: data?.session ?? null, error }
+  for (const email of loginEmails) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (!error) return { data: data?.session ?? null, error: null }
+
+    lastError = error
+    if (!shouldTryNextDriverEmail(error)) break
+  }
+
+  return { data: null, error: lastError ?? { message: 'Credenziali autista non valide.' } }
 }
 
 export async function signInCompany({ email, password }) {
@@ -1857,6 +1887,45 @@ export async function createCompanyPerson({ companyId, person }) {
   }
 
   return { data: data ? mapCompanyPerson(data) : null, error }
+}
+
+export async function resetCompanyAccessPassword({ companyId, targetId, targetType }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!apiBaseUrl) {
+    return {
+      data: null,
+      error: { message: 'Configura EXPO_PUBLIC_API_BASE_URL con il sito Netlify.' },
+    }
+  }
+
+  const accessToken = await getAccessToken()
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione azienda scaduta. Fai login.' } }
+  }
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/.netlify/functions/reset-access-password`, {
+      body: JSON.stringify({ companyId, targetId, targetType }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload.error ?? 'Password non reimpostata.' } }
+    }
+
+    return { data: payload, error: null }
+  } catch {
+    return {
+      data: null,
+      error: { message: 'Server Vygo non raggiungibile. Controlla il deploy Netlify.' },
+    }
+  }
 }
 
 export async function ensureDirectTeamThread({ companyId, personId }) {

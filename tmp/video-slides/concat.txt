@@ -1,0 +1,17 @@
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-01.png'
+duration 6.2
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-02.png'
+duration 6.2
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-03.png'
+duration 6.2
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-04.png'
+duration 6.2
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-05.png'
+duration 6.2
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-06.png'
+duration 6.2
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-07.png'
+duration 6.2
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-08.png'
+duration 6.2
+file '/Users/adriano/Documents/app trasporti/tmp/video-slides/vygo-promo-08.png'

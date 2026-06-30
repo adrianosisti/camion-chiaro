@@ -5907,6 +5907,21 @@
   background: #f0fbff;
 }
 
+.chat-driver-row.is-unread {
+  border-top-color: #fecaca;
+  background: linear-gradient(90deg, #fff7f7 0%, #ffffff 62%);
+  box-shadow: inset 5px 0 0 #ef4444, inset 0 0 0 1px #fecaca;
+}
+
+.chat-driver-row.is-unread:hover,
+.chat-driver-row.is-unread.is-selected {
+  background: #fff1f2;
+}
+
+.chat-driver-row.is-unread > span > strong {
+  color: #991b1b;
+}
+
 .chat-driver-row.is-selected {
   box-shadow: inset 4px 0 0 var(--brand-bright);
 }

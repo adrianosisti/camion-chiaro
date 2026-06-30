@@ -52,6 +52,7 @@ import {
   markTeamThreadRead,
   renewDriverDocument,
   renewCompanyComplianceItem,
+  resetCompanyAccessPassword,
   saveNativePushToken,
   sendChatMessage,
   sendCompanyChatMessage,
@@ -1972,6 +1973,29 @@ function CamionChiaroApp() {
     return result.data
   }
 
+  async function handleResetCompanyAccessPassword({ targetId, targetType, name }) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId || !targetId || !targetType) return false
+
+    const result = await resetCompanyAccessPassword({
+      companyId,
+      targetId,
+      targetType,
+    })
+
+    if (result.error) {
+      Alert.alert('Password non reimpostata', result.error.message)
+      return false
+    }
+
+    await loadCompanyData({ silent: true })
+    Alert.alert(
+      'Password temporanea',
+      `Utente: ${name || result.data?.username || 'persona'}\nUsername: ${result.data?.username || ''}\nEmail tecnica: ${result.data?.authEmail || ''}\nPassword: ${result.data?.password || ''}`,
+    )
+    return true
+  }
+
   async function handleCreateCompanyWarehouseAsset(payload) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId) return null
@@ -2423,6 +2447,7 @@ function CamionChiaroApp() {
             onCloseDeadline={handleCloseCompanyDeadline}
             onDeleteCostEntry={handleDeleteCompanyCostEntry}
             onRenewDeadline={handleRenewCompanyDeadline}
+            onResetAccessPassword={handleResetCompanyAccessPassword}
             onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
             onUpdateCostEntry={handleUpdateCompanyCostEntry}
             onUpdateFaultRepair={handleUpdateCompanyFaultRepair}

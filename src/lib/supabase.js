@@ -397,7 +397,7 @@ function mapTeamChatMessage(row) {
     companyId: row.company_id,
     createdAt: row.created_at,
     id: row.id,
-    readByCompanyAt: '',
+    readByCompanyAt: row.read_by_company_at ?? '',
     readByDriverAt: '',
     reactions: {},
     senderPersonId: row.sender_person_id ?? '',
@@ -456,6 +456,7 @@ const teamChatMessageSelectColumns = `
   sender_role,
   body,
   attachment_path,
+  read_by_company_at,
   created_at
 `
 
@@ -1858,6 +1859,46 @@ export async function createCompanyPerson(person, companyId = configuredCompanyI
   return { data: data ? mapCompanyPerson(data) : null, error }
 }
 
+export async function resetCompanyAccessPassword({ targetId, targetType }, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione azienda mancante. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/reset-access-password', {
+      body: JSON.stringify({ companyId, targetId, targetType }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload.error ?? 'Password non reimpostata.' } }
+    }
+
+    return { data: payload, error: null }
+  } catch {
+    return {
+      data: null,
+      error: {
+        message: 'Funzione Netlify non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+      },
+    }
+  }
+}
+
 export async function createComplianceItemRecord(item, companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -2425,6 +2466,24 @@ export async function markChatMessagesRead(threadId, readerRole) {
   }
 
   return { data: data?.map(mapChatMessage) ?? null, error }
+}
+
+export async function markTeamThreadRead(threadId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !threadId) {
+    return { data: 0, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('mark_team_thread_read', {
+    target_thread_id: threadId,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return { data: 0, error: null }
+  }
+
+  return { data: Number(data ?? 0), error }
 }
 
 export async function updateChatMessageReaction(message, actorRole, reaction) {
@@ -3153,11 +3212,27 @@ export async function signInDriver({ username, password }) {
     return { data: null, error: null, demo: true }
   }
 
-  const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vygo.app'
+  const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vy-go.com'
   const cleanUsername = username.trim().toLowerCase()
-  const email = cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${driverAuthDomain}`
+  const loginEmails = cleanUsername.includes('@')
+    ? [cleanUsername]
+    : [driverAuthDomain, 'drivers.camionchiaro.app', 'drivers.vy-go.com', 'drivers.vygo.app']
+        .filter(Boolean)
+        .filter((domain, index, domains) => domains.indexOf(domain) === index)
+        .map((domain) => `${cleanUsername}@${domain}`)
 
-  return supabase.auth.signInWithPassword({ email, password })
+  let lastError = null
+
+  for (const email of loginEmails) {
+    const result = await supabase.auth.signInWithPassword({ email, password })
+
+    if (!result.error) return result
+
+    lastError = result.error
+    if (!String(result.error.message ?? '').toLowerCase().includes('invalid')) return result
+  }
+
+  return { data: null, error: lastError }
 }
 
 export async function signOut() {

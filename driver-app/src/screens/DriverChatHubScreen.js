@@ -50,9 +50,10 @@ function getInitials(value = 'A') {
 
 function ChatRow({ badge = 0, icon, imageUrl, kindLabel = '', onPress, subtitle, title, tone = 'normal' }) {
   const isDirect = tone === 'direct'
+  const hasUnread = Number(badge ?? 0) > 0
 
   return (
-    <Pressable onPress={onPress} style={[styles.row, isDirect && styles.directRow]}>
+    <Pressable onPress={onPress} style={[styles.row, isDirect && styles.directRow, hasUnread && styles.unreadRow]}>
       <View style={[styles.avatar, isDirect && styles.directAvatar]}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.avatarImage} />
@@ -61,8 +62,8 @@ function ChatRow({ badge = 0, icon, imageUrl, kindLabel = '', onPress, subtitle,
         )}
       </View>
       <View style={styles.rowCopy}>
-        <Text numberOfLines={1} style={styles.rowTitle}>{title}</Text>
-        <Text numberOfLines={1} style={styles.rowSubtitle}>{subtitle}</Text>
+        <Text numberOfLines={1} style={[styles.rowTitle, hasUnread && styles.unreadTitle]}>{title}</Text>
+        <Text numberOfLines={1} style={[styles.rowSubtitle, hasUnread && styles.unreadSubtitle]}>{subtitle}</Text>
       </View>
       <View style={styles.rowActions}>
         {kindLabel ? (
@@ -70,7 +71,7 @@ function ChatRow({ badge = 0, icon, imageUrl, kindLabel = '', onPress, subtitle,
             {kindLabel}
           </Text>
         ) : null}
-        {badge > 0 ? <Text style={styles.badge}>{badge}</Text> : <Text style={styles.openText}>Apri</Text>}
+        {hasUnread ? <Text style={styles.badge}>{badge}</Text> : <Text style={styles.openText}>Apri</Text>}
       </View>
     </Pressable>
   )
@@ -655,6 +656,17 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
     padding: 12,
+  },
+  unreadRow: {
+    backgroundColor: '#fff7f7',
+    borderColor: colors.danger,
+    borderWidth: 2,
+  },
+  unreadSubtitle: {
+    color: colors.ink,
+  },
+  unreadTitle: {
+    color: colors.danger,
   },
   rowActions: {
     alignItems: 'flex-end',

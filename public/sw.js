@@ -1,4 +1,4 @@
-const CACHE_NAME = 'camion-chiaro-v2'
+const CACHE_NAME = 'vygo-v3'
 const CORE_ASSETS = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest']
 const activeChatClients = new Map()
 
@@ -26,7 +26,7 @@ async function showPushNotification(payload) {
       url: payload.url || '/',
     },
     icon: '/favicon.svg',
-    tag: payload.tag || `camion-chiaro-${Date.now()}`,
+    tag: payload.tag || `vygo-${Date.now()}`,
   }
 
   await self.registration.showNotification(title, options)
@@ -86,7 +86,7 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('message', (event) => {
-  if (event.data?.type !== 'camion-chiaro-active-chat' || !event.source?.id) return
+  if (event.data?.type !== 'vygo-active-chat' || !event.source?.id) return
 
   const threadId = event.data.threadId || ''
 

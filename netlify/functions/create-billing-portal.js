@@ -21,7 +21,7 @@ function cleanText(value) {
 
 function getOrigin(event) {
   const requestOrigin = event.headers.origin ?? event.headers.Origin
-  return process.env.URL || process.env.DEPLOY_PRIME_URL || requestOrigin || 'http://localhost:5173'
+  return process.env.APP_PUBLIC_URL || process.env.PUBLIC_SITE_URL || process.env.URL || process.env.DEPLOY_PRIME_URL || requestOrigin || 'http://localhost:5173'
 }
 
 async function verifyCompanyOperator(serviceClient, userId, companyId) {

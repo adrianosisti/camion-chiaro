@@ -698,6 +698,7 @@ export function CompanyManagementScreen({
   onCloseDeadline,
   onDeleteCostEntry,
   onRenewDeadline,
+  onResetAccessPassword,
   onSendDeadlineReminder,
   onUpdateCostEntry,
   onUpdateFaultRepair,
@@ -1341,6 +1342,20 @@ export function CompanyManagementScreen({
     return 'Azienda'
   }
 
+  function resetAccess(targetType, targetId, name) {
+    Alert.alert(
+      'Reimposta password',
+      `Genero una nuova password temporanea per ${name}?`,
+      [
+        { style: 'cancel', text: 'Annulla' },
+        {
+          onPress: () => onResetAccessPassword?.({ name, targetId, targetType }),
+          text: 'Genera',
+        },
+      ],
+    )
+  }
+
   async function submitDriver() {
     const payload = {
       depot: driverForm.depot.trim(),
@@ -1918,6 +1933,12 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{person.phone || person.email || person.username || 'contatto mancante'}</Text>
                   </View>
                 </View>
+                <Pressable
+                  onPress={() => resetAccess(person.linkedDriverId ? 'driver' : 'person', person.linkedDriverId || person.id, person.name)}
+                  style={styles.smallButton}
+                >
+                  <Text style={styles.smallButtonText}>Reimposta password</Text>
+                </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id || item.driverId === person.linkedDriverId)} language={language} />
               </View>
             ))}
@@ -1938,6 +1959,9 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{person.jobTitle || 'Ufficio'} · {person.phone || person.email || 'contatto mancante'}</Text>
                   </View>
                 </View>
+                <Pressable onPress={() => resetAccess('person', person.id, person.name)} style={styles.smallButton}>
+                  <Text style={styles.smallButtonText}>Reimposta password</Text>
+                </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id)} language={language} />
               </View>
             ))}
@@ -1958,6 +1982,9 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{person.jobTitle || getPersonTypeLabel(person.personType)} · {person.phone || 'contatto mancante'}</Text>
                   </View>
                 </View>
+                <Pressable onPress={() => resetAccess('person', person.id, person.name)} style={styles.smallButton}>
+                  <Text style={styles.smallButtonText}>Reimposta password</Text>
+                </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id)} language={language} />
               </View>
             ))}
@@ -1995,6 +2022,9 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{driver.username} · {driver.phone || 'telefono mancante'}</Text>
                   </View>
                 </View>
+                <Pressable onPress={() => resetAccess('driver', driver.id, driver.name)} style={styles.smallButton}>
+                  <Text style={styles.smallButtonText}>Reimposta password</Text>
+                </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.driverId === driver.id)} language={language} />
               </View>
             ))}

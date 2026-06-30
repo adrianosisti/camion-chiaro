@@ -108,6 +108,8 @@ import {
   savePushSubscription,
   sendPushNotification,
   markChatMessagesRead as markSupabaseChatMessagesRead,
+  markTeamThreadRead as markSupabaseTeamThreadRead,
+  resetCompanyAccessPassword as resetSupabaseCompanyAccessPassword,
   renewCompanyComplianceItem as renewSupabaseCompanyComplianceItem,
   signInDriver,
   signInCompany,
@@ -187,7 +189,7 @@ const emptyCompanyStorageSummary = {
   totalBytes: 0,
 }
 
-const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vygo.app'
+const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vy-go.com'
 const adminEmails = new Set(
   String(import.meta.env.VITE_ADMIN_EMAILS ?? 'sisti.adriano@icloud.com')
     .split(',')
@@ -195,7 +197,7 @@ const adminEmails = new Set(
     .filter(Boolean),
 )
 const demoCompanyName = 'Azienda Demo SRL'
-const supportEmail = 'assistenza@vygo.app'
+const supportEmail = 'support@vy-go.com'
 const placeholderCompanyNames = new Set(['Vygo', 'Vygo Demo'])
 const fleetTypeOptions = [
   { value: 'furgone', label: 'Furgone' },
@@ -384,12 +386,17 @@ const translations = {
     'auth.driverUsernameLabel': 'Nome utente autista',
     'auth.driverUsernamePlaceholder': 'Es. mario.rossi',
     'auth.emailPasswordMissing': 'Inserisci email aziendale e password.',
-    'auth.heroText': 'L azienda controlla patenti, revisioni, assicurazioni e visite mediche. L autista entra con il nome utente creato dall azienda, riceve notifiche in app, carica documenti e segnala guasti.',
+    'auth.heroText': 'Accedi o registra l azienda. Vygo collega persone, mezzi, documenti, notifiche, chat e costi in un unico spazio ordinato.',
     'auth.heroTitle': 'Login azienda e autista, tutto nello stesso posto.',
     'auth.passwordLabel': 'Password',
     'auth.passwordPlaceholder': 'Password',
+    'auth.buyCompany': 'Acquista e attiva azienda',
+    'auth.staffAccess': 'Accesso personale',
+    'auth.proofDeadlines': 'Scadenze sotto controllo',
+    'auth.proofDocuments': 'Documenti sempre disponibili',
+    'auth.proofCosts': 'Costi mezzi piu chiari',
     'auth.proofDriver': 'Area autista',
-    'auth.proofOperations': 'Check e guasti',
+    'auth.proofOperations': 'Attivita tracciate',
     'auth.proofSecurity': 'RLS Supabase',
     'auth.registrationSent': 'Registrazione inviata. Controlla la mail per confermare l account.',
     'auth.signinButton': 'Accedi',
@@ -566,12 +573,17 @@ const translations = {
     'auth.driverUsernameLabel': 'Driver username',
     'auth.driverUsernamePlaceholder': 'Example: mario.rossi',
     'auth.emailPasswordMissing': 'Enter company email and password.',
-    'auth.heroText': 'The company tracks licences, inspections, insurance and medical checks. Drivers enter with the username created by the company, receive in-app alerts, upload documents and report faults.',
+    'auth.heroText': 'Sign in or register the company. Vygo connects people, vehicles, documents, notifications, chat and costs in one organized workspace.',
     'auth.heroTitle': 'Company and driver login, all in one place.',
     'auth.passwordLabel': 'Password',
     'auth.passwordPlaceholder': 'Password',
+    'auth.buyCompany': 'Buy and activate company',
+    'auth.staffAccess': 'Staff access',
+    'auth.proofDeadlines': 'Deadlines under control',
+    'auth.proofDocuments': 'Documents always available',
+    'auth.proofCosts': 'Clearer vehicle costs',
     'auth.proofDriver': 'Driver area',
-    'auth.proofOperations': 'Checks and faults',
+    'auth.proofOperations': 'Tracked operations',
     'auth.proofSecurity': 'Supabase RLS',
     'auth.registrationSent': 'Registration sent. Check your email to confirm the account.',
     'auth.signinButton': 'Sign in',
@@ -748,12 +760,17 @@ const translations = {
     'auth.driverUsernameLabel': 'Usuario conductor',
     'auth.driverUsernamePlaceholder': 'Ej. mario.rossi',
     'auth.emailPasswordMissing': 'Introduce email de empresa y contraseña.',
-    'auth.heroText': 'La empresa controla permisos, inspecciones, seguros y revisiones medicas. El conductor entra con el usuario creado por la empresa, recibe avisos en la app, sube documentos y comunica averias.',
+    'auth.heroText': 'Accede o registra la empresa. Vygo conecta personas, vehiculos, documentos, avisos, chat y costes en un unico espacio ordenado.',
     'auth.heroTitle': 'Login de empresa y conductor, todo en el mismo sitio.',
     'auth.passwordLabel': 'Contraseña',
     'auth.passwordPlaceholder': 'Contraseña',
+    'auth.buyCompany': 'Comprar y activar empresa',
+    'auth.staffAccess': 'Acceso personal',
+    'auth.proofDeadlines': 'Vencimientos controlados',
+    'auth.proofDocuments': 'Documentos siempre disponibles',
+    'auth.proofCosts': 'Costes de vehiculos mas claros',
     'auth.proofDriver': 'Area conductor',
-    'auth.proofOperations': 'Checks y averias',
+    'auth.proofOperations': 'Operaciones trazadas',
     'auth.proofSecurity': 'RLS Supabase',
     'auth.registrationSent': 'Registro enviado. Revisa el email para confirmar la cuenta.',
     'auth.signinButton': 'Acceder',
@@ -878,12 +895,17 @@ const translations = {
     'auth.driverUsernameLabel': 'Utilisateur chauffeur',
     'auth.driverUsernamePlaceholder': 'Ex. mario.rossi',
     'auth.emailPasswordMissing': 'Saisis email entreprise et mot de passe.',
-    'auth.heroText': 'L entreprise suit permis, controles, assurances et visites medicales. Le chauffeur entre avec le nom utilisateur cree par l entreprise, recoit des alertes dans l app, charge ses documents et signale les pannes.',
+    'auth.heroText': 'Connectez-vous ou enregistrez l entreprise. Vygo relie personnes, vehicules, documents, alertes, chat et couts dans un seul espace ordonne.',
     'auth.heroTitle': 'Connexion entreprise et chauffeur, tout au meme endroit.',
     'auth.passwordLabel': 'Mot de passe',
     'auth.passwordPlaceholder': 'Mot de passe',
+    'auth.buyCompany': 'Acheter et activer entreprise',
+    'auth.staffAccess': 'Acces personnel',
+    'auth.proofDeadlines': 'Echeances sous controle',
+    'auth.proofDocuments': 'Documents toujours disponibles',
+    'auth.proofCosts': 'Couts vehicules plus clairs',
     'auth.proofDriver': 'Espace chauffeur',
-    'auth.proofOperations': 'Checks et pannes',
+    'auth.proofOperations': 'Operations tracees',
     'auth.proofSecurity': 'RLS Supabase',
     'auth.registrationSent': 'Inscription envoyee. Controle ton email pour confirmer le compte.',
     'auth.signinButton': 'Se connecter',
@@ -1008,12 +1030,17 @@ const translations = {
     'auth.driverUsernameLabel': 'Fahrer-Benutzername',
     'auth.driverUsernamePlaceholder': 'z. B. mario.rossi',
     'auth.emailPasswordMissing': 'Firmen-E-Mail und Passwort eingeben.',
-    'auth.heroText': 'Die Firma uberwacht Fuhrerscheine, Prufungen, Versicherungen und medizinische Checks. Fahrer melden sich mit dem von der Firma erstellten Benutzernamen an, erhalten App-Hinweise, laden Dokumente hoch und melden Schaden.',
+    'auth.heroText': 'Einloggen oder Firma registrieren. Vygo verbindet Personen, Fahrzeuge, Dokumente, Hinweise, Chat und Kosten in einem geordneten Arbeitsbereich.',
     'auth.heroTitle': 'Login fur Firma und Fahrer, alles an einem Ort.',
     'auth.passwordLabel': 'Passwort',
     'auth.passwordPlaceholder': 'Passwort',
+    'auth.buyCompany': 'Firma kaufen und aktivieren',
+    'auth.staffAccess': 'Personalzugang',
+    'auth.proofDeadlines': 'Fristen unter Kontrolle',
+    'auth.proofDocuments': 'Dokumente immer verfugbar',
+    'auth.proofCosts': 'Klarere Fahrzeugkosten',
     'auth.proofDriver': 'Fahrerbereich',
-    'auth.proofOperations': 'Checks und Schaden',
+    'auth.proofOperations': 'Vorgange verfolgt',
     'auth.proofSecurity': 'Supabase RLS',
     'auth.registrationSent': 'Registrierung gesendet. E-Mail bestatigen, um das Konto zu aktivieren.',
     'auth.signinButton': 'Einloggen',
@@ -3089,8 +3116,15 @@ Object.entries(dailyTranslations).forEach(([translationLanguage, translationEntr
 
 const regionalTranslations = {
   ro: {
+    'auth.buyCompany': 'Cumpara si activeaza compania',
     'auth.companyTab': 'Firma',
     'auth.driverTab': 'Sofer',
+    'auth.heroText': 'Intra sau inregistreaza compania. Vygo conecteaza persoane, vehicule, documente, notificari, chat si costuri intr-un singur spatiu ordonat.',
+    'auth.proofCosts': 'Costuri vehicule mai clare',
+    'auth.proofDeadlines': 'Scadente sub control',
+    'auth.proofDocuments': 'Documente mereu disponibile',
+    'auth.proofOperations': 'Activitati urmarite',
+    'auth.staffAccess': 'Acces personal',
     'brand.tagline': 'Move. Manage. Succeed.',
     'common.add': 'Adauga',
     'common.back': 'Inapoi',
@@ -3140,8 +3174,15 @@ const regionalTranslations = {
     'support.vision': 'Viziune produs',
   },
   pl: {
+    'auth.buyCompany': 'Kup i aktywuj firme',
     'auth.companyTab': 'Firma',
     'auth.driverTab': 'Kierowca',
+    'auth.heroText': 'Zaloguj sie albo zarejestruj firme. Vygo laczy osoby, pojazdy, dokumenty, powiadomienia, chat i koszty w jednym uporzadkowanym miejscu.',
+    'auth.proofCosts': 'Jasniejsze koszty pojazdow',
+    'auth.proofDeadlines': 'Terminy pod kontrola',
+    'auth.proofDocuments': 'Dokumenty zawsze dostepne',
+    'auth.proofOperations': 'Dzialania sledzone',
+    'auth.staffAccess': 'Dostep personelu',
     'brand.tagline': 'Move. Manage. Succeed.',
     'common.add': 'Dodaj',
     'common.back': 'Wstecz',
@@ -4119,7 +4160,7 @@ function updateActiveChatForPush(threadId = '') {
 
   const payload = {
     threadId: threadId || '',
-    type: 'camion-chiaro-active-chat',
+    type: 'vygo-active-chat',
   }
 
   navigator.serviceWorker.controller?.postMessage(payload)
@@ -4738,7 +4779,7 @@ function getChatAttachmentLabel(kind, t) {
   return t('chat.fileAttached')
 }
 
-function getChatAttachmentFileName(path = '', fallback = 'camion-chiaro-media') {
+function getChatAttachmentFileName(path = '', fallback = 'vygo-media') {
   const cleanPath = String(path ?? '').split('?')[0].split('#')[0]
   return decodeURIComponent(cleanPath.slice(cleanPath.lastIndexOf('/') + 1) || fallback)
 }
@@ -4754,7 +4795,7 @@ function triggerChatMediaDownload(url, fileName) {
 
   const link = document.createElement('a')
   link.href = url
-  link.download = fileName || 'camion-chiaro-media'
+  link.download = fileName || 'vygo-media'
   link.rel = 'noreferrer'
   link.style.display = 'none'
   document.body.appendChild(link)
@@ -6482,6 +6523,34 @@ function App() {
     return true
   }
 
+  async function resetAccessPassword(targetType, targetId, displayName = 'utente') {
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      const isDriver = targetType === 'driver'
+      const setStatus = isDriver ? setDriversSyncStatus : setPeopleSyncStatus
+
+      setStatus(`Reimposto password per ${displayName}...`)
+      const result = await resetSupabaseCompanyAccessPassword({ targetId, targetType }, activeCompanyId)
+
+      if (result.error) {
+        setStatus(`Errore reset password: ${result.error.message}`)
+        return false
+      }
+
+      const authEmail = result.data?.authEmail ?? ''
+      const password = result.data?.password ?? ''
+      const username = result.data?.username ?? ''
+
+      setStatus(`Password reimpostata per ${displayName}.`)
+      window.alert(
+        `Password temporanea generata per ${displayName}\n\nUsername: ${username || displayName}\nEmail tecnica: ${authEmail}\nPassword: ${password}\n\nComunicala alla persona e falla cambiare al prossimo accesso.`,
+      )
+      return true
+    }
+
+    window.alert('Il reset password funziona solo dal sito pubblicato e con azienda loggata.')
+    return false
+  }
+
   async function archiveDriverRecord(driverId) {
     if (hasCompanyDataConnection && session?.role === 'company') {
       setDriversSyncStatus('Archiviazione autista su Supabase...')
@@ -7348,6 +7417,31 @@ function App() {
     return true
   }
 
+  async function markTeamChatThreadRead(threadId) {
+    if (!threadId) return false
+
+    const readAt = new Date().toISOString()
+
+    setTeamChatMessageRecords((currentMessages) =>
+      currentMessages.map((message) =>
+        message.threadId === threadId && (message.senderRole !== 'company' || message.senderPersonId) && !message.readByCompanyAt
+          ? { ...message, readByCompanyAt: readAt }
+          : message,
+      ),
+    )
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      const result = await markSupabaseTeamThreadRead(threadId)
+
+      if (result.error) {
+        setChatSyncStatus(`Lettura gruppo aggiornata localmente. Supabase: ${result.error.message}`)
+        return true
+      }
+    }
+
+    return true
+  }
+
   async function updateChatMessageReaction(message, actorRole, reaction) {
     if (!message?.id || !['company', 'driver'].includes(actorRole)) return false
 
@@ -8095,6 +8189,7 @@ function App() {
             onOpenDriverDocument={openDriverDocumentFile}
             onRemoveDocument={removeDriverDocumentRecord}
             onRemoveDocumentFile={removeDriverDocumentFile}
+            onResetAccessPassword={resetAccessPassword}
             onAddVehicle={addVehicleRecord}
             onArchiveVehicle={archiveVehicleRecord}
             onTabChange={setRecordsTab}
@@ -8133,6 +8228,7 @@ function App() {
             chatThreads={chatThreadRecords}
             driverRecords={driverRecords}
             onMarkRead={markChatThreadRead}
+            onMarkTeamRead={markTeamChatThreadRead}
             onReactToMessage={updateChatMessageReaction}
             onRefreshAssetPreviewUrl={refreshAssetPreviewUrl}
             onSendMessage={sendChatMessage}
@@ -8340,7 +8436,7 @@ function CompanyLicenseGate({
       <section className="license-gate-panel license-checkout-panel">
         <div className="license-gate-heading">
           <div className="brand-mark">
-            <CamionChiaroMark />
+            <VygoMark />
           </div>
           <div>
             <p className="overline">Vygo</p>
@@ -8492,7 +8588,7 @@ function DriverLicenseBlockedScreen({ companyName, onSignOut }) {
     <main className="license-gate is-driver">
       <section className="license-gate-panel">
         <div className="brand-mark">
-          <CamionChiaroMark />
+          <VygoMark />
         </div>
         <p className="overline">{companyName}</p>
         <h1>Area autista non disponibile</h1>
@@ -8653,7 +8749,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
       <header className="public-header">
         <button className="brand brand-button public-brand" onClick={() => openAccess('company', 'signin')} type="button">
           <div className="brand-mark">
-            <CamionChiaroMark />
+            <VygoMark />
           </div>
           <div>
             <strong>Vygo</strong>
@@ -8680,25 +8776,22 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
             <img src="/brand/vygo-logo-horizontal.png" alt="Vygo - Move. Manage. Succeed." />
             <span>Vygo</span>
           </h1>
-          <p>
-            Basta documenti sparsi, scadenze ricordate a memoria e guasti persi in chat. Vygo mette flotta,
-            autisti, documenti, notifiche, guasti, chat e costi in un unico posto semplice da usare.
-          </p>
+          <p>{t('auth.heroText')}</p>
           <div className="public-hero-actions">
             <button className="primary-button" onClick={() => openAccess('company', 'signup')} type="button">
               <BadgeCheck size={18} />
-              Acquista e attiva azienda
+              {t('auth.buyCompany')}
             </button>
             <button className="secondary-button" onClick={() => openAccess('driver', 'signin')} type="button">
               <Smartphone size={18} />
-              Accesso autista
+              {t('auth.staffAccess')}
             </button>
           </div>
           <div className="public-proof-grid">
-            <span><ShieldCheck size={17} /> Scadenze sotto controllo</span>
-            <span><Wrench size={17} /> Guasti tracciati</span>
-            <span><FileText size={17} /> Documenti sempre disponibili</span>
-            <span><Banknote size={17} /> Costi mezzi piu chiari</span>
+            <span><ShieldCheck size={17} /> {t('auth.proofDeadlines')}</span>
+            <span><Wrench size={17} /> {t('auth.proofOperations')}</span>
+            <span><FileText size={17} /> {t('auth.proofDocuments')}</span>
+            <span><Banknote size={17} /> {t('auth.proofCosts')}</span>
           </div>
         </div>
 
@@ -8831,124 +8924,6 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         </section>
       </section>
 
-      <section className="public-product-preview" aria-label="Anteprima Vygo">
-        <div className="public-dashboard-mock">
-          <div className="public-mock-topbar">
-            <div>
-              <span>Dashboard azienda</span>
-              <strong>La tua azienda SRL</strong>
-            </div>
-            <Bell size={19} />
-          </div>
-          <div className="public-mock-kpis">
-            <div>
-              <strong>3</strong>
-              <span>Scadenze 30 giorni</span>
-            </div>
-            <div className="is-warning">
-              <strong>1</strong>
-              <span>Check critico</span>
-            </div>
-            <div className="is-danger">
-              <strong>2</strong>
-              <span>Guasti aperti</span>
-            </div>
-            <div>
-              <strong>1.240€</strong>
-              <span>Costi mese</span>
-            </div>
-          </div>
-          <div className="public-mock-list">
-            <div>
-              <CalendarClock size={18} />
-              <span>Revisione trattore AB123CD</span>
-              <strong>12 giorni</strong>
-            </div>
-            <div>
-              <Wrench size={18} />
-              <span>Spia avaria motrice EF456GH</span>
-              <strong>Da aprire</strong>
-            </div>
-            <div>
-              <FileText size={18} />
-              <span>Patente Mario Rossi</span>
-              <strong>45 giorni</strong>
-            </div>
-          </div>
-        </div>
-        <div className="public-phone-mock">
-          <div className="public-phone-speaker" />
-          <strong>Area autista</strong>
-          <span>Check mattutino</span>
-          <div className="public-phone-checks">
-            <p><CheckCircle2 size={16} /> Luci</p>
-            <p><CheckCircle2 size={16} /> Pneumatici</p>
-            <p><AlertTriangle size={16} /> Foto guasto caricata</p>
-          </div>
-          <button className="primary-button" type="button">
-            <Send size={16} />
-            Invia report
-          </button>
-        </div>
-      </section>
-
-      <section className="public-section">
-        <div className="public-section-heading">
-          <p className="overline">Perche serve</p>
-          <h2>Il problema non e guidare. E non perdere il controllo.</h2>
-          <p>
-            Patenti, revisioni, assicurazioni, visite mediche, documenti autista, guasti, messaggi e costi finiscono spesso
-            in posti diversi. Vygo li porta in un unico flusso leggibile, cosi l ufficio sa cosa fare e il titolare
-            vede cosa sta succedendo anche fuori sede.
-          </p>
-        </div>
-        <div className="public-feature-grid">
-          <article>
-            <CalendarClock size={22} />
-            <h3>Scadenze automatiche</h3>
-            <p>Promemoria per mezzi, autisti e azienda prima che una data dimenticata diventi urgenza, fermo o perdita di tempo.</p>
-          </article>
-          <article>
-            <ClipboardCheck size={22} />
-            <h3>Check e guasti</h3>
-            <p>L autista invia check e segnalazioni con foto, mezzo, semirimorchio agganciato e storico. L ufficio apre tutto in modo chiaro.</p>
-          </article>
-          <article>
-            <Mail size={22} />
-            <h3>Chat e notifiche</h3>
-            <p>Messaggi live, gruppi, spunte, reaction e notifiche telefono per smettere di inseguire le persone su mille canali.</p>
-          </article>
-          <article>
-            <FileText size={22} />
-            <h3>Documenti sempre pronti</h3>
-            <p>L autista conserva i documenti visibili nell app e puo mostrarli quando servono, senza chiamare l ufficio in emergenza.</p>
-          </article>
-          <article>
-            <Banknote size={22} />
-            <h3>Centro costi</h3>
-            <p>Ogni guasto puo avere importo e note, cosi inizi a vedere quali targhe generano piu spese mese dopo mese.</p>
-          </article>
-          <article>
-            <Users size={22} />
-            <h3>Ufficio e magazzino</h3>
-            <p>Non solo autisti: puoi organizzare persone, reparti, strumenti, muletti e comunicazioni operative aziendali.</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="public-section public-workflow">
-        <div className="public-section-heading">
-          <p className="overline">Come lavora</p>
-          <h2>Una giornata normale, finalmente ordinata.</h2>
-        </div>
-        <div className="public-steps">
-          <div><strong>1</strong><span>L azienda inserisce persone, mezzi, semirimorchi, strumenti e prime scadenze.</span></div>
-          <div><strong>2</strong><span>Autisti e personale entrano nell app, ricevono notifiche e fanno check o segnalazioni.</span></div>
-          <div><strong>3</strong><span>La dashboard mostra check critici, guasti aperti, scadenze e costi del mese.</span></div>
-          <div><strong>4</strong><span>Ogni pratica viene lavorata, archiviata e ritrovata quando serve.</span></div>
-        </div>
-      </section>
-
       <section className="public-section" id="prezzi">
         <div className="public-section-heading">
           <p className="overline">Piani</p>
@@ -8997,8 +8972,10 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
         </div>
         <div className="public-extra-pricing">
-          <div><strong>Chat aziendale</strong><span>100 euro/mese + IVA per chat singole, gruppi, foto, video, audio e notifiche.</span></div>
-          <div><strong>Start-up kit</strong><span>1.500 euro + IVA una tantum per configurazione, anagrafiche iniziali e formazione.</span></div>
+          <div><strong>Chat aziendale</strong><span>100 euro/mese + IVA per chat singole, gruppi, foto, video, audio, allegati e notifiche.</span></div>
+          <div><strong>Centro costi Premium</strong><span>150 euro/mese + IVA per guasti, manutenzioni, sanzioni, costi per targa, autista, periodo e attrezzatura.</span></div>
+          <div><strong>Report direzionali</strong><span>250 euro/mese + IVA per report avanzati, CSV, stampa A4 e riepiloghi pronti per la direzione.</span></div>
+          <div><strong>Start-up kit</strong><span>1.500 euro + IVA una tantum per configurazione, anagrafiche iniziali, scadenze e formazione.</span></div>
           <div><strong>Storage extra</strong><span>20 GB: 49 euro/mese + IVA · 50 GB: 99 euro/mese + IVA · 100 GB: 179 euro/mese + IVA.</span></div>
         </div>
       </section>
@@ -9059,7 +9036,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
     <aside className="sidebar" aria-label="Navigazione principale">
       <button className="brand brand-button" onClick={onHome} type="button">
         <div className="brand-mark">
-          <CamionChiaroMark />
+          <VygoMark />
         </div>
         <div>
           <strong>Vygo</strong>
@@ -9120,7 +9097,7 @@ function Topbar({
       <div className="topbar-heading">
         <span className="topbar-brand-badge" aria-hidden="true">
           <span className="topbar-brand-icon">
-            <CamionChiaroMark />
+            <VygoMark />
           </span>
           <img className="topbar-brand-full" src="/brand/vygo-logo-horizontal.png" alt="" />
         </span>
@@ -9356,7 +9333,7 @@ function TopbarNotifications({
   )
 }
 
-function CamionChiaroMark() {
+function VygoMark() {
   return (
     <img className="camion-logo-mark" src={camionChiaroIconUrl} alt="Vygo" />
   )
@@ -10786,6 +10763,7 @@ function RecordsWorkspace({
   onOpenDriverDocument,
   onRemoveDocument,
   onRemoveDocumentFile,
+  onResetAccessPassword,
   onTabChange,
   onUpdateDocument,
   onUpdateDriver,
@@ -10879,6 +10857,7 @@ function RecordsWorkspace({
           assetRecords={assetRecords}
           itemRecords={itemRecords}
           onAddPerson={onAddPerson}
+          onResetAccessPassword={onResetAccessPassword}
           personRecords={personRecords}
           syncStatus={peopleSyncStatus}
         />
@@ -10926,6 +10905,7 @@ function RecordsWorkspace({
           onArchiveDriver={onArchiveDriver}
           onBackHome={onBackHome}
           onDriverProfileImageUpload={onDriverProfileImageUpload}
+          onResetAccessPassword={onResetAccessPassword}
           onUpdateDriver={onUpdateDriver}
           syncStatus={driversSyncStatus}
           vehicleRecords={vehicleRecords}
@@ -11224,7 +11204,7 @@ function getUpcomingWorkforceDeadlines(itemRecords, matcher) {
     .slice(0, 3)
 }
 
-function PeopleWorkspace({ assetRecords = [], itemRecords = [], onAddPerson, personRecords = [], syncStatus }) {
+function PeopleWorkspace({ assetRecords = [], itemRecords = [], onAddPerson, onResetAccessPassword, personRecords = [], syncStatus }) {
   const officePeople = personRecords.filter((person) => person.department === 'office')
   const warehousePeople = personRecords.filter((person) => person.department === 'warehouse')
   const warehouseAssets = assetRecords.filter((asset) => !['archived', 'Archiviato'].includes(asset.status))
@@ -11273,6 +11253,7 @@ function PeopleWorkspace({ assetRecords = [], itemRecords = [], onAddPerson, per
               emptyText="Nessuna persona ufficio caricata."
               icon={Building2}
               itemRecords={itemRecords}
+              onResetAccessPassword={onResetAccessPassword}
               people={officePeople}
               title="Ufficio"
             />
@@ -11280,6 +11261,7 @@ function PeopleWorkspace({ assetRecords = [], itemRecords = [], onAddPerson, per
               emptyText="Nessun magazziniere caricato."
               icon={Users}
               itemRecords={itemRecords}
+              onResetAccessPassword={onResetAccessPassword}
               people={warehousePeople}
               title="Magazzino"
             />
@@ -11468,7 +11450,7 @@ function PersonCreatePanel({ onAddPerson, syncStatus }) {
   )
 }
 
-function PeopleDepartmentBlock({ emptyText, icon: Icon, itemRecords, people, title }) {
+function PeopleDepartmentBlock({ emptyText, icon: Icon, itemRecords, onResetAccessPassword, people, title }) {
   return (
     <section className="people-section">
       <div className="people-section-title">
@@ -11485,6 +11467,9 @@ function PeopleDepartmentBlock({ emptyText, icon: Icon, itemRecords, people, tit
               <span>{person.jobTitle || getWorkforceRoleLabel(person.personType)} · {getWorkforceDepartmentLabel(person.department)}</span>
               <small>{[person.phone, person.email, person.depot].filter(Boolean).join(' · ') || 'Contatto non indicato'}</small>
             </div>
+            <button className="small-button" onClick={() => onResetAccessPassword?.('person', person.id, person.name)} type="button">
+              Reimposta password
+            </button>
             <WorkforceDeadlineMiniList deadlines={deadlines} />
           </article>
         )
@@ -11522,6 +11507,7 @@ function DriversWorkspace({
   onArchiveDriver,
   onBackHome,
   onDriverProfileImageUpload,
+  onResetAccessPassword,
   onUpdateDriver,
   syncStatus,
   vehicleRecords,
@@ -11610,6 +11596,7 @@ function DriversWorkspace({
                 onEdit={() => startEditing(driver)}
                 onPhotoUpload={(file) => onDriverProfileImageUpload(driver.id, file)}
                 onPreviewPhoto={() => setPhotoPreviewDriver(driver)}
+                onResetPassword={() => onResetAccessPassword?.('driver', driver.id, driver.name)}
                 onSave={() => saveDraft(driver.id)}
                 onUpdateDraft={(field, value) => updateDraft(driver.id, field, value)}
                 saving={savingId === driver.id}
@@ -11645,6 +11632,7 @@ function DriverManagementRow({
   onEdit,
   onPhotoUpload,
   onPreviewPhoto,
+  onResetPassword,
   onSave,
   onUpdateDraft,
   saving,
@@ -11726,6 +11714,9 @@ function DriverManagementRow({
         <button className="small-button" disabled={saving} onClick={onEdit} type="button">
           <Pencil size={15} />
           {t('common.edit')}
+        </button>
+        <button className="small-button" disabled={saving} onClick={onResetPassword} type="button">
+          Reimposta password
         </button>
         <button className="small-button danger-action" disabled={saving} onClick={onArchive} type="button">
           {saving ? t('common.archiving') : t('common.archive')}
@@ -13487,7 +13478,7 @@ function FaultCostReport({
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `camion-chiaro-${buildReportFileSlug()}.csv`
+    link.download = `vygo-${buildReportFileSlug()}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -13554,7 +13545,7 @@ function FaultCostReport({
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `camion-chiaro-report-mensile-premium-${monthlyRange.label.replace(/\s+/g, '-').toLowerCase()}.csv`
+    link.download = `vygo-report-mensile-premium-${monthlyRange.label.replace(/\s+/g, '-').toLowerCase()}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -15106,6 +15097,7 @@ function ChatWorkspace({
   chatThreads = [],
   driverRecords = [],
   onMarkRead,
+  onMarkTeamRead,
   onReactToMessage,
   onRefreshAssetPreviewUrl,
   onSendMessage,
@@ -15252,7 +15244,10 @@ function ChatWorkspace({
   )
   const directConversationCount = conversationDrivers.length + directTeamThreads.length
   const groupConversationCount = groupTeamThreads.length
-  const unreadDirectConversationCount = conversationDrivers.reduce((total, driver) => total + getDriverUnreadMessageCount(driver.id), 0)
+  const unreadDirectTeamConversationCount = directTeamThreads.reduce((total, thread) => total + getTeamUnreadMessageCount(thread.id), 0)
+  const unreadGroupConversationCount = groupTeamThreads.reduce((total, thread) => total + getTeamUnreadMessageCount(thread.id), 0)
+  const unreadDirectConversationCount = conversationDrivers.reduce((total, driver) => total + getDriverUnreadMessageCount(driver.id), 0) + unreadDirectTeamConversationCount
+  const totalUnreadConversationCount = unreadDirectConversationCount + unreadGroupConversationCount
   const inboxFilters = [
     {
       count: directConversationCount + groupConversationCount,
@@ -15270,18 +15265,22 @@ function ChatWorkspace({
       label: 'Gruppi',
     },
     {
-      count: unreadDirectConversationCount,
+      count: totalUnreadConversationCount,
       id: 'unread',
       label: 'Da leggere',
     },
   ]
   const showDirectRows = chatListMode === 'all' || chatListMode === 'direct' || chatListMode === 'unread'
-  const showGroupRows = chatListMode === 'all' || chatListMode === 'groups'
+  const showGroupRows = chatListMode === 'all' || chatListMode === 'groups' || chatListMode === 'unread'
   const visibleConversationDrivers = chatListMode === 'unread'
     ? conversationDrivers.filter((driver) => getDriverUnreadMessageCount(driver.id) > 0)
     : conversationDrivers
-  const visibleDirectTeamThreads = chatListMode === 'unread' ? [] : directTeamThreads
-  const visibleGroupTeamThreads = chatListMode === 'unread' ? [] : groupTeamThreads
+  const visibleDirectTeamThreads = chatListMode === 'unread'
+    ? directTeamThreads.filter((thread) => getTeamUnreadMessageCount(thread.id) > 0)
+    : directTeamThreads
+  const visibleGroupTeamThreads = chatListMode === 'unread'
+    ? groupTeamThreads.filter((thread) => getTeamUnreadMessageCount(thread.id) > 0)
+    : groupTeamThreads
   const selectedTeamThread = [...directTeamThreads, ...groupTeamThreads].find((thread) => thread.id === selectedTeamThreadId) ?? null
   const selectedDriver = selectedTeamThread
     ? null
@@ -15374,6 +15373,12 @@ function ChatWorkspace({
       : 0
   }
 
+  function getTeamUnreadMessageCount(threadId) {
+    return (teamMessagesByThread.get(threadId) ?? []).filter(
+      (message) => (message.senderRole !== 'company' || message.senderPersonId) && !message.readByCompanyAt,
+    ).length
+  }
+
   function handleAttachmentChange(event) {
     const file = event.target.files?.[0] ?? null
     setAttachmentFile(file)
@@ -15401,6 +15406,7 @@ function ChatWorkspace({
     setIsCompanyChatOpen(true)
     setReplyToMessage(null)
     messageActions.closeMessageActions()
+    onMarkTeamRead?.(threadId)
   }
 
   function getCompanyMessageSenderLabel(message) {
@@ -15632,7 +15638,11 @@ function ChatWorkspace({
 
             return (
               <button
-                className={isSelected ? 'chat-driver-row is-selected' : 'chat-driver-row'}
+                className={[
+                  'chat-driver-row',
+                  isSelected ? 'is-selected' : '',
+                  unreadMessageCount > 0 ? 'is-unread' : '',
+                ].filter(Boolean).join(' ')}
                 key={driver.id}
                 onClick={() => selectDriverChat(driver.id)}
                 type="button"
@@ -15664,10 +15674,14 @@ function ChatWorkspace({
           {showDirectRows && visibleDirectTeamThreads.map((thread) => {
             const lastMessage = getLastTeamMessage(thread.id)
             const isSelected = selectedTeamThread?.id === thread.id
+            const unreadMessageCount = getTeamUnreadMessageCount(thread.id)
 
             return (
               <button
-                className={getTeamThreadRowClassName('chat-driver-row', thread, isSelected)}
+                className={[
+                  getTeamThreadRowClassName('chat-driver-row', thread, isSelected),
+                  unreadMessageCount > 0 ? 'is-unread' : '',
+                ].filter(Boolean).join(' ')}
                 key={thread.id}
                 onClick={() => selectTeamChat(thread.id)}
                 type="button"
@@ -15685,6 +15699,7 @@ function ChatWorkspace({
                 </span>
                 <span className="chat-row-meta">
                   <strong className="chat-kind-badge">{getTeamThreadKindLabel(thread)}</strong>
+                  {unreadMessageCount > 0 && <strong className="chat-unread-badge">{unreadMessageCount}</strong>}
                   {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
                 </span>
               </button>
@@ -15696,10 +15711,14 @@ function ChatWorkspace({
           {showGroupRows && visibleGroupTeamThreads.map((thread) => {
             const lastMessage = getLastTeamMessage(thread.id)
             const isSelected = selectedTeamThread?.id === thread.id
+            const unreadMessageCount = getTeamUnreadMessageCount(thread.id)
 
             return (
               <button
-                className={getTeamThreadRowClassName('chat-driver-row', thread, isSelected)}
+                className={[
+                  getTeamThreadRowClassName('chat-driver-row', thread, isSelected),
+                  unreadMessageCount > 0 ? 'is-unread' : '',
+                ].filter(Boolean).join(' ')}
                 key={thread.id}
                 onClick={() => selectTeamChat(thread.id)}
                 type="button"
@@ -15717,6 +15736,7 @@ function ChatWorkspace({
                 </span>
                 <span className="chat-row-meta">
                   <strong className="chat-kind-badge">{getTeamThreadKindLabel(thread)}</strong>
+                  {unreadMessageCount > 0 && <strong className="chat-unread-badge">{unreadMessageCount}</strong>}
                   {lastMessage && <em>{formatShortDateTime(lastMessage.createdAt)}</em>}
                 </span>
               </button>

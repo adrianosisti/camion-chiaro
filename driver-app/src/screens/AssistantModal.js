@@ -3,7 +3,7 @@ import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, Scrol
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../theme'
 
-const supportEmail = 'assistenza@vygo.app'
+const supportEmail = 'support@vy-go.com'
 
 const assistantTopics = [
   {

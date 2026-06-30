@@ -290,7 +290,7 @@ export async function handler(event) {
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const vapidPublicKey = process.env.WEB_PUSH_PUBLIC_KEY ?? process.env.VITE_WEB_PUSH_PUBLIC_KEY
   const vapidPrivateKey = process.env.WEB_PUSH_PRIVATE_KEY
-  const vapidSubject = process.env.WEB_PUSH_SUBJECT ?? 'mailto:info@vygo.app'
+  const vapidSubject = process.env.WEB_PUSH_SUBJECT ?? 'mailto:info@vy-go.com'
 
   if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
     return jsonResponse(500, { error: 'Configurazione Supabase Netlify mancante.' })
@@ -318,7 +318,7 @@ export async function handler(event) {
   const title = String(body.title ?? 'Vygo').slice(0, 120)
   const messageBody = String(body.body ?? 'Nuovo aggiornamento disponibile.').slice(0, 240)
   const url = String(body.url ?? '/')
-  const tag = String(body.tag ?? `camion-chiaro-${Date.now()}`)
+  const tag = String(body.tag ?? `vygo-${Date.now()}`)
   const notificationType = String(body.notificationType ?? '').slice(0, 40)
   const threadId = String(body.threadId ?? '').slice(0, 120)
 

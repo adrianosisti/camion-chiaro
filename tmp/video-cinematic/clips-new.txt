@@ -1,0 +1,8 @@
+file '/Users/adriano/Documents/app trasporti/tmp/video-cinematic/clip-new-01.mp4'
+file '/Users/adriano/Documents/app trasporti/tmp/video-cinematic/clip-new-02.mp4'
+file '/Users/adriano/Documents/app trasporti/tmp/video-cinematic/clip-new-03.mp4'
+file '/Users/adriano/Documents/app trasporti/tmp/video-cinematic/clip-new-04.mp4'
+file '/Users/adriano/Documents/app trasporti/tmp/video-cinematic/clip-new-05.mp4'
+file '/Users/adriano/Documents/app trasporti/tmp/video-cinematic/clip-new-06.mp4'
+file '/Users/adriano/Documents/app trasporti/tmp/video-cinematic/clip-new-07.mp4'
+file '/Users/adriano/Documents/app trasporti/tmp/video-cinematic/clip-new-08.mp4'

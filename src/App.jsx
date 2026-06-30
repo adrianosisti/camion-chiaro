@@ -12868,6 +12868,7 @@ function FaultCostReport({
     id: '',
     notes: '',
   })
+  const costEditorRef = useRef(null)
   const defaultCurrency = getDefaultCurrency(language)
   const driverById = useMemo(() => new Map(driverRecords.map((driver) => [driver.id, driver])), [driverRecords])
   const vehicleById = useMemo(() => new Map(vehicleRecords.map((vehicle) => [vehicle.id, vehicle])), [vehicleRecords])
@@ -13228,7 +13229,17 @@ function FaultCostReport({
   function openNewCostForm(type = 'cost') {
     setCostForm(type === 'fine' ? getFineCostFormPreset() : getEmptyCostForm())
     setFaultCostForm({ amount: '', id: '', notes: '' })
+    if (type === 'fine') {
+      setReportType('fines')
+      setCategoryFilter('fine')
+    } else if (['fines', 'fine_ranking'].includes(reportType)) {
+      setReportType('detail')
+      setCategoryFilter('all')
+    }
     setIsAddingCost(true)
+    window.requestAnimationFrame(() => {
+      costEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
   }
 
   useEffect(() => {
@@ -13305,7 +13316,11 @@ function FaultCostReport({
       title: entry.title ?? '',
       vehicleId: entry.vehicleId ?? '',
     })
+    setFaultCostForm({ amount: '', id: '', notes: '' })
     setIsAddingCost(true)
+    window.requestAnimationFrame(() => {
+      costEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
   }
 
   async function deleteCostEntry(entry = {}) {
@@ -13323,6 +13338,9 @@ function FaultCostReport({
       notes: report.repairNotes ?? '',
     })
     setIsAddingCost(false)
+    window.requestAnimationFrame(() => {
+      costEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
   }
 
   function cancelFaultCostEdit() {
@@ -13738,21 +13756,13 @@ function FaultCostReport({
         <div className="fault-cost-report-actions">
           {isReportWorkspace ? (
             <>
-              <button className="secondary-button compact-button" onClick={() => (isAddingCost ? resetCostForm() : openNewCostForm())} type="button">
-                <Plus size={16} />
-                {isAddingCost ? 'Chiudi' : 'Aggiungi spesa'}
-              </button>
-              <button className="secondary-button compact-button tone-warning-button" onClick={() => openNewCostForm('fine')} type="button">
-                <AlertTriangle size={16} />
-                Nuova sanzione
-              </button>
               <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
                 <Download size={16} />
-                Scarica CSV
+                CSV filtrato
               </button>
               <button className="primary-button compact-button" onClick={printCostReport} type="button">
                 <FileText size={16} />
-                Stampa / PDF
+                Stampa report
               </button>
             </>
           ) : (
@@ -13793,94 +13803,46 @@ function FaultCostReport({
         </div>
       ) : null}
       {isReportWorkspace ? (
-        <section className="monthly-premium-report" aria-label="Report mensile premium">
-          <div className="monthly-report-head">
-            <div>
-              <p className="overline">Premium mensile</p>
-              <h3>Report automatico {monthlyRange.label}</h3>
-              <span>Riepilogo pronto per titolare: costi, multe, guasti, check, scadenze e priorita operative.</span>
-            </div>
-            <div className="monthly-report-buttons">
-              <button className="secondary-button compact-button" onClick={downloadMonthlyPremiumCsv} type="button">
-                <Download size={16} />
-                CSV mese
-              </button>
-              <button className="primary-button compact-button" onClick={printMonthlyPremiumReport} type="button">
-                <FileText size={16} />
-                Stampa mese
-              </button>
-            </div>
+        <div className="report-action-board" aria-label="Azioni report e inserimento costi">
+          <div>
+            <p className="overline">Inserimento dati</p>
+            <strong>Aggiungi costi e sanzioni</strong>
+            <span>Qui registri manualmente manutenzioni, multe, assicurazioni, gomme, revisioni o spese generali. I report sotto si aggiornano con gli stessi filtri.</span>
           </div>
-          <div className="monthly-archive-panel">
-            <div className="monthly-archive-heading">
-              <strong>Archivio report mensili</strong>
-              <span>Ogni mese si compone automaticamente dai dati storici. Scegli il mese e poi stampa o esporta.</span>
-            </div>
-            <div className="monthly-archive-strip" aria-label="Archivio mesi disponibili">
-              {monthlyArchiveRows.map((row) => (
-                <button
-                  className={row.key === selectedArchiveMonthKey ? 'is-active' : ''}
-                  key={row.key}
-                  onClick={() => setSelectedArchiveMonthKey(row.key)}
-                  type="button"
-                >
-                  <strong>{row.label}</strong>
-                  <span>{formatMoneyCents(row.totalCents, defaultCurrency)}</span>
-                  <small>
-                    {row.costCount} costi · {row.faultCount} guasti · {row.criticalCheckCount} check critici · {row.deadlineCount} scadenze
-                  </small>
-                </button>
-              ))}
-            </div>
+          <div className="report-action-grid">
+            <button
+              className={`report-action-button ${isAddingCost && !isFineCostForm ? 'is-active' : ''}`}
+              onClick={() => openNewCostForm('cost')}
+              type="button"
+            >
+              <Plus size={18} />
+              <strong>Nuova spesa</strong>
+              <span>Manutenzione, gomme, assicurazione, revisione, muletto o costo libero.</span>
+            </button>
+            <button
+              className={`report-action-button is-warning ${isAddingCost && isFineCostForm ? 'is-active' : ''}`}
+              onClick={() => openNewCostForm('fine')}
+              type="button"
+            >
+              <AlertTriangle size={18} />
+              <strong>Nuova sanzione</strong>
+              <span>Multe con importo, targa e autista responsabile.</span>
+            </button>
+            <button className="report-action-button" onClick={downloadCostCsv} type="button">
+              <Download size={18} />
+              <strong>Scarica CSV</strong>
+              <span>Esporta esattamente il report filtrato a video.</span>
+            </button>
+            <button className="report-action-button is-primary" onClick={printCostReport} type="button">
+              <FileText size={18} />
+              <strong>Stampa / PDF</strong>
+              <span>Genera una pagina pulita pronta da salvare o stampare.</span>
+            </button>
           </div>
-          <div className="monthly-report-grid">
-            <article className="is-accent">
-              <span>Costi mese</span>
-              <strong>{formatMoneyCents(monthlyTotalCents, defaultCurrency)}</strong>
-              <small>{monthlyCostRows.length} voci registrate</small>
-            </article>
-            <article className={monthlyOpenFaultRows.length ? 'is-danger' : ''}>
-              <span>Guasti aperti</span>
-              <strong>{monthlyOpenFaultRows.length}</strong>
-              <small>{monthlyFaultRows.length} ricevuti nel mese</small>
-            </article>
-            <article className={monthlyCriticalCheckRows.length ? 'is-warning' : ''}>
-              <span>Check critici</span>
-              <strong>{monthlyCriticalCheckRows.length}</strong>
-              <small>{monthlyOkCheckRows.length} check ok</small>
-            </article>
-            <article className={actionableDeadlineRows.length ? 'is-danger' : ''}>
-              <span>Scadenze da lavorare</span>
-              <strong>{actionableDeadlineRows.length}</strong>
-              <small>{monthlyDeadlineRows.length} con data nel mese</small>
-            </article>
-            <article>
-              <span>Soggetto più costoso</span>
-              <strong>{monthlyTopTargetCost?.name ?? 'Nessun dato'}</strong>
-              <small>{monthlyTopTargetCost ? formatMoneyCents(monthlyTopTargetCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
-            </article>
-            <article>
-              <span>Categoria più pesante</span>
-              <strong>{monthlyTopCategoryCost?.name ?? 'Nessun dato'}</strong>
-              <small>{monthlyTopCategoryCost ? formatMoneyCents(monthlyTopCategoryCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
-            </article>
-          </div>
-          <div className="monthly-report-actions-list">
-            <strong>Azioni consigliate</strong>
-            {monthlyActionRows.length ? monthlyActionRows.map((action) => (
-              <article className={`tone-${action.tone}`} key={action.title}>
-                <span>{action.title}</span>
-                <b>{action.value}</b>
-                <small>{action.body}</small>
-              </article>
-            )) : (
-              <p>Nessuna urgenza aperta: il mese e pulito e pronto da archiviare.</p>
-            )}
-          </div>
-        </section>
+        </div>
       ) : null}
       {isAddingCost ? (
-        <form className="fault-cost-entry-form" onSubmit={handleSubmitCostEntry}>
+        <form className={`fault-cost-entry-form ${isFineCostForm ? 'is-fine-entry' : ''}`} onSubmit={handleSubmitCostEntry} ref={costEditorRef}>
           <div className="fault-cost-entry-title fault-cost-entry-wide">
             <strong>
               {isFineCostForm
@@ -13999,15 +13961,13 @@ function FaultCostReport({
           <button className="primary-button fault-cost-entry-wide" disabled={isSavingCost} type="submit">
             {isSavingCost ? 'Salvo...' : costForm.id ? 'Aggiorna spesa' : 'Salva spesa'}
           </button>
-          {costForm.id ? (
-            <button className="secondary-button fault-cost-entry-wide" onClick={resetCostForm} type="button">
-              Annulla modifica
-            </button>
-          ) : null}
+          <button className="secondary-button fault-cost-entry-wide" onClick={resetCostForm} type="button">
+            {costForm.id ? 'Annulla modifica' : 'Chiudi inserimento'}
+          </button>
         </form>
       ) : null}
       {faultCostForm.id ? (
-        <form className="fault-cost-entry-form" onSubmit={submitFaultCostEdit}>
+        <form className="fault-cost-entry-form" onSubmit={submitFaultCostEdit} ref={costEditorRef}>
           <div className="fault-cost-entry-title fault-cost-entry-wide">
             <strong>Modifica costo guasto</strong>
             <span>Cambia o azzera il costo riparazione registrato su un guasto già archiviato o aperto.</span>
@@ -14027,6 +13987,93 @@ function FaultCostReport({
             Annulla modifica
           </button>
         </form>
+      ) : null}
+      {isReportWorkspace ? (
+        <section className="monthly-premium-report" aria-label="Report mensile premium">
+          <div className="monthly-report-head">
+            <div>
+              <p className="overline">Premium mensile</p>
+              <h3>Report automatico {monthlyRange.label}</h3>
+              <span>Riepilogo pronto per titolare: costi, multe, guasti, check, scadenze e priorita operative.</span>
+            </div>
+            <div className="monthly-report-buttons">
+              <button className="secondary-button compact-button" onClick={downloadMonthlyPremiumCsv} type="button">
+                <Download size={16} />
+                CSV mese
+              </button>
+              <button className="primary-button compact-button" onClick={printMonthlyPremiumReport} type="button">
+                <FileText size={16} />
+                Stampa mese
+              </button>
+            </div>
+          </div>
+          <div className="monthly-archive-panel">
+            <div className="monthly-archive-heading">
+              <strong>Archivio report mensili</strong>
+              <span>Ogni mese si compone automaticamente dai dati storici. Scegli il mese e poi stampa o esporta.</span>
+            </div>
+            <div className="monthly-archive-strip" aria-label="Archivio mesi disponibili">
+              {monthlyArchiveRows.map((row) => (
+                <button
+                  className={row.key === selectedArchiveMonthKey ? 'is-active' : ''}
+                  key={row.key}
+                  onClick={() => setSelectedArchiveMonthKey(row.key)}
+                  type="button"
+                >
+                  <strong>{row.label}</strong>
+                  <span>{formatMoneyCents(row.totalCents, defaultCurrency)}</span>
+                  <small>
+                    {row.costCount} costi · {row.faultCount} guasti · {row.criticalCheckCount} check critici · {row.deadlineCount} scadenze
+                  </small>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="monthly-report-grid">
+            <article className="is-accent">
+              <span>Costi mese</span>
+              <strong>{formatMoneyCents(monthlyTotalCents, defaultCurrency)}</strong>
+              <small>{monthlyCostRows.length} voci registrate</small>
+            </article>
+            <article className={monthlyOpenFaultRows.length ? 'is-danger' : ''}>
+              <span>Guasti aperti</span>
+              <strong>{monthlyOpenFaultRows.length}</strong>
+              <small>{monthlyFaultRows.length} ricevuti nel mese</small>
+            </article>
+            <article className={monthlyCriticalCheckRows.length ? 'is-warning' : ''}>
+              <span>Check critici</span>
+              <strong>{monthlyCriticalCheckRows.length}</strong>
+              <small>{monthlyOkCheckRows.length} check ok</small>
+            </article>
+            <article className={actionableDeadlineRows.length ? 'is-danger' : ''}>
+              <span>Scadenze da lavorare</span>
+              <strong>{actionableDeadlineRows.length}</strong>
+              <small>{monthlyDeadlineRows.length} con data nel mese</small>
+            </article>
+            <article>
+              <span>Soggetto più costoso</span>
+              <strong>{monthlyTopTargetCost?.name ?? 'Nessun dato'}</strong>
+              <small>{monthlyTopTargetCost ? formatMoneyCents(monthlyTopTargetCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
+            </article>
+            <article>
+              <span>Categoria più pesante</span>
+              <strong>{monthlyTopCategoryCost?.name ?? 'Nessun dato'}</strong>
+              <small>{monthlyTopCategoryCost ? formatMoneyCents(monthlyTopCategoryCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
+            </article>
+          </div>
+          <div className="monthly-report-actions-list">
+            <strong>Azioni consigliate</strong>
+            {monthlyActionRows.length ? monthlyActionRows.map((action) => (
+              <article className={`tone-${action.tone}`} key={action.title}>
+                <span>{action.title}</span>
+                <b>{action.value}</b>
+                <small>{action.body}</small>
+              </article>
+            )) : (
+              <p>Nessuna urgenza aperta: il mese e pulito e pronto da archiviare.</p>
+            )}
+          </div>
+        </section>
       ) : null}
       <div className="fault-cost-controls">
         <label>

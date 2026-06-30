@@ -4721,6 +4721,114 @@
   line-height: 1.35;
 }
 
+.report-action-board {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 2.1fr);
+  gap: 12px;
+  align-items: stretch;
+  border: 1px solid #bcecf5;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(19, 197, 223, 0.13), rgba(255, 255, 255, 0) 55%),
+    #ffffff;
+  padding: 12px;
+}
+
+.report-action-board > div:first-child {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid #d6eef5;
+  border-radius: 8px;
+  background: #f8fdff;
+  padding: 12px;
+}
+
+.report-action-board strong {
+  color: var(--ink);
+  font-size: 0.96rem;
+}
+
+.report-action-board span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 760;
+  line-height: 1.42;
+}
+
+.report-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.report-action-button {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 118px;
+  border: 1px solid #c8edf5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.report-action-button svg {
+  color: #0891b2;
+}
+
+.report-action-button strong {
+  font-size: 0.86rem;
+}
+
+.report-action-button span {
+  font-size: 0.74rem;
+}
+
+.report-action-button:hover,
+.report-action-button.is-active {
+  border-color: #0891b2;
+  box-shadow: 0 12px 28px rgba(8, 145, 178, 0.14);
+  transform: translateY(-1px);
+}
+
+.report-action-button.is-active {
+  background: #ecfeff;
+}
+
+.report-action-button.is-warning {
+  border-color: #fed7aa;
+  background: #fffaf3;
+}
+
+.report-action-button.is-warning svg {
+  color: #ea580c;
+}
+
+.report-action-button.is-warning:hover,
+.report-action-button.is-warning.is-active {
+  border-color: #fb923c;
+  box-shadow: 0 12px 28px rgba(234, 88, 12, 0.13);
+}
+
+.report-action-button.is-primary {
+  border-color: #082f49;
+  background: #082f49;
+  color: #ffffff;
+}
+
+.report-action-button.is-primary svg,
+.report-action-button.is-primary strong,
+.report-action-button.is-primary span {
+  color: #ffffff;
+}
+
 .monthly-premium-report {
   display: grid;
   gap: 12px;
@@ -5009,6 +5117,12 @@
   border: 1px solid #bae6fd;
   border-radius: 8px;
   background: #f8fdff;
+  scroll-margin-top: 16px;
+}
+
+.fault-cost-entry-form.is-fine-entry {
+  border-color: #fed7aa;
+  background: #fffaf3;
 }
 
 .fault-cost-entry-form textarea {
@@ -9134,6 +9248,7 @@
   .monthly-archive-strip,
   .monthly-report-grid,
   .report-active-summary,
+  .report-action-grid,
   .report-question-grid,
   .reports-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -9271,6 +9386,7 @@
   .cost-insight-grid,
   .cost-home-metrics,
   .report-active-summary,
+  .report-action-board,
   .report-question-grid,
   .fault-cost-summary {
     grid-template-columns: 1fr;
@@ -9512,6 +9628,7 @@
 
   .public-extra-pricing,
   .reports-kpi-grid,
+  .report-action-grid,
   .fault-cost-grid,
   .fault-cost-controls,
   .admin-company-metrics,

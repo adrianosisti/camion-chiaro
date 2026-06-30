@@ -6,6 +6,7 @@ import { DateField } from '../components/DateField'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { getLocale } from '../i18n/native'
+import { getDaysUntilDate, isComplianceActionRequired, sortByDueDate } from '../services/deadlineRules'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
@@ -80,10 +81,7 @@ function formatDate(value, language = 'it') {
 }
 
 function getDeadlineDays(value) {
-  if (!value) return 9999
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return Math.ceil((new Date(value) - today) / 86400000)
+  return getDaysUntilDate(value)
 }
 
 function getDeadlineTone(item) {
@@ -500,11 +498,11 @@ export function DeadlineRenewModal({
             </Pressable>
           ) : null}
 
-          <PrimaryButton loading={isSaving} onPress={saveRenewal} title="Salva rinnovo" />
+          <PrimaryButton loading={isSaving} onPress={saveRenewal} title="Salva rinnovo e aggiorna" />
           {onMarkDone ? (
             <Pressable disabled={isSaving || isClosing} onPress={markDone} style={[styles.closeDeadlineButton, (isSaving || isClosing) && styles.smallButtonDisabled]}>
               <Ionicons color={colors.danger} name="checkmark-done-outline" size={18} />
-              <Text style={styles.closeDeadlineButtonText}>{isClosing ? 'Chiudo pratica...' : 'Chiudi senza rinnovo'}</Text>
+              <Text style={styles.closeDeadlineButtonText}>{isClosing ? 'Chiudo pratica...' : 'Segna gestita senza rinnovo'}</Text>
             </Pressable>
           ) : null}
         </ScrollView>
@@ -770,6 +768,7 @@ export function CompanyManagementScreen({
   const [isSavingCost, setIsSavingCost] = useState(false)
   const [costPeriod, setCostPeriod] = useState('month')
   const [costTargetFilter, setCostTargetFilter] = useState('all')
+  const [showAllDeadlines, setShowAllDeadlines] = useState(false)
   const currentScopes = workforceSchemaReady ? workforceScopes : scopes
   const deadlineAssignees = useMemo(() => {
     if (deadlineForm.scope === 'driver') return drivers
@@ -778,10 +777,18 @@ export function CompanyManagementScreen({
     if (deadlineForm.scope === 'asset') return warehouseAssets
     return []
   }, [activeVehicles, allPeople, deadlineForm.scope, drivers, warehouseAssets])
-  const nextDeadlines = deadlines
-    .filter((item) => item.dueDate)
-    .slice()
-    .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
+  const deadlinesToWork = useMemo(
+    () => sortByDueDate(deadlines.filter(isComplianceActionRequired)),
+    [deadlines],
+  )
+  const allDeadlineRows = useMemo(
+    () => sortByDueDate(deadlines.filter((item) => item.dueDate)),
+    [deadlines],
+  )
+  const nextDeadlines = useMemo(
+    () => (showAllDeadlines ? allDeadlineRows : deadlinesToWork),
+    [allDeadlineRows, deadlinesToWork, showAllDeadlines],
+  )
   const costRows = useMemo(() => {
     const periodStart = getRepairPeriodStart(costPeriod)
     const faultRows = faults
@@ -1800,6 +1807,19 @@ export function CompanyManagementScreen({
 
         {activeList === 'deadlines' ? (
           <View style={styles.archiveList}>
+            <View style={styles.deadlineListHeader}>
+              <View style={styles.listCopy}>
+                <Text style={styles.listTitle}>{showAllDeadlines ? 'Tutte le scadenze' : 'Scadenze da lavorare'}</Text>
+                <Text style={styles.listMeta}>
+                  {showAllDeadlines
+                    ? `${allDeadlineRows.length} pratiche totali · ${deadlinesToWork.length} da lavorare`
+                    : `${deadlinesToWork.length} pratiche scadute o entro 30 giorni`}
+                </Text>
+              </View>
+              <Pressable onPress={() => setShowAllDeadlines((currentValue) => !currentValue)} style={styles.deadlineToggleButton}>
+                <Text style={styles.deadlineToggleText}>{showAllDeadlines ? 'Solo da lavorare' : 'Mostra tutto'}</Text>
+              </Pressable>
+            </View>
             {nextDeadlines.map((item) => {
               const tone = getDeadlineTone(item)
               return (
@@ -1816,7 +1836,11 @@ export function CompanyManagementScreen({
                 </Pressable>
               )
             })}
-            {!nextDeadlines.length ? <Text style={styles.emptyText}>Nessuna scadenza caricata.</Text> : null}
+            {!nextDeadlines.length ? (
+              <Text style={styles.emptyText}>
+                {showAllDeadlines ? 'Nessuna scadenza caricata.' : 'Nessuna scadenza urgente da lavorare.'}
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -2092,6 +2116,30 @@ const styles = StyleSheet.create({
   archiveOpenText: {
     color: colors.cyanDark,
     fontSize: 12,
+    fontWeight: '900',
+  },
+  deadlineListHeader: {
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderColor: colors.line,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  deadlineToggleButton: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    minHeight: 36,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  deadlineToggleText: {
+    color: colors.white,
+    fontSize: 11,
     fontWeight: '900',
   },
   costFilterLabel: {

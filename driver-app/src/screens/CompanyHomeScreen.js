@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { getLocale, t } from '../i18n/native'
+import { getDaysUntilDate, isComplianceActionRequired, sortByDueDate } from '../services/deadlineRules'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
@@ -152,10 +153,7 @@ function formatDate(value, language = 'it') {
 }
 
 function getDeadlineDays(value) {
-  if (!value) return 9999
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return Math.ceil((new Date(value) - today) / 86400000)
+  return getDaysUntilDate(value)
 }
 
 function getDeadlineTone(item) {
@@ -511,10 +509,7 @@ export function CompanyHomeScreen({
   const activeChecks = checks.filter((check) => !isCheckResolved(check))
   const criticalChecks = checks.filter(isCheckCritical)
   const recentChecks = activeChecks.slice(0, 4)
-  const activeDeadlines = complianceItems
-    .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
-    .slice()
-    .sort((first, second) => new Date(first.dueDate) - new Date(second.dueDate))
+  const activeDeadlines = sortByDueDate(complianceItems.filter(isComplianceActionRequired))
   const hasExpiredDeadlines = activeDeadlines.some((item) => getDeadlineDays(item.dueDate) < 0)
   const hasSoonDeadlines = activeDeadlines.some((item) => getDeadlineDays(item.dueDate) <= 30)
   const deadlineTone = hasExpiredDeadlines ? 'danger' : hasSoonDeadlines ? 'warning' : 'info'

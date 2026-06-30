@@ -1815,6 +1815,28 @@ function CamionChiaroApp() {
       return false
     }
 
+    const updatedDocument = result.data ?? {}
+    setContext((currentContext) => {
+      if (!currentContext) return currentContext
+
+      return {
+        ...currentContext,
+        documents: (currentContext.documents ?? []).map((currentDocument) => (
+          currentDocument.id === document.id
+            ? {
+                ...currentDocument,
+                documentNumber: updatedDocument.document_number ?? payload?.documentNumber ?? currentDocument.documentNumber,
+                expiresAt: updatedDocument.expires_at ?? payload?.expiresAt ?? currentDocument.expiresAt,
+                filePath: updatedDocument.file_path ?? currentDocument.filePath,
+                status: updatedDocument.status ?? currentDocument.status,
+                type: updatedDocument.type ?? payload?.type ?? currentDocument.type,
+              }
+            : currentDocument
+        )),
+      }
+    })
+    setDocumentFocusId('')
+    triggerHaptic('success')
     await loadDriverData({ silent: true })
     return true
   }
@@ -2077,6 +2099,20 @@ function CamionChiaroApp() {
       return null
     }
 
+    if (result.data) {
+      setCompanyContext((currentContext) => {
+        if (!currentContext) return currentContext
+
+        return {
+          ...currentContext,
+          complianceItems: (currentContext.complianceItems ?? []).map((currentItem) => (
+            currentItem.id === item.id ? { ...currentItem, ...result.data } : currentItem
+          )),
+        }
+      })
+    }
+
+    triggerHaptic('success')
     await loadCompanyData({ silent: true })
     return result.data
   }

@@ -1,6 +1,6 @@
-# Idee prodotto Camion Chiaro
+# Idee prodotto Movigo
 
-Questa roadmap raccoglie idee pratiche per trasformare Camion Chiaro da app utile a prodotto vendibile. Le prime sezioni sono quelle piu vicine al rilascio; le ultime sono idee Premium o future.
+Questa roadmap raccoglie idee pratiche per trasformare Movigo da app utile a prodotto vendibile. Le prime sezioni sono quelle piu vicine al rilascio; le ultime sono idee Premium o future.
 
 ## Prima del lancio
 
@@ -8,7 +8,7 @@ Questa roadmap raccoglie idee pratiche per trasformare Camion Chiaro da app util
 - Onboarding guidato: checklist per azienda nuova con autisti, flotta, documenti, notifiche e prima chat.
 - Ruoli azienda: titolare, responsabile traffico, amministrazione, officina, sola lettura.
 - Audit storico: chi ha aperto, archiviato, modificato, caricato o cancellato ogni documento, guasto e check.
-- Email brandizzate: logo Camion Chiaro, logo azienda, testi chiari per verifica email, reset password e inviti.
+- Email brandizzate: logo Movigo, logo azienda, testi chiari per verifica email, reset password e inviti.
 - Privacy/GDPR: pagina privacy, termini, consenso notifiche, export dati azienda, cancellazione account.
 - Backup/export: esportazione PDF o Excel di autisti, flotta, scadenze, guasti, check e documenti.
 - Installazione app guidata: mini guida Android/iPhone dentro login e impostazioni.
@@ -42,7 +42,7 @@ Questa roadmap raccoglie idee pratiche per trasformare Camion Chiaro da app util
 
 - Centro costi Premium: ogni spesa puo essere collegata a targa, muletto, attrezzatura o azienda generale, con categoria, fornitore, km, allegato, modifica ed eliminazione. Il valore non e "inserire una fattura", ma capire quali mezzi stanno bruciando soldi.
 - Report automatico titolare: ogni mese il proprietario riceve email con riepilogo costi, guasti, scadenze lavorate, scadenze future, top mezzi costosi e allegati CSV/PDF. Serve un servizio email dedicato prima del rilascio.
-- Budget per targa: l azienda imposta un budget mensile o annuale per ogni mezzo. Se una targa supera la soglia, Camion Chiaro avvisa titolare e amministrazione.
+- Budget per targa: l azienda imposta un budget mensile o annuale per ogni mezzo. Se una targa supera la soglia, Movigo avvisa titolare e amministrazione.
 - Classifica mezzi critici: dashboard con "mezzo piu costoso", "mezzo con piu guasti", "mezzo con piu check anomali", "mezzo da valutare per sostituzione".
 - Indice salute flotta: punteggio semplice 0-100 per ogni mezzo basato su scadenze, guasti, costi, check critici e documenti mancanti.
 - Fascicolo mezzo A4: pagina stampabile con dati mezzo, documenti, scadenze, ultimi guasti, costi periodo e allegati principali.

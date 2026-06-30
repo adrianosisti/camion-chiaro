@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Camion Chiaro",
+    "name": "Movigo",
     "slug": "camion-chiaro",
     "version": "0.1.0",
     "icon": "./assets/brand/icon.png",
@@ -20,11 +20,11 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "Camion Chiaro usa la fotocamera per caricare documenti, guasti e allegati chat.",
-        "NSLocalNetworkUsageDescription": "Camion Chiaro puo usare la rete locale solo durante le prove di sviluppo.",
-        "NSMicrophoneUsageDescription": "Camion Chiaro usa il microfono per inviare messaggi vocali in chat.",
-        "NSPhotoLibraryAddUsageDescription": "Camion Chiaro salva nella galleria le foto ricevute in chat quando lo chiedi.",
-        "NSPhotoLibraryUsageDescription": "Camion Chiaro usa la galleria per allegare foto, video e documenti."
+        "NSCameraUsageDescription": "Movigo usa la fotocamera per caricare documenti, guasti e allegati chat.",
+        "NSLocalNetworkUsageDescription": "Movigo puo usare la rete locale solo durante le prove di sviluppo.",
+        "NSMicrophoneUsageDescription": "Movigo usa il microfono per inviare messaggi vocali in chat.",
+        "NSPhotoLibraryAddUsageDescription": "Movigo salva nella galleria le foto ricevute in chat quando lo chiedi.",
+        "NSPhotoLibraryUsageDescription": "Movigo usa la galleria per allegare foto, video e documenti."
       }
     },
     "android": {

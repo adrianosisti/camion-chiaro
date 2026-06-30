@@ -3,7 +3,7 @@ import { Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, Scrol
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../theme'
 
-const supportEmail = 'assistenza@camionchiaro.it'
+const supportEmail = 'assistenza@movigo.app'
 
 const assistantTopics = [
   {
@@ -74,8 +74,8 @@ function createInitialMessages(accountType) {
       id: 'welcome',
       role: 'assistant',
       text: accountType === 'company'
-        ? 'Ciao, sono l assistente Camion Chiaro. Dimmi cosa devi fare nel pannello azienda e ti guido passo passo.'
-        : 'Ciao, sono l assistente Camion Chiaro. Dimmi cosa non trovi nell app e ti aiuto subito.',
+        ? 'Ciao, sono l assistente Movigo. Dimmi cosa devi fare nel pannello azienda e ti guido passo passo.'
+        : 'Ciao, sono l assistente Movigo. Dimmi cosa non trovi nell app e ti aiuto subito.',
     },
   ]
 }
@@ -134,7 +134,7 @@ export function AssistantModal({
 
   async function openTicket() {
     const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')?.text ?? 'Non indicata'
-    const subject = encodeURIComponent(`Ticket Camion Chiaro - ${companyName}`)
+    const subject = encodeURIComponent(`Ticket Movigo - ${companyName}`)
     const body = encodeURIComponent([
       `Azienda: ${companyName}`,
       `Utente: ${actorName || 'Non indicato'}`,
@@ -165,7 +165,7 @@ export function AssistantModal({
             <Ionicons color={colors.ink} name="sparkles-outline" size={21} />
           </View>
           <View style={styles.headerCopy}>
-            <Text numberOfLines={1} style={styles.title}>Assistente Camion Chiaro</Text>
+            <Text numberOfLines={1} style={styles.title}>Assistente Movigo</Text>
             <Text numberOfLines={1} style={styles.subtitle}>{companyName}</Text>
           </View>
           <Pressable onPress={onClose} style={styles.closeButton}>

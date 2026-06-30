@@ -1,6 +1,6 @@
-# Camion Chiaro
+# Movigo
 
-App nativa Camion Chiaro per iPhone e Android. Contiene accesso autista e accesso azienda, usando lo stesso Supabase e lo stesso backend Netlify della dashboard web.
+App nativa Movigo per iPhone e Android. Contiene accesso autista e accesso azienda, usando lo stesso Supabase e lo stesso backend Netlify della dashboard web.
 
 ## Cosa contiene
 
@@ -81,7 +81,7 @@ Per iPhone serve un account Apple Developer. Senza quello si continua a provare 
 
 ## Identita app
 
-- Nome app: Camion Chiaro
+- Nome app: Movigo
 - iOS bundle id: `it.camionchiaro.app`
 - Android package: `it.camionchiaro.app`
 - Colori principali: celeste, nero, bianco

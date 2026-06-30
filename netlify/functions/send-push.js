@@ -290,7 +290,7 @@ export async function handler(event) {
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const vapidPublicKey = process.env.WEB_PUSH_PUBLIC_KEY ?? process.env.VITE_WEB_PUSH_PUBLIC_KEY
   const vapidPrivateKey = process.env.WEB_PUSH_PRIVATE_KEY
-  const vapidSubject = process.env.WEB_PUSH_SUBJECT ?? 'mailto:info@camionchiaro.app'
+  const vapidSubject = process.env.WEB_PUSH_SUBJECT ?? 'mailto:info@movigo.app'
 
   if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
     return jsonResponse(500, { error: 'Configurazione Supabase Netlify mancante.' })
@@ -315,7 +315,7 @@ export async function handler(event) {
   const companyId = String(body.companyId ?? '')
   const targetRole = String(body.targetRole ?? '')
   const driverId = body.driverId ? String(body.driverId) : ''
-  const title = String(body.title ?? 'Camion Chiaro').slice(0, 120)
+  const title = String(body.title ?? 'Movigo').slice(0, 120)
   const messageBody = String(body.body ?? 'Nuovo aggiornamento disponibile.').slice(0, 240)
   const url = String(body.url ?? '/')
   const tag = String(body.tag ?? `camion-chiaro-${Date.now()}`)

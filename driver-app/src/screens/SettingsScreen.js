@@ -57,14 +57,14 @@ export function SettingsScreen({
 
       <Panel kicker="Telefono" title="Notifiche app">
         <Text style={styles.helper}>
-          Attiva questo telefono per ricevere chat, guasti e check anche quando Camion Chiaro non e aperta.
+          Attiva questo telefono per ricevere chat, guasti e check anche quando Movigo non e aperta.
         </Text>
         <View style={styles.buttonGap} />
         <PrimaryButton onPress={onEnableNativeNotifications} title="Abilita notifiche app" tone="light" />
         {nativePushStatus ? <Text style={styles.diagnosticLine}>{nativePushStatus}</Text> : null}
       </Panel>
 
-      <Panel kicker="Supporto" title="Assistente Camion Chiaro">
+      <Panel kicker="Supporto" title="Assistente Movigo">
         <Text style={styles.helper}>
           Apri una chat guidata per scadenze, guasti, documenti, chat e notifiche. Se non basta, prepara un ticket email per l assistenza.
         </Text>

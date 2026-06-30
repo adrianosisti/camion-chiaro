@@ -20,4 +20,4 @@ check (
 );
 
 comment on column public.companies.billing_plan is
-'Piani Camion Chiaro: starter=Start 5, fleet10, fleet20, fleet30, fleet50, enterprise. pro/business restano accettati per compatibilita storica.';
+'Piani Movigo: starter=Start 5, fleet10, fleet20, fleet30, fleet50, enterprise. pro/business restano accettati per compatibilita storica.';

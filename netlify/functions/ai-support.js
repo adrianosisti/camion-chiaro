@@ -40,7 +40,7 @@ function isAiSupportEnabled() {
 }
 
 const camionChiaroKnowledgeBase = `
-Camion Chiaro e un software per aziende di logistica e trasporto.
+Movigo e un software per aziende di logistica e trasporto.
 Ruoli principali: azienda/titolare, autista, ufficio, magazzino.
 Dashboard azienda: deve far vedere subito chat non lette, guasti aperti, check critici, scadenze, costi e comandi principali.
 Anagrafiche: contiene persone, autisti, ufficio, magazzino, flotta, strumenti, documenti e scadenze.
@@ -69,7 +69,7 @@ const supportPlaybooks = [
     keywords: ['scad', 'patent', 'cqc', 'adr', 'visita', 'medica', 'assicur', 'revision', 'rinnov', 'document'],
     title: 'rinnovo scadenze e documenti',
     response: [
-      'Per rinnovare una scadenza in Camion Chiaro fai cosi:',
+      'Per rinnovare una scadenza in Movigo fai cosi:',
       '1. Apri Scadenze dalla dashboard o entra nella scheda della persona/mezzo da Anagrafiche.',
       '2. Clicca la scadenza: patente, visita, assicurazione, revisione o altro documento.',
       '3. Premi rinnova, carica il nuovo file o una foto leggibile, poi inserisci la nuova data con il calendario.',
@@ -162,9 +162,9 @@ const supportPlaybooks = [
     title: 'notifiche telefono',
     response: [
       'Se le notifiche telefono non arrivano:',
-      '1. Apri Impostazioni nell app Camion Chiaro sul telefono interessato.',
+      '1. Apri Impostazioni nell app Movigo sul telefono interessato.',
       '2. Premi Attiva notifiche o Verifica notifiche.',
-      '3. Controlla che i permessi iOS/Android siano attivi per Camion Chiaro.',
+      '3. Controlla che i permessi iOS/Android siano attivi per Movigo.',
       '4. Se e una chat, prova da app chiusa: con chat aperta alcune notifiche possono restare solo dentro l app.',
       '5. Se dice nessun telefono registrato, esci e rientra dall app sul telefono giusto, poi riattiva notifiche.',
     ],
@@ -200,7 +200,7 @@ const supportPlaybooks = [
     keywords: ['app', 'install', 'iphone', 'android', 'telefono', 'scaric', 'store', 'notifiche telefono'],
     title: 'app telefono e permessi',
     response: [
-      'Per usare Camion Chiaro da telefono:',
+      'Per usare Movigo da telefono:',
       '1. Installa l app iOS o Android quando disponibile, oppure la build interna se siete in test.',
       '2. Accedi con il ruolo corretto: azienda, autista, ufficio o magazzino.',
       '3. Alla prima apertura abilita notifiche, fotocamera e microfono quando servono.',
@@ -213,7 +213,7 @@ const supportPlaybooks = [
     keywords: ['prezz', 'piano', 'abbon', 'costa', 'pag', 'stripe', 'fattur', 'storage', 'gb', 'commercial'],
     title: 'piani, prezzi e fatturazione',
     response: [
-      'I piani Camion Chiaro sono pensati per dimensione azienda:',
+      'I piani Movigo sono pensati per dimensione azienda:',
       '1. Start 5: 300 euro/mese, fino a 5 mezzi, 3 strumenti/muletti, 10 account e 10 GB.',
       '2. Fleet 10: 450 euro/mese, fino a 10 mezzi, 5 strumenti/muletti, 20 account e 20 GB.',
       '3. Fleet 20+: da 650 euro/mese per flotte piu strutturate.',
@@ -230,7 +230,7 @@ const supportPlaybooks = [
       '1. Prima del rilascio servono Termini d uso e Privacy Policy approvati dal cliente.',
       '2. Ogni utente deve accettare condizioni chiare su chat, documenti, notifiche e trattamento dati aziendali.',
       '3. L azienda deve informare il personale su quali dati vengono gestiti e per quale finalita operativa.',
-      '4. Camion Chiaro deve evitare promesse legali automatiche: per GDPR, lavoro e conservazione dati va validato con consulente.',
+      '4. Movigo deve evitare promesse legali automatiche: per GDPR, lavoro e conservazione dati va validato con consulente.',
       '5. In caso di dubbio apri ticket assistenza e indica paese, ruolo utenti e tipo di dato trattato.',
     ],
   },
@@ -239,7 +239,7 @@ const supportPlaybooks = [
     keywords: ['idea', 'idee', 'premium', 'valore', 'futuro', 'sviluppo', 'must', 'straordin', 'migliorare', 'funzione nuova'],
     title: 'idee premium e valore prodotto',
     response: [
-      'Le funzioni piu forti per far percepire Camion Chiaro come indispensabile sono:',
+      'Le funzioni piu forti per far percepire Movigo come indispensabile sono:',
       '1. Report mensile automatico: spese, multe, guasti, scadenze chiuse e pratiche aperte via email al titolare.',
       '2. Indice salute flotta: ogni mezzo ha un punteggio basato su guasti, costi, scadenze, fermi e check critici.',
       '3. Budget per targa: se un mezzo supera la soglia mensile di costi, parte un alert.',
@@ -269,12 +269,12 @@ function buildSystemPrompt({ companyContext = {}, companyName = 'Azienda', langu
   ].join('\n')
 
   return `
-Sei Assistente Camion Chiaro, supporto operativo per aziende di logistica.
+Sei Assistente Movigo, supporto operativo per aziende di logistica.
 Rispondi nella stessa lingua dell utente, con tono semplice, pratico e rassicurante.
-Aiuta l utente a usare Camion Chiaro passo per passo: dashboard, scadenze, documenti, guasti, check mattutini, chat, notifiche, anagrafiche, flotta, costi e app mobile.
+Aiuta l utente a usare Movigo passo per passo: dashboard, scadenze, documenti, guasti, check mattutini, chat, notifiche, anagrafiche, flotta, costi e app mobile.
 Non dire mai di poter modificare direttamente i dati se non hai uno strumento per farlo. Guida l utente su dove cliccare.
-Se la domanda riguarda norme, lavoro, privacy, fiscalita o sicurezza, dai indicazioni operative generali e consiglia verifica con consulente o assistenza Camion Chiaro.
-Se non sei sicuro, fai una sola domanda chiara oppure indirizza al centro supporto Camion Chiaro.
+Se la domanda riguarda norme, lavoro, privacy, fiscalita o sicurezza, dai indicazioni operative generali e consiglia verifica con consulente o assistenza Movigo.
+Se non sei sicuro, fai una sola domanda chiara oppure indirizza al centro supporto Movigo.
 Rispondi con massimo 6 punti brevi, senza linguaggio tecnico.
 Ogni risposta deve essere concreta: se l utente chiede come fare una cosa, indica sezione, pulsante/azione, risultato atteso e cosa controllare se non funziona.
 Non limitarti a dire "apri la guida". Prima prova a risolvere.
@@ -285,7 +285,7 @@ Formato preferito:
 - Se non funziona: una verifica pratica.
 Se l utente segnala un errore o bug, chiedi solo il dato mancante piu utile: PC/app, ruolo, schermata, messaggio errore o dispositivo.
 
-Manuale operativo Camion Chiaro:
+Manuale operativo Movigo:
 ${camionChiaroKnowledgeBase}
 
 Contesto attuale:
@@ -308,7 +308,7 @@ function buildGuidedAnswer(message) {
     '- "non arriva una notifica chat"',
     '- "voglio archiviare un guasto con costo"',
     '- "devo aggiungere un trattore con assicurazione e revisione"',
-    'Appena capisco la sezione, ti do il percorso preciso dentro Camion Chiaro.',
+    'Appena capisco la sezione, ti do il percorso preciso dentro Movigo.',
   ].join('\n')
 }
 

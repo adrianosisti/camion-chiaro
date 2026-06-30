@@ -57,4 +57,4 @@ on public.admin_company_controls (priority, next_follow_up);
 alter table public.admin_company_controls enable row level security;
 
 comment on table public.admin_company_controls is
-'Note e stato commerciale interno Camion Chiaro. Nessuna policy client: accesso solo via service role Netlify admin.';
+'Note e stato commerciale interno Movigo. Nessuna policy client: accesso solo via service role Netlify admin.';

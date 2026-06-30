@@ -139,7 +139,7 @@ begin
     (warehouse_thread_id, target_company_id, owner_user_id, null, 'company', 'Ok Gianni, tienilo fermo fino a carica completa.', now() - interval '80 minutes'),
     (office_thread_id, target_company_id, owner_user_id, paola_id, 'office', 'Ho inserito le scadenze urgenti: patente Elena e revisione motrice.', now() - interval '2 hours'),
     (office_thread_id, target_company_id, owner_user_id, null, 'company', 'Perfetto, oggi le lavoriamo dal registro operativo.', now() - interval '1 hour 50 minutes'),
-    (all_thread_id, target_company_id, owner_user_id, null, 'company', 'Demo Camion Chiaro: chat gruppi, dirette, scadenze e anomalie pronte da provare.', now() - interval '30 minutes'),
+    (all_thread_id, target_company_id, owner_user_id, null, 'company', 'Demo Movigo: chat gruppi, dirette, scadenze e anomalie pronte da provare.', now() - interval '30 minutes'),
     (paola_direct_thread_id, target_company_id, owner_user_id, null, 'company', 'Paola, verifica assicurazione DEMOF01 entro oggi.', now() - interval '70 minutes'),
     (paola_direct_thread_id, target_company_id, owner_user_id, paola_id, 'office', 'Ricevuto, preparo rinnovo e allego documento appena pronto.', now() - interval '66 minutes'),
     (gianni_direct_thread_id, target_company_id, owner_user_id, gianni_id, 'warehouse', 'Serve autorizzazione per fermare transpallet DEMO-TRANSPALLET-01 domani mattina.', now() - interval '55 minutes'),
@@ -147,4 +147,3 @@ begin
     (paola_gianni_thread_id, target_company_id, owner_user_id, paola_id, 'office', 'Gianni, quando arriva Marco prepara ribalta 2 per scarico.', now() - interval '25 minutes'),
     (paola_gianni_thread_id, target_company_id, owner_user_id, gianni_id, 'warehouse', 'Ok, avviso magazzino e tengo libero accesso.', now() - interval '22 minutes');
 end $$;
-

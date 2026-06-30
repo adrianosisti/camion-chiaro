@@ -587,7 +587,7 @@ export async function fetchDriverContext() {
 
     return {
       data: null,
-      error: { message: fallbackResult.error?.message ?? 'Connessione al server Camion Chiaro non riuscita.' },
+      error: { message: fallbackResult.error?.message ?? 'Connessione al server Movigo non riuscita.' },
     }
   }
 }
@@ -1790,7 +1790,7 @@ export async function createCompanyDriverAccount({ companyId, driver, password }
   } catch {
     return {
       data: null,
-      error: { message: 'Server Camion Chiaro non raggiungibile. Controlla il deploy Netlify.' },
+      error: { message: 'Server Movigo non raggiungibile. Controlla il deploy Netlify.' },
     }
   }
 }
@@ -1838,7 +1838,7 @@ export async function createCompanyPerson({ companyId, person }) {
     } catch {
       return {
         data: null,
-        error: { message: 'Server Camion Chiaro non raggiungibile. Controlla il deploy Netlify.' },
+        error: { message: 'Server Movigo non raggiungibile. Controlla il deploy Netlify.' },
       }
     }
   }

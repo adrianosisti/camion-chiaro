@@ -29,7 +29,7 @@ export function isAppleMobileDevice() {
 }
 
 export function getDeviceInstallHint() {
-  if (typeof navigator === 'undefined') return 'Apri Camion Chiaro dal browser del telefono.'
+  if (typeof navigator === 'undefined') return 'Apri Movigo dal browser del telefono.'
 
   if (isAppleMobileDevice()) {
     return 'Su iPhone apri Safari, premi Condividi e scegli Aggiungi a schermata Home.'
@@ -55,7 +55,7 @@ export function getPushSupportStatus() {
     return {
       requiresInstall: true,
       supported: false,
-      reason: 'Su iPhone prima aggiungi Camion Chiaro alla schermata Home, poi aprila dall icona e abilita le notifiche.',
+      reason: 'Su iPhone prima aggiungi Movigo alla schermata Home, poi aprila dall icona e abilita le notifiche.',
     }
   }
 
@@ -119,7 +119,7 @@ export async function subscribeCurrentBrowserToPush() {
   if (window.Notification.permission === 'denied') {
     return {
       error: {
-        message: 'Notifiche bloccate sul telefono. Riattivale dalle impostazioni del browser o dell app Camion Chiaro.',
+        message: 'Notifiche bloccate sul telefono. Riattivale dalle impostazioni del browser o dell app Movigo.',
       },
       subscription: null,
     }

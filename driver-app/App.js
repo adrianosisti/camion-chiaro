@@ -1297,7 +1297,7 @@ function CamionChiaroApp() {
 
     setNativePushStatus('Notifiche app abilitate su questo telefono.')
     triggerHaptic('success')
-    Alert.alert('Notifiche attive', 'Questo telefono ricevera le notifiche Camion Chiaro.')
+    Alert.alert('Notifiche attive', 'Questo telefono ricevera le notifiche Movigo.')
     return true
   }
 
@@ -2170,7 +2170,7 @@ function CamionChiaroApp() {
       return false
     }
 
-    const body = `Sollecito Camion Chiaro: aggiorna ${item.type || 'documento'} entro la scadenza ${formatReminderDate(item.dueDate)} direttamente dall'app. Se hai gia provveduto, carica il nuovo documento o avvisa l'azienda.`
+    const body = `Sollecito Movigo: aggiorna ${item.type || 'documento'} entro la scadenza ${formatReminderDate(item.dueDate)} direttamente dall'app. Se hai gia provveduto, carica il nuovo documento o avvisa l'azienda.`
 
     if (target.type === 'driver') {
       const result = await sendCompanyChatMessage({
@@ -2610,7 +2610,7 @@ function CamionChiaroApp() {
       <SafeAreaView style={styles.loadingScreen}>
         <ExpoStatusBar style="light" />
         <ActivityIndicator color={colors.cyan} size="large" />
-        <Text style={styles.loadingTitle}>Camion Chiaro</Text>
+        <Text style={styles.loadingTitle}>Movigo</Text>
         <Text style={styles.loadingText}>{appStatus}</Text>
       </SafeAreaView>
     )

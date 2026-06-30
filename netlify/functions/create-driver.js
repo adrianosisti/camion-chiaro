@@ -36,7 +36,7 @@ function normalizeDriverUsername(value) {
 }
 
 function buildDriverAuthEmail(username) {
-  const driverAuthDomain = process.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
+  const driverAuthDomain = process.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.movigo.app'
   const cleanUsername = normalizeDriverUsername(username)
   return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${driverAuthDomain}`
 }

@@ -187,7 +187,7 @@ const emptyCompanyStorageSummary = {
   totalBytes: 0,
 }
 
-const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
+const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.movigo.app'
 const adminEmails = new Set(
   String(import.meta.env.VITE_ADMIN_EMAILS ?? 'sisti.adriano@icloud.com')
     .split(',')
@@ -195,8 +195,8 @@ const adminEmails = new Set(
     .filter(Boolean),
 )
 const demoCompanyName = 'Azienda Demo SRL'
-const supportEmail = 'assistenza@camionchiaro.it'
-const placeholderCompanyNames = new Set(['Camion Chiaro', 'Camion Chiaro Demo'])
+const supportEmail = 'assistenza@movigo.app'
+const placeholderCompanyNames = new Set(['Movigo', 'Movigo Demo'])
 const fleetTypeOptions = [
   { value: 'furgone', label: 'Furgone' },
   { value: 'motrice', label: 'Motrice' },
@@ -463,7 +463,7 @@ const translations = {
     'homeAssistant.answer.faults': 'Apri Guasti, guarda foto e dettagli, poi registra stato, costo riparazione e storico per targa o periodo.',
     'homeAssistant.answer.mobileApp': 'Da telefono entra con il ruolo corretto, poi apri Impostazioni per notifiche, lingua, suoni e permessi. Se una notifica non arriva, verifica che quel telefono sia registrato.',
     'homeAssistant.answer.reports': 'Apri Report, scegli dettaglio costi, multe o classifica autisti, poi filtra per periodo, targa, autista o attrezzatura. Il CSV e la stampa devono seguire gli stessi filtri mostrati a video.',
-    'homeAssistant.body': 'Guida rapida su scadenze, guasti, documenti e chat. Se non basta, apre il centro supporto Camion Chiaro.',
+    'homeAssistant.body': 'Guida rapida su scadenze, guasti, documenti e chat. Se non basta, apre il centro supporto Movigo.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Scadenze',
     'homeAssistant.documents': 'Documenti',
@@ -474,7 +474,7 @@ const translations = {
     'homeAssistant.mobileApp': 'App',
     'homeAssistant.reports': 'Report',
     'homeAssistant.status': 'Supporto guidato',
-    'homeAssistant.title': 'Assistente Camion Chiaro',
+    'homeAssistant.title': 'Assistente Movigo',
     'hero.aria': 'Controllo scadenze',
     'hero.description': 'Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.',
     'hero.factDrivers': 'autisti attivi',
@@ -501,7 +501,7 @@ const translations = {
     'nav.reports': 'Report',
     'nav.settings': 'Impostazioni',
     'nav.support': 'Guida',
-    'onboarding.body': 'Completa questi passaggi per rendere Camion Chiaro operativo senza confusione.',
+    'onboarding.body': 'Completa questi passaggi per rendere Movigo operativo senza confusione.',
     'onboarding.companyBody': 'Nome azienda, sede e logo visibili nella dashboard.',
     'onboarding.companyTitle': 'Completa profilo azienda',
     'onboarding.completed': '{count}/{total} completati',
@@ -645,7 +645,7 @@ const translations = {
     'homeAssistant.answer.faults': 'Open Faults, review photos and details, then record status, repair cost and history by plate or period.',
     'homeAssistant.answer.mobileApp': 'On mobile, sign in with the correct role, then open Settings for notifications, language, sounds and permissions. If a notification does not arrive, verify that phone is registered.',
     'homeAssistant.answer.reports': 'Open Reports, choose cost detail, fines or driver fine ranking, then filter by period, plate, driver or equipment. CSV and print must follow the same data shown on screen.',
-    'homeAssistant.body': 'Quick guidance for deadlines, faults, documents and chat. If that is not enough, open Camion Chiaro support.',
+    'homeAssistant.body': 'Quick guidance for deadlines, faults, documents and chat. If that is not enough, open Movigo support.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Deadlines',
     'homeAssistant.documents': 'Documents',
@@ -656,7 +656,7 @@ const translations = {
     'homeAssistant.mobileApp': 'App',
     'homeAssistant.reports': 'Reports',
     'homeAssistant.status': 'Live assistant',
-    'homeAssistant.title': 'Camion Chiaro Assistant',
+    'homeAssistant.title': 'Movigo Assistant',
     'hero.aria': 'Deadline control',
     'hero.description': 'A clean screen to see deadlines, morning checks and faults to manage right away.',
     'hero.factDrivers': 'active drivers',
@@ -683,7 +683,7 @@ const translations = {
     'nav.reports': 'Reports',
     'nav.settings': 'Settings',
     'nav.support': 'Guide',
-    'onboarding.body': 'Complete these steps to make Camion Chiaro operational without confusion.',
+    'onboarding.body': 'Complete these steps to make Movigo operational without confusion.',
     'onboarding.companyBody': 'Company name, headquarters and logo visible in the dashboard.',
     'onboarding.companyTitle': 'Complete company profile',
     'onboarding.completed': '{count}/{total} completed',
@@ -813,7 +813,7 @@ const translations = {
     'nav.reports': 'Informes',
     'nav.settings': 'Ajustes',
     'nav.support': 'Guia',
-    'onboarding.body': 'Completa estos pasos para poner Camion Chiaro operativo sin confusion.',
+    'onboarding.body': 'Completa estos pasos para poner Movigo operativo sin confusion.',
     'onboarding.companyBody': 'Nombre empresa, sede y logo visibles en el panel.',
     'onboarding.companyTitle': 'Completar perfil empresa',
     'onboarding.completed': '{count}/{total} completados',
@@ -943,7 +943,7 @@ const translations = {
     'nav.reports': 'Rapports',
     'nav.settings': 'Reglages',
     'nav.support': 'Guide',
-    'onboarding.body': 'Complete ces etapes pour rendre Camion Chiaro operationnel sans confusion.',
+    'onboarding.body': 'Complete ces etapes pour rendre Movigo operationnel sans confusion.',
     'onboarding.companyBody': 'Nom entreprise, siege et logo visibles dans le tableau.',
     'onboarding.companyTitle': 'Completer profil entreprise',
     'onboarding.completed': '{count}/{total} termines',
@@ -1073,7 +1073,7 @@ const translations = {
     'nav.reports': 'Berichte',
     'nav.settings': 'Einstellungen',
     'nav.support': 'Hilfe',
-    'onboarding.body': 'Schliesse diese Schritte ab, damit Camion Chiaro sauber einsatzbereit ist.',
+    'onboarding.body': 'Schliesse diese Schritte ab, damit Movigo sauber einsatzbereit ist.',
     'onboarding.companyBody': 'Firmenname, Sitz und Logo sichtbar im Dashboard.',
     'onboarding.companyTitle': 'Firmenprofil vervollstandigen',
     'onboarding.completed': '{count}/{total} erledigt',
@@ -3115,7 +3115,7 @@ const regionalTranslations = {
     'nav.reports': 'Rapoarte',
     'nav.settings': 'Setari',
     'nav.support': 'Ghid',
-    'onboarding.body': 'Completeaza acesti pasi pentru a porni Camion Chiaro fara confuzie.',
+    'onboarding.body': 'Completeaza acesti pasi pentru a porni Movigo fara confuzie.',
     'onboarding.companyTitle': 'Completeaza profilul firmei',
     'onboarding.completed': '{count}/{total} completate',
     'onboarding.deadlinesTitle': 'Adauga o scadenta',
@@ -3166,7 +3166,7 @@ const regionalTranslations = {
     'nav.reports': 'Raporty',
     'nav.settings': 'Ustawienia',
     'nav.support': 'Pomoc',
-    'onboarding.body': 'Wykonaj te kroki, aby Camion Chiaro bylo gotowe do pracy.',
+    'onboarding.body': 'Wykonaj te kroki, aby Movigo bylo gotowe do pracy.',
     'onboarding.companyTitle': 'Uzupelnij profil firmy',
     'onboarding.completed': '{count}/{total} gotowe',
     'onboarding.deadlinesTitle': 'Dodaj termin',
@@ -3214,16 +3214,16 @@ const homeDashboardTranslations = {
     'homeAssistant.answer.deadlines': 'Apri Scadenze, filtra quelle da lavorare e rinnova con nuovo documento, nuova data o sollecito alla persona.',
     'homeAssistant.answer.documents': 'Da Anagrafiche e Documenti puoi caricare file, foto e scadenze. L autista vede solo cio che rendi visibile.',
     'homeAssistant.answer.faults': 'Apri Guasti, guarda foto e dettagli, poi registra stato, costo riparazione e storico per targa o periodo.',
-    'homeAssistant.body': 'Guida rapida su scadenze, guasti, documenti e chat. Se non basta, apre il centro supporto Camion Chiaro.',
+    'homeAssistant.body': 'Guida rapida su scadenze, guasti, documenti e chat. Se non basta, apre il centro supporto Movigo.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Scadenze',
     'homeAssistant.documents': 'Documenti',
     'homeAssistant.errorMessage': 'Non riesco a rispondere adesso. Scrivi cosa stavi facendo oppure apri la guida: ti porto comunque al punto giusto.',
     'homeAssistant.faults': 'Guasti',
     'homeAssistant.guidedMode': 'Risposta guidata',
-    'homeAssistant.homeSubtitle': 'Assistente Camion Chiaro',
+    'homeAssistant.homeSubtitle': 'Assistente Movigo',
     'homeAssistant.homeTitle': 'Serve aiuto?',
-    'homeAssistant.initialMessage': 'Ciao, sono l assistente Camion Chiaro. Dimmi cosa non riesci a fare e ti guido passo passo.',
+    'homeAssistant.initialMessage': 'Ciao, sono l assistente Movigo. Dimmi cosa non riesci a fare e ti guido passo passo.',
     'homeAssistant.notHelpful': 'Non e stato utile?',
     'homeAssistant.openAssistant': 'Chiedi aiuto',
     'homeAssistant.openChat': 'Apri chat',
@@ -3235,10 +3235,10 @@ const homeDashboardTranslations = {
     'homeAssistant.quickHelp': 'Aiutami con',
     'homeAssistant.send': 'Invia',
     'homeAssistant.status': 'Supporto guidato',
-    'homeAssistant.ticketBody': 'Se la risposta non ti ha aiutato, scrivi all assistenza Camion Chiaro. Prepariamo una email con azienda e ultima domanda, cosi il supporto capisce subito il caso.',
+    'homeAssistant.ticketBody': 'Se la risposta non ti ha aiutato, scrivi all assistenza Movigo. Prepariamo una email con azienda e ultima domanda, cosi il supporto capisce subito il caso.',
     'homeAssistant.ticketMessage': 'Mi dispiace, allora apriamo un ticket. Usa il pulsante qui sotto: prepara una email a {email} con azienda, ultima domanda e spazio per descrivere cosa non funziona.',
     'homeAssistant.ticketTitle': 'Apri una richiesta assistenza',
-    'homeAssistant.title': 'Assistente Camion Chiaro',
+    'homeAssistant.title': 'Assistente Movigo',
     'homeAssistant.typing': 'Sto preparando la risposta...',
     'support.assistant': 'Assistente guidato',
   },
@@ -3256,16 +3256,16 @@ const homeDashboardTranslations = {
     'homeAssistant.answer.deadlines': 'Open Deadlines, filter items to work on, then renew with a new document, new date or reminder.',
     'homeAssistant.answer.documents': 'From Records and Documents you can upload files, photos and expiry dates. Drivers only see what you make visible.',
     'homeAssistant.answer.faults': 'Open Faults, review photos and details, then record status, repair cost and history by plate or period.',
-    'homeAssistant.body': 'Quick guidance for deadlines, faults, documents and chat. If that is not enough, open Camion Chiaro support.',
+    'homeAssistant.body': 'Quick guidance for deadlines, faults, documents and chat. If that is not enough, open Movigo support.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Deadlines',
     'homeAssistant.documents': 'Documents',
     'homeAssistant.errorMessage': 'I cannot answer right now. Tell me what you were doing or open the guide and I will still point you to the right place.',
     'homeAssistant.faults': 'Faults',
     'homeAssistant.guidedMode': 'Guided answer',
-    'homeAssistant.homeSubtitle': 'Camion Chiaro Assistant',
+    'homeAssistant.homeSubtitle': 'Movigo Assistant',
     'homeAssistant.homeTitle': 'Need help?',
-    'homeAssistant.initialMessage': 'Hi, I am the Camion Chiaro assistant. Tell me what you cannot do and I will guide you step by step.',
+    'homeAssistant.initialMessage': 'Hi, I am the Movigo assistant. Tell me what you cannot do and I will guide you step by step.',
     'homeAssistant.notHelpful': 'Was this not useful?',
     'homeAssistant.openAssistant': 'Get help',
     'homeAssistant.openChat': 'Open chat',
@@ -3277,10 +3277,10 @@ const homeDashboardTranslations = {
     'homeAssistant.quickHelp': 'Help me with',
     'homeAssistant.send': 'Send',
     'homeAssistant.status': 'Guided support',
-    'homeAssistant.ticketBody': 'If the answer did not help, contact Camion Chiaro support. We prepare an email with company and last question so support understands the case quickly.',
+    'homeAssistant.ticketBody': 'If the answer did not help, contact Movigo support. We prepare an email with company and last question so support understands the case quickly.',
     'homeAssistant.ticketMessage': 'Sorry, let us open a ticket. Use the button below: it prepares an email to {email} with company, last question and space to describe what is not working.',
     'homeAssistant.ticketTitle': 'Open a support request',
-    'homeAssistant.title': 'Camion Chiaro Assistant',
+    'homeAssistant.title': 'Movigo Assistant',
     'homeAssistant.typing': 'Preparing the answer...',
     'support.assistant': 'Guided assistant',
   },
@@ -3298,16 +3298,16 @@ const homeDashboardTranslations = {
     'homeAssistant.answer.deadlines': 'Abre Vencimientos, filtra lo pendiente y renueva con nuevo documento, nueva fecha o recordatorio.',
     'homeAssistant.answer.documents': 'Desde Ficheros y Documentos puedes subir archivos, fotos y fechas. El conductor ve solo lo que haces visible.',
     'homeAssistant.answer.faults': 'Abre Averias, revisa fotos y detalles, luego registra estado, coste de reparacion e historico por matricula o periodo.',
-    'homeAssistant.body': 'Guia rapida sobre vencimientos, averias, documentos y chat. Si no basta, abre el soporte Camion Chiaro.',
+    'homeAssistant.body': 'Guia rapida sobre vencimientos, averias, documentos y chat. Si no basta, abre el soporte Movigo.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Vencimientos',
     'homeAssistant.documents': 'Documentos',
     'homeAssistant.errorMessage': 'No puedo responder ahora. Escribe lo que estabas haciendo o abre la guia: te llevo al punto correcto.',
     'homeAssistant.faults': 'Averias',
     'homeAssistant.guidedMode': 'Respuesta guiada',
-    'homeAssistant.homeSubtitle': 'Asistente Camion Chiaro',
+    'homeAssistant.homeSubtitle': 'Asistente Movigo',
     'homeAssistant.homeTitle': 'Necesitas ayuda?',
-    'homeAssistant.initialMessage': 'Hola, soy el asistente Camion Chiaro. Dime que no puedes hacer y te guio paso a paso.',
+    'homeAssistant.initialMessage': 'Hola, soy el asistente Movigo. Dime que no puedes hacer y te guio paso a paso.',
     'homeAssistant.notHelpful': 'No ha sido util?',
     'homeAssistant.openAssistant': 'Pedir ayuda',
     'homeAssistant.openChat': 'Abrir chat',
@@ -3319,10 +3319,10 @@ const homeDashboardTranslations = {
     'homeAssistant.quickHelp': 'Ayudame con',
     'homeAssistant.send': 'Enviar',
     'homeAssistant.status': 'Soporte guiado',
-    'homeAssistant.ticketBody': 'Si la respuesta no te ha ayudado, escribe al soporte Camion Chiaro. Preparamos un email con empresa y ultima pregunta para entender rapido el caso.',
+    'homeAssistant.ticketBody': 'Si la respuesta no te ha ayudado, escribe al soporte Movigo. Preparamos un email con empresa y ultima pregunta para entender rapido el caso.',
     'homeAssistant.ticketMessage': 'Lo siento, abramos un ticket. Usa el boton de abajo: prepara un email a {email} con empresa, ultima pregunta y espacio para describir el problema.',
     'homeAssistant.ticketTitle': 'Abrir solicitud de ayuda',
-    'homeAssistant.title': 'Asistente Camion Chiaro',
+    'homeAssistant.title': 'Asistente Movigo',
     'homeAssistant.typing': 'Preparando la respuesta...',
     'support.assistant': 'Asistente guiado',
   },
@@ -3340,16 +3340,16 @@ const homeDashboardTranslations = {
     'homeAssistant.answer.deadlines': 'Ouvre Echeances, filtre ce qui est a traiter puis renouvelle avec document, date ou rappel.',
     'homeAssistant.answer.documents': 'Depuis Fichiers et Documents tu peux charger fichiers, photos et dates. Le chauffeur voit seulement ce qui est visible.',
     'homeAssistant.answer.faults': 'Ouvre Pannes, regarde photos et details, puis note statut, cout de reparation et historique par plaque ou periode.',
-    'homeAssistant.body': 'Guide rapide pour echeances, pannes, documents et chat. Si cela ne suffit pas, ouvre le support Camion Chiaro.',
+    'homeAssistant.body': 'Guide rapide pour echeances, pannes, documents et chat. Si cela ne suffit pas, ouvre le support Movigo.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Echeances',
     'homeAssistant.documents': 'Documents',
     'homeAssistant.errorMessage': 'Je ne peux pas repondre maintenant. Ecris ce que tu faisais ou ouvre le guide: je te dirige quand meme.',
     'homeAssistant.faults': 'Pannes',
     'homeAssistant.guidedMode': 'Reponse guidee',
-    'homeAssistant.homeSubtitle': 'Assistant Camion Chiaro',
+    'homeAssistant.homeSubtitle': 'Assistant Movigo',
     'homeAssistant.homeTitle': 'Besoin d aide?',
-    'homeAssistant.initialMessage': 'Bonjour, je suis l assistant Camion Chiaro. Dis-moi ce que tu veux faire et je te guide pas a pas.',
+    'homeAssistant.initialMessage': 'Bonjour, je suis l assistant Movigo. Dis-moi ce que tu veux faire et je te guide pas a pas.',
     'homeAssistant.notHelpful': 'Ce n etait pas utile?',
     'homeAssistant.openAssistant': 'Demander aide',
     'homeAssistant.openChat': 'Ouvrir chat',
@@ -3361,10 +3361,10 @@ const homeDashboardTranslations = {
     'homeAssistant.quickHelp': 'Aide-moi avec',
     'homeAssistant.send': 'Envoyer',
     'homeAssistant.status': 'Support guide',
-    'homeAssistant.ticketBody': 'Si la reponse ne t a pas aide, ecris au support Camion Chiaro. Nous preparons un email avec entreprise et derniere question pour comprendre vite le cas.',
+    'homeAssistant.ticketBody': 'Si la reponse ne t a pas aide, ecris au support Movigo. Nous preparons un email avec entreprise et derniere question pour comprendre vite le cas.',
     'homeAssistant.ticketMessage': 'Desole, ouvrons un ticket. Utilise le bouton ci-dessous: il prepare un email a {email} avec entreprise, derniere question et espace pour decrire le probleme.',
     'homeAssistant.ticketTitle': 'Ouvrir une demande support',
-    'homeAssistant.title': 'Assistant Camion Chiaro',
+    'homeAssistant.title': 'Assistant Movigo',
     'homeAssistant.typing': 'Preparation de la reponse...',
     'support.assistant': 'Assistant guide',
   },
@@ -3382,16 +3382,16 @@ const homeDashboardTranslations = {
     'homeAssistant.answer.deadlines': 'Offne Fristen, filtere offene Punkte und erneuere mit neuem Dokument, Datum oder Erinnerung.',
     'homeAssistant.answer.documents': 'In Daten und Dokumente kannst du Dateien, Fotos und Ablaufdaten hochladen. Fahrer sehen nur freigegebene Inhalte.',
     'homeAssistant.answer.faults': 'Offne Schaden, prufe Fotos und Details, erfasse Status, Reparaturkosten und Verlauf nach Kennzeichen oder Zeitraum.',
-    'homeAssistant.body': 'Schnelle Hilfe zu Fristen, Schaden, Dokumenten und Chat. Wenn das nicht reicht, offne den Camion Chiaro Support.',
+    'homeAssistant.body': 'Schnelle Hilfe zu Fristen, Schaden, Dokumenten und Chat. Wenn das nicht reicht, offne den Movigo Support.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Fristen',
     'homeAssistant.documents': 'Dokumente',
     'homeAssistant.errorMessage': 'Ich kann gerade nicht antworten. Schreibe, was du tun wolltest, oder offne die Hilfe: ich leite dich trotzdem weiter.',
     'homeAssistant.faults': 'Schaden',
     'homeAssistant.guidedMode': 'Gefuhrte Antwort',
-    'homeAssistant.homeSubtitle': 'Camion Chiaro Assistent',
+    'homeAssistant.homeSubtitle': 'Movigo Assistent',
     'homeAssistant.homeTitle': 'Brauchst du Hilfe?',
-    'homeAssistant.initialMessage': 'Hallo, ich bin der Camion Chiaro Assistent. Sag mir, was nicht klappt, und ich fuhre dich Schritt fur Schritt.',
+    'homeAssistant.initialMessage': 'Hallo, ich bin der Movigo Assistent. Sag mir, was nicht klappt, und ich fuhre dich Schritt fur Schritt.',
     'homeAssistant.notHelpful': 'War das nicht hilfreich?',
     'homeAssistant.openAssistant': 'Hilfe holen',
     'homeAssistant.openChat': 'Chat offnen',
@@ -3403,10 +3403,10 @@ const homeDashboardTranslations = {
     'homeAssistant.quickHelp': 'Hilf mir mit',
     'homeAssistant.send': 'Senden',
     'homeAssistant.status': 'Gefuhrter Support',
-    'homeAssistant.ticketBody': 'Wenn die Antwort nicht geholfen hat, schreibe dem Camion Chiaro Support. Wir bereiten eine E-Mail mit Firma und letzter Frage vor.',
+    'homeAssistant.ticketBody': 'Wenn die Antwort nicht geholfen hat, schreibe dem Movigo Support. Wir bereiten eine E-Mail mit Firma und letzter Frage vor.',
     'homeAssistant.ticketMessage': 'Tut mir leid, offnen wir ein Ticket. Der Button unten erstellt eine E-Mail an {email} mit Firma, letzter Frage und Platz fur die Problembeschreibung.',
     'homeAssistant.ticketTitle': 'Supportanfrage offnen',
-    'homeAssistant.title': 'Camion Chiaro Assistent',
+    'homeAssistant.title': 'Movigo Assistent',
     'homeAssistant.typing': 'Antwort wird vorbereitet...',
     'support.assistant': 'Gefuhrter Assistent',
   },
@@ -3424,16 +3424,16 @@ const homeDashboardTranslations = {
     'homeAssistant.answer.deadlines': 'Deschide Scadente, filtreaza ce este de lucrat si reinnoieste cu document, data noua sau reminder.',
     'homeAssistant.answer.documents': 'Din Date si Documente poti incarca fisiere, poze si date de expirare. Soferul vede doar ce este vizibil.',
     'homeAssistant.answer.faults': 'Deschide Defectiuni, verifica poze si detalii, apoi noteaza status, cost reparatie si istoric pe numar sau perioada.',
-    'homeAssistant.body': 'Ghid rapid pentru scadente, defectiuni, documente si chat. Daca nu ajunge, deschide suportul Camion Chiaro.',
+    'homeAssistant.body': 'Ghid rapid pentru scadente, defectiuni, documente si chat. Daca nu ajunge, deschide suportul Movigo.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Scadente',
     'homeAssistant.documents': 'Documente',
     'homeAssistant.errorMessage': 'Nu pot raspunde acum. Scrie ce incercai sa faci sau deschide ghidul: te duc oricum la locul potrivit.',
     'homeAssistant.faults': 'Defectiuni',
     'homeAssistant.guidedMode': 'Raspuns ghidat',
-    'homeAssistant.homeSubtitle': 'Asistent Camion Chiaro',
+    'homeAssistant.homeSubtitle': 'Asistent Movigo',
     'homeAssistant.homeTitle': 'Ai nevoie de ajutor?',
-    'homeAssistant.initialMessage': 'Buna, sunt asistentul Camion Chiaro. Spune-mi ce nu poti face si te ghidez pas cu pas.',
+    'homeAssistant.initialMessage': 'Buna, sunt asistentul Movigo. Spune-mi ce nu poti face si te ghidez pas cu pas.',
     'homeAssistant.notHelpful': 'Nu a fost util?',
     'homeAssistant.openAssistant': 'Cere ajutor',
     'homeAssistant.openChat': 'Deschide chat',
@@ -3445,10 +3445,10 @@ const homeDashboardTranslations = {
     'homeAssistant.quickHelp': 'Ajuta-ma cu',
     'homeAssistant.send': 'Trimite',
     'homeAssistant.status': 'Suport ghidat',
-    'homeAssistant.ticketBody': 'Daca raspunsul nu te-a ajutat, scrie suportului Camion Chiaro. Pregatim un email cu firma si ultima intrebare pentru a intelege cazul rapid.',
+    'homeAssistant.ticketBody': 'Daca raspunsul nu te-a ajutat, scrie suportului Movigo. Pregatim un email cu firma si ultima intrebare pentru a intelege cazul rapid.',
     'homeAssistant.ticketMessage': 'Imi pare rau, deschidem un ticket. Foloseste butonul de mai jos: pregateste un email catre {email} cu firma, ultima intrebare si spatiu pentru problema.',
     'homeAssistant.ticketTitle': 'Deschide cerere suport',
-    'homeAssistant.title': 'Asistent Camion Chiaro',
+    'homeAssistant.title': 'Asistent Movigo',
     'homeAssistant.typing': 'Pregatesc raspunsul...',
     'support.assistant': 'Asistent ghidat',
   },
@@ -3466,16 +3466,16 @@ const homeDashboardTranslations = {
     'homeAssistant.answer.deadlines': 'Otworz Terminy, filtruj sprawy do obslugi i odnawiaj dokumentem, nowa data albo przypomnieniem.',
     'homeAssistant.answer.documents': 'W Kartotekach i Dokumentach mozesz dodawac pliki, zdjecia i daty. Kierowca widzi tylko udostepnione rzeczy.',
     'homeAssistant.answer.faults': 'Otworz Usterki, sprawdz zdjecia i szczegoly, potem wpisz status, koszt naprawy i historie wedlug tablicy lub okresu.',
-    'homeAssistant.body': 'Szybka pomoc dla terminow, usterek, dokumentow i chatu. Jesli to za malo, otworz wsparcie Camion Chiaro.',
+    'homeAssistant.body': 'Szybka pomoc dla terminow, usterek, dokumentow i chatu. Jesli to za malo, otworz wsparcie Movigo.',
     'homeAssistant.chat': 'Chat',
     'homeAssistant.deadlines': 'Terminy',
     'homeAssistant.documents': 'Dokumenty',
     'homeAssistant.errorMessage': 'Nie moge teraz odpowiedziec. Napisz, co robiles, albo otworz pomoc: nadal wskaze wlasciwe miejsce.',
     'homeAssistant.faults': 'Usterki',
     'homeAssistant.guidedMode': 'Odpowiedz prowadzona',
-    'homeAssistant.homeSubtitle': 'Asystent Camion Chiaro',
+    'homeAssistant.homeSubtitle': 'Asystent Movigo',
     'homeAssistant.homeTitle': 'Potrzebujesz pomocy?',
-    'homeAssistant.initialMessage': 'Czesc, jestem asystentem Camion Chiaro. Napisz, czego nie mozesz zrobic, a poprowadze cie krok po kroku.',
+    'homeAssistant.initialMessage': 'Czesc, jestem asystentem Movigo. Napisz, czego nie mozesz zrobic, a poprowadze cie krok po kroku.',
     'homeAssistant.notHelpful': 'To nie pomoglo?',
     'homeAssistant.openAssistant': 'Popros o pomoc',
     'homeAssistant.openChat': 'Otworz chat',
@@ -3487,10 +3487,10 @@ const homeDashboardTranslations = {
     'homeAssistant.quickHelp': 'Pomoz mi z',
     'homeAssistant.send': 'Wyslij',
     'homeAssistant.status': 'Wsparcie prowadzone',
-    'homeAssistant.ticketBody': 'Jesli odpowiedz nie pomogla, napisz do wsparcia Camion Chiaro. Przygotujemy email z firma i ostatnim pytaniem, aby szybciej zrozumiec sprawe.',
+    'homeAssistant.ticketBody': 'Jesli odpowiedz nie pomogla, napisz do wsparcia Movigo. Przygotujemy email z firma i ostatnim pytaniem, aby szybciej zrozumiec sprawe.',
     'homeAssistant.ticketMessage': 'Przykro mi, otworzmy ticket. Uzyj przycisku ponizej: przygotuje email do {email} z firma, ostatnim pytaniem i miejscem na opis problemu.',
     'homeAssistant.ticketTitle': 'Otworz zgloszenie pomocy',
-    'homeAssistant.title': 'Asystent Camion Chiaro',
+    'homeAssistant.title': 'Asystent Movigo',
     'homeAssistant.typing': 'Przygotowuje odpowiedz...',
     'support.assistant': 'Asystent prowadzony',
   },
@@ -3505,7 +3505,7 @@ Object.entries(homeDashboardTranslations).forEach(([translationLanguage, transla
 
 const supportSections = [
   {
-    description: 'Primo livello di assistenza: guida l utente dentro Camion Chiaro e prepara il passaggio a supporto umano quando serve.',
+    description: 'Primo livello di assistenza: guida l utente dentro Movigo e prepara il passaggio a supporto umano quando serve.',
     icon: Bot,
     id: 'assistant',
     titleKey: 'support.assistant',
@@ -3515,7 +3515,7 @@ const supportSections = [
         title: 'Cosa fa ora',
       },
       {
-        body: 'Per ora lavora con procedure guidate Camion Chiaro, senza costi AI. In futuro potremo riattivare AI vera solo se conviene e con limiti di utilizzo.',
+        body: 'Per ora lavora con procedure guidate Movigo, senza costi AI. In futuro potremo riattivare AI vera solo se conviene e con limiti di utilizzo.',
         title: 'Evoluzione futura',
       },
       {
@@ -3535,8 +3535,8 @@ const supportSections = [
     titleKey: 'support.faq',
     items: [
       {
-        body: 'Camion Chiaro porta in un unico posto autisti, mezzi, scadenze, documenti, check, guasti, chat, notifiche e costi. L azienda apre la dashboard e vede subito cosa richiede attenzione.',
-        title: 'A cosa serve Camion Chiaro?',
+        body: 'Movigo porta in un unico posto autisti, mezzi, scadenze, documenti, check, guasti, chat, notifiche e costi. L azienda apre la dashboard e vede subito cosa richiede attenzione.',
+        title: 'A cosa serve Movigo?',
       },
       {
         body: 'Documenti sparsi, foto su WhatsApp, telefonate continue e scadenze da ricordare diventano pratiche ordinate, notifiche e storico consultabile. Il lavoro resta lo stesso, ma finalmente e piu leggibile.',
@@ -3571,7 +3571,7 @@ const supportSections = [
         title: 'Posso controllare multe e sanzioni?',
       },
       {
-        body: 'Il prezzo parte da 300 euro/mese + IVA perche Camion Chiaro non e una semplice agenda: include app, notifiche, documenti, storico, costi, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
+        body: 'Il prezzo parte da 300 euro/mese + IVA perche Movigo non e una semplice agenda: include app, notifiche, documenti, storico, costi, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
         title: 'Perche vale il canone mensile?',
       },
       {
@@ -3623,7 +3623,7 @@ const supportSections = [
     titleKey: 'support.launch',
     items: [
       {
-        body: 'Camion Chiaro: la flotta sotto controllo, ogni giorno. Una sola dashboard per vedere cosa manca, cosa scade, cosa e urgente e dove stai spendendo soldi.',
+        body: 'Movigo: la flotta sotto controllo, ogni giorno. Una sola dashboard per vedere cosa manca, cosa scade, cosa e urgente e dove stai spendendo soldi.',
         title: 'Titolo',
       },
       {
@@ -3655,7 +3655,7 @@ const supportSections = [
     titleKey: 'support.videos',
     items: [
       {
-        body: 'Titolare con fogli e telefono. Poi dashboard ordinata. Messaggio: una scadenza dimenticata puo fermare un mezzo, Camion Chiaro la fa emergere prima.',
+        body: 'Titolare con fogli e telefono. Poi dashboard ordinata. Messaggio: una scadenza dimenticata puo fermare un mezzo, Movigo la fa emergere prima.',
         title: 'La scadenza che ti ferma',
       },
       {
@@ -3727,7 +3727,7 @@ const supportSections = [
         title: 'Indice salute flotta',
       },
       {
-        body: 'Per ogni mezzo o attrezzatura si imposta una soglia mensile. Se manutenzioni, multe o guasti la superano, Camion Chiaro evidenzia il problema prima che diventi invisibile nei conti.',
+        body: 'Per ogni mezzo o attrezzatura si imposta una soglia mensile. Se manutenzioni, multe o guasti la superano, Movigo evidenzia il problema prima che diventi invisibile nei conti.',
         title: 'Budget per targa',
       },
       {
@@ -5118,7 +5118,7 @@ function App() {
     function handleInstalled() {
       setIsStandaloneMode(true)
       setInstallPromptEvent(null)
-      setPhoneNotificationStatus('Camion Chiaro installata sul telefono.')
+      setPhoneNotificationStatus('Movigo installata sul telefono.')
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
@@ -5362,7 +5362,7 @@ function App() {
 
       if (choiceResult?.outcome === 'accepted') {
         setIsStandaloneMode(true)
-        setPhoneNotificationStatus('Camion Chiaro installata sul telefono.')
+        setPhoneNotificationStatus('Movigo installata sul telefono.')
         return true
       }
     }
@@ -6144,7 +6144,7 @@ function App() {
       }
     }
 
-    const reminderBody = `Sollecito Camion Chiaro: aggiorna ${targetItem.type || 'documento'} entro la scadenza ${formatOptionalDate(targetItem.dueDate)}. Se hai gia provveduto, carica il nuovo documento o avvisa l azienda.`
+    const reminderBody = `Sollecito Movigo: aggiorna ${targetItem.type || 'documento'} entro la scadenza ${formatOptionalDate(targetItem.dueDate)}. Se hai gia provveduto, carica il nuovo documento o avvisa l azienda.`
 
     if (targetItem.driverId) {
       const sent = await sendChatMessage({
@@ -8341,7 +8341,7 @@ function CompanyLicenseGate({
         <div className="license-gate-heading">
           <div className="brand-mark">CC</div>
           <div>
-            <p className="overline">Camion Chiaro</p>
+            <p className="overline">Movigo</p>
             <h1>{companyName}</h1>
           </div>
           <span className={`billing-status-pill is-${companyProfile.billingStatus || 'pending'}`}>
@@ -8354,7 +8354,7 @@ function CompanyLicenseGate({
         </p>
 
         <form className="license-checkout-form" onSubmit={handleCheckoutSubmit}>
-          <div className="billing-plan-grid" role="radiogroup" aria-label="Scegli piano Camion Chiaro">
+          <div className="billing-plan-grid" role="radiogroup" aria-label="Scegli piano Movigo">
             {billingCheckoutPlans.map((plan) => (
               <button
                 aria-checked={selectedPlan === plan.id}
@@ -8493,7 +8493,7 @@ function DriverLicenseBlockedScreen({ companyName, onSignOut }) {
         <p className="overline">{companyName}</p>
         <h1>Area autista non disponibile</h1>
         <p>
-          L azienda deve completare l attivazione della licenza Camion Chiaro. Appena viene riattivata,
+          L azienda deve completare l attivazione della licenza Movigo. Appena viene riattivata,
           chat, documenti, check e guasti tornano disponibili.
         </p>
         <div className="license-gate-actions">
@@ -8652,7 +8652,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
             <CamionChiaroMark />
           </div>
           <div>
-            <strong>Camion Chiaro</strong>
+            <strong>Movigo</strong>
             <span>{t('brand.tagline')}</span>
           </div>
         </button>
@@ -8673,9 +8673,9 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
       <section className="public-hero" id="prodotto">
         <div className="public-hero-copy">
           <p className="overline">Centro operativo per trasportatori</p>
-          <h1>Camion Chiaro</h1>
+          <h1>Movigo</h1>
           <p>
-            Basta documenti sparsi, scadenze ricordate a memoria e guasti persi in chat. Camion Chiaro mette flotta,
+            Basta documenti sparsi, scadenze ricordate a memoria e guasti persi in chat. Movigo mette flotta,
             autisti, documenti, notifiche, guasti, chat e costi in un unico posto semplice da usare.
           </p>
           <div className="public-hero-actions">
@@ -8696,7 +8696,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </div>
         </div>
 
-        <section className="auth-card public-access-card" id="accesso" aria-label="Accesso Camion Chiaro">
+        <section className="auth-card public-access-card" id="accesso" aria-label="Accesso Movigo">
         <div className="auth-tabs">
           <button className={mode === 'company' ? 'is-active' : ''} onClick={() => setMode('company')} type="button">
             <Building2 size={17} />
@@ -8825,7 +8825,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         </section>
       </section>
 
-      <section className="public-product-preview" aria-label="Anteprima Camion Chiaro">
+      <section className="public-product-preview" aria-label="Anteprima Movigo">
         <div className="public-dashboard-mock">
           <div className="public-mock-topbar">
             <div>
@@ -8892,7 +8892,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           <h2>Il problema non e guidare. E non perdere il controllo.</h2>
           <p>
             Patenti, revisioni, assicurazioni, visite mediche, documenti autista, guasti, messaggi e costi finiscono spesso
-            in posti diversi. Camion Chiaro li porta in un unico flusso leggibile, cosi l ufficio sa cosa fare e il titolare
+            in posti diversi. Movigo li porta in un unico flusso leggibile, cosi l ufficio sa cosa fare e il titolare
             vede cosa sta succedendo anche fuori sede.
           </p>
         </div>
@@ -9005,11 +9005,11 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         <div className="public-faq-list">
           <article>
             <h3>Cosa cambia davvero rispetto a oggi?</h3>
-            <p>Invece di cercare informazioni tra WhatsApp, fogli, telefono e cartelle, apri Camion Chiaro e vedi cosa scade, cosa manca, chi deve agire e quali mezzi hanno problemi.</p>
+            <p>Invece di cercare informazioni tra WhatsApp, fogli, telefono e cartelle, apri Movigo e vedi cosa scade, cosa manca, chi deve agire e quali mezzi hanno problemi.</p>
           </article>
           <article>
             <h3>L autista deve scaricare un app dallo store?</h3>
-            <p>Si: Camion Chiaro e previsto come app iOS/Android per autisti, magazzino e azienda. L azienda puo continuare a lavorare anche da browser desktop.</p>
+            <p>Si: Movigo e previsto come app iOS/Android per autisti, magazzino e azienda. L azienda puo continuare a lavorare anche da browser desktop.</p>
           </article>
           <article>
             <h3>Arrivano notifiche sul telefono?</h3>
@@ -9025,7 +9025,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
           <article>
             <h3>Perche non basta WhatsApp?</h3>
-            <p>WhatsApp serve per parlare, non per gestire. Camion Chiaro collega messaggi, documenti, guasti, scadenze, notifiche e storico operativo.</p>
+            <p>WhatsApp serve per parlare, non per gestire. Movigo collega messaggi, documenti, guasti, scadenze, notifiche e storico operativo.</p>
           </article>
           <article>
             <h3>Quanto tempo serve per partire?</h3>
@@ -9056,7 +9056,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
           <CamionChiaroMark />
         </div>
         <div>
-          <strong>Camion Chiaro</strong>
+          <strong>Movigo</strong>
           <span>{t('session.companyArea')}</span>
         </div>
       </button>
@@ -9344,7 +9344,7 @@ function TopbarNotifications({
 
 function CamionChiaroMark() {
   return (
-    <img className="camion-logo-mark" src={camionChiaroIconUrl} alt="Camion Chiaro" />
+    <img className="camion-logo-mark" src={camionChiaroIconUrl} alt="Movigo" />
   )
 }
 
@@ -9550,7 +9550,7 @@ function AdminWorkspace({
   const healthDescriptions = {
     attention: 'Ha criticita operative aperte.',
     billing: 'Pagamento o piano da verificare.',
-    internal: 'Account interno Camion Chiaro: non entra nei clienti paganti.',
+    internal: 'Account interno Movigo: non entra nei clienti paganti.',
     ok: 'Nessuna criticita prioritaria.',
     storage: 'Spazio utilizzato vicino al limite.',
   }
@@ -9630,7 +9630,7 @@ function AdminWorkspace({
 
   function getAdminRecommendation(company) {
     if (!company) return 'Seleziona un cliente per vedere la prossima azione consigliata.'
-    if (company.isInternalAdminCompany) return 'Account interno: non richiede pagamento. Usalo per amministrare Camion Chiaro.'
+    if (company.isInternalAdminCompany) return 'Account interno: non richiede pagamento. Usalo per amministrare Movigo.'
     if (company.adminPriority === 'urgent') return 'Priorita urgente: contatta il cliente e aggiorna note e prossimo follow-up.'
     if (company.adminSalesStage === 'risk') return 'Cliente a rischio: verifica motivazione, pagamento, uso reale e blocchi operativi.'
     if (company.health === 'billing') return 'Verifica pagamento, piano e periodo: questo cliente non deve restare bloccato per errore.'
@@ -9668,7 +9668,7 @@ function AdminWorkspace({
         <div className="panel admin-locked-panel">
           <ShieldCheck size={28} />
           <div>
-            <p className="overline">Camion Chiaro Admin</p>
+            <p className="overline">Movigo Admin</p>
             <h2>Pannello riservato</h2>
             <p>Questo accesso e riservato alle email admin. Account attuale: {sessionEmail || 'non disponibile'}.</p>
           </div>
@@ -9678,7 +9678,7 @@ function AdminWorkspace({
   }
 
   return (
-    <section className="admin-workspace" aria-label="Pannello admin Camion Chiaro">
+    <section className="admin-workspace" aria-label="Pannello admin Movigo">
       <div className="panel admin-hero-panel">
         <div>
           <h2>Controllo clienti</h2>
@@ -9723,7 +9723,7 @@ function AdminWorkspace({
       </p>
 
       <div className="admin-layout">
-        <section className="admin-client-panel" aria-label="Clienti Camion Chiaro">
+        <section className="admin-client-panel" aria-label="Clienti Movigo">
           <div className="admin-toolbar">
             <label className="admin-search">
               <Search size={16} />
@@ -9849,7 +9849,7 @@ function AdminWorkspace({
               <form className="admin-crm-form" onSubmit={handleSaveAdminCompany}>
                 <div className="admin-crm-heading">
                   <strong>Gestione cliente</strong>
-                  <span>{selectedCompany.adminUpdatedAt ? `Aggiornato ${formatShortDateTime(selectedCompany.adminUpdatedAt)}` : 'Note interne Camion Chiaro'}</span>
+                  <span>{selectedCompany.adminUpdatedAt ? `Aggiornato ${formatShortDateTime(selectedCompany.adminUpdatedAt)}` : 'Note interne Movigo'}</span>
                 </div>
 
                 <div className="admin-crm-grid">
@@ -9912,7 +9912,7 @@ function AdminWorkspace({
                 </div>
 
                 {selectedCompany.isInternalAdminCompany ? (
-                  <p className="admin-internal-note">Account interno Camion Chiaro: non viene conteggiato nei clienti paganti e non richiede abbonamento.</p>
+                  <p className="admin-internal-note">Account interno Movigo: non viene conteggiato nei clienti paganti e non richiede abbonamento.</p>
                 ) : null}
 
                 <label className="admin-note-field">
@@ -10621,7 +10621,7 @@ function HomeAssistantStrip({
   }
 
   const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')?.content ?? ''
-  const ticketSubject = encodeURIComponent(`Ticket Camion Chiaro - ${companyName}`)
+  const ticketSubject = encodeURIComponent(`Ticket Movigo - ${companyName}`)
   const ticketBody = encodeURIComponent([
     `Azienda: ${companyName}`,
     'Sezione: Assistente guidato',
@@ -13678,7 +13678,7 @@ function FaultCostReport({
         </head>
         <body>
           <h1>Report mensile Premium</h1>
-          <p>${escapeHtml(companyName)} · ${escapeHtml(monthlyRange.label)} · generato da Camion Chiaro</p>
+          <p>${escapeHtml(companyName)} · ${escapeHtml(monthlyRange.label)} · generato da Movigo</p>
           <section class="summary">
             <div><strong>${escapeHtml(formatMoneyCents(monthlyTotalCents, defaultCurrency))}</strong><span>Costi mese</span></div>
             <div><strong>${monthlyCostRows.length}</strong><span>Voci costo</span></div>

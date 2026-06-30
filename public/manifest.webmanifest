@@ -1,6 +1,6 @@
 {
-  "name": "Camion Chiaro",
-  "short_name": "Camion Chiaro",
+  "name": "Movigo",
+  "short_name": "Movigo",
   "description": "Scadenze, documenti, check, guasti e chat per aziende logistica e autisti.",
   "start_url": "/",
   "scope": "/",

@@ -1,4 +1,4 @@
-# Manuale utente Camion Chiaro
+# Manuale utente Movigo
 
 ## 1. Primo accesso azienda
 

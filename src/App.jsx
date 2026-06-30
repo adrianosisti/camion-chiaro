@@ -9119,7 +9119,10 @@ function Topbar({
     <header className="topbar">
       <div className="topbar-heading">
         <span className="topbar-brand-badge" aria-hidden="true">
-          <CamionChiaroMark />
+          <span className="topbar-brand-icon">
+            <CamionChiaroMark />
+          </span>
+          <img className="topbar-brand-full" src="/brand/vygo-logo-horizontal.png" alt="" />
         </span>
         <div className="topbar-heading-copy">
           <p className="overline">{t('session.companyArea')}</p>

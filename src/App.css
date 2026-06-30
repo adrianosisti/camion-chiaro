@@ -1000,15 +1000,42 @@
   box-shadow: 0 14px 30px rgba(2, 6, 23, 0.16);
 }
 
+.topbar-brand-icon {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+}
+
 .topbar-brand-badge .camion-logo-mark {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+.topbar-brand-full {
+  display: none;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .workspace.is-dashboard-home .topbar-brand-badge {
-  border-color: rgba(103, 232, 249, 0.34);
+  flex-basis: 168px;
+  width: 168px;
+  height: 48px;
+  padding: 5px 9px;
+  border-color: rgba(255, 255, 255, 0.42);
+  background: #ffffff;
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+.workspace.is-dashboard-home .topbar-brand-icon {
+  display: none;
+}
+
+.workspace.is-dashboard-home .topbar-brand-full {
+  display: block;
 }
 
 .topbar-actions {
@@ -9572,6 +9599,22 @@
     align-items: stretch;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .workspace.is-dashboard-home .topbar-brand-badge {
+    flex-basis: 48px;
+    width: 48px;
+    padding: 0;
+    background: #02121f;
+    border-color: rgba(18, 198, 223, 0.28);
+  }
+
+  .workspace.is-dashboard-home .topbar-brand-icon {
+    display: grid;
+  }
+
+  .workspace.is-dashboard-home .topbar-brand-full {
+    display: none;
   }
 
   .topbar-actions {

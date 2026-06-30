@@ -6,13 +6,17 @@ Queste tavole servono per scegliere la direzione visiva. Il logo finale andra po
 
 Slogan fisso: Move. Manage. Succeed.
 
-## Shortlist da guardare per prime
+## Direzione scelta
 
-- Tavola 3, opzione 01: piu premium e adatta a sito/app.
-- Tavola 10, opzione 02: molto forte come icona app.
-- Tavola 10, opzione 03: buona via di mezzo tra strada, check e controllo.
-- Tavola 2, opzione 01: piu semplice e memorabile.
-- Tavola 4, opzione 01: piu vicina al camioncino, ma moderna.
+La direzione scelta arriva dalla **Tavola 1 - Camion e percorso**, combinando questi elementi:
+
+- **Icona app principale:** riga 1 a sinistra, camion su sfondo nero.
+- **Logo orizzontale / scritta Vygo:** riga 1 centrale, camion + strada + scritta Vygo.
+- **Icona secondaria / favicon:** riga 2, quadratino nero con V + strada.
+
+File identici alla scelta: [assets/brand-exact](assets/brand-exact).
+
+Motivo: l icona camion su fondo nero richiama subito il mondo trasporto e il logo orizzontale centrale della riga 1 e quello piu riconoscibile per sito e materiali. L icona nera V-strada della riga 2 resta perfetta come simbolo piccolo o favicon.
 
 ## Tavola 1 - Camion e percorso
 

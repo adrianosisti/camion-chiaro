@@ -45,7 +45,21 @@ Prima tavola concept: [vygo-logo-concepts.png](assets/vygo-logo-concepts.png).
 
 Selezione estesa con 50 proposte: [selezione-loghi-vygo.md](selezione-loghi-vygo.md).
 
-Direzione preferita: segno corto, riconoscibile anche come icona app, con idea di strada, percorso e controllo. Evitare camion disegnati in modo banale: il marchio deve sembrare una app forte, non un gestionale vecchio.
+Direzione scelta: **Tavola 1 - camion nero + logo centrale + V-strada**.
+
+Elementi scelti:
+
+- Icona app principale: riga 1 a sinistra, camion su sfondo nero.
+- Logo orizzontale / scritta Vygo: riga 1 centrale, camion + strada + scritta Vygo.
+- Icona secondaria / favicon: riga 2, quadratino nero con V + strada.
+
+Usare **solo i file identici** in [assets/brand-exact](assets/brand-exact).
+
+- App icon principale: [vygo-app-icon-truck-black-1024.png](assets/brand-exact/vygo-app-icon-truck-black-1024.png).
+- Logo orizzontale: [vygo-logo-horizontal-truck-3200.png](assets/brand-exact/vygo-logo-horizontal-truck-3200.png).
+- Icona piccola/favicon: [vygo-small-icon-v-road-black-512.png](assets/brand-exact/vygo-small-icon-v-road-black-512.png).
+
+Il segno deve mantenere esattamente camion, strada e movimento della tavola scelta. Non ridisegnare liberamente: il logo finale vettoriale dovra essere tracciato fedelmente da questi file, senza cambiare stile.
 
 ## Frase breve
 

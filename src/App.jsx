@@ -8676,7 +8676,6 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
 
       <section className="public-hero" id="prodotto">
         <div className="public-hero-copy">
-          <p className="overline">Move. Manage. Succeed.</p>
           <h1 className="public-hero-logo-title">
             <img src="/brand/vygo-logo-horizontal.png" alt="Vygo - Move. Manage. Succeed." />
             <span>Vygo</span>

@@ -976,6 +976,41 @@
   min-width: 0;
 }
 
+.topbar-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.topbar-heading-copy {
+  min-width: 0;
+}
+
+.topbar-brand-badge {
+  display: grid;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(18, 198, 223, 0.28);
+  border-radius: 8px;
+  background: #02121f;
+  box-shadow: 0 14px 30px rgba(2, 6, 23, 0.16);
+}
+
+.topbar-brand-badge .camion-logo-mark {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workspace.is-dashboard-home .topbar-brand-badge {
+  border-color: rgba(103, 232, 249, 0.34);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
 .topbar-actions {
   position: relative;
   display: flex;

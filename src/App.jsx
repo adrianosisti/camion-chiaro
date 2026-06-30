@@ -9117,9 +9117,14 @@ function Topbar({
 }) {
   return (
     <header className="topbar">
-      <div>
-        <p className="overline">{t('session.companyArea')}</p>
-        <h1>{t('session.dashboardTitle')}</h1>
+      <div className="topbar-heading">
+        <span className="topbar-brand-badge" aria-hidden="true">
+          <CamionChiaroMark />
+        </span>
+        <div className="topbar-heading-copy">
+          <p className="overline">{t('session.companyArea')}</p>
+          <h1>{t('session.dashboardTitle')}</h1>
+        </div>
       </div>
       <div className="topbar-actions">
         <label className="search-box">

@@ -7719,8 +7719,7 @@ function App() {
       setCostReportResetKey(Date.now())
     }
 
-    setOperationsFilter('archive')
-    setActiveView('notifications')
+    setActiveView('reports')
     window.setTimeout(() => {
       document.getElementById('fault-cost-report')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 0)
@@ -7987,21 +7986,14 @@ function App() {
         ) : activeView === 'notifications' ? (
           <OperationsWorkspace
             acknowledgedCheckIds={acknowledgedCheckIds}
-            assetRecords={assetRecords}
             assetPreviewUrl={getAssetPreviewUrl}
-            costEntryRecords={costEntryRecords}
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
             onAcknowledgeCheck={acknowledgeCheck}
-            onCreateCostEntry={addCostEntryRecord}
-            onDeleteCostEntry={removeCostEntryRecord}
             onFilterChange={setOperationsFilter}
             onMarkCheckUnread={markCheckUnread}
-            onUpdateCostEntry={editCostEntryRecord}
             onUpdateFaultStatus={updateFaultReportStatus}
             selectedFilter={operationsFilter}
-            resetCostFormKey={costReportResetKey}
-            startAddingCostKey={costReportStartAddingKey}
             syncStatus={operationsSyncStatus}
             vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
@@ -8029,7 +8021,12 @@ function App() {
             costEntryRecords={costEntryRecords}
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
+            onCreateCostEntry={addCostEntryRecord}
+            onDeleteCostEntry={removeCostEntryRecord}
             onUpdateCostEntry={editCostEntryRecord}
+            onUpdateFaultStatus={updateFaultReportStatus}
+            resetCostFormKey={costReportResetKey}
+            startAddingCostKey={costReportStartAddingKey}
             vehicleRecords={vehicleRecords}
           />
         ) : activeView === 'support' ? (
@@ -9029,7 +9026,7 @@ function TopbarNotifications({
 }) {
   const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState('unread')
   const [modalOperationKey, setModalOperationKey] = useState('')
   const allOperations = useMemo(
     () =>
@@ -9090,11 +9087,10 @@ function TopbarNotifications({
     }
   })
   const unreadNotifications = notifications.filter((notification) => !notification.isRead)
-  const readNotifications = notifications.filter((notification) => notification.isRead)
+  const criticalNotifications = unreadNotifications.filter((notification) => notification.isCritical)
   const visibleNotifications = notifications.filter((notification) => {
-    if (filter === 'unread') return !notification.isRead
-    if (filter === 'read') return notification.isRead
-    return true
+    if (filter === 'critical') return notification.isCritical && !notification.isRead
+    return !notification.isRead
   })
   const modalOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === modalOperationKey)
 
@@ -9149,14 +9145,11 @@ function TopbarNotifications({
             </button>
           </div>
           <div className="notification-filter-tabs" role="tablist" aria-label={t('notifications.filterAria')}>
-            <button className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')} type="button">
-              {t('filter.all')} ({notifications.length})
-            </button>
             <button className={filter === 'unread' ? 'is-active' : ''} onClick={() => setFilter('unread')} type="button">
               {t('operations.inbox')} ({unreadNotifications.length})
             </button>
-            <button className={filter === 'read' ? 'is-active' : ''} onClick={() => setFilter('read')} type="button">
-              {t('common.archived')} ({readNotifications.length})
+            <button className={filter === 'critical' ? 'is-active' : ''} onClick={() => setFilter('critical')} type="button">
+              {t('operations.critical')} ({criticalNotifications.length})
             </button>
           </div>
           <div className="notifications-popover-list">
@@ -9384,7 +9377,12 @@ function ReportsWorkspace({
   costEntryRecords = [],
   driverRecords = [],
   faultReportRecords = [],
+  onCreateCostEntry,
+  onDeleteCostEntry,
   onUpdateCostEntry,
+  onUpdateFaultStatus,
+  resetCostFormKey = 0,
+  startAddingCostKey = 0,
   vehicleRecords = [],
 }) {
   const { language } = useI18n()
@@ -9431,8 +9429,13 @@ function ReportsWorkspace({
         costEntryRecords={costEntryRecords}
         driverRecords={driverRecords}
         faultReportRecords={faultReportRecords}
+        onCreateCostEntry={onCreateCostEntry}
+        onDeleteCostEntry={onDeleteCostEntry}
         onUpdateCostEntry={onUpdateCostEntry}
+        onUpdateFaultStatus={onUpdateFaultStatus}
         reportMode="reports"
+        resetCostFormKey={resetCostFormKey}
+        startAddingCostKey={startAddingCostKey}
         vehicleRecords={vehicleRecords}
       />
     </section>
@@ -12700,6 +12703,10 @@ function FaultCostReport({
         <div className="fault-cost-report-actions">
           {isReportWorkspace ? (
             <>
+              <button className="secondary-button compact-button" onClick={() => (isAddingCost ? resetCostForm() : openNewCostForm())} type="button">
+                <Plus size={16} />
+                {isAddingCost ? 'Chiudi' : 'Aggiungi spesa'}
+              </button>
               <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
                 <Download size={16} />
                 Scarica CSV
@@ -13024,7 +13031,7 @@ function FaultCostReport({
             </div>
             <div className="fault-cost-row-side">
               <b>{formatMoneyCents(row.amountCents, row.currency || defaultCurrency)}</b>
-              {!isReportWorkspace && row.kind === 'entry' ? (
+              {row.kind === 'entry' ? (
                 <span className="fault-cost-row-actions">
                   <button className="text-button" onClick={() => startEditingCostEntry(row.source)} type="button">
                     <Pencil size={14} />
@@ -13036,7 +13043,7 @@ function FaultCostReport({
                   </button>
                 </span>
               ) : null}
-              {!isReportWorkspace && row.kind !== 'entry' ? (
+              {row.kind !== 'entry' ? (
                 <span className="fault-cost-row-actions">
                   <button className="text-button" onClick={() => startEditingFaultCost(row.source)} type="button">
                     <Pencil size={14} />
@@ -13060,21 +13067,14 @@ function FaultCostReport({
 
 function OperationsWorkspace({
   acknowledgedCheckIds,
-  assetRecords = [],
   assetPreviewUrl,
-  costEntryRecords = [],
   driverRecords,
   faultReportRecords,
   onAcknowledgeCheck,
-  onCreateCostEntry,
-  onDeleteCostEntry,
   onFilterChange,
   onMarkCheckUnread,
-  onUpdateCostEntry,
   onUpdateFaultStatus,
-  resetCostFormKey = 0,
   selectedFilter = 'inbox',
-  startAddingCostKey = 0,
   syncStatus,
   vehicleCheckRecords,
   vehicleRecords,
@@ -13175,19 +13175,6 @@ function OperationsWorkspace({
             <span>{t('operations.archivedCount')}</span>
           </div>
         </div>
-        <FaultCostReport
-          assetRecords={assetRecords}
-          costEntryRecords={costEntryRecords}
-          faultReportRecords={faultReportRecords}
-          onCreateCostEntry={onCreateCostEntry}
-          onDeleteCostEntry={onDeleteCostEntry}
-          onUpdateCostEntry={onUpdateCostEntry}
-          onUpdateFaultStatus={onUpdateFaultStatus}
-          driverRecords={driverRecords}
-          resetCostFormKey={resetCostFormKey}
-          startAddingCostKey={startAddingCostKey}
-          vehicleRecords={vehicleRecords}
-        />
         <div className="filter-tabs operations-filters" role="tablist" aria-label={t('notifications.filterAria')}>
           <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('inbox')} type="button">
             {t('operations.inbox')} ({newFaults.length + unreadChecks.length})

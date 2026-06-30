@@ -392,7 +392,7 @@ function SelectionWheelModal({ onClose, onConfirm, options = [], title = 'Selezi
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.wheelBackdrop}>
-        <Pressable onPress={onClose} style={styles.wheelBackdropPressArea} />
+        <Pressable onPress={onClose} style={styles.wheelBackdropDismissArea} />
         <View style={styles.wheelSheet}>
           <View style={styles.wheelGrip} />
           <View style={styles.wheelHeader}>
@@ -410,7 +410,6 @@ function SelectionWheelModal({ onClose, onConfirm, options = [], title = 'Selezi
               decelerationRate="fast"
               nestedScrollEnabled
               onMomentumScrollEnd={handleScrollEnd}
-              onScrollEndDrag={handleScrollEnd}
               ref={scrollRef}
               showsVerticalScrollIndicator={false}
               snapToInterval={wheelItemHeight}
@@ -2651,8 +2650,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
-  wheelBackdropPressArea: {
-    ...StyleSheet.absoluteFillObject,
+  wheelBackdropDismissArea: {
+    flex: 1,
   },
   wheelField: {
     marginBottom: 10,
@@ -2766,10 +2765,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
+    elevation: 24,
     maxHeight: '76%',
     paddingBottom: 24,
     paddingHorizontal: 16,
     paddingTop: 12,
+    zIndex: 2,
   },
   wheelSpacer: {
     height: wheelItemHeight * 2,

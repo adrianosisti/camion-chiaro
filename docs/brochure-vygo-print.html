@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Brochure Vygo</title>
+    <style>
+      :root {
+        --cyan: #13c5df;
+        --dark: #031925;
+        --ink: #0f172a;
+        --muted: #52606d;
+        --line: #c8edf5;
+        --soft: #f3fbfe;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #eaf6f9;
+        color: var(--ink);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      .page {
+        width: min(1080px, calc(100vw - 32px));
+        margin: 24px auto;
+        background: #ffffff;
+        border: 1px solid #d7eef5;
+        box-shadow: 0 24px 70px rgba(3, 25, 37, 0.18);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 28px;
+        align-items: center;
+        padding: 42px;
+        background:
+          linear-gradient(135deg, rgba(19, 197, 223, 0.22), rgba(255, 255, 255, 0) 52%),
+          linear-gradient(135deg, #031925 0%, #07576a 54%, #13c5df 100%);
+        color: #ffffff;
+      }
+
+      .brand {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 34px;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 58px;
+        height: 58px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.1);
+        font-size: 24px;
+        font-weight: 900;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 68px;
+        letter-spacing: 0;
+        line-height: 0.95;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 30px;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero p {
+        max-width: 650px;
+        color: rgba(255, 255, 255, 0.84);
+        font-size: 18px;
+      }
+
+      .tagline {
+        margin-top: 12px;
+        color: var(--cyan);
+        font-size: 22px;
+        font-weight: 900;
+      }
+
+      .hero-card {
+        display: grid;
+        gap: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.12);
+        padding: 18px;
+      }
+
+      .hero-card strong {
+        font-size: 22px;
+      }
+
+      .hero-card span {
+        color: rgba(255, 255, 255, 0.78);
+        line-height: 1.45;
+      }
+
+      .section {
+        padding: 34px 42px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--soft);
+        padding: 16px;
+      }
+
+      .box strong {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--ink);
+        font-size: 16px;
+      }
+
+      ul {
+        margin: 10px 0 0;
+        padding-left: 20px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .dark-band {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        padding: 34px 42px;
+        background: #061f2b;
+        color: #ffffff;
+      }
+
+      .dark-band p,
+      .dark-band li {
+        color: rgba(255, 255, 255, 0.76);
+      }
+
+      .price-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+
+      .price-card {
+        display: grid;
+        gap: 10px;
+        border: 1px solid #bcecf5;
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 18px;
+      }
+
+      .price-card strong {
+        font-size: 24px;
+      }
+
+      .price-card b {
+        color: #0891b2;
+        font-size: 18px;
+      }
+
+      .cta {
+        display: grid;
+        gap: 10px;
+        padding: 34px 42px;
+        background: #ecfeff;
+        text-align: center;
+      }
+
+      .cta strong {
+        font-size: 28px;
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+        }
+
+        .page {
+          width: auto;
+          margin: 0;
+          border: 0;
+          box-shadow: none;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .hero,
+        .dark-band,
+        .grid-2,
+        .grid-3,
+        .price-grid {
+          grid-template-columns: 1fr;
+        }
+
+        h1 {
+          font-size: 52px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <div class="brand">
+            <div class="brand-mark">V</div>
+            <div>
+              <strong>Vygo</strong>
+              <div>Move. Manage. Succeed.</div>
+            </div>
+          </div>
+          <h1>Vygo</h1>
+          <div class="tagline">La flotta sotto controllo, ogni giorno.</div>
+          <p>
+            Dashboard azienda e app personale per gestire scadenze, documenti, guasti,
+            check, chat, notifiche, costi, sanzioni e storico operativo.
+          </p>
+        </div>
+        <div class="hero-card">
+          <strong>Vedi subito cosa richiede attenzione.</strong>
+          <span>Patenti, CQC, revisioni, assicurazioni, visite mediche, documenti, guasti e costi non devono vivere sparsi tra chat, fogli e memoria delle persone.</span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Perche serve</h2>
+        <div class="grid-3">
+          <div class="box">
+            <strong>Scadenze</strong>
+            <p>Patenti, revisioni, assicurazioni, visite mediche e documenti entrano in pratiche visibili e lavorabili.</p>
+          </div>
+          <div class="box">
+            <strong>Guasti e check</strong>
+            <p>Le segnalazioni non restano foto sparse: diventano storico collegato a targa, persona, stato e costo.</p>
+          </div>
+          <div class="box">
+            <strong>Centro costi</strong>
+            <p>Manutenzioni, sanzioni, riparazioni e spese possono essere filtrate per mezzo, autista, categoria e periodo.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="dark-band">
+        <div>
+          <h2>Cosa vede l azienda</h2>
+          <ul>
+            <li>Check critici e guasti aperti.</li>
+            <li>Scadenze imminenti o scadute.</li>
+            <li>Documenti da rinnovare.</li>
+            <li>Costi mese e storico per targa.</li>
+            <li>Chat operative e notifiche.</li>
+            <li>Report CSV e stampa/PDF.</li>
+          </ul>
+        </div>
+        <div>
+          <h2>Cosa fa il personale</h2>
+          <ul>
+            <li>Riceve notifiche nell app.</li>
+            <li>Fa check e segnala guasti con foto.</li>
+            <li>Carica e mostra documenti.</li>
+            <li>Scrive in chat singole o gruppi.</li>
+            <li>Vede le proprie scadenze.</li>
+            <li>Aggiorna documenti rinnovati.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Moduli principali</h2>
+        <div class="grid-2">
+          <div class="box">
+            <strong>Flotta e persone</strong>
+            <p>Furgoni, motrici, trattori, semirimorchi, muletti, strumenti, autisti, ufficio e magazzino.</p>
+          </div>
+          <div class="box">
+            <strong>Chat aziendale</strong>
+            <p>Chat singole, gruppi, reparti, foto, audio, allegati, notifiche, reaction e conferme di lettura.</p>
+          </div>
+          <div class="box">
+            <strong>Documenti e rinnovi</strong>
+            <p>Scadenze personali e mezzo con possibilita di rinnovo, nuova data, allegato, sollecito e archivio.</p>
+          </div>
+          <div class="box">
+            <strong>Report economici</strong>
+            <p>Costi per targa, sanzioni per autista, manutenzioni, guasti, CSV, stampa e riepiloghi mensili.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Piani indicativi</h2>
+        <div class="price-grid">
+          <div class="price-card">
+            <h3>Start 5</h3>
+            <strong>300 euro/mese</strong>
+            <b>+ IVA</b>
+            <p>Fino a 5 mezzi, 3 strumenti, 10 account e 10 GB file.</p>
+          </div>
+          <div class="price-card">
+            <h3>Fleet 10</h3>
+            <strong>450 euro/mese</strong>
+            <b>+ IVA</b>
+            <p>Fino a 10 mezzi, 5 strumenti, 20 account e 20 GB file.</p>
+          </div>
+          <div class="price-card">
+            <h3>Fleet 20+</h3>
+            <strong>da 650 euro/mese</strong>
+            <b>+ IVA</b>
+            <p>Per flotte strutturate con piu mezzi, reparti, utenti e storage.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Extra consigliati</h2>
+        <div class="grid-3">
+          <div class="box">
+            <strong>Chat aziendale completa</strong>
+            <p>+100 euro/mese + IVA.</p>
+          </div>
+          <div class="box">
+            <strong>Centro costi Premium</strong>
+            <p>+150 euro/mese + IVA.</p>
+          </div>
+          <div class="box">
+            <strong>Start-up kit</strong>
+            <p>1.500 euro una tantum + IVA per configurazione, dati iniziali e formazione.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta">
+        <strong>Vygo. Move. Manage. Succeed.</strong>
+        <p>Acquista il piano, attiva l azienda e parti con una flotta piu chiara.</p>
+      </section>
+    </main>
+  </body>
+</html>

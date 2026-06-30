@@ -20,7 +20,7 @@ function normalizeUsername(value) {
 }
 
 function buildAuthEmail(username) {
-  const authDomain = process.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vyko.app'
+  const authDomain = process.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vygo.app'
   const cleanUsername = normalizeUsername(username)
   return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${authDomain}`
 }

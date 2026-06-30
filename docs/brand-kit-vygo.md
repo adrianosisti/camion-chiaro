@@ -1,12 +1,12 @@
-# Brand kit Vyko
+# Brand kit Vygo
 
 ## Nome
 
-Vyko
+Vygo
 
 ## Idea
 
-Vyko e il centro operativo quotidiano per aziende di trasporto, logistica e distribuzione. Tiene insieme persone, mezzi, documenti, scadenze, guasti, check, chat, costi e report.
+Vygo e il centro operativo quotidiano per aziende di trasporto, logistica e distribuzione. Tiene insieme persone, mezzi, documenti, scadenze, guasti, check, chat, costi e report.
 
 ## Posizionamento
 
@@ -25,13 +25,13 @@ Slogan internazionale, corto e immediato: movimento, gestione e risultato. In it
 ## Claim principali
 
 - La flotta sotto controllo.
-- Tutto quello che rischi di dimenticare, Vyko lo mette davanti.
+- Tutto quello che rischi di dimenticare, Vygo lo mette davanti.
 - Dalla scadenza al guasto, tutto resta tracciato.
 - Meno messaggi persi. Meno documenti sparsi. Piu controllo.
 
 ## Tono
 
-Diretto, concreto, da imprenditore a imprenditore. Vyko deve parlare a chi lavora davvero: titolari, ufficio traffico, amministrazione, autisti e magazzino.
+Diretto, concreto, da imprenditore a imprenditore. Vygo deve parlare a chi lavora davvero: titolari, ufficio traffico, amministrazione, autisti e magazzino.
 
 ## Colori
 
@@ -41,14 +41,14 @@ Diretto, concreto, da imprenditore a imprenditore. Vyko deve parlare a chi lavor
 
 ## Logo
 
-Prima tavola concept: [vyko-logo-concepts.png](assets/vyko-logo-concepts.png).
+Prima tavola concept: [vygo-logo-concepts.png](assets/vygo-logo-concepts.png).
 
 Direzione preferita: segno corto, riconoscibile anche come icona app, con idea di strada, percorso e controllo. Evitare camion disegnati in modo banale: il marchio deve sembrare una app forte, non un gestionale vecchio.
 
 ## Frase breve
 
-Vyko mette ordine nella giornata dell azienda di trasporto: scadenze, documenti, guasti, check, chat e costi in un unico posto.
+Vygo mette ordine nella giornata dell azienda di trasporto: scadenze, documenti, guasti, check, chat e costi in un unico posto.
 
 ## Frase commerciale
 
-Ogni mezzo fermo, documento scaduto, guasto perso in chat o scadenza dimenticata costa tempo e soldi. Vyko aiuta l azienda a vedere prima cosa manca, chi deve agire e dove si stanno concentrando i costi.
+Ogni mezzo fermo, documento scaduto, guasto perso in chat o scadenza dimenticata costa tempo e soldi. Vygo aiuta l azienda a vedere prima cosa manca, chi deve agire e dove si stanno concentrando i costi.

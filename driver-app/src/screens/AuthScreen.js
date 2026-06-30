@@ -53,7 +53,7 @@ export function AuthScreen({ language = 'it', onAuthenticated }) {
       <View style={styles.brandMark}>
         <Text style={styles.brandInitial}>CC</Text>
       </View>
-      <Text style={styles.title}>Vyko</Text>
+      <Text style={styles.title}>Vygo</Text>
       <Text style={styles.subtitle}>{isCompany ? t(language, 'companyArea') : t(language, 'driverArea')}</Text>
 
       <View style={styles.form}>

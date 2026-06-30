@@ -3153,7 +3153,7 @@ export async function signInDriver({ username, password }) {
     return { data: null, error: null, demo: true }
   }
 
-  const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vyko.app'
+  const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vygo.app'
   const cleanUsername = username.trim().toLowerCase()
   const email = cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${driverAuthDomain}`
 

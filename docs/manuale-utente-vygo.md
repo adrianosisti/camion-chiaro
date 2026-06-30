@@ -1,4 +1,4 @@
-# Manuale utente Vyko
+# Manuale utente Vygo
 
 ## 1. Primo accesso azienda
 

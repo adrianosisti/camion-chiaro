@@ -332,7 +332,7 @@ export default async function handler() {
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const vapidPublicKey = process.env.WEB_PUSH_PUBLIC_KEY ?? process.env.VITE_WEB_PUSH_PUBLIC_KEY
   const vapidPrivateKey = process.env.WEB_PUSH_PRIVATE_KEY
-  const vapidSubject = process.env.WEB_PUSH_SUBJECT ?? 'mailto:info@vyko.app'
+  const vapidSubject = process.env.WEB_PUSH_SUBJECT ?? 'mailto:info@vygo.app'
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     return jsonResponse(500, { error: 'Configurazione Supabase Netlify mancante.' })
@@ -384,7 +384,7 @@ export default async function handler() {
         body: `${item.type} ${getDueLabel(item.due_date, todayKey)}.`,
         notificationType: 'deadline',
         tag: `deadline-${item.id}-${todayKey}`,
-        title: 'Scadenza Vyko',
+        title: 'Scadenza Vygo',
         url: '/?view=deadlines',
       },
       recipientUserIds,

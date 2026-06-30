@@ -1,6 +1,6 @@
-# Visione must-have Vyko
+# Visione must-have Vygo
 
-Per diventare un prodotto indispensabile, Vyko non deve essere solo "scadenze". Deve diventare il centro operativo leggero tra titolare, ufficio, autisti, mezzi, documenti e rischi.
+Per diventare un prodotto indispensabile, Vygo non deve essere solo "scadenze". Deve diventare il centro operativo leggero tra titolare, ufficio, autisti, mezzi, documenti e rischi.
 
 ## 1. Il valore principale
 
@@ -206,5 +206,5 @@ Ogni funzione deve rispondere a una domanda:
 
 "Aiuta l azienda o l autista a evitare un problema reale?"
 
-Se si, entra in Vyko.
+Se si, entra in Vygo.
 Se no, resta fuori.

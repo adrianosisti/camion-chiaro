@@ -1,8 +1,8 @@
-# Brochure commerciale Vyko
+# Brochure commerciale Vygo
 
 ## Copertina
 
-# Vyko
+# Vygo
 
 ## Move. Manage. Succeed.
 
@@ -24,13 +24,13 @@ Quando tutto e sparso, il problema non e solo perdere tempo. Il problema e accor
 
 ## La soluzione
 
-Vyko porta l operativita quotidiana in un unico posto.
+Vygo porta l operativita quotidiana in un unico posto.
 
 L azienda vede dalla dashboard cosa richiede attenzione. Il personale usa l app per comunicare, ricevere notifiche, aggiornare documenti, fare check, segnalare guasti e consultare informazioni utili.
 
 Ogni evento resta collegato a persona, mezzo, data, documento, costo e storico.
 
-## Cosa gestisce Vyko
+## Cosa gestisce Vygo
 
 - Scadenze patenti, visite mediche, CQC, documenti personali.
 - Revisioni, assicurazioni, libretti e documenti mezzo.
@@ -44,7 +44,7 @@ Ogni evento resta collegato a persona, mezzo, data, documento, costo e storico.
 
 ## Per il titolare
 
-Vyko permette di vedere prima dove si sta creando disordine:
+Vygo permette di vedere prima dove si sta creando disordine:
 
 - mezzi con troppe spese;
 - documenti critici;
@@ -81,7 +81,7 @@ WhatsApp e comodo per parlare, ma non e nato per gestire un azienda.
 
 Una foto di un guasto puo perdersi. Un documento puo finire in una chat sbagliata. Una scadenza puo essere dimenticata. Una spesa puo non essere collegata alla targa corretta.
 
-Vyko trasforma la comunicazione in storico operativo.
+Vygo trasforma la comunicazione in storico operativo.
 
 ## Risultato
 
@@ -91,14 +91,14 @@ Piu controllo su persone, mezzi, documenti e costi.
 
 ## Offerta commerciale
 
-Vyko parte da 300 euro/mese + IVA, con piani in base a mezzi, strumenti e account utenti.
+Vygo parte da 300 euro/mese + IVA, con piani in base a mezzi, strumenti e account utenti.
 
 Sono disponibili pacchetti premium per chat aziendale avanzata, report economici, storage aggiuntivo e assistenza di avvio con caricamento anagrafiche.
 
 ## Chiusura
 
-Vyko non promette di eliminare ogni problema.
+Vygo non promette di eliminare ogni problema.
 
 Promette una cosa piu concreta: farti vedere prima quello che oggi rischia di restare nascosto.
 
-Vyko. Move. Manage. Succeed.
+Vygo. Move. Manage. Succeed.

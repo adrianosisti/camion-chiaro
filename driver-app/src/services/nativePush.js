@@ -27,7 +27,7 @@ export async function registerNativePushDevice() {
     await Notifications.setNotificationChannelAsync('default', {
       importance: Notifications.AndroidImportance.MAX,
       lightColor: '#12c6df',
-      name: 'Vyko',
+      name: 'Vygo',
       sound: 'default',
       vibrationPattern: [0, 250, 250, 250],
     })

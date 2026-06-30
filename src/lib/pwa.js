@@ -29,7 +29,7 @@ export function isAppleMobileDevice() {
 }
 
 export function getDeviceInstallHint() {
-  if (typeof navigator === 'undefined') return 'Apri Vyko dal browser del telefono.'
+  if (typeof navigator === 'undefined') return 'Apri Vygo dal browser del telefono.'
 
   if (isAppleMobileDevice()) {
     return 'Su iPhone apri Safari, premi Condividi e scegli Aggiungi a schermata Home.'
@@ -55,7 +55,7 @@ export function getPushSupportStatus() {
     return {
       requiresInstall: true,
       supported: false,
-      reason: 'Su iPhone prima aggiungi Vyko alla schermata Home, poi aprila dall icona e abilita le notifiche.',
+      reason: 'Su iPhone prima aggiungi Vygo alla schermata Home, poi aprila dall icona e abilita le notifiche.',
     }
   }
 
@@ -119,7 +119,7 @@ export async function subscribeCurrentBrowserToPush() {
   if (window.Notification.permission === 'denied') {
     return {
       error: {
-        message: 'Notifiche bloccate sul telefono. Riattivale dalle impostazioni del browser o dell app Vyko.',
+        message: 'Notifiche bloccate sul telefono. Riattivale dalle impostazioni del browser o dell app Vygo.',
       },
       subscription: null,
     }

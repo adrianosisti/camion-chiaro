@@ -1,4 +1,4 @@
-# Vyko
+# Vygo
 
 App per aziende di logistica: scadenze autisti e flotta, login azienda, accesso autista con nome utente, notifiche in app, check mattutino dei mezzi, segnalazione guasti e documenti digitali dell'autista.
 
@@ -62,7 +62,7 @@ Se hai gia' creato il database prima dell'upload documenti, non rifare tutto lo 
 VITE_SUPABASE_URL=https://tuo-progetto.supabase.co
 VITE_SUPABASE_ANON_KEY=la-tua-chiave-pubblica
 VITE_SUPABASE_COMPANY_ID=lo-mettere-mo-dopo
-VITE_DRIVER_AUTH_DOMAIN=drivers.vyko.app
+VITE_DRIVER_AUTH_DOMAIN=drivers.vygo.app
 ```
 
 Non mettere mai la chiave `service_role` dentro `.env` del frontend.
@@ -73,13 +73,13 @@ La chiave `SUPABASE_SERVICE_ROLE_KEY` serve solo alla funzione Netlify: non deve
 Supabase Auth lavora con email/password. Per far vedere all'autista solo un nome utente, useremo una mail tecnica dietro le quinte:
 
 ```text
-nomeutente@drivers.vyko.app
+nomeutente@drivers.vygo.app
 ```
 
 Esempio:
 
 ```text
-marco.bianchi@drivers.vyko.app
+marco.bianchi@drivers.vygo.app
 ```
 
 Nel prodotto finale l'azienda creera' l'autista da pannello e il sistema generera' questa utenza. Per i primi test si puo' creare manualmente l'utente in Supabase Auth.

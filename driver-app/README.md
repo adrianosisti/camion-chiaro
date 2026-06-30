@@ -1,6 +1,6 @@
-# Vyko
+# Vygo
 
-App nativa Vyko per iPhone e Android. Contiene accesso autista e accesso azienda, usando lo stesso Supabase e lo stesso backend Netlify della dashboard web.
+App nativa Vygo per iPhone e Android. Contiene accesso autista e accesso azienda, usando lo stesso Supabase e lo stesso backend Netlify della dashboard web.
 
 ## Cosa contiene
 
@@ -81,7 +81,7 @@ Per iPhone serve un account Apple Developer. Senza quello si continua a provare 
 
 ## Identita app
 
-- Nome app: Vyko
+- Nome app: Vygo
 - iOS bundle id: `it.camionchiaro.app`
 - Android package: `it.camionchiaro.app`
 - Colori principali: celeste, nero, bianco

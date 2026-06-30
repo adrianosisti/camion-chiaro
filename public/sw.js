@@ -18,7 +18,7 @@ async function shouldSuppressNotification(payload) {
 async function showPushNotification(payload) {
   if (await shouldSuppressNotification(payload)) return
 
-  const title = payload.title || 'Vyko'
+  const title = payload.title || 'Vygo'
   const options = {
     badge: '/favicon.svg',
     body: payload.body || 'Nuova notifica disponibile.',

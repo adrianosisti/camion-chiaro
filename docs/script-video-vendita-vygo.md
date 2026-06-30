@@ -1,4 +1,4 @@
-# Script video vendita Vyko
+# Script video vendita Vygo
 
 ## Video breve - 45 secondi
 
@@ -14,13 +14,13 @@ Patenti, revisioni, assicurazioni, visite mediche, documenti dei mezzi, check gi
 
 Il problema e che spesso tutto questo resta sparso tra WhatsApp, fogli Excel, cartelle, email e telefonate.
 
-Vyko nasce per mettere ordine.
+Vygo nasce per mettere ordine.
 
 L azienda vede in una sola dashboard cosa richiede attenzione. Gli autisti e il personale ricevono notifiche, caricano documenti, inviano check, segnalano guasti e comunicano in app.
 
 Ogni segnalazione resta tracciata. Ogni documento resta collegato. Ogni costo puo diventare report.
 
-Vyko. Move. Manage. Succeed.
+Vygo. Move. Manage. Succeed.
 
 ### Chiusura video
 
@@ -32,11 +32,11 @@ Prenota una presentazione. Scopri quanto tempo puo recuperare la tua azienda.
 
 1. Ufficio con fogli, telefono e messaggi.
 2. Mezzo in partenza, autista che controlla documenti.
-3. Dashboard Vyko con scadenze e criticita.
+3. Dashboard Vygo con scadenze e criticita.
 4. App autista con check e guasto.
 5. Chat azienda/autista.
 6. Centro costi e report.
-7. Logo Vyko e call to action.
+7. Logo Vygo e call to action.
 
 ### Script voce
 
@@ -48,9 +48,9 @@ Chi ha la patente in scadenza. Quale mezzo deve fare revisione. Quale documento 
 
 Quando queste informazioni sono sparse, l azienda perde tempo. E spesso se ne accorge quando il problema e gia diventato urgente.
 
-Vyko serve a cambiare questo.
+Vygo serve a cambiare questo.
 
-Con Vyko l azienda ha una dashboard chiara: scadenze, guasti, check, documenti, chat e costi sono sempre visibili e collegati.
+Con Vygo l azienda ha una dashboard chiara: scadenze, guasti, check, documenti, chat e costi sono sempre visibili e collegati.
 
 L autista entra dall app, seleziona il mezzo, fa il check, segnala un guasto, carica foto o documenti e riceve notifiche.
 
@@ -58,14 +58,14 @@ L ufficio vede cosa succede, archivia, sollecita, rinnova documenti e mantiene l
 
 Il titolare puo controllare dove si stanno accumulando costi, quali mezzi generano piu spese e quali interventi sono stati fatti nel tempo.
 
-Vyko non e un altro foglio da compilare.
+Vygo non e un altro foglio da compilare.
 
 E il posto dove l operativita quotidiana diventa chiara.
 
 Meno rincorse. Meno dimenticanze. Meno informazioni perse.
 
-Vyko. Move. Manage. Succeed.
+Vygo. Move. Manage. Succeed.
 
 ### Call to action
 
-Richiedi una presentazione e scopri come Vyko puo mettere ordine nella tua azienda.
+Richiedi una presentazione e scopri come Vygo puo mettere ordine nella tua azienda.

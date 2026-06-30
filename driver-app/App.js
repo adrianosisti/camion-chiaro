@@ -1297,7 +1297,7 @@ function CamionChiaroApp() {
 
     setNativePushStatus('Notifiche app abilitate su questo telefono.')
     triggerHaptic('success')
-    Alert.alert('Notifiche attive', 'Questo telefono ricevera le notifiche Vyko.')
+    Alert.alert('Notifiche attive', 'Questo telefono ricevera le notifiche Vygo.')
     return true
   }
 
@@ -2170,7 +2170,7 @@ function CamionChiaroApp() {
       return false
     }
 
-    const body = `Sollecito Vyko: aggiorna ${item.type || 'documento'} entro la scadenza ${formatReminderDate(item.dueDate)} direttamente dall'app. Se hai gia provveduto, carica il nuovo documento o avvisa l'azienda.`
+    const body = `Sollecito Vygo: aggiorna ${item.type || 'documento'} entro la scadenza ${formatReminderDate(item.dueDate)} direttamente dall'app. Se hai gia provveduto, carica il nuovo documento o avvisa l'azienda.`
 
     if (target.type === 'driver') {
       const result = await sendCompanyChatMessage({
@@ -2610,7 +2610,7 @@ function CamionChiaroApp() {
       <SafeAreaView style={styles.loadingScreen}>
         <ExpoStatusBar style="light" />
         <ActivityIndicator color={colors.cyan} size="large" />
-        <Text style={styles.loadingTitle}>Vyko</Text>
+        <Text style={styles.loadingTitle}>Vygo</Text>
         <Text style={styles.loadingText}>{appStatus}</Text>
       </SafeAreaView>
     )

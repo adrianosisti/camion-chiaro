@@ -1,4 +1,4 @@
-# Email commerciale Vyko
+# Email commerciale Vygo
 
 ## Oggetto consigliato
 
@@ -8,7 +8,7 @@ Scadenze, guasti e documenti: quanto tempo perde ogni mese la tua azienda?
 
 Buongiorno,
 
-mi permetto di scriverle per presentarle **Vyko**, una piattaforma pensata per aziende di trasporto, logistica e distribuzione che vogliono tenere sotto controllo flotta, autisti, documenti, scadenze, guasti e costi operativi.
+mi permetto di scriverle per presentarle **Vygo**, una piattaforma pensata per aziende di trasporto, logistica e distribuzione che vogliono tenere sotto controllo flotta, autisti, documenti, scadenze, guasti e costi operativi.
 
 Ogni giorno in azienda ci sono informazioni sparse tra telefono, WhatsApp, fogli Excel, cartelle, email e memoria delle persone:
 
@@ -19,43 +19,43 @@ Ogni giorno in azienda ci sono informazioni sparse tra telefono, WhatsApp, fogli
 - foto e documenti da recuperare;
 - costi di riparazione difficili da ricostruire.
 
-Vyko porta tutto in un unico posto.
+Vygo porta tutto in un unico posto.
 
 L azienda apre la dashboard e vede subito cosa richiede attenzione. Gli autisti e il personale usano l app per ricevere notifiche, inviare check, segnalare guasti, caricare documenti e comunicare in chat aziendale.
 
 Il risultato e semplice: meno informazioni perse, meno rincorse, piu controllo.
 
-Vyko e pensato per chi vuole lavorare con una flotta piu ordinata senza introdurre un gestionale pesante.
+Vygo e pensato per chi vuole lavorare con una flotta piu ordinata senza introdurre un gestionale pesante.
 
 Se vuole, possiamo fissare una breve chiamata di 15 minuti per mostrarle come funzionerebbe sulla sua azienda.
 
 Cordiali saluti,
 
 Adriano Sisti  
-Vyko
+Vygo
 
 ## Follow-up 1
 
 Buongiorno,
 
-le riscrivo perche Vyko nasce da un problema molto concreto: nelle aziende di trasporto spesso il costo non e solo la scadenza dimenticata, ma tutto il tempo perso per ricostruire cosa e successo.
+le riscrivo perche Vygo nasce da un problema molto concreto: nelle aziende di trasporto spesso il costo non e solo la scadenza dimenticata, ma tutto il tempo perso per ricostruire cosa e successo.
 
 Un guasto segnalato in chat, una foto persa, un documento non aggiornato o una revisione dimenticata possono creare urgenze evitabili.
 
-Con Vyko ogni evento resta collegato a persona, mezzo, data, documento, costo e storico.
+Con Vygo ogni evento resta collegato a persona, mezzo, data, documento, costo e storico.
 
 Vuole che le mandi una breve presentazione?
 
 Cordiali saluti,
 
 Adriano Sisti  
-Vyko
+Vygo
 
 ## Follow-up 2
 
 Buongiorno,
 
-ultima nota veloce: Vyko non vuole sostituire tutto quello che usa gia.
+ultima nota veloce: Vygo non vuole sostituire tutto quello che usa gia.
 
 Serve come centro operativo quotidiano per vedere subito:
 
@@ -71,4 +71,4 @@ Se vuole capire se puo essere utile alla sua azienda, possiamo fare una verifica
 Cordiali saluti,
 
 Adriano Sisti  
-Vyko
+Vygo

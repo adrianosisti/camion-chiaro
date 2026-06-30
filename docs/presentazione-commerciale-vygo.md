@@ -1,7 +1,7 @@
-# Presentazione commerciale Vyko
+# Presentazione commerciale Vygo
 
 ## Slide 1 - Titolo
-Vyko
+Vygo
 
 Move. Manage. Succeed.
 
@@ -33,10 +33,10 @@ Puo diventare:
 - ufficio sotto pressione;
 - titolare che deve chiedere a tutti "a che punto siamo?".
 
-Vyko nasce per far emergere questi problemi prima che diventino emergenze.
+Vygo nasce per far emergere questi problemi prima che diventino emergenze.
 
 ## Slide 4 - La promessa
-Con Vyko apri una sola schermata e capisci subito:
+Con Vygo apri una sola schermata e capisci subito:
 - cosa scade;
 - cosa manca;
 - chi deve fare qualcosa;
@@ -50,7 +50,7 @@ Messaggio chiave:
 "Sai cosa richiede attenzione prima che diventi un problema."
 
 ## Slide 5 - La soluzione
-Vyko mette in ordine:
+Vygo mette in ordine:
 - autisti;
 - ufficio e magazzino;
 - furgoni, motrici, trattori e semirimorchi;
@@ -99,7 +99,7 @@ Quando una scadenza si avvicina:
 ## Slide 9 - Guasti e check
 Un guasto non deve essere solo un messaggio.
 
-Con Vyko diventa una segnalazione:
+Con Vygo diventa una segnalazione:
 - con titolo;
 - foto;
 - gravita;
@@ -115,7 +115,7 @@ Il check mattutino aiuta a vedere subito anomalie su luci, gomme, documenti e me
 ## Slide 10 - Centro costi
 Molte aziende sanno di spendere, ma non vedono bene dove.
 
-Vyko trasforma guasti, manutenzioni e fatture in dati:
+Vygo trasforma guasti, manutenzioni e fatture in dati:
 - costo mese;
 - costo anno;
 - interventi con costo;
@@ -142,10 +142,10 @@ E comunicazione operativa:
 - letture;
 - storico collegato all azienda.
 
-WhatsApp resta comodo, ma non organizza l azienda. Vyko mette la comunicazione dove serve.
+WhatsApp resta comodo, ma non organizza l azienda. Vygo mette la comunicazione dove serve.
 
 ## Slide 12 - Perche e diverso
-Vyko non vuole essere un gestionale pesante.
+Vygo non vuole essere un gestionale pesante.
 
 E pensato per aziende vere:
 - schermate semplici;
@@ -156,7 +156,7 @@ E pensato per aziende vere:
 - costi visibili per chi deve decidere.
 
 ## Slide 13 - Benefici concreti
-Vyko aiuta a ottenere:
+Vygo aiuta a ottenere:
 - meno dimenticanze;
 - meno telefonate inutili;
 - documenti trovati piu velocemente;
@@ -194,7 +194,7 @@ Extra:
 - storage extra a pacchetti.
 
 ## Slide 15 - Perche il prezzo ha senso
-Vyko non vende solo accesso a una app.
+Vygo non vende solo accesso a una app.
 
 Vende:
 - ordine;
@@ -211,11 +211,11 @@ Una sola situazione gestita prima, una scadenza non dimenticata o un guasto trac
 ## Slide 16 - Obiezioni
 "Uso gia WhatsApp"
 
-Risposta: WhatsApp serve per parlare. Vyko serve per gestire. Scadenze, documenti, guasti, check, costi e storico non possono stare solo in chat.
+Risposta: WhatsApp serve per parlare. Vygo serve per gestire. Scadenze, documenti, guasti, check, costi e storico non possono stare solo in chat.
 
 "Costa troppo"
 
-Risposta: costa di piu lavorare senza vedere cosa manca. Vyko riduce caos, urgenze e tempo perso.
+Risposta: costa di piu lavorare senza vedere cosa manca. Vygo riduce caos, urgenze e tempo perso.
 
 "Gli autisti non lo useranno"
 
@@ -239,10 +239,10 @@ Risposta: lo start-up kit serve proprio a partire ordinati, con dati iniziali e 
 11. Chiudere con piano, modulo chat, Centro costi Premium e start-up kit.
 
 ## Slide 18 - Chiusura
-Vyko e per chi vuole smettere di rincorrere informazioni.
+Vygo e per chi vuole smettere di rincorrere informazioni.
 
 Call to action:
 Acquista il piano, attiva l azienda e parti con lo start-up kit.
 
 Frase finale:
-"La flotta lavora ogni giorno. Vyko ti aiuta a tenerla sotto controllo ogni giorno."
+"La flotta lavora ogni giorno. Vygo ti aiuta a tenerla sotto controllo ogni giorno."

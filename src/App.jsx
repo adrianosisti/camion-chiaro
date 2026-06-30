@@ -12081,6 +12081,28 @@ function getCostCategoryLabel(value = 'maintenance') {
   return costCategoryOptions.find((option) => option.id === value)?.label ?? 'Spesa'
 }
 
+function buildCostRanking(rows = [], getGroup) {
+  return Array.from(rows.reduce((ranking, row) => {
+    const group = getGroup(row)
+    if (!group?.key) return ranking
+
+    const current = ranking.get(group.key) ?? {
+      count: 0,
+      key: group.key,
+      name: group.name,
+      totalCents: 0,
+    }
+
+    ranking.set(group.key, {
+      ...current,
+      count: current.count + 1,
+      totalCents: current.totalCents + Number(row.amountCents ?? 0),
+    })
+
+    return ranking
+  }, new Map()).values()).sort((first, second) => second.totalCents - first.totalCents)
+}
+
 function getDateInputToday() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -12287,6 +12309,23 @@ function FaultCostReport({
   }, new Map()).values()).sort((first, second) => second.totalCents - first.totalCents)
   const unassignedFineRows = fineRows.filter((row) => !row.driverId)
   const unassignedFineTotalCents = unassignedFineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const unlinkedCostRows = periodTargetCosts.filter((row) => !row.vehicleId && !row.assetId && !row.driverId)
+  const targetCostRanking = buildCostRanking(periodTargetCosts, (row) => ({
+    key: row.vehicleId
+      ? `vehicle:${row.vehicleId}`
+      : row.assetId
+        ? `asset:${row.assetId}`
+        : row.driverId
+          ? `driver:${row.driverId}`
+          : 'company',
+    name: getCostTargetLabel(row),
+  }))
+  const categoryCostRanking = buildCostRanking(periodTargetCosts, (row) => ({
+    key: row.category || 'maintenance',
+    name: getCostCategoryLabel(row.category),
+  }))
+  const topTargetCost = targetCostRanking[0] ?? null
+  const topCategoryCost = categoryCostRanking[0] ?? null
   const selectedTargetLabel = (() => {
     if (targetFilter === 'all') return 'Tutti i costi'
     if (targetFilter === 'company') return 'Azienda generale'
@@ -12607,6 +12646,9 @@ function FaultCostReport({
       ['Totale periodo', (Number(totalCents ?? 0) / 100).toFixed(2), defaultCurrency],
       ['Voci filtrate', summaryRows.length],
       ['Multe non assegnate', unassignedFineRows.length, (Number(unassignedFineTotalCents ?? 0) / 100).toFixed(2), defaultCurrency],
+      ['Soggetto piu costoso', topTargetCost?.name ?? 'Nessun dato', topTargetCost ? (Number(topTargetCost.totalCents ?? 0) / 100).toFixed(2) : '', defaultCurrency],
+      ['Categoria piu costosa', topCategoryCost?.name ?? 'Nessun dato', topCategoryCost ? (Number(topCategoryCost.totalCents ?? 0) / 100).toFixed(2) : '', defaultCurrency],
+      ['Spese senza collegamento', unlinkedCostRows.length],
       [],
     ]
     const csvRows = reportType === 'fine_ranking'
@@ -12686,6 +12728,14 @@ function FaultCostReport({
     const headerHtml = reportType === 'fine_ranking'
       ? '<tr><th>Pos.</th><th>Autista</th><th>Multe</th><th>Totale</th><th>Media</th></tr>'
       : '<tr><th>Data</th><th>Titolo</th><th>Tipologia</th><th>Soggetto</th><th>Importo</th></tr>'
+    const insightHtml = `
+      <section class="insights">
+        <div><span>Soggetto piu costoso</span><strong>${escapeHtml(topTargetCost?.name ?? 'Nessun dato')}</strong><small>${escapeHtml(topTargetCost ? formatMoneyCents(topTargetCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency))}</small></div>
+        <div><span>Categoria piu costosa</span><strong>${escapeHtml(topCategoryCost?.name ?? 'Nessun dato')}</strong><small>${escapeHtml(topCategoryCost ? formatMoneyCents(topCategoryCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency))}</small></div>
+        <div><span>Multe non assegnate</span><strong>${unassignedFineRows.length}</strong><small>${escapeHtml(formatMoneyCents(unassignedFineTotalCents, defaultCurrency))}</small></div>
+        <div><span>Spese senza collegamento</span><strong>${unlinkedCostRows.length}</strong><small>Da assegnare a targa, autista o attrezzatura</small></div>
+      </section>
+    `
     const printWindow = window.open('', '_blank', 'noopener,noreferrer')
 
     if (!printWindow) {
@@ -12706,6 +12756,10 @@ function FaultCostReport({
             .summary div { border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; }
             .summary strong { display: block; font-size: 18px; }
             .summary span { color: #6b7280; font-size: 12px; }
+            .insights { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+            .insights div { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; }
+            .insights span, .insights small { color: #64748b; display: block; font-size: 11px; }
+            .insights strong { color: #0f172a; display: block; font-size: 14px; margin: 4px 0; }
             table { border-collapse: collapse; width: 100%; }
             th, td { border-bottom: 1px solid #e5e7eb; font-size: 12px; padding: 9px; text-align: left; }
             th { background: #ecfeff; color: #0f172a; }
@@ -12720,6 +12774,7 @@ function FaultCostReport({
             <div><strong>${escapeHtml(formatMoneyCents(fineTotalCents, defaultCurrency))}</strong><span>Totale sanzioni</span></div>
             <div><strong>${unassignedFineRows.length}</strong><span>Multe non assegnate</span></div>
           </section>
+          ${insightHtml}
           <table>
             <thead>${headerHtml}</thead>
             <tbody>${rowsHtml || '<tr><td colspan="5">Nessun dato per questi filtri.</td></tr>'}</tbody>
@@ -13041,6 +13096,28 @@ function FaultCostReport({
           <strong>{unassignedFineRows.length}</strong>
           <span>Multe non assegnate</span>
         </div>
+      </div>
+      <div className="cost-insight-grid" aria-label="Analisi premium centro costi">
+        <article>
+          <span>Soggetto più costoso</span>
+          <strong>{topTargetCost?.name ?? 'Nessun dato'}</strong>
+          <small>{topTargetCost ? formatMoneyCents(topTargetCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
+        </article>
+        <article>
+          <span>Categoria più pesante</span>
+          <strong>{topCategoryCost?.name ?? 'Nessun dato'}</strong>
+          <small>{topCategoryCost ? formatMoneyCents(topCategoryCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
+        </article>
+        <article className={unassignedFineRows.length ? 'is-warning' : ''}>
+          <span>Multe da assegnare</span>
+          <strong>{unassignedFineRows.length}</strong>
+          <small>{formatMoneyCents(unassignedFineTotalCents, defaultCurrency)}</small>
+        </article>
+        <article className={unlinkedCostRows.length ? 'is-warning' : ''}>
+          <span>Spese senza collegamento</span>
+          <strong>{unlinkedCostRows.length}</strong>
+          <small>Da collegare a targa, autista o attrezzatura</small>
+        </article>
       </div>
       <div className="fault-fines-panel">
         <div className="fault-fines-head">

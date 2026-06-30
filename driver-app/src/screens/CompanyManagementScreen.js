@@ -195,6 +195,28 @@ function getCostCategoryLabel(value = '') {
   return costCategoryOptions.find((entry) => entry.id === value)?.label ?? 'Spesa'
 }
 
+function buildCostRanking(rows = [], getGroup) {
+  return Array.from(rows.reduce((ranking, row) => {
+    const group = getGroup(row)
+    if (!group?.key) return ranking
+
+    const current = ranking.get(group.key) ?? {
+      count: 0,
+      key: group.key,
+      name: group.name,
+      totalCents: 0,
+    }
+
+    ranking.set(group.key, {
+      ...current,
+      count: current.count + 1,
+      totalCents: current.totalCents + Number(row.amountCents ?? 0),
+    })
+
+    return ranking
+  }, new Map()).values()).sort((first, second) => second.totalCents - first.totalCents)
+}
+
 function getDepartmentLabel(value = '') {
   return departmentOptions.find((entry) => entry.id === value)?.label ?? 'Persone'
 }
@@ -863,6 +885,23 @@ export function CompanyManagementScreen({
     })
     return ranking
   }, new Map()).values()).sort((first, second) => second.totalCents - first.totalCents)
+  const unlinkedCostRows = costRows.filter((row) => !row.vehicleId && !row.assetId && !row.driverId)
+  const targetCostRanking = buildCostRanking(costRows, (row) => ({
+    key: row.vehicleId
+      ? `vehicle:${row.vehicleId}`
+      : row.assetId
+        ? `asset:${row.assetId}`
+        : row.driverId
+          ? `driver:${row.driverId}`
+          : 'company',
+    name: getCostTargetLabel(row),
+  }))
+  const categoryCostRanking = buildCostRanking(costRows, (row) => ({
+    key: row.category || 'maintenance',
+    name: getCostCategoryLabel(row.category),
+  }))
+  const topTargetCost = targetCostRanking[0] ?? null
+  const topCategoryCost = categoryCostRanking[0] ?? null
 
   useEffect(() => {
     if (initialSection) {
@@ -923,6 +962,16 @@ export function CompanyManagementScreen({
 
   function updateCostForm(field, value) {
     setCostForm((currentForm) => {
+      if (field === 'category' && value === 'fine') {
+        return {
+          ...currentForm,
+          category: value,
+          driverId: currentForm.driverId || drivers[0]?.id || '',
+          supplier: currentForm.supplier || 'Sanzione',
+          targetType: 'driver',
+        }
+      }
+
       if (field === 'targetType') {
         return {
           ...currentForm,
@@ -956,18 +1005,19 @@ export function CompanyManagementScreen({
 
   async function submitCostEntry() {
     const amountCents = parseMoneyToCents(costForm.amount)
+    const isFineEntry = costForm.category === 'fine'
     const payload = {
       amountCents,
-      assetId: costForm.targetType === 'asset' ? costForm.assetId : '',
+      assetId: !isFineEntry && costForm.targetType === 'asset' ? costForm.assetId : '',
       category: costForm.category,
       currency: defaultCurrency,
-      driverId: costForm.targetType === 'driver' ? costForm.driverId : '',
+      driverId: isFineEntry ? costForm.driverId : costForm.targetType === 'driver' ? costForm.driverId : '',
       notes: costForm.notes.trim(),
       odometerKm: costForm.odometerKm.trim(),
       spentAt: costForm.spentAt.trim(),
       supplier: costForm.supplier.trim(),
       title: costForm.title.trim(),
-      vehicleId: costForm.targetType === 'vehicle' ? costForm.vehicleId : '',
+      vehicleId: isFineEntry ? costForm.vehicleId : costForm.targetType === 'vehicle' ? costForm.vehicleId : '',
     }
 
     if (!payload.title || !payload.amountCents || !payload.spentAt) {
@@ -1876,16 +1926,18 @@ export function CompanyManagementScreen({
                   ))}
                 </View>
               </ScrollView>
-              <Text style={styles.costFilterLabel}>Collegata a</Text>
-              <View style={styles.chipGrid}>
-                <Chip active={costForm.targetType === 'vehicle'} label="Mezzo" onPress={() => updateCostForm('targetType', 'vehicle')} />
-                <Chip active={costForm.targetType === 'asset'} label="Attrezzatura" onPress={() => updateCostForm('targetType', 'asset')} />
-                <Chip active={costForm.targetType === 'driver'} label="Autista" onPress={() => updateCostForm('targetType', 'driver')} />
-                <Chip active={costForm.targetType === 'company'} label="Azienda" onPress={() => updateCostForm('targetType', 'company')} />
-              </View>
-              {costForm.targetType === 'vehicle' ? (
+              {costForm.category === 'fine' ? (
                 <>
-                  <Text style={styles.costFilterLabel}>Targa</Text>
+                  <Text style={styles.costFilterLabel}>Autista responsabile</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                    <View style={styles.inlineChipRow}>
+                      <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} />
+                      {drivers.map((driver) => (
+                        <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} />
+                      ))}
+                    </View>
+                  </ScrollView>
+                  <Text style={styles.costFilterLabel}>Targa collegata</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
                     <View style={styles.inlineChipRow}>
                       <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} />
@@ -1895,33 +1947,56 @@ export function CompanyManagementScreen({
                     </View>
                   </ScrollView>
                 </>
-              ) : null}
-              {costForm.targetType === 'asset' ? (
+              ) : (
                 <>
-                  <Text style={styles.costFilterLabel}>Attrezzatura</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                    <View style={styles.inlineChipRow}>
-                      <Chip active={!costForm.assetId} label="Senza codice" onPress={() => updateCostForm('assetId', '')} />
-                      {warehouseAssets.map((asset) => (
-                        <Chip active={costForm.assetId === asset.id} key={asset.id} label={asset.code} onPress={() => updateCostForm('assetId', asset.id)} />
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <Text style={styles.costFilterLabel}>Collegata a</Text>
+                  <View style={styles.chipGrid}>
+                    <Chip active={costForm.targetType === 'vehicle'} label="Mezzo" onPress={() => updateCostForm('targetType', 'vehicle')} />
+                    <Chip active={costForm.targetType === 'asset'} label="Attrezzatura" onPress={() => updateCostForm('targetType', 'asset')} />
+                    <Chip active={costForm.targetType === 'driver'} label="Autista" onPress={() => updateCostForm('targetType', 'driver')} />
+                    <Chip active={costForm.targetType === 'company'} label="Azienda" onPress={() => updateCostForm('targetType', 'company')} />
+                  </View>
+                  {costForm.targetType === 'vehicle' ? (
+                    <>
+                      <Text style={styles.costFilterLabel}>Targa</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                        <View style={styles.inlineChipRow}>
+                          <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} />
+                          {vehicles.map((vehicle) => (
+                            <Chip active={costForm.vehicleId === vehicle.id} key={vehicle.id} label={vehicle.plate} onPress={() => updateCostForm('vehicleId', vehicle.id)} />
+                          ))}
+                        </View>
+                      </ScrollView>
+                    </>
+                  ) : null}
+                  {costForm.targetType === 'asset' ? (
+                    <>
+                      <Text style={styles.costFilterLabel}>Attrezzatura</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                        <View style={styles.inlineChipRow}>
+                          <Chip active={!costForm.assetId} label="Senza codice" onPress={() => updateCostForm('assetId', '')} />
+                          {warehouseAssets.map((asset) => (
+                            <Chip active={costForm.assetId === asset.id} key={asset.id} label={asset.code} onPress={() => updateCostForm('assetId', asset.id)} />
+                          ))}
+                        </View>
+                      </ScrollView>
+                    </>
+                  ) : null}
+                  {costForm.targetType === 'driver' ? (
+                    <>
+                      <Text style={styles.costFilterLabel}>Autista</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
+                        <View style={styles.inlineChipRow}>
+                          <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} />
+                          {drivers.map((driver) => (
+                            <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} />
+                          ))}
+                        </View>
+                      </ScrollView>
+                    </>
+                  ) : null}
                 </>
-              ) : null}
-              {costForm.targetType === 'driver' ? (
-                <>
-                  <Text style={styles.costFilterLabel}>Autista</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                    <View style={styles.inlineChipRow}>
-                      <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} />
-                      {drivers.map((driver) => (
-                        <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} />
-                      ))}
-                    </View>
-                  </ScrollView>
-                </>
-              ) : null}
+              )}
               <DateField label="Data spesa" language={language} onChange={(value) => updateCostForm('spentAt', value)} value={costForm.spentAt} />
               <TextField label="Fornitore" onChangeText={(value) => updateCostForm('supplier', value)} placeholder="Officina, gommista..." value={costForm.supplier} />
               <TextField keyboardType="numeric" label="Km" onChangeText={(value) => updateCostForm('odometerKm', value)} placeholder="Opzionale" value={costForm.odometerKm} />
@@ -1980,6 +2055,23 @@ export function CompanyManagementScreen({
                 <View style={styles.costMetricCard}>
                   <Text style={styles.summaryLabel}>Media</Text>
                   <Text style={styles.summaryValue}>{formatMoneyCents(repairCostAverageCents, defaultCurrency)}</Text>
+                </View>
+              </View>
+              <View style={styles.costInsightGrid}>
+                <View style={styles.costInsightCard}>
+                  <Text style={styles.summaryLabel}>Soggetto più costoso</Text>
+                  <Text numberOfLines={1} style={styles.costInsightTitle}>{topTargetCost?.name ?? 'Nessun dato'}</Text>
+                  <Text style={styles.costInsightValue}>{topTargetCost ? formatMoneyCents(topTargetCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</Text>
+                </View>
+                <View style={styles.costInsightCard}>
+                  <Text style={styles.summaryLabel}>Categoria più cara</Text>
+                  <Text numberOfLines={1} style={styles.costInsightTitle}>{topCategoryCost?.name ?? 'Nessun dato'}</Text>
+                  <Text style={styles.costInsightValue}>{topCategoryCost ? formatMoneyCents(topCategoryCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</Text>
+                </View>
+                <View style={[styles.costInsightCard, unlinkedCostRows.length ? styles.costInsightWarning : null]}>
+                  <Text style={styles.summaryLabel}>Senza collegamento</Text>
+                  <Text style={styles.costInsightTitle}>{unlinkedCostRows.length}</Text>
+                  <Text style={styles.costInsightValue}>da assegnare</Text>
                 </View>
               </View>
               <View style={styles.fineReportCard}>
@@ -2178,6 +2270,37 @@ const styles = StyleSheet.create({
   costMetricRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  costInsightCard: {
+    backgroundColor: colors.white,
+    borderColor: '#bae6fd',
+    borderRadius: 14,
+    borderWidth: 1,
+    flex: 1,
+    minWidth: '30%',
+    padding: 10,
+  },
+  costInsightGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  costInsightTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  costInsightValue: {
+    color: '#047857',
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  costInsightWarning: {
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
   },
   costReportCard: {
     backgroundColor: '#ecfeff',

@@ -1,12 +1,12 @@
-# Movigo - Piano lancio operativo
+# Vyko - Piano lancio operativo
 
-Questo documento serve come bussola interna: cosa vendiamo, a chi, cosa va completato prima del lancio e quali idee tenere per fare diventare Movigo un prodotto indispensabile per aziende di trasporto e logistica.
+Questo documento serve come bussola interna: cosa vendiamo, a chi, cosa va completato prima del lancio e quali idee tenere per fare diventare Vyko un prodotto indispensabile per aziende di trasporto e logistica.
 
-Il punto chiave: non dobbiamo vendere "un software". Dobbiamo vendere una vita aziendale piu ordinata. Il cliente deve sentire che comprando Movigo smette di rincorrere documenti, foto, telefonate, scadenze e responsabilita sparse.
+Il punto chiave: non dobbiamo vendere "un software". Dobbiamo vendere una vita aziendale piu ordinata. Il cliente deve sentire che comprando Vyko smette di rincorrere documenti, foto, telefonate, scadenze e responsabilita sparse.
 
 ## Posizionamento
 
-Movigo non deve sembrare una semplice agenda scadenze. Deve essere il pannello operativo leggero dell azienda di trasporto:
+Vyko non deve sembrare una semplice agenda scadenze. Deve essere il pannello operativo leggero dell azienda di trasporto:
 
 - scadenze documentali sempre sotto controllo;
 - autisti collegati in app con chat, documenti e notifiche;
@@ -29,7 +29,7 @@ Messaggi secondari:
 
 ## Trasformazione promessa al cliente
 
-Prima di Movigo:
+Prima di Vyko:
 - documenti sparsi;
 - scadenze ricordate a memoria;
 - telefonate continue;
@@ -38,7 +38,7 @@ Prima di Movigo:
 - costi mezzi difficili da leggere;
 - ufficio che rincorre autisti e documenti.
 
-Dopo Movigo:
+Dopo Vyko:
 - dashboard con priorita chiare;
 - app per autisti e personale;
 - notifiche quando serve;
@@ -122,7 +122,7 @@ La vendita non deve essere impostata come "costa X al mese". Deve essere imposta
 - quante telefonate inutili arrivano ogni settimana?
 - quanto spendi in riparazioni senza avere un report chiaro per targa?
 
-Movigo deve sembrare piccolo rispetto al costo del disordine.
+Vyko deve sembrare piccolo rispetto al costo del disordine.
 
 ## Costi e margine da controllare
 
@@ -170,7 +170,7 @@ Da completare prima di vendere seriamente:
 
 - Stripe in produzione con webhook verificato;
 - email professionali con SMTP e dominio;
-- testi email personalizzati Movigo;
+- testi email personalizzati Vyko;
 - pagina pubblica con piani chiari;
 - termini, privacy, cookie e trattamento dati;
 - procedura backup;
@@ -216,7 +216,7 @@ Promessa breve:
 
 Promessa emotiva:
 
-"La mattina apri Movigo e non devi chiedere a tutti cosa manca: lo vedi."
+"La mattina apri Vyko e non devi chiedere a tutti cosa manca: lo vedi."
 
 Promessa per il titolare:
 
@@ -251,16 +251,16 @@ Obiezioni prevedibili:
 - "Costa troppo": costa di piu lavorare senza vedere cosa manca. Una scadenza dimenticata, un fermo mezzo o ore perse in ufficio possono valere molto piu del canone.
 - "Gli autisti non lo useranno": l app deve essere semplice: apri, leggi, fai check, carichi foto, segnali guasto.
 - "Non ho tempo di caricare tutto": lo start-up kit esiste proprio per questo. Il cliente compra anche ordine iniziale.
-- "Ho gia un gestionale": Movigo non deve sostituirlo per forza. Puo diventare il livello operativo quotidiano per notifiche, documenti, guasti, check e chat.
+- "Ho gia un gestionale": Vyko non deve sostituirlo per forza. Puo diventare il livello operativo quotidiano per notifiche, documenti, guasti, check e chat.
 
 ## Frasi vendita pronte
 
 - "Non ti vendo un altro programma da controllare. Ti vendo un posto unico dove vedere cosa richiede attenzione."
 - "Se oggi una scadenza la ricordate solo perche qualcuno se la segna, prima o poi qualcosa scappa."
-- "Un guasto mandato su WhatsApp e una foto. Un guasto in Movigo diventa storico, costo e controllo."
+- "Un guasto mandato su WhatsApp e una foto. Un guasto in Vyko diventa storico, costo e controllo."
 - "L autista smette di chiamare per ogni cosa, perche ha documenti e chat nell app."
 - "Il valore non e solo ricordare una data: e sapere cosa fare quando quella data si avvicina."
-- "Quando l azienda cresce, il disordine cresce piu veloce. Movigo serve a non farselo scappare."
+- "Quando l azienda cresce, il disordine cresce piu veloce. Vyko serve a non farselo scappare."
 
 ## Priorita prossime
 

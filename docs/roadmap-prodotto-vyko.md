@@ -1,8 +1,8 @@
-# Roadmap prodotto Movigo
+# Roadmap prodotto Vyko
 
 ## Obiettivo
 
-Movigo deve diventare il centro operativo leggero per aziende di trasporto: scadenze, persone, mezzi, comunicazioni, controlli giornalieri e prove documentali sempre disponibili.
+Vyko deve diventare il centro operativo leggero per aziende di trasporto: scadenze, persone, mezzi, comunicazioni, controlli giornalieri e prove documentali sempre disponibili.
 
 La regola e semplice: ogni funzione deve togliere un problema reale al titolare, all ufficio traffico, al magazzino o all autista.
 

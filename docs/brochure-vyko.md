@@ -1,8 +1,8 @@
-# Brochure commerciale Movigo
+# Brochure commerciale Vyko
 
 ## Copertina
 
-# Movigo
+# Vyko
 
 ## La flotta sotto controllo.
 
@@ -24,13 +24,13 @@ Quando tutto e sparso, il problema non e solo perdere tempo. Il problema e accor
 
 ## La soluzione
 
-Movigo porta l operativita quotidiana in un unico posto.
+Vyko porta l operativita quotidiana in un unico posto.
 
 L azienda vede dalla dashboard cosa richiede attenzione. Il personale usa l app per comunicare, ricevere notifiche, aggiornare documenti, fare check, segnalare guasti e consultare informazioni utili.
 
 Ogni evento resta collegato a persona, mezzo, data, documento, costo e storico.
 
-## Cosa gestisce Movigo
+## Cosa gestisce Vyko
 
 - Scadenze patenti, visite mediche, CQC, documenti personali.
 - Revisioni, assicurazioni, libretti e documenti mezzo.
@@ -44,7 +44,7 @@ Ogni evento resta collegato a persona, mezzo, data, documento, costo e storico.
 
 ## Per il titolare
 
-Movigo permette di vedere prima dove si sta creando disordine:
+Vyko permette di vedere prima dove si sta creando disordine:
 
 - mezzi con troppe spese;
 - documenti critici;
@@ -81,7 +81,7 @@ WhatsApp e comodo per parlare, ma non e nato per gestire un azienda.
 
 Una foto di un guasto puo perdersi. Un documento puo finire in una chat sbagliata. Una scadenza puo essere dimenticata. Una spesa puo non essere collegata alla targa corretta.
 
-Movigo trasforma la comunicazione in storico operativo.
+Vyko trasforma la comunicazione in storico operativo.
 
 ## Risultato
 
@@ -91,14 +91,14 @@ Piu controllo su persone, mezzi, documenti e costi.
 
 ## Offerta commerciale
 
-Movigo parte da 300 euro/mese + IVA, con piani in base a mezzi, strumenti e account utenti.
+Vyko parte da 300 euro/mese + IVA, con piani in base a mezzi, strumenti e account utenti.
 
 Sono disponibili pacchetti premium per chat aziendale avanzata, report economici, storage aggiuntivo e assistenza di avvio con caricamento anagrafiche.
 
 ## Chiusura
 
-Movigo non promette di eliminare ogni problema.
+Vyko non promette di eliminare ogni problema.
 
 Promette una cosa piu concreta: farti vedere prima quello che oggi rischia di restare nascosto.
 
-Movigo. La flotta sotto controllo.
+Vyko. La flotta sotto controllo.

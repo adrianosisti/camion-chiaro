@@ -1,4 +1,4 @@
-# Script video promozionali Movigo
+# Script video promozionali Vyko
 
 Questi script devono vendere una trasformazione semplice: meno caos, piu controllo, meno telefonate, documenti sempre trovabili e costi piu leggibili.
 
@@ -9,13 +9,13 @@ Durata: 30 secondi.
 Scena 1: ufficio trasporti, telefono che squilla, fogli sul tavolo, titolare nervoso.
 Voce: "Patenti, CQC, revisioni, assicurazioni. Una scadenza dimenticata puo fermare un mezzo e creare un problema enorme."
 
-Scena 2: dashboard Movigo con scadenze ordinate e contatori in alto.
-Voce: "Con Movigo vedi subito cosa scade, cosa manca e cosa devi lavorare."
+Scena 2: dashboard Vyko con scadenze ordinate e contatori in alto.
+Voce: "Con Vyko vedi subito cosa scade, cosa manca e cosa devi lavorare."
 
 Scena 3: notifica sul telefono del titolare.
 Voce: "Anche fuori ufficio, la tua azienda resta sotto controllo."
 
-Chiusura: "Movigo. Sai cosa richiede attenzione prima che diventi un problema."
+Chiusura: "Vyko. Sai cosa richiede attenzione prima che diventi un problema."
 
 ## Video 2 - "Il guasto non e una foto persa"
 
@@ -24,8 +24,8 @@ Durata: 25 secondi.
 Scena 1: autista vede una spia accesa e manda una foto in una chat confusa.
 Voce: "Un guasto mandato male diventa telefonate, messaggi e tempo perso."
 
-Scena 2: autista apre Movigo, indica mezzo, gravita, foto e descrizione.
-Voce: "Con Movigo il guasto diventa una segnalazione chiara."
+Scena 2: autista apre Vyko, indica mezzo, gravita, foto e descrizione.
+Voce: "Con Vyko il guasto diventa una segnalazione chiara."
 
 Scena 3: dashboard azienda, dettaglio guasto, costo riparazione salvato.
 Voce: "L azienda lo gestisce, lo archivia e vede anche quanto e costato."
@@ -40,7 +40,7 @@ Scena 1: controllo stradale, autista cerca un documento.
 Voce: "Quando serve un documento, non dovrebbe iniziare la caccia al telefono dell ufficio."
 
 Scena 2: autista apre l app e mostra il documento visibile.
-Voce: "Con Movigo i documenti importanti sono nell app, pronti quando servono."
+Voce: "Con Vyko i documenti importanti sono nell app, pronti quando servono."
 
 Chiusura: "Documenti pronti. Testa libera."
 
@@ -51,7 +51,7 @@ Durata: 30 secondi.
 Scena 1: autista prima di partire.
 Voce: "Ogni partenza merita un controllo rapido."
 
-Scena 2: app Movigo: luci, gomme, documenti, km, semirimorchio.
+Scena 2: app Vyko: luci, gomme, documenti, km, semirimorchio.
 Voce: "L autista fa il check dal telefono."
 
 Scena 3: dashboard azienda con check critico.
@@ -66,7 +66,7 @@ Durata: 35 secondi.
 Scena 1: titolare guarda fatture officina e non capisce quale mezzo pesa di piu.
 Voce: "Sai quanto spendi davvero su ogni mezzo?"
 
-Scena 2: Movigo, Centro costi con totale mese, anno, targa e interventi.
+Scena 2: Vyko, Centro costi con totale mese, anno, targa e interventi.
 Voce: "Registra i costi dei guasti e inizia a vedere quali targhe assorbono piu soldi."
 
 Scena 3: guasto archiviato con importo e note.
@@ -81,8 +81,8 @@ Durata: 25 secondi.
 Scena 1: titolare fuori sede riceve chiamate e messaggi.
 Voce: "Se sei fuori ufficio, non puoi chiedere a tutti cosa sta succedendo."
 
-Scena 2: apre app Movigo: check critici, guasti, scadenze, chat.
-Voce: "Con Movigo vedi le priorita dal telefono."
+Scena 2: apre app Vyko: check critici, guasti, scadenze, chat.
+Voce: "Con Vyko vedi le priorita dal telefono."
 
 Chiusura: "La flotta lavora ogni giorno. Tu la controlli ovunque."
 
@@ -99,4 +99,4 @@ Struttura:
 6. Centro costi.
 7. Chat e gruppi.
 8. Prezzi e start-up kit.
-9. Call to action: "Acquista Movigo e metti ordine alla flotta."
+9. Call to action: "Acquista Vyko e metti ordine alla flotta."

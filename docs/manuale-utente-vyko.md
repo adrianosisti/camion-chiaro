@@ -1,4 +1,4 @@
-# Manuale utente Movigo
+# Manuale utente Vyko
 
 ## 1. Primo accesso azienda
 

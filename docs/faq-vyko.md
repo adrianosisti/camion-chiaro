@@ -1,6 +1,6 @@
-# FAQ Movigo
+# FAQ Vyko
 
-Movigo nasce per una cosa molto semplice: far lavorare l azienda di trasporto con meno confusione, meno dimenticanze e piu controllo ogni giorno.
+Vyko nasce per una cosa molto semplice: far lavorare l azienda di trasporto con meno confusione, meno dimenticanze e piu controllo ogni giorno.
 
 Non e solo una lista di scadenze. E il punto in cui titolare, ufficio, autisti, magazzino, mezzi, documenti, guasti, chat e costi iniziano finalmente a stare nello stesso ordine.
 
@@ -9,17 +9,17 @@ Non e solo una lista di scadenze. E il punto in cui titolare, ufficio, autisti, 
 ### Cosa cambia davvero nella vita dell azienda?
 Prima: documenti su WhatsApp, foto sparse, telefonate continue, fogli in ufficio, scadenze da ricordare a memoria e guasti raccontati male.
 
-Dopo: entri in Movigo e vedi subito cosa scade, cosa manca, chi ha scritto, quale mezzo ha problemi, quali check sono critici e quanto stai spendendo in riparazioni.
+Dopo: entri in Vyko e vedi subito cosa scade, cosa manca, chi ha scritto, quale mezzo ha problemi, quali check sono critici e quanto stai spendendo in riparazioni.
 
 ### E una semplice agenda scadenze?
-No. Una agenda ti ricorda una data. Movigo collega quella data alla persona, al mezzo, al documento, alla notifica, allo storico e all azione da fare.
+No. Una agenda ti ricorda una data. Vyko collega quella data alla persona, al mezzo, al documento, alla notifica, allo storico e all azione da fare.
 
 Esempio: non vedi solo "patente in scadenza". Vedi di chi e, quando scade, se il documento e caricato, se l autista va sollecitato, se la pratica e gia stata lavorata e cosa resta da fare.
 
 ### Perche un trasportatore dovrebbe pagare ogni mese?
 Perche il problema non e inserire una scadenza una volta. Il problema e non perdere controllo mentre l azienda lavora tutti i giorni.
 
-Ogni mese Movigo aiuta a:
+Ogni mese Vyko aiuta a:
 - evitare dimenticanze costose;
 - ridurre telefonate inutili;
 - trovare subito documenti;
@@ -28,7 +28,7 @@ Ogni mese Movigo aiuta a:
 - dare agli autisti uno strumento semplice invece di mille messaggi sparsi.
 
 ### Quanto puo valere una scadenza non dimenticata?
-Dipende dal caso, ma una sola scadenza dimenticata puo portare fermo mezzo, perdita di tempo, problemi con clienti, urgenze in ufficio e possibili sanzioni. Movigo non promette di eliminare ogni rischio, ma riduce molto il caos che spesso fa nascere questi problemi.
+Dipende dal caso, ma una sola scadenza dimenticata puo portare fermo mezzo, perdita di tempo, problemi con clienti, urgenze in ufficio e possibili sanzioni. Vyko non promette di eliminare ogni rischio, ma riduce molto il caos che spesso fa nascere questi problemi.
 
 ### A chi serve di piu?
 Serve alle aziende che hanno mezzi, autisti e documenti da gestire. Piu crescono mezzi, persone e scadenze, piu diventa prezioso.
@@ -41,7 +41,7 @@ E utile per:
 
 ## Azienda
 
-### A cosa serve Movigo?
+### A cosa serve Vyko?
 Serve a tenere sotto controllo autisti, ufficio, magazzino, flotta, strumenti, documenti, scadenze, check, guasti, chat, notifiche e costi operativi.
 
 L obiettivo e semplice: quando il titolare o l ufficio aprono la dashboard, devono capire subito dove serve attenzione.
@@ -57,13 +57,13 @@ La home mostra le cose importanti:
 - accesso rapido ad anagrafiche, documenti, flotta e chat.
 
 ### L ufficio deve installare un programma sul computer?
-No. L ufficio lavora dal browser desktop. Questo rende piu semplice usare Movigo da PC aziendale, portatile o postazione ufficio.
+No. L ufficio lavora dal browser desktop. Questo rende piu semplice usare Vyko da PC aziendale, portatile o postazione ufficio.
 
 ### Il titolare puo usarlo anche dal telefono?
 Si. Il titolare puo usare l app su telefono per controllare notifiche, chat, guasti, scadenze e costi anche quando non e in ufficio.
 
 ### Autisti e personale usano una vera app?
-Si. Movigo e previsto come app iOS/Android per autisti, titolari e personale operativo. L app serve per chat, notifiche, documenti, check, guasti e aggiornamenti rapidi.
+Si. Vyko e previsto come app iOS/Android per autisti, titolari e personale operativo. L app serve per chat, notifiche, documenti, check, guasti e aggiornamenti rapidi.
 
 ### Posso creare io gli accessi degli utenti?
 Si. L azienda crea autisti, ufficio e magazzino, assegna username/password e decide quali dati sono collegati a ogni persona.
@@ -75,7 +75,7 @@ No. L autista vede solo la sua area: documenti visibili, chat autorizzate, check
 Si. La flotta gestisce furgoni, motrici, trattori e semirimorchi. Nei check o nei guasti l autista puo indicare il mezzo usato e, se serve, il semirimorchio agganciato.
 
 ### Posso gestire muletti e strumenti di lavoro?
-Si. La struttura prevede magazzino, strumenti, muletti e check dedicati. Questo permette di estendere Movigo oltre i camion: carrelli, transpallet, attrezzature e strumenti che hanno controlli, guasti o manutenzioni.
+Si. La struttura prevede magazzino, strumenti, muletti e check dedicati. Questo permette di estendere Vyko oltre i camion: carrelli, transpallet, attrezzature e strumenti che hanno controlli, guasti o manutenzioni.
 
 ### Posso caricare documenti dei mezzi?
 Si. L azienda puo caricare documenti del mezzo, come libretto, assicurazione, revisione, bollo, certificati o altri allegati utili.
@@ -119,12 +119,12 @@ Significa che una o piu sanzioni hanno importo e data, ma non hanno ancora un au
 Si. La sezione Report permette di scegliere cosa scaricare o stampare: dettaglio costi, solo multe/sanzioni, classifica multe autisti, filtri per periodo, targa, autista, attrezzatura o categoria.
 
 ### La chat sostituisce WhatsApp?
-Non deve per forza sostituirlo per tutto, ma mette le comunicazioni operative dove servono. La differenza e che la chat di Movigo resta collegata al contesto aziendale: autisti, gruppi, reparti, notifiche e storico.
+Non deve per forza sostituirlo per tutto, ma mette le comunicazioni operative dove servono. La differenza e che la chat di Vyko resta collegata al contesto aziendale: autisti, gruppi, reparti, notifiche e storico.
 
 ### Perche non basta WhatsApp?
 WhatsApp e comodo per parlare, ma non e fatto per gestire scadenze, documenti, check, guasti, ruoli, costi e archivio aziendale.
 
-Su WhatsApp un guasto puo diventare una foto persa in una chat. In Movigo diventa una segnalazione apribile, archiviabile e ricercabile.
+Su WhatsApp un guasto puo diventare una foto persa in una chat. In Vyko diventa una segnalazione apribile, archiviabile e ricercabile.
 
 ### Le notifiche arrivano anche con app chiusa?
 Si, se il telefono e registrato e l utente ha autorizzato le notifiche. Chat, guasti, check e solleciti possono arrivare sul telefono.
@@ -132,8 +132,8 @@ Si, se il telefono e registrato e l utente ha autorizzato le notifiche. Chat, gu
 ### Posso usare piu lingue?
 Si. Sono previste italiano, inglese, spagnolo, francese, tedesco, rumeno e polacco. Questo aiuta aziende con autisti e personale di nazionalita diverse.
 
-### Movigo sostituisce un gestionale trasporti?
-No, e non deve per forza farlo. Movigo e pensato come centro operativo leggero per documenti, scadenze, persone, check, guasti, comunicazioni e costi. Puo affiancare altri gestionali gia presenti.
+### Vyko sostituisce un gestionale trasporti?
+No, e non deve per forza farlo. Vyko e pensato come centro operativo leggero per documenti, scadenze, persone, check, guasti, comunicazioni e costi. Puo affiancare altri gestionali gia presenti.
 
 ### Serve una persona tecnica per usarlo?
 No. L idea e farlo usare a ufficio, titolare e personale operativo senza complicazioni. Per partire bene e consigliato lo start-up kit, cosi anagrafiche, documenti e prime scadenze vengono impostati in modo ordinato.
@@ -169,7 +169,7 @@ L obiettivo e renderla semplice: pochi tocchi, informazioni chiare, documenti e 
 ### Posso creare persone che non sono autisti?
 Si. L azienda puo creare personale ufficio e magazzino, con ruoli e reparti.
 
-### I magazzinieri possono usare Movigo?
+### I magazzinieri possono usare Vyko?
 Si. Possono essere collegati a chat, notifiche, documenti e in futuro check su muletti o strumenti.
 
 ### L ufficio traffico puo parlare con autisti e magazzino?
@@ -177,7 +177,7 @@ Si. L obiettivo e permettere comunicazioni ordinate tra azienda, autisti, uffici
 
 ## Prezzi, attivazione e valore
 
-### Quanto costa Movigo?
+### Quanto costa Vyko?
 Il prezzo parte da 300 euro/mese per piccole flotte. I piani crescono per numero di mezzi, strumenti e account utenti.
 
 ### Perche parte da 300 euro/mese?
@@ -218,4 +218,4 @@ Si. Il piano puo crescere con mezzi, strumenti, account e storage.
 Con dati pronti, si puo partire velocemente. Con start-up kit, l obiettivo e configurare azienda, utenti, mezzi e prime scadenze in modo guidato.
 
 ### Qual e la promessa piu importante?
-Aprire Movigo e sapere cosa richiede attenzione prima che diventi un problema.
+Aprire Vyko e sapere cosa richiede attenzione prima che diventi un problema.

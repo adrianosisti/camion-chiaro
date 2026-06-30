@@ -1,6 +1,6 @@
 -- PERSONALE, REPARTI, MULETTI, DOCUMENTI MEZZO E CHAT GRUPPI - PARTE 31
 -- Esegui questo file dopo 30_native_push_tokens.sql.
--- Prepara Movigo per autisti, carrellisti/magazzino, ufficio e gruppi aziendali.
+-- Prepara Vyko per autisti, carrellisti/magazzino, ufficio e gruppi aziendali.
 
 do $$
 begin

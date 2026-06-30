@@ -160,7 +160,7 @@ const workforceTabs = [
 ]
 
 const companyTabs = [
-  { id: 'home', icon: 'business-outline', label: 'Home', labelKey: 'home' },
+  { id: 'home', icon: 'business-outline', label: 'Dashboard', labelKey: 'dashboard' },
   { id: 'manage', icon: 'add-circle-outline', label: 'Anagraf.' },
   { id: 'archive', icon: 'albums-outline', label: 'Archivio', labelKey: 'archive' },
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
@@ -168,6 +168,7 @@ const companyTabs = [
 ]
 
 const camionChiaroIcon = require('./assets/brand/icon.png')
+const vygoLogoHorizontal = require('./assets/brand/logo-horizontal.png')
 
 function getAndroidTopInset(topInset) {
   if (Platform.OS !== 'android') return topInset
@@ -2639,6 +2640,14 @@ function CamionChiaroApp() {
             <Text numberOfLines={1} style={styles.driverName}>{headerSubtitle}</Text>
           </View>
         </View>
+        <View style={styles.headerBrandPill}>
+          <Image
+            accessibilityIgnoresInvertColors
+            resizeMode="contain"
+            source={vygoLogoHorizontal}
+            style={styles.headerBrandLogo}
+          />
+        </View>
       </View>
 
       {appStatus ? <Text style={styles.statusText}>{appStatus}</Text> : null}
@@ -2736,6 +2745,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: layout.screenPadding,
     paddingVertical: 14,
+  },
+  headerBrandLogo: {
+    height: 28,
+    width: 112,
+  },
+  headerBrandPill: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: 'rgba(18, 198, 223, 0.28)',
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    shadowColor: '#020617',
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    width: 126,
   },
   headerIdentity: {
     alignItems: 'center',

@@ -6524,12 +6524,26 @@ function App() {
   }
 
   async function resetAccessPassword(targetType, targetId, displayName = 'utente') {
+    const chosenPassword = window.prompt(
+      `Nuova password temporanea per ${displayName}\n\nScrivila qui se vuoi sceglierla tu. Deve avere almeno 8 caratteri.\nLascia vuoto e premi OK se vuoi farla generare a Vygo.`,
+      '',
+    )
+
+    if (chosenPassword === null) return false
+
+    const cleanPassword = chosenPassword.trim()
+
+    if (cleanPassword && cleanPassword.length < 8) {
+      window.alert('La password deve avere almeno 8 caratteri.')
+      return false
+    }
+
     if (hasCompanyDataConnection && session?.role === 'company') {
       const isDriver = targetType === 'driver'
       const setStatus = isDriver ? setDriversSyncStatus : setPeopleSyncStatus
 
       setStatus(`Reimposto password per ${displayName}...`)
-      const result = await resetSupabaseCompanyAccessPassword({ targetId, targetType }, activeCompanyId)
+      const result = await resetSupabaseCompanyAccessPassword({ password: cleanPassword, targetId, targetType }, activeCompanyId)
 
       if (result.error) {
         setStatus(`Errore reset password: ${result.error.message}`)
@@ -6537,12 +6551,13 @@ function App() {
       }
 
       const authEmail = result.data?.authEmail ?? ''
+      const loginEmails = Array.isArray(result.data?.loginEmails) ? result.data.loginEmails : []
       const password = result.data?.password ?? ''
       const username = result.data?.username ?? ''
 
       setStatus(`Password reimpostata per ${displayName}.`)
       window.alert(
-        `Password temporanea generata per ${displayName}\n\nUsername: ${username || displayName}\nEmail tecnica: ${authEmail}\nPassword: ${password}\n\nComunicala alla persona e falla cambiare al prossimo accesso.`,
+        `Password temporanea pronta per ${displayName}\n\nUsername: ${username || displayName}\nEmail tecnica principale: ${authEmail}\nPassword: ${password}\n\nSe con lo username non entra, prova una di queste email tecniche:\n${loginEmails.join('\n') || authEmail}\n\nComunicala alla persona e falla cambiare al prossimo accesso.`,
       )
       return true
     }

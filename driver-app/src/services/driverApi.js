@@ -64,6 +64,14 @@ function workforceSchemaError() {
   return { message: 'Per usare reparti, ufficio e magazzino esegui prima il file 31_personale_reparti_gruppi.sql in Supabase.' }
 }
 
+function putCurrentDriverFirst(driver, drivers = []) {
+  if (!driver?.id) return drivers
+  return [
+    driver,
+    ...(drivers ?? []).filter((entry) => entry?.id && entry.id !== driver.id),
+  ]
+}
+
 const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_message_at'
 const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
@@ -678,6 +686,7 @@ async function fetchDriverContextDirect() {
     faultsResult,
     personResult,
     peopleResult,
+    driversResult,
     teamThreadsResult,
     teamUnreadCountsResult,
   ] = await Promise.all([
@@ -715,6 +724,12 @@ async function fetchDriverContextDirect() {
       .eq('company_id', driver.company_id)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
+    supabase
+      .from('drivers')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .eq('company_id', driver.company_id)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
     fetchTeamChatThreads(driver.company_id),
     fetchTeamUnreadCounts(driver.company_id),
   ])
@@ -727,6 +742,7 @@ async function fetchDriverContextDirect() {
     faultsResult.error,
     personResult.error,
     isMissingWorkforceSchemaError(peopleResult.error) ? null : peopleResult.error,
+    driversResult.error,
     teamThreadsResult.error,
     teamUnreadCountsResult.error,
   ].find(Boolean)
@@ -744,7 +760,7 @@ async function fetchDriverContextDirect() {
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
       currentPerson: personResult.data,
       documents: documentsResult.data ?? [],
-      drivers: [driver],
+      drivers: putCurrentDriverFirst(driver, driversResult.data ?? []),
       faultReports: faultsResult.data ?? [],
       people: isMissingWorkforceSchemaError(peopleResult.error)
         ? (personResult.data ? [personResult.data] : [])
@@ -766,6 +782,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
   const [
     companyResult,
     peopleResult,
+    driversResult,
     complianceResult,
     teamThreadsResult,
     teamUnreadCountsResult,
@@ -778,6 +795,12 @@ async function fetchCompanyPersonContextDirect(user, person) {
     supabase
       .from('company_people')
       .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
+    supabase
+      .from('drivers')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -795,6 +818,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
   const firstError = [
     companyResult.error,
     isMissingWorkforceSchemaError(peopleResult.error) ? null : peopleResult.error,
+    driversResult.error,
     complianceResult.error,
     teamThreadsResult.error,
     teamUnreadCountsResult.error,
@@ -809,7 +833,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
       currentPerson: person,
       documents: [],
-      drivers: [],
+      drivers: driversResult.data ?? [],
       faultReports: [],
       people: (peopleResult.data ?? []).map(mapContextCompanyPerson),
       teamChatThreads: teamThreadsResult.data ?? [],
@@ -1115,11 +1139,11 @@ async function ensureChatThread({ companyId, driverId, threadId }) {
   return { data: data ? mapChatThread(data) : null, error }
 }
 
-async function uploadChatAttachment({ attachment, companyId, threadId }) {
+async function uploadChatAttachment({ attachment, companyId, folder = 'chat', threadId }) {
   if (!attachment?.uri) return { data: '', error: null }
 
   const cleanFileName = sanitizeFileName(attachment.name ?? `allegato-${Date.now()}`)
-  const filePath = `${companyId}/chat/${threadId}/${Date.now()}-${cleanFileName}`
+  const filePath = `${companyId}/${folder}/${threadId}/${Date.now()}-${cleanFileName}`
   const fileBody = await getFileBodyFromUri(attachment.uri)
   const { error } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
     cacheControl: '3600',
@@ -1338,6 +1362,7 @@ export async function sendTeamChatMessage({
   const uploadResult = await uploadChatAttachment({
     attachment,
     companyId,
+    folder: 'team-chat',
     threadId,
   })
 
@@ -1718,7 +1743,7 @@ export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
     }
   }
 
-  const actorRole = actor.actorRole === 'company' ? 'company' : 'driver'
+  const actorRole = actor.actorRole || 'driver'
   const clientId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
   const channel = supabase
     .channel(`chat-presence-${companyId}`, {
@@ -1745,6 +1770,7 @@ export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
       await channel.track({
         actorId: actor.actorId,
         actorName: actor.actorName ?? '',
+        actorPersonId: actor.actorPersonId ?? '',
         actorRole,
         lastSeenAt: new Date().toISOString(),
         onlineAt: new Date().toISOString(),
@@ -1763,6 +1789,7 @@ export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
         payload: {
           actorId: actor.actorId,
           actorName: actor.actorName ?? '',
+          actorPersonId: actor.actorPersonId ?? '',
           actorRole,
           isTyping,
           sentAt: new Date().toISOString(),
@@ -1889,7 +1916,7 @@ export async function createCompanyPerson({ companyId, person }) {
   return { data: data ? mapCompanyPerson(data) : null, error }
 }
 
-export async function resetCompanyAccessPassword({ companyId, targetId, targetType }) {
+export async function resetCompanyAccessPassword({ companyId, password = '', targetId, targetType }) {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!apiBaseUrl) {
     return {
@@ -1906,7 +1933,7 @@ export async function resetCompanyAccessPassword({ companyId, targetId, targetTy
 
   try {
     const response = await fetch(`${apiBaseUrl}/.netlify/functions/reset-access-password`, {
-      body: JSON.stringify({ companyId, targetId, targetType }),
+      body: JSON.stringify({ companyId, password, targetId, targetType }),
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',

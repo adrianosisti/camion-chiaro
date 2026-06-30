@@ -26,6 +26,33 @@ function buildAuthEmail(username) {
   return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${authDomain}`
 }
 
+function uniqueStrings(values) {
+  return [...new Set(values.map((value) => String(value ?? '').trim().toLowerCase()).filter(Boolean))]
+}
+
+function buildAuthEmailForDomain(username, domain) {
+  const cleanUsername = normalizeUsername(username)
+  return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${domain}`
+}
+
+function isTechnicalAuthEmail(value) {
+  const email = String(value ?? '').trim().toLowerCase()
+  return email.includes('@drivers.') || email.endsWith('@drivers.camionchiaro.app') || email.endsWith('@drivers.vy-go.com')
+}
+
+function getCandidateAuthEmails(record, username) {
+  if (String(username ?? '').includes('@')) return uniqueStrings([username, record.auth_email])
+
+  return uniqueStrings([
+    record.auth_email,
+    isTechnicalAuthEmail(record.email) ? record.email : '',
+    buildAuthEmail(username),
+    buildAuthEmailForDomain(username, 'drivers.camionchiaro.app'),
+    buildAuthEmailForDomain(username, 'drivers.vy-go.com'),
+    buildAuthEmailForDomain(username, 'drivers.vygo.app'),
+  ])
+}
+
 function generateTemporaryPassword() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
   const bytes = randomBytes(12)
@@ -44,20 +71,26 @@ async function verifyCompanyOperator(serviceClient, userId, companyId) {
   return { allowed: Boolean(data && !error), error }
 }
 
-async function findUserByEmail(serviceClient, email) {
-  const wantedEmail = String(email ?? '').trim().toLowerCase()
-  if (!wantedEmail) return null
+async function findUsersByEmails(serviceClient, emails) {
+  const wantedEmails = new Set(uniqueStrings(emails))
+  if (!wantedEmails.size) return []
+  const foundUsers = []
 
   for (let page = 1; page <= 10; page += 1) {
     const { data, error } = await serviceClient.auth.admin.listUsers({ page, perPage: 1000 })
-    if (error) return null
+    if (error) return foundUsers
 
-    const user = data?.users?.find((item) => String(item.email ?? '').toLowerCase() === wantedEmail)
-    if (user) return user
-    if (!data?.users?.length || data.users.length < 1000) return null
+    for (const user of data?.users ?? []) {
+      if (wantedEmails.has(String(user.email ?? '').toLowerCase())) {
+        foundUsers.push(user)
+      }
+    }
+
+    if (foundUsers.length >= wantedEmails.size) return foundUsers
+    if (!data?.users?.length || data.users.length < 1000) return foundUsers
   }
 
-  return null
+  return foundUsers
 }
 
 async function loadTargetRecord(serviceClient, companyId, targetType, targetId) {
@@ -131,11 +164,16 @@ export async function handler(event) {
   }
 
   const companyId = String(body.companyId ?? '').trim()
+  const requestedPassword = String(body.password ?? '').trim()
   const targetId = String(body.targetId ?? '').trim()
   const targetType = String(body.targetType ?? '').trim()
 
   if (!companyId || !targetId || !['driver', 'person'].includes(targetType)) {
     return jsonResponse(400, { error: 'Seleziona azienda e utente da reimpostare.' })
+  }
+
+  if (requestedPassword && requestedPassword.length < 8) {
+    return jsonResponse(400, { error: 'La nuova password deve avere almeno 8 caratteri.' })
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey)
@@ -174,18 +212,16 @@ export async function handler(event) {
 
   const target = targetResult.data
   const username = normalizeUsername(target.username || target.full_name)
-  const authEmail = target.auth_email || buildAuthEmail(username)
-  const temporaryPassword = generateTemporaryPassword()
+  const candidateAuthEmails = getCandidateAuthEmails(target, username)
+  const authEmail = candidateAuthEmails[0] || buildAuthEmail(username)
+  const temporaryPassword = requestedPassword || generateTemporaryPassword()
   const metadata = getTargetMetadata(targetType, target, companyId)
+  const matchingUsers = await findUsersByEmails(serviceClient, candidateAuthEmails)
+  const authUserIds = uniqueStrings([target.user_id, ...matchingUsers.map((user) => user.id)])
+  const updatedUsers = []
+  const updateErrors = []
 
-  let authUserId = target.user_id
-
-  if (!authUserId) {
-    const existingUser = await findUserByEmail(serviceClient, authEmail)
-    authUserId = existingUser?.id ?? ''
-  }
-
-  if (authUserId) {
+  for (const authUserId of authUserIds) {
     const { data: updatedUser, error: updateError } = await serviceClient.auth.admin.updateUserById(authUserId, {
       email_confirm: true,
       password: temporaryPassword,
@@ -193,11 +229,15 @@ export async function handler(event) {
     })
 
     if (updateError || !updatedUser.user) {
-      return jsonResponse(400, { error: updateError?.message ?? 'Password non aggiornata.' })
+      updateErrors.push(updateError?.message ?? `Account ${authUserId} non aggiornato`)
+    } else {
+      updatedUsers.push(updatedUser.user)
     }
+  }
 
-    authUserId = updatedUser.user.id
-  } else {
+  let authUserId = updatedUsers[0]?.id ?? ''
+
+  if (!authUserId) {
     const { data: createdUser, error: createError } = await serviceClient.auth.admin.createUser({
       email: authEmail,
       email_confirm: true,
@@ -226,9 +266,13 @@ export async function handler(event) {
 
   return jsonResponse(200, {
     authEmail,
+    loginEmails: candidateAuthEmails,
     password: temporaryPassword,
+    passwordGenerated: !requestedPassword,
     targetId,
     targetType,
+    updatedAccounts: updatedUsers.length,
+    updateWarnings: updateErrors,
     username,
   })
 }

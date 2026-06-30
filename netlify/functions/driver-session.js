@@ -131,6 +131,14 @@ function mapTeamChatThread(row = {}) {
   }
 }
 
+function putCurrentDriverFirst(driver, drivers = []) {
+  if (!driver?.id) return drivers
+  return [
+    driver,
+    ...(drivers ?? []).filter((entry) => entry?.id && entry.id !== driver.id),
+  ]
+}
+
 function mapVehicleCheck(row) {
   return {
     companyId: row.company_id,
@@ -325,6 +333,7 @@ async function fetchCompanyPersonContext(serviceClient, person) {
   const [
     companyResult,
     peopleResult,
+    driversResult,
     complianceResult,
     teamThreadsResult,
   ] = await Promise.all([
@@ -332,6 +341,12 @@ async function fetchCompanyPersonContext(serviceClient, person) {
     serviceClient
       .from('company_people')
       .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
+    serviceClient
+      .from('drivers')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -355,6 +370,7 @@ async function fetchCompanyPersonContext(serviceClient, person) {
   const error =
     companyResult.error ||
     peopleResult.error ||
+    driversResult.error ||
     complianceResult.error ||
     teamThreadsResult.error
 
@@ -367,7 +383,7 @@ async function fetchCompanyPersonContext(serviceClient, person) {
       complianceItems: complianceResult.data.map(mapComplianceItem),
       currentPerson,
       documents: [],
-      drivers: [],
+      drivers: (driversResult.data ?? []).map(mapDriver),
       faultReports: [],
       people: peopleResult.data.map(mapCompanyPerson),
       teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),
@@ -413,6 +429,7 @@ async function fetchDriverContext(serviceClient, driver) {
     checksResult,
     faultsResult,
     peopleResult,
+    driversResult,
     teamThreadsResult,
   ] = await Promise.all([
     fetchCompanyProfile(serviceClient, driver.company_id),
@@ -450,6 +467,12 @@ async function fetchDriverContext(serviceClient, driver) {
       .eq('company_id', driver.company_id)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
+    serviceClient
+      .from('drivers')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .eq('company_id', driver.company_id)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true }),
     teamThreadIds.length
       ? serviceClient
           .from('team_chat_threads')
@@ -469,6 +492,7 @@ async function fetchDriverContext(serviceClient, driver) {
     checksResult.error ||
     faultsResult.error ||
     (peopleResult.error && !['42P01', '42703'].includes(peopleResult.error.code) ? peopleResult.error : null) ||
+    driversResult.error ||
     teamThreadsResult.error
 
   if (error) {
@@ -482,7 +506,7 @@ async function fetchDriverContext(serviceClient, driver) {
       complianceItems: complianceResult.data.map(mapComplianceItem),
       currentPerson,
       documents: documentsResult.data.map(mapDriverDocument),
-      drivers: [mapDriver(driver)],
+      drivers: putCurrentDriverFirst(driver, driversResult.data ?? []).map(mapDriver),
       faultReports: faultsResult.data.map(mapFaultReport),
       people: peopleResult.error ? (currentPerson ? [currentPerson] : []) : peopleResult.data.map(mapCompanyPerson),
       teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),

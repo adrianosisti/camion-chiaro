@@ -1859,7 +1859,7 @@ export async function createCompanyPerson(person, companyId = configuredCompanyI
   return { data: data ? mapCompanyPerson(data) : null, error }
 }
 
-export async function resetCompanyAccessPassword({ targetId, targetType }, companyId = configuredCompanyId) {
+export async function resetCompanyAccessPassword({ password = '', targetId, targetType }, companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
   if (!supabase || !companyId) {
@@ -1875,7 +1875,7 @@ export async function resetCompanyAccessPassword({ targetId, targetType }, compa
 
   try {
     const response = await fetch('/.netlify/functions/reset-access-password', {
-      body: JSON.stringify({ companyId, targetId, targetType }),
+      body: JSON.stringify({ companyId, password, targetId, targetType }),
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',

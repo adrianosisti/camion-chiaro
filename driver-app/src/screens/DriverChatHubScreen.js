@@ -99,6 +99,7 @@ export function DriverChatHubScreen({
   companyOnline,
   companyTyping,
   currentPerson,
+  driverPhotoUrls = {},
   driverName,
   driverProfileUrl,
   incomingShare,
@@ -114,18 +115,21 @@ export function DriverChatHubScreen({
   onSendCompanyMessage,
   onSendTeamMessage,
   onTyping,
+  onlinePersonIds = [],
   selectedMode = 'list',
   selectedTeamThread,
   soundEnabled = true,
   people = [],
   teamMessages = [],
   teamThreads = [],
+  teamTypingByThreadId = {},
   unreadCompanyMessages = 0,
   unreadTeamByThreadId = {},
 }) {
   const [chatListMode, setChatListMode] = useState('direct')
   const currentUserRole = 'me'
   const personById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
+  const driverByPersonId = useMemo(() => buildDriverByPersonId(people), [people])
   const currentPersonByName = useMemo(() => {
     if (currentPerson) return currentPerson
     if (!driverName) return null
@@ -134,21 +138,47 @@ export function DriverChatHubScreen({
   const normalizedTeamMessages = useMemo(
     () => teamMessages.map((message) => ({
       ...message,
-      senderAvatarUrl: message.senderPersonId === currentPersonByName?.id ? driverProfileUrl : '',
+      senderAvatarUrl: getPersonAvatarUrl(
+        message.senderPersonId ? personById.get(message.senderPersonId) : null,
+        driverPhotoUrls,
+        driverByPersonId,
+        message.senderPersonId === currentPersonByName?.id ? driverProfileUrl : '',
+      ),
       senderName: getTeamMessageSenderName(message, personById, companyName),
       senderRole: message.senderPersonId && message.senderPersonId === currentPersonByName?.id ? 'me' : 'team',
     })),
-    [companyName, currentPersonByName?.id, driverProfileUrl, personById, teamMessages],
+    [companyName, currentPersonByName?.id, driverByPersonId, driverPhotoUrls, driverProfileUrl, personById, teamMessages],
   )
   const visiblePeople = people.filter((person) => person.id !== currentPerson?.id && person.status !== 'archived')
   const visibleTeamThreads = teamThreads.filter((thread) => (
     !(isDirectThread(thread) && [currentPerson?.name, companyName].filter(Boolean).includes(thread.title))
   ))
-  const directTeamThreads = visibleTeamThreads.filter((thread) => isDirectThread(thread))
-  const groupTeamThreads = visibleTeamThreads.filter((thread) => !isDirectThread(thread))
+  const directTeamThreads = visibleTeamThreads
+    .filter((thread) => isDirectThread(thread))
+    .sort((firstThread, secondThread) => getSafeTimestamp(secondThread.lastMessageAt) - getSafeTimestamp(firstThread.lastMessageAt))
+  const groupTeamThreads = visibleTeamThreads
+    .filter((thread) => !isDirectThread(thread))
+    .sort((firstThread, secondThread) => getSafeTimestamp(secondThread.lastMessageAt) - getSafeTimestamp(firstThread.lastMessageAt))
+  const directConversationRows = [
+    companyName
+      ? {
+          id: 'company',
+          timestamp: getSafeTimestamp(chatThread?.lastMessageAt),
+          type: 'company',
+        }
+      : null,
+    ...directTeamThreads.map((thread) => ({
+      id: thread.id,
+      thread,
+      timestamp: getSafeTimestamp(thread.lastMessageAt),
+      type: 'team',
+    })),
+  ]
+    .filter(Boolean)
+    .sort((firstRow, secondRow) => secondRow.timestamp - firstRow.timestamp)
   const hasDirectRows = Boolean(companyName) || directTeamThreads.length || visiblePeople.length
   const hasGroupRows = groupTeamThreads.length > 0
-  const directCount = (companyName ? 1 : 0) + directTeamThreads.length + visiblePeople.length
+  const directCount = (companyName ? 1 : 0) + directTeamThreads.length
   const groupCount = groupTeamThreads.length
   const directUnreadCount = unreadCompanyMessages + directTeamThreads.reduce((total, thread) => total + Number(unreadTeamByThreadId[thread.id] ?? 0), 0)
   const groupUnreadCount = groupTeamThreads.reduce((total, thread) => total + Number(unreadTeamByThreadId[thread.id] ?? 0), 0)
@@ -179,32 +209,44 @@ export function DriverChatHubScreen({
   }
 
   if (selectedMode === 'team' && selectedTeamThread) {
+    const directPartner = getDirectThreadPartner(selectedTeamThread, currentPersonByName, personById)
+    const isDirectChat = isDirectThread(selectedTeamThread)
+    const directPartnerAvatarUrl = getPersonAvatarUrl(directPartner, driverPhotoUrls, driverByPersonId)
+    const directPartnerOnline = Boolean(directPartner?.id && onlinePersonIds.includes(directPartner.id))
+    const typingPayload = teamTypingByThreadId[selectedTeamThread.id]
+    const isTeamTyping = Boolean(typingPayload?.isTyping && (!typingPayload.expiresAt || typingPayload.expiresAt > Date.now()))
+    const selectedTitle = isDirectChat && directPartner ? directPartner.name : selectedTeamThread.title
+    const selectedSubtitle = isDirectChat && directPartner
+      ? `${getPersonDepartmentLabel(directPartner.department)} · ${directPartner.jobTitle || 'Operatore'}`
+      : `${getThreadKindLabel(selectedTeamThread)} · ${getAudienceLabel(selectedTeamThread.audienceType)}`
+
     return (
       <View style={styles.chatWrap}>
         <HeaderBar
           onBack={onBackToList}
-          subtitle={`${getThreadKindLabel(selectedTeamThread)} · ${getAudienceLabel(selectedTeamThread.audienceType)}`}
-          title={selectedTeamThread.title}
+          subtitle={selectedSubtitle}
+          title={selectedTitle}
         />
         <ChatScreen
-          companyLogoUrl={companyLogoUrl}
-          companyName={selectedTeamThread.title}
-          companyOnline
+          companyLogoUrl={isDirectChat ? directPartnerAvatarUrl : ''}
+          companyName={selectedTitle}
+          companyOnline={isDirectChat ? directPartnerOnline : false}
+          companyTyping={isTeamTyping}
           currentUserRole={currentUserRole}
           driverName={driverName}
           driverProfileUrl={driverProfileUrl}
           incomingShare={incomingShare}
           messages={normalizedTeamMessages}
-          offlineLabel="gruppo"
+          offlineLabel={isDirectChat ? 'non online' : 'gruppo'}
           onIncomingShareConsumed={onIncomingShareConsumed}
           onRefresh={onRefreshTeamChat}
           onSend={onSendTeamMessage}
           onTyping={onTyping}
           ownAvatarUrl={driverProfileUrl}
-          participantAvatarUrl={companyLogoUrl}
-          participantIcon={getGroupIcon(selectedTeamThread.audienceType)}
-          participantName={selectedTeamThread.title}
-          showSenderNames={!isDirectThread(selectedTeamThread)}
+          participantAvatarUrl={isDirectChat ? directPartnerAvatarUrl : ''}
+          participantIcon={isDirectChat ? '' : getGroupIcon(selectedTeamThread.audienceType)}
+          participantName={selectedTitle}
+          showSenderNames={!isDirectChat}
           soundEnabled={soundEnabled}
         />
       </View>
@@ -232,29 +274,33 @@ export function DriverChatHubScreen({
 
       {chatListMode === 'direct' ? (
         <>
-          <ChatRow
-            badge={unreadCompanyMessages}
-            imageUrl={companyLogoUrl}
-            kindLabel="Diretta"
-            onPress={onOpenCompanyChat}
-            subtitle={chatThread?.lastMessageAt ? formatLastMessageDate(chatThread.lastMessageAt) : 'Canale principale'}
-            title={companyName}
-            tone="direct"
-          />
-          {directTeamThreads.length ? (
+          {directConversationRows.length ? (
             <View style={styles.groupBlock}>
               <Text style={styles.groupTitle}>Chat singole</Text>
-              {directTeamThreads.map((thread) => (
-                <ChatRow
-                  icon="person-circle-outline"
-                  key={thread.id}
-                  kindLabel={getThreadKindLabel(thread)}
-                  onPress={() => onOpenTeamChat?.(thread)}
-                  subtitle={`${getAudienceLabel(thread.audienceType)} · ${formatLastMessageDate(thread.lastMessageAt)}`}
-                  title={thread.title}
-                  tone="direct"
-                  badge={unreadTeamByThreadId[thread.id] ?? 0}
-                />
+              {directConversationRows.map((row) => (
+                row.type === 'company' ? (
+                  <ChatRow
+                    badge={unreadCompanyMessages}
+                    imageUrl={companyLogoUrl}
+                    key={row.id}
+                    kindLabel="Diretta"
+                    onPress={onOpenCompanyChat}
+                    subtitle={chatThread?.lastMessageAt ? formatLastMessageDate(chatThread.lastMessageAt) : 'Canale principale'}
+                    title={companyName}
+                    tone="direct"
+                  />
+                ) : (
+                  <ChatRow
+                    icon="person-circle-outline"
+                    key={row.id}
+                    kindLabel={getThreadKindLabel(row.thread)}
+                    onPress={() => onOpenTeamChat?.(row.thread)}
+                    subtitle={`${getAudienceLabel(row.thread.audienceType)} · ${formatLastMessageDate(row.thread.lastMessageAt)}`}
+                    title={row.thread.title}
+                    tone="direct"
+                    badge={unreadTeamByThreadId[row.thread.id] ?? 0}
+                  />
+                )
               ))}
             </View>
           ) : null}
@@ -281,10 +327,11 @@ export function DriverChatHubScreen({
 
       {chatListMode === 'direct' && visiblePeople.length ? (
         <View style={styles.groupBlock}>
-          <Text style={styles.groupTitle}>Persone</Text>
+          <Text style={styles.groupTitle}>Nuova chat</Text>
           {visiblePeople.map((person) => (
             <ChatRow
               icon={person.department === 'warehouse' ? 'cube-outline' : person.department === 'office' ? 'briefcase-outline' : 'person-outline'}
+              imageUrl={getPersonAvatarUrl(person, driverPhotoUrls, driverByPersonId)}
               key={person.id}
               kindLabel="Diretta"
               onPress={() => onOpenPersonChat?.(person)}
@@ -350,6 +397,12 @@ function isDirectThread(thread = {}) {
   return thread.threadType === 'direct' || thread.audienceType === 'direct'
 }
 
+function getSafeTimestamp(value) {
+  if (!value) return 0
+  const timestamp = new Date(value).getTime()
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
 function getThreadKindLabel(thread = {}) {
   if (isDirectThread(thread)) return 'Diretta'
   if (['drivers', 'office', 'warehouse'].includes(thread.audienceType)) return 'Reparto'
@@ -365,6 +418,38 @@ function getPersonDepartmentLabel(value = '') {
 
 function getPersonRoleLabel(person = {}) {
   return person.jobTitle || getPersonDepartmentLabel(person.department)
+}
+
+function buildDriverByPersonId(people = []) {
+  return new Map(
+    people
+      .filter((person) => person?.linkedDriverId)
+      .map((person) => [person.id, { id: person.linkedDriverId }]),
+  )
+}
+
+function getPersonAvatarUrl(person, driverPhotoUrls = {}, driverByPersonId = new Map(), fallbackUrl = '') {
+  if (!person?.id) return fallbackUrl
+  const linkedDriverId = person.linkedDriverId || driverByPersonId.get(person.id)?.id
+  return linkedDriverId ? driverPhotoUrls[linkedDriverId] ?? fallbackUrl : fallbackUrl
+}
+
+function getDirectThreadPartner(thread = {}, currentPerson = null, peopleById = new Map()) {
+  if (!isDirectThread(thread)) return null
+
+  const directKey = String(thread.directKey ?? '')
+  if (directKey.startsWith('person:')) {
+    const personIds = directKey.slice('person:'.length).split(':').filter(Boolean)
+    const partnerId = personIds.find((personId) => personId !== currentPerson?.id) ?? personIds[0]
+    return peopleById.get(partnerId) ?? null
+  }
+
+  if (directKey.startsWith('company:')) {
+    const personId = directKey.slice('company:'.length)
+    return peopleById.get(personId) ?? null
+  }
+
+  return null
 }
 
 function getTeamMessageSenderName(message = {}, peopleById = new Map(), companyName = '') {

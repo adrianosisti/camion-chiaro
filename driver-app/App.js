@@ -368,12 +368,14 @@ function CamionChiaroApp() {
   const [managementCostStartKey, setManagementCostStartKey] = useState(0)
   const [nativePushStatus, setNativePushStatus] = useState('')
   const [onlineDriverIds, setOnlineDriverIds] = useState([])
+  const [onlinePersonIds, setOnlinePersonIds] = useState([])
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
   const [selectedCompanyTeamThreadId, setSelectedCompanyTeamThreadId] = useState('')
   const [selectedDailyVehicleId, setSelectedDailyVehicleId] = useState('')
   const [selectedDriverTeamThreadId, setSelectedDriverTeamThreadId] = useState('')
   const [settingsReady, setSettingsReady] = useState(false)
+  const [teamTypingByThreadId, setTeamTypingByThreadId] = useState({})
   const companyPresenceRef = useRef(null)
   const companyRefreshInFlightRef = useRef(false)
   const companyTypingTimeoutRef = useRef(null)
@@ -467,17 +469,59 @@ function CamionChiaroApp() {
     })
   }
 
+  function setTeamTypingState(payload) {
+    const threadId = payload?.threadId
+    if (!threadId) return
+
+    setTeamTypingByThreadId((currentState) => {
+      const nextState = { ...currentState }
+
+      if (payload.isTyping) {
+        nextState[threadId] = {
+          ...payload,
+          expiresAt: Date.now() + 2400,
+        }
+      } else {
+        delete nextState[threadId]
+      }
+
+      return nextState
+    })
+
+    if (payload.isTyping) {
+      setTimeout(() => {
+        setTeamTypingByThreadId((currentState) => {
+          if (currentState[threadId]?.sentAt !== payload.sentAt) return currentState
+          const nextState = { ...currentState }
+          delete nextState[threadId]
+          return nextState
+        })
+      }, 2600)
+    }
+  }
+
   async function loadAssetUrls(nextContext) {
-    const loadedDriver = nextContext?.drivers?.[0]
+    const profileDriver = nextContext?.currentPerson?.linkedDriverId
+      ? nextContext?.drivers?.find((entry) => entry.id === nextContext.currentPerson.linkedDriverId)
+      : nextContext?.drivers?.[0]
     const companyLogoPath = nextContext?.companyProfile?.logoPath
-    const driverPhotoPath = loadedDriver?.profileImagePath
-    const [logoResult, profileResult] = await Promise.all([
+    const driverPhotoPath = profileDriver?.profileImagePath
+    const driverPhotoEntriesPromise = Promise.all(
+      (nextContext?.drivers ?? []).map(async (currentDriver) => {
+        if (!currentDriver.id || !currentDriver.profileImagePath) return [currentDriver.id, '']
+        const result = await createCompanyAssetSignedUrl(currentDriver.profileImagePath)
+        return [currentDriver.id, result.data?.signedUrl ?? '']
+      }),
+    )
+    const [logoResult, profileResult, driverPhotoEntries] = await Promise.all([
       companyLogoPath ? createCompanyAssetSignedUrl(companyLogoPath) : Promise.resolve({ data: null }),
       driverPhotoPath ? createCompanyAssetSignedUrl(driverPhotoPath) : Promise.resolve({ data: null }),
+      driverPhotoEntriesPromise,
     ])
 
     setLogoUrl(logoResult.data?.signedUrl ?? '')
     setDriverProfileUrl(profileResult.data?.signedUrl ?? '')
+    setCompanyDriverPhotoUrls(Object.fromEntries(driverPhotoEntries))
   }
 
   async function loadCompanyDriverPhotoUrls(nextContext) {
@@ -911,7 +955,10 @@ function CamionChiaroApp() {
         if (!isActive) return
 
         if (activeTab === 'chat' && driverChatMode === 'team' && selectedDriverTeamThreadId && message?.threadId === selectedDriverTeamThreadId) {
-          await loadDriverTeamChatData(selectedDriverTeamThread)
+          setDriverTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, message))
+          clearTeamUnreadLocally(setContext, selectedDriverTeamThreadId)
+          void markTeamThreadRead(selectedDriverTeamThreadId)
+          await loadDriverTeamChatData(selectedDriverTeamThread ?? { id: selectedDriverTeamThreadId })
           return
         }
 
@@ -1010,7 +1057,10 @@ function CamionChiaroApp() {
         ))
 
         if (activeTab === 'chat' && selectedCompanyTeamThreadId && message?.threadId === selectedCompanyTeamThreadId) {
-          await loadCompanyTeamChatData(selectedCompanyTeamThread)
+          setCompanyTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, message))
+          clearTeamUnreadLocally(setCompanyContext, selectedCompanyTeamThreadId)
+          void markTeamThreadRead(selectedCompanyTeamThreadId)
+          await loadCompanyTeamChatData(selectedCompanyTeamThread ?? { id: selectedCompanyTeamThreadId })
           return
         }
 
@@ -1109,6 +1159,18 @@ function CamionChiaroApp() {
   }, [accountType, activeTab, chatMessages, chatThread?.id, driverChatMode])
 
   useEffect(() => {
+    if (accountType !== 'driver' || activeTab !== 'chat' || driverChatMode !== 'team' || !selectedDriverTeamThreadId) return undefined
+
+    const interval = setInterval(() => {
+      void loadDriverTeamChatData(selectedDriverTeamThread ?? { id: selectedDriverTeamThreadId })
+    }, 1400)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [accountType, activeTab, driverChatMode, selectedDriverTeamThread?.id, selectedDriverTeamThreadId])
+
+  useEffect(() => {
     if (accountType !== 'driver' || !driver?.id) {
       setSelectedDailyVehicleId('')
       return undefined
@@ -1143,27 +1205,46 @@ function CamionChiaroApp() {
   }, [accountType, activeTab, selectedCompanyDriver?.id, selectedCompanyTeamThreadId])
 
   useEffect(() => {
-    if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
+    const companyId = driver?.companyId ?? currentPerson?.companyId
+    const actorId = driver?.id ?? currentPerson?.id
+    if (accountType !== 'driver' || !companyId || !actorId) return undefined
+    const actorPersonId = currentPerson?.id ?? ''
+    const actorRole = currentPerson?.department === 'warehouse'
+      ? 'warehouse'
+      : currentPerson?.department === 'office'
+        ? 'office'
+        : 'driver'
 
     const presence = subscribeToDriverPresence({
       actor: {
-        actorId: driver.id,
-        actorName: driver.name,
-        actorRole: 'driver',
+        actorId,
+        actorName: driver?.name ?? currentPerson?.name ?? '',
+        actorPersonId,
+        actorRole,
       },
-      companyId: driver.companyId,
+      companyId,
       handlers: {
         onPresenceChange: (presences) => {
           setIsCompanyOnline(presences.some((presence) => presence.actorRole === 'company'))
+          const nextOnlinePersonIds = presences
+            .map((presence) => presence.actorPersonId)
+            .filter(Boolean)
+          setOnlinePersonIds([...new Set(nextOnlinePersonIds)])
         },
         onTyping: (payload) => {
-          if (payload.actorRole !== 'company') return
-          if (chatThread?.id && payload.threadId !== chatThread.id) return
+          if (payload.actorRole === 'company') {
+            if (chatThread?.id && payload.threadId !== chatThread.id) return
 
-          setIsCompanyTyping(Boolean(payload.isTyping))
-          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-          if (payload.isTyping) {
-            typingTimeoutRef.current = setTimeout(() => setIsCompanyTyping(false), 2200)
+            setIsCompanyTyping(Boolean(payload.isTyping))
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+            if (payload.isTyping) {
+              typingTimeoutRef.current = setTimeout(() => setIsCompanyTyping(false), 2200)
+            }
+            return
+          }
+
+          if (payload.threadId === selectedDriverTeamThreadId && payload.actorPersonId !== actorPersonId) {
+            setTeamTypingState(payload)
           }
         },
       },
@@ -1176,12 +1257,13 @@ function CamionChiaroApp() {
       if (presenceRef.current === presence) presenceRef.current = null
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
-  }, [accountType, driver?.companyId, driver?.id, chatThread?.id])
+  }, [accountType, chatThread?.id, currentPerson?.companyId, currentPerson?.department, currentPerson?.id, currentPerson?.name, driver?.companyId, driver?.id, driver?.name, selectedDriverTeamThreadId])
 
   useEffect(() => {
     const companyId = companyContext?.companyProfile?.id
     if (accountType !== 'company' || !companyId) {
       setOnlineDriverIds([])
+      setOnlinePersonIds([])
       setIsSelectedDriverTyping(false)
       return undefined
     }
@@ -1199,8 +1281,17 @@ function CamionChiaroApp() {
             .filter((presence) => presence.actorRole === 'driver')
             .map((presence) => presence.actorId)
           setOnlineDriverIds([...new Set(nextOnlineDriverIds)])
+          const nextOnlinePersonIds = presences
+            .map((presence) => presence.actorPersonId)
+            .filter(Boolean)
+          setOnlinePersonIds([...new Set(nextOnlinePersonIds)])
         },
         onTyping: (payload) => {
+          if (selectedCompanyTeamThreadId && payload.threadId === selectedCompanyTeamThreadId && payload.actorRole !== 'company') {
+            setTeamTypingState(payload)
+            return
+          }
+
           if (payload.actorRole !== 'driver') return
           if (selectedCompanyDriverId && payload.actorId !== selectedCompanyDriverId) return
           if (companyChatThread?.id && payload.threadId !== companyChatThread.id) return
@@ -1221,7 +1312,7 @@ function CamionChiaroApp() {
       if (companyPresenceRef.current === presence) companyPresenceRef.current = null
       if (companyTypingTimeoutRef.current) clearTimeout(companyTypingTimeoutRef.current)
     }
-  }, [accountType, companyChatThread?.id, companyContext?.companyProfile?.id, companyName, selectedCompanyDriverId])
+  }, [accountType, companyChatThread?.id, companyContext?.companyProfile?.id, companyName, selectedCompanyDriverId, selectedCompanyTeamThreadId])
 
   async function handleAuthenticated(nextSession, nextAccountType = 'driver') {
     const safeAccountType = nextAccountType === 'company' ? 'company' : 'driver'
@@ -1732,14 +1823,14 @@ function CamionChiaroApp() {
   function handleTyping(isTyping) {
     presenceRef.current?.sendTyping({
       isTyping,
-      threadId: chatThread?.id,
+      threadId: driverChatMode === 'team' ? selectedDriverTeamThreadId : chatThread?.id,
     })
   }
 
   function handleCompanyTyping(isTyping) {
     companyPresenceRef.current?.sendTyping({
       isTyping,
-      threadId: companyChatThread?.id,
+      threadId: selectedCompanyTeamThreadId || companyChatThread?.id,
     })
   }
 
@@ -2397,6 +2488,7 @@ function CamionChiaroApp() {
             onSend={handleSendCompanyChatMessage}
             onSendTeamMessage={handleSendCompanyTeamChatMessage}
             onTyping={handleCompanyTyping}
+            onlinePersonIds={onlinePersonIds}
             people={companyContext?.people ?? []}
             selectedDriver={selectedCompanyDriver}
             selectedDriverOnline={selectedCompanyDriverOnline}
@@ -2407,6 +2499,7 @@ function CamionChiaroApp() {
             auditTeamMessages={companyContext?.teamChatMessages ?? []}
             teamMessages={companyTeamChatMessages}
             teamThreads={companyContext?.teamChatThreads ?? []}
+            teamTypingByThreadId={teamTypingByThreadId}
             unreadByDriverId={companyContext?.unreadDriverMessagesByDriverId ?? {}}
             unreadTeamByThreadId={companyContext?.unreadTeamMessagesByThreadId ?? {}}
           />
@@ -2485,6 +2578,7 @@ function CamionChiaroApp() {
           companyLogoUrl={logoUrl}
           currentPerson={context?.currentPerson}
           driverProfileUrl={driverProfileUrl}
+          driverPhotoUrls={companyDriverPhotoUrls}
           driverName={driverName}
           messages={chatMessages}
           incomingShare={incomingChatShare}
@@ -2499,12 +2593,14 @@ function CamionChiaroApp() {
           onSendCompanyMessage={handleSendChatMessage}
           onSendTeamMessage={handleSendDriverTeamChatMessage}
           onTyping={handleTyping}
+          onlinePersonIds={onlinePersonIds}
           selectedMode={driverChatMode}
           selectedTeamThread={selectedDriverTeamThread}
           soundEnabled={chatSoundEnabled}
           people={context?.people ?? []}
           teamMessages={driverTeamChatMessages}
           teamThreads={context?.teamChatThreads ?? []}
+          teamTypingByThreadId={teamTypingByThreadId}
           unreadCompanyMessages={unreadCompanyMessages}
           unreadTeamByThreadId={context?.unreadTeamMessagesByThreadId ?? {}}
         />
@@ -2622,12 +2718,14 @@ function CamionChiaroApp() {
     managementInitialSection,
     nativePushStatus,
     onlineDriverIds,
+    onlinePersonIds,
     selectedCompanyDriver,
     selectedCompanyDriverId,
     selectedCompanyDriverOnline,
     selectedCompanyTeamThread,
     selectedDailyVehicleId,
     selectedDriverTeamThread,
+    teamTypingByThreadId,
     unreadCompanyMessages,
   ])
 

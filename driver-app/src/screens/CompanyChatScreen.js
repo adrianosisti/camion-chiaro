@@ -62,6 +62,7 @@ export function CompanyChatScreen({
   onSend,
   onSendTeamMessage,
   onTyping,
+  onlinePersonIds = [],
   selectedTeamThread,
   selectedDriver,
   selectedDriverOnline = false,
@@ -69,6 +70,7 @@ export function CompanyChatScreen({
   soundEnabled = true,
   teamMessages = [],
   teamThreads = [],
+  teamTypingByThreadId = {},
   people = [],
   unreadByDriverId = {},
   unreadTeamByThreadId = {},
@@ -185,6 +187,16 @@ export function CompanyChatScreen({
   const hasVisibleRows = visibleChatRows.length || (chatListMode === 'direct' && isStartingNewChat && staffPeople.length)
 
   if (selectedTeamThread && isCompanyVisibleThread(selectedTeamThread)) {
+    const directPerson = getCompanyDirectPerson(selectedTeamThread, personById)
+    const directPersonPhotoUrl = getPersonAvatarUrl(directPerson, driverPhotoUrls, driverByPersonId)
+    const isDirect = isDirectThread(selectedTeamThread)
+    const typingPayload = teamTypingByThreadId[selectedTeamThread.id]
+    const isTeamTyping = Boolean(typingPayload?.isTyping && (!typingPayload.expiresAt || typingPayload.expiresAt > Date.now()))
+    const selectedTitle = directPerson?.name ?? selectedTeamThread.title
+    const selectedSubtitle = directPerson
+      ? `${directPerson.jobTitle || 'Operatore'} · ${getPersonDepartmentLabel(directPerson.department)}`
+      : `${getThreadKindLabel(selectedTeamThread)} · ${getAudienceLabel(selectedTeamThread.audienceType)}`
+
     return (
       <View style={styles.chatWrap}>
         <View style={styles.selectedBar}>
@@ -199,28 +211,29 @@ export function CompanyChatScreen({
             <Text style={styles.backText}>Indietro</Text>
           </Pressable>
           <View style={styles.selectedTitleWrap}>
-            <Text numberOfLines={1} style={styles.selectedTitle}>{selectedTeamThread.title}</Text>
+            <Text numberOfLines={1} style={styles.selectedTitle}>{selectedTitle}</Text>
             <Text numberOfLines={1} style={styles.selectedSubtitle}>
-              {getThreadKindLabel(selectedTeamThread)} · {getAudienceLabel(selectedTeamThread.audienceType)}
+              {selectedSubtitle}
             </Text>
           </View>
         </View>
         <ChatScreen
-          companyLogoUrl={companyLogoUrl}
-          companyName={selectedTeamThread.title}
-          companyOnline
+          companyLogoUrl={isDirect ? directPersonPhotoUrl : companyLogoUrl}
+          companyName={selectedTitle}
+          companyOnline={isDirect ? Boolean(directPerson?.id && onlinePersonIds.includes(directPerson.id)) : false}
+          companyTyping={isTeamTyping}
           currentUserRole={currentUserRole}
           incomingShare={incomingShare}
           messages={normalizedTeamMessages}
-          offlineLabel="gruppo"
+          offlineLabel={isDirect ? 'non online' : 'gruppo'}
           onIncomingShareConsumed={onIncomingShareConsumed}
           onRefresh={onRefresh}
           onSend={onSendTeamMessage}
           onTyping={onTyping}
           ownAvatarUrl={companyLogoUrl}
-          participantAvatarUrl={companyLogoUrl}
-          participantIcon={getGroupIcon(selectedTeamThread.audienceType)}
-          participantName={selectedTeamThread.title}
+          participantAvatarUrl={isDirect ? directPersonPhotoUrl : companyLogoUrl}
+          participantIcon={isDirect ? '' : getGroupIcon(selectedTeamThread.audienceType)}
+          participantName={selectedTitle}
           showSenderNames={!isDirectThread(selectedTeamThread)}
           soundEnabled={soundEnabled}
         />

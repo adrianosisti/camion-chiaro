@@ -8032,7 +8032,10 @@ function App() {
           />
         ) : activeView === 'reports' ? (
           <ReportsWorkspace
+            acknowledgedCheckIds={acknowledgedCheckIds}
             assetRecords={assetRecords}
+            companyName={getDisplayCompanyName(companyProfile.name || companyName || company.name)}
+            complianceItems={decoratedItems}
             costEntryRecords={costEntryRecords}
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
@@ -8042,6 +8045,7 @@ function App() {
             onUpdateFaultStatus={updateFaultReportStatus}
             resetCostFormKey={costReportResetKey}
             startAddingCostKey={costReportStartAddingKey}
+            vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
           />
         ) : activeView === 'support' ? (
@@ -9388,7 +9392,10 @@ function PhotoPreviewModal({ imageUrl, name, onClose }) {
 }
 
 function ReportsWorkspace({
+  acknowledgedCheckIds = [],
   assetRecords = [],
+  companyName = 'Azienda',
+  complianceItems = [],
   costEntryRecords = [],
   driverRecords = [],
   faultReportRecords = [],
@@ -9398,6 +9405,7 @@ function ReportsWorkspace({
   onUpdateFaultStatus,
   resetCostFormKey = 0,
   startAddingCostKey = 0,
+  vehicleCheckRecords = [],
   vehicleRecords = [],
 }) {
   const { language } = useI18n()
@@ -9440,7 +9448,10 @@ function ReportsWorkspace({
         </article>
       </div>
       <FaultCostReport
+        acknowledgedCheckIds={acknowledgedCheckIds}
         assetRecords={assetRecords}
+        companyName={companyName}
+        complianceItems={complianceItems}
         costEntryRecords={costEntryRecords}
         driverRecords={driverRecords}
         faultReportRecords={faultReportRecords}
@@ -9451,6 +9462,7 @@ function ReportsWorkspace({
         reportMode="reports"
         resetCostFormKey={resetCostFormKey}
         startAddingCostKey={startAddingCostKey}
+        vehicleCheckRecords={vehicleCheckRecords}
         vehicleRecords={vehicleRecords}
       />
     </section>
@@ -12117,6 +12129,26 @@ function getFaultCostPeriodStart(period) {
   return null
 }
 
+function getCurrentMonthRange(referenceDate = new Date()) {
+  const start = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1)
+  const end = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 1)
+  const label = new Intl.DateTimeFormat('it-IT', {
+    month: 'long',
+    year: 'numeric',
+  }).format(referenceDate)
+
+  return { end, label, start }
+}
+
+function isDateInRange(value, startDate, endDate) {
+  if (!value) return false
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return false
+
+  return date >= startDate && date < endDate
+}
+
 function getCostEntryDate(entry = {}) {
   return entry.spentAt || entry.updatedAt || entry.createdAt
 }
@@ -12176,7 +12208,10 @@ function getFaultCostSummary(faultReportRecords = [], costEntryRecords = []) {
 }
 
 function FaultCostReport({
+  acknowledgedCheckIds = [],
   assetRecords = [],
+  companyName = 'Azienda',
+  complianceItems = [],
   costEntryRecords = [],
   driverRecords = [],
   faultReportRecords = [],
@@ -12187,6 +12222,7 @@ function FaultCostReport({
   reportMode = 'costs',
   resetCostFormKey = 0,
   startAddingCostKey = 0,
+  vehicleCheckRecords = [],
   vehicleRecords = [],
 }) {
   const { language } = useI18n()
@@ -12326,6 +12362,86 @@ function FaultCostReport({
   }))
   const topTargetCost = targetCostRanking[0] ?? null
   const topCategoryCost = categoryCostRanking[0] ?? null
+  const monthlyRange = getCurrentMonthRange()
+  const monthlyCostRows = costRows.filter((row) => isDateInRange(row.date, monthlyRange.start, monthlyRange.end))
+  const monthlyFaultRows = faultReportRecords.filter((report) => isDateInRange(report.createdAt || report.updatedAt, monthlyRange.start, monthlyRange.end))
+  const monthlyOpenFaultRows = faultReportRecords.filter((report) => !isFaultArchived(report))
+  const monthlyCheckRows = vehicleCheckRecords.filter((check) => isDateInRange(check.createdAt || check.updatedAt, monthlyRange.start, monthlyRange.end))
+  const monthlyCriticalCheckRows = monthlyCheckRows.filter(hasCheckIssues)
+  const monthlyOkCheckRows = monthlyCheckRows.filter((check) => !hasCheckIssues(check))
+  const monthlyDeadlineRows = complianceItems.filter((item) => !isComplianceClosed(item) && isDateInRange(item.dueDate, monthlyRange.start, monthlyRange.end))
+  const actionableDeadlineRows = complianceItems.filter(isComplianceActionRequired)
+  const monthlyFineRows = monthlyCostRows.filter((row) => row.category === 'fine')
+  const monthlyUnassignedFineRows = monthlyFineRows.filter((row) => !row.driverId)
+  const monthlyUnlinkedCostRows = monthlyCostRows.filter((row) => !row.vehicleId && !row.assetId && !row.driverId)
+  const monthlyTotalCents = monthlyCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const monthlyFineTotalCents = monthlyFineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const monthlyTopTargetCost = buildCostRanking(monthlyCostRows, (row) => ({
+    key: row.vehicleId
+      ? `vehicle:${row.vehicleId}`
+      : row.assetId
+        ? `asset:${row.assetId}`
+        : row.driverId
+          ? `driver:${row.driverId}`
+          : 'company',
+    name: getCostTargetLabel(row),
+  }))[0] ?? null
+  const monthlyTopCategoryCost = buildCostRanking(monthlyCostRows, (row) => ({
+    key: row.category || 'maintenance',
+    name: getCostCategoryLabel(row.category),
+  }))[0] ?? null
+  const monthlyActionRows = [
+    actionableDeadlineRows.length
+      ? {
+          tone: 'danger',
+          title: 'Scadenze da lavorare',
+          value: `${actionableDeadlineRows.length} pratiche`,
+          body: 'Rinnovi e documenti entro 30 giorni o già scaduti.',
+        }
+      : null,
+    monthlyOpenFaultRows.length
+      ? {
+          tone: 'danger',
+          title: 'Guasti ancora aperti',
+          value: `${monthlyOpenFaultRows.length} segnalazioni`,
+          body: 'Da chiudere o completare con costo riparazione.',
+        }
+      : null,
+    monthlyCriticalCheckRows.length
+      ? {
+          tone: 'warning',
+          title: 'Check con anomalie',
+          value: `${monthlyCriticalCheckRows.length} check`,
+          body: 'Controlla luci, gomme o documenti segnalati dagli autisti.',
+        }
+      : null,
+    monthlyUnassignedFineRows.length
+      ? {
+          tone: 'warning',
+          title: 'Multe non assegnate',
+          value: `${monthlyUnassignedFineRows.length} multe`,
+          body: 'Assegna autista e targa per avere classifiche precise.',
+        }
+      : null,
+    monthlyUnlinkedCostRows.length
+      ? {
+          tone: 'warning',
+          title: 'Spese scollegate',
+          value: `${monthlyUnlinkedCostRows.length} voci`,
+          body: 'Collega le spese a targa, autista o attrezzatura.',
+        }
+      : null,
+    monthlyCostRows.length
+      ? {
+          tone: 'info',
+          title: 'Controllo costi mese',
+          value: formatMoneyCents(monthlyTotalCents, defaultCurrency),
+          body: monthlyTopTargetCost
+            ? `Voce più pesante: ${monthlyTopTargetCost.name}.`
+            : 'Nessun centro di costo dominante.',
+        }
+      : null,
+  ].filter(Boolean).slice(0, 5)
   const selectedTargetLabel = (() => {
     if (targetFilter === 'all') return 'Tutti i costi'
     if (targetFilter === 'company') return 'Azienda generale'
@@ -12630,6 +12746,26 @@ function FaultCostReport({
     return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
   }
 
+  function getComplianceReportTargetLabel(item = {}) {
+    const driverId = item.driverId || item.driver_id
+    const vehicleId = item.vehicleId || item.vehicle_id
+    const assetId = item.assetId || item.asset_id
+    const personName = item.personName || item.person_name || item.owner || ''
+
+    if (driverId) return driverById.get(driverId)?.name ?? 'Autista'
+    if (vehicleId) {
+      const vehicle = vehicleById.get(vehicleId)
+      return vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : 'Mezzo'
+    }
+    if (assetId) {
+      const asset = assetById.get(assetId)
+      return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
+    }
+    if (personName) return personName
+
+    return item.scope === 'company' ? companyName : 'Azienda'
+  }
+
   function downloadCostCsv() {
     const formatCsvDate = (value) => {
       if (!value) return ''
@@ -12693,6 +12829,73 @@ function FaultCostReport({
     const link = document.createElement('a')
     link.href = url
     link.download = `camion-chiaro-${buildReportFileSlug()}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  function downloadMonthlyPremiumCsv() {
+    const csvRows = [
+      ['Report mensile Premium', companyName],
+      ['Mese', monthlyRange.label],
+      ['Totale costi mese', (Number(monthlyTotalCents ?? 0) / 100).toFixed(2), defaultCurrency],
+      ['Voci costo', monthlyCostRows.length],
+      ['Multe mese', monthlyFineRows.length, (Number(monthlyFineTotalCents ?? 0) / 100).toFixed(2), defaultCurrency],
+      ['Guasti aperti', monthlyOpenFaultRows.length],
+      ['Check mese', monthlyCheckRows.length],
+      ['Check ok', monthlyOkCheckRows.length],
+      ['Check critici', monthlyCriticalCheckRows.length],
+      ['Scadenze da lavorare', actionableDeadlineRows.length],
+      ['Soggetto piu costoso', monthlyTopTargetCost?.name ?? 'Nessun dato', monthlyTopTargetCost ? (Number(monthlyTopTargetCost.totalCents ?? 0) / 100).toFixed(2) : '', defaultCurrency],
+      ['Categoria piu pesante', monthlyTopCategoryCost?.name ?? 'Nessun dato', monthlyTopCategoryCost ? (Number(monthlyTopCategoryCost.totalCents ?? 0) / 100).toFixed(2) : '', defaultCurrency],
+      [],
+      ['Sezione', 'Data', 'Titolo', 'Soggetto', 'Importo', 'Valuta', 'Stato / Note'],
+      ...monthlyCostRows.map((row) => [
+        'Costi',
+        formatDate(row.date),
+        row.title,
+        getCostTargetLabel(row),
+        (Number(row.amountCents ?? 0) / 100).toFixed(2),
+        row.currency || defaultCurrency,
+        `${getCostCategoryLabel(row.category)} · ${row.description || ''}`,
+      ]),
+      ...monthlyFaultRows.map((report) => [
+        'Guasti ricevuti',
+        formatDate(report.createdAt || report.updatedAt),
+        report.title,
+        getCostTargetLabel(report),
+        '',
+        '',
+        `${getFaultSeverityLabel(report.severity)} · ${getFaultStatusLabel(report.status)} · ${report.description || ''}`,
+      ]),
+      ...monthlyCheckRows.map((check) => [
+        hasCheckIssues(check) ? 'Check critici' : 'Check ok',
+        formatDate(check.createdAt || check.updatedAt),
+        'Check mattutino',
+        getCostTargetLabel(check),
+        '',
+        '',
+        hasCheckIssues(check) ? getCheckIssues(check).join(', ') : 'Tutto ok',
+      ]),
+      ...actionableDeadlineRows.map((item) => [
+        'Scadenze da lavorare',
+        formatDate(item.dueDate),
+        item.type || 'Scadenza',
+        getComplianceReportTargetLabel(item),
+        '',
+        '',
+        `Stato: ${item.status || 'open'}`,
+      ]),
+    ]
+    const csv = csvRows
+      .map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';'))
+      .join('\n')
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `camion-chiaro-report-mensile-premium-${monthlyRange.label.replace(/\s+/g, '-').toLowerCase()}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -12787,6 +12990,98 @@ function FaultCostReport({
     printWindow.print()
   }
 
+  function printMonthlyPremiumReport() {
+    const escapeHtml = (value) => String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;')
+    const actionHtml = monthlyActionRows.map((action) => `
+      <li>
+        <strong>${escapeHtml(action.title)}</strong>
+        <span>${escapeHtml(action.value)} · ${escapeHtml(action.body)}</span>
+      </li>
+    `).join('')
+    const costRowsHtml = monthlyCostRows.slice(0, 24).map((row) => `
+      <tr>
+        <td>${escapeHtml(formatShortDateTime(row.date))}</td>
+        <td>${escapeHtml(row.title)}</td>
+        <td>${escapeHtml(getCostTargetLabel(row))}</td>
+        <td>${escapeHtml(getCostCategoryLabel(row.category))}</td>
+        <td>${escapeHtml(formatMoneyCents(row.amountCents, row.currency || defaultCurrency))}</td>
+      </tr>
+    `).join('')
+    const deadlineRowsHtml = actionableDeadlineRows.slice(0, 18).map((item) => `
+      <tr>
+        <td>${escapeHtml(formatDate(item.dueDate))}</td>
+        <td>${escapeHtml(item.type || 'Scadenza')}</td>
+        <td>${escapeHtml(getComplianceReportTargetLabel(item))}</td>
+        <td>${escapeHtml(item.status || 'open')}</td>
+      </tr>
+    `).join('')
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
+
+    if (!printWindow) {
+      window.print()
+      return
+    }
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>Report mensile Premium ${escapeHtml(monthlyRange.label)}</title>
+          <style>
+            body { color: #111827; font-family: Arial, sans-serif; margin: 28px; }
+            h1 { font-size: 25px; margin: 0 0 4px; }
+            h2 { font-size: 16px; margin: 22px 0 8px; }
+            p { color: #4b5563; margin: 0 0 18px; }
+            .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0; }
+            .summary div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; }
+            .summary strong { display: block; font-size: 17px; }
+            .summary span { color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+            .actions { border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 16px; background: #f0fdff; }
+            .actions li { margin: 8px 0; }
+            .actions span { color: #475569; display: block; font-size: 12px; margin-top: 2px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border-bottom: 1px solid #e5e7eb; font-size: 12px; padding: 9px; text-align: left; }
+            th { background: #ecfeff; color: #0f172a; }
+          </style>
+        </head>
+        <body>
+          <h1>Report mensile Premium</h1>
+          <p>${escapeHtml(companyName)} · ${escapeHtml(monthlyRange.label)} · generato da Camion Chiaro</p>
+          <section class="summary">
+            <div><strong>${escapeHtml(formatMoneyCents(monthlyTotalCents, defaultCurrency))}</strong><span>Costi mese</span></div>
+            <div><strong>${monthlyCostRows.length}</strong><span>Voci costo</span></div>
+            <div><strong>${monthlyOpenFaultRows.length}</strong><span>Guasti aperti</span></div>
+            <div><strong>${actionableDeadlineRows.length}</strong><span>Scadenze da lavorare</span></div>
+            <div><strong>${monthlyCriticalCheckRows.length}</strong><span>Check critici</span></div>
+            <div><strong>${monthlyFineRows.length}</strong><span>Multe mese</span></div>
+            <div><strong>${escapeHtml(monthlyTopTargetCost?.name ?? 'Nessun dato')}</strong><span>Soggetto più costoso</span></div>
+            <div><strong>${escapeHtml(monthlyTopCategoryCost?.name ?? 'Nessun dato')}</strong><span>Categoria più pesante</span></div>
+          </section>
+          <h2>Azioni consigliate</h2>
+          <ul class="actions">${actionHtml || '<li><strong>Nessuna urgenza</strong><span>Il mese non presenta criticità operative aperte.</span></li>'}</ul>
+          <h2>Costi del mese</h2>
+          <table>
+            <thead><tr><th>Data</th><th>Titolo</th><th>Soggetto</th><th>Categoria</th><th>Importo</th></tr></thead>
+            <tbody>${costRowsHtml || '<tr><td colspan="5">Nessun costo registrato nel mese.</td></tr>'}</tbody>
+          </table>
+          <h2>Scadenze da lavorare</h2>
+          <table>
+            <thead><tr><th>Scadenza</th><th>Tipo</th><th>Soggetto</th><th>Stato</th></tr></thead>
+            <tbody>${deadlineRowsHtml || '<tr><td colspan="4">Nessuna scadenza urgente.</td></tr>'}</tbody>
+          </table>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+  }
+
   const isFineCostForm = costForm.category === 'fine'
 
   return (
@@ -12855,6 +13150,71 @@ function FaultCostReport({
             </button>
           ))}
         </div>
+      ) : null}
+      {isReportWorkspace ? (
+        <section className="monthly-premium-report" aria-label="Report mensile premium">
+          <div className="monthly-report-head">
+            <div>
+              <p className="overline">Premium mensile</p>
+              <h3>Report automatico {monthlyRange.label}</h3>
+              <span>Riepilogo pronto per titolare: costi, multe, guasti, check, scadenze e priorita operative.</span>
+            </div>
+            <div className="monthly-report-buttons">
+              <button className="secondary-button compact-button" onClick={downloadMonthlyPremiumCsv} type="button">
+                <Download size={16} />
+                CSV mese
+              </button>
+              <button className="primary-button compact-button" onClick={printMonthlyPremiumReport} type="button">
+                <FileText size={16} />
+                Stampa mese
+              </button>
+            </div>
+          </div>
+          <div className="monthly-report-grid">
+            <article className="is-accent">
+              <span>Costi mese</span>
+              <strong>{formatMoneyCents(monthlyTotalCents, defaultCurrency)}</strong>
+              <small>{monthlyCostRows.length} voci registrate</small>
+            </article>
+            <article className={monthlyOpenFaultRows.length ? 'is-danger' : ''}>
+              <span>Guasti aperti</span>
+              <strong>{monthlyOpenFaultRows.length}</strong>
+              <small>{monthlyFaultRows.length} ricevuti nel mese</small>
+            </article>
+            <article className={monthlyCriticalCheckRows.length ? 'is-warning' : ''}>
+              <span>Check critici</span>
+              <strong>{monthlyCriticalCheckRows.length}</strong>
+              <small>{monthlyOkCheckRows.length} check ok</small>
+            </article>
+            <article className={actionableDeadlineRows.length ? 'is-danger' : ''}>
+              <span>Scadenze da lavorare</span>
+              <strong>{actionableDeadlineRows.length}</strong>
+              <small>{monthlyDeadlineRows.length} con data nel mese</small>
+            </article>
+            <article>
+              <span>Soggetto più costoso</span>
+              <strong>{monthlyTopTargetCost?.name ?? 'Nessun dato'}</strong>
+              <small>{monthlyTopTargetCost ? formatMoneyCents(monthlyTopTargetCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
+            </article>
+            <article>
+              <span>Categoria più pesante</span>
+              <strong>{monthlyTopCategoryCost?.name ?? 'Nessun dato'}</strong>
+              <small>{monthlyTopCategoryCost ? formatMoneyCents(monthlyTopCategoryCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
+            </article>
+          </div>
+          <div className="monthly-report-actions-list">
+            <strong>Azioni consigliate</strong>
+            {monthlyActionRows.length ? monthlyActionRows.map((action) => (
+              <article className={`tone-${action.tone}`} key={action.title}>
+                <span>{action.title}</span>
+                <b>{action.value}</b>
+                <small>{action.body}</small>
+              </article>
+            )) : (
+              <p>Nessuna urgenza aperta: il mese e pulito e pronto da archiviare.</p>
+            )}
+          </div>
+        </section>
       ) : null}
       {isAddingCost ? (
         <form className="fault-cost-entry-form" onSubmit={handleSubmitCostEntry}>

@@ -167,6 +167,26 @@ function getRepairPeriodStart(period) {
   return null
 }
 
+function getCurrentMonthRange(referenceDate = new Date(), language = 'it') {
+  const start = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1)
+  const end = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 1)
+  const label = new Intl.DateTimeFormat(getLocale(language), {
+    month: 'long',
+    year: 'numeric',
+  }).format(referenceDate)
+
+  return { end, label, start }
+}
+
+function isDateInRange(value, startDate, endDate) {
+  if (!value) return false
+
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return false
+
+  return date >= startDate && date < endDate
+}
+
 function getDriverName(drivers, driverId) {
   return drivers.find((driver) => driver.id === driverId)?.name ?? 'Autista'
 }
@@ -902,6 +922,112 @@ export function CompanyManagementScreen({
   }))
   const topTargetCost = targetCostRanking[0] ?? null
   const topCategoryCost = categoryCostRanking[0] ?? null
+  const monthlyRange = useMemo(() => getCurrentMonthRange(new Date(), language), [language])
+  const monthlyCostRows = useMemo(() => {
+    const faultRows = faults
+      .filter((fault) => Number(fault.repairCostCents ?? 0) > 0)
+      .map((fault) => ({
+        amountCents: Number(fault.repairCostCents ?? 0),
+        assetId: '',
+        category: 'repair',
+        currency: fault.repairCostCurrency || defaultCurrency,
+        date: getRepairCostDate(fault),
+        description: fault.description ?? '',
+        driverId: fault.driverId ?? '',
+        fault,
+        id: `fault-${fault.id}`,
+        kind: 'fault',
+        title: fault.title,
+        vehicleId: fault.vehicleId,
+      }))
+    const entryRows = costEntries
+      .filter((entry) => Number(entry.amountCents ?? 0) > 0)
+      .map((entry) => ({
+        amountCents: Number(entry.amountCents ?? 0),
+        assetId: entry.assetId ?? '',
+        category: entry.category ?? 'maintenance',
+        currency: entry.currency || defaultCurrency,
+        date: getCostEntryDate(entry),
+        description: entry.notes ?? '',
+        driverId: entry.driverId ?? '',
+        entry,
+        id: `entry-${entry.id}`,
+        kind: 'entry',
+        title: entry.title,
+        vehicleId: entry.vehicleId ?? '',
+      }))
+
+    return [...faultRows, ...entryRows]
+      .filter((row) => isDateInRange(row.date, monthlyRange.start, monthlyRange.end))
+      .sort((first, second) => new Date(second.date) - new Date(first.date))
+  }, [costEntries, defaultCurrency, faults, monthlyRange.end, monthlyRange.start])
+  const monthlyTotalCents = monthlyCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const monthlyFineRows = monthlyCostRows.filter((row) => row.category === 'fine')
+  const monthlyFineTotalCents = monthlyFineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const monthlyFaultRows = faults.filter((fault) => isDateInRange(fault.createdAt || fault.updatedAt, monthlyRange.start, monthlyRange.end))
+  const monthlyOpenFaultRows = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
+  const monthlyCheckRows = checks.filter((check) => isDateInRange(check.createdAt || check.updatedAt, monthlyRange.start, monthlyRange.end))
+  const monthlyCriticalCheckRows = monthlyCheckRows.filter((check) => getCheckIssues(check).length > 0)
+  const monthlyOkCheckRows = monthlyCheckRows.filter((check) => getCheckIssues(check).length === 0)
+  const monthlyDeadlineRows = deadlines.filter((item) => !['done', 'archived'].includes(item.status) && isDateInRange(item.dueDate, monthlyRange.start, monthlyRange.end))
+  const monthlyUnassignedFineRows = monthlyFineRows.filter((row) => !row.driverId)
+  const monthlyUnlinkedCostRows = monthlyCostRows.filter((row) => !row.vehicleId && !row.assetId && !row.driverId)
+  const monthlyTopTargetCost = buildCostRanking(monthlyCostRows, (row) => ({
+    key: row.vehicleId
+      ? `vehicle:${row.vehicleId}`
+      : row.assetId
+        ? `asset:${row.assetId}`
+        : row.driverId
+          ? `driver:${row.driverId}`
+          : 'company',
+    name: getCostTargetLabel(row),
+  }))[0] ?? null
+  const monthlyTopCategoryCost = buildCostRanking(monthlyCostRows, (row) => ({
+    key: row.category || 'maintenance',
+    name: getCostCategoryLabel(row.category),
+  }))[0] ?? null
+  const monthlyActionRows = [
+    deadlinesToWork.length
+      ? {
+          icon: 'calendar-outline',
+          tone: 'danger',
+          title: 'Scadenze da lavorare',
+          value: `${deadlinesToWork.length} pratiche`,
+        }
+      : null,
+    monthlyOpenFaultRows.length
+      ? {
+          icon: 'construct-outline',
+          tone: 'danger',
+          title: 'Guasti ancora aperti',
+          value: `${monthlyOpenFaultRows.length} segnalazioni`,
+        }
+      : null,
+    monthlyCriticalCheckRows.length
+      ? {
+          icon: 'warning-outline',
+          tone: 'warning',
+          title: 'Check con anomalie',
+          value: `${monthlyCriticalCheckRows.length} check`,
+        }
+      : null,
+    monthlyUnassignedFineRows.length
+      ? {
+          icon: 'alert-circle-outline',
+          tone: 'warning',
+          title: 'Multe non assegnate',
+          value: `${monthlyUnassignedFineRows.length} multe`,
+        }
+      : null,
+    monthlyUnlinkedCostRows.length
+      ? {
+          icon: 'link-outline',
+          tone: 'warning',
+          title: 'Spese scollegate',
+          value: `${monthlyUnlinkedCostRows.length} voci`,
+        }
+      : null,
+  ].filter(Boolean).slice(0, 4)
 
   useEffect(() => {
     if (initialSection) {
@@ -2074,6 +2200,57 @@ export function CompanyManagementScreen({
                   <Text style={styles.costInsightValue}>da assegnare</Text>
                 </View>
               </View>
+              <View style={styles.monthlyPremiumCard}>
+                <View style={styles.monthlyPremiumHeader}>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.monthlyPremiumTitle}>Report mensile Premium</Text>
+                    <Text style={styles.listMeta}>{monthlyRange.label} · riepilogo automatico titolare</Text>
+                  </View>
+                  <Ionicons color={colors.cyanDark} name="document-text-outline" size={22} />
+                </View>
+                <View style={styles.monthlyPremiumGrid}>
+                  <View style={styles.monthlyPremiumMetric}>
+                    <Text style={styles.summaryLabel}>Costi mese</Text>
+                    <Text style={styles.monthlyPremiumValue}>{formatMoneyCents(monthlyTotalCents, defaultCurrency)}</Text>
+                    <Text style={styles.listMeta}>{monthlyCostRows.length} voci</Text>
+                  </View>
+                  <View style={[styles.monthlyPremiumMetric, monthlyOpenFaultRows.length ? styles.monthlyPremiumDanger : null]}>
+                    <Text style={styles.summaryLabel}>Guasti aperti</Text>
+                    <Text style={styles.monthlyPremiumValue}>{monthlyOpenFaultRows.length}</Text>
+                    <Text style={styles.listMeta}>{monthlyFaultRows.length} ricevuti</Text>
+                  </View>
+                  <View style={[styles.monthlyPremiumMetric, monthlyCriticalCheckRows.length ? styles.monthlyPremiumWarning : null]}>
+                    <Text style={styles.summaryLabel}>Check critici</Text>
+                    <Text style={styles.monthlyPremiumValue}>{monthlyCriticalCheckRows.length}</Text>
+                    <Text style={styles.listMeta}>{monthlyOkCheckRows.length} ok</Text>
+                  </View>
+                  <View style={[styles.monthlyPremiumMetric, deadlinesToWork.length ? styles.monthlyPremiumDanger : null]}>
+                    <Text style={styles.summaryLabel}>Scadenze</Text>
+                    <Text style={styles.monthlyPremiumValue}>{deadlinesToWork.length}</Text>
+                    <Text style={styles.listMeta}>{monthlyDeadlineRows.length} nel mese</Text>
+                  </View>
+                </View>
+                <View style={styles.monthlyPremiumInsight}>
+                  <Text style={styles.summaryLabel}>Più pesante questo mese</Text>
+                  <Text numberOfLines={1} style={styles.monthlyPremiumInsightText}>
+                    {monthlyTopTargetCost?.name ?? 'Nessun soggetto'} · {monthlyTopCategoryCost?.name ?? 'nessuna categoria'}
+                  </Text>
+                  <Text style={styles.costInsightValue}>
+                    {monthlyTopTargetCost ? formatMoneyCents(monthlyTopTargetCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}
+                  </Text>
+                </View>
+                <View style={styles.monthlyActionList}>
+                  {monthlyActionRows.map((action) => (
+                    <View key={action.title} style={[styles.monthlyActionRow, action.tone === 'danger' ? styles.monthlyPremiumDanger : styles.monthlyPremiumWarning]}>
+                      <Ionicons color={action.tone === 'danger' ? colors.danger : '#9a3412'} name={action.icon} size={16} />
+                      <Text style={styles.monthlyActionTitle}>{action.title}</Text>
+                      <Text style={styles.monthlyActionValue}>{action.value}</Text>
+                    </View>
+                  ))}
+                  {!monthlyActionRows.length ? <Text style={styles.emptyText}>Nessuna urgenza mensile aperta.</Text> : null}
+                </View>
+                <Text style={styles.listMeta}>CSV e stampa A4 del report mensile sono disponibili dal desktop azienda.</Text>
+              </View>
               <View style={styles.fineReportCard}>
                 <View style={styles.fineReportHeader}>
                   <View>
@@ -2308,6 +2485,91 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 14,
+  },
+  monthlyActionList: {
+    gap: 8,
+  },
+  monthlyActionRow: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#d6eef5',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 10,
+  },
+  monthlyActionTitle: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  monthlyActionValue: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  monthlyPremiumCard: {
+    backgroundColor: '#f8fdff',
+    borderColor: colors.cyan,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+    marginTop: 12,
+    padding: 12,
+  },
+  monthlyPremiumDanger: {
+    backgroundColor: '#fff1f2',
+    borderColor: '#fecaca',
+  },
+  monthlyPremiumGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  monthlyPremiumHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  monthlyPremiumInsight: {
+    backgroundColor: colors.white,
+    borderColor: '#bdeaf3',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 10,
+  },
+  monthlyPremiumInsightText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  monthlyPremiumMetric: {
+    backgroundColor: colors.white,
+    borderColor: '#bdeaf3',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexGrow: 1,
+    minWidth: '46%',
+    padding: 10,
+  },
+  monthlyPremiumTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  monthlyPremiumValue: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  monthlyPremiumWarning: {
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
   },
   costRowAmount: {
     color: colors.ink,

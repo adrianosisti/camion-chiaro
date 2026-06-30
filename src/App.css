@@ -3954,6 +3954,63 @@
   gap: 8px;
 }
 
+.tone-warning-button {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.report-active-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #c8edf5;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.report-active-summary > span,
+.report-warning-chip {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid #d6eef5;
+  border-radius: 8px;
+  background: #f8fdff;
+  padding: 9px 10px;
+}
+
+.report-active-summary small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 860;
+  text-transform: uppercase;
+}
+
+.report-active-summary strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-warning-chip {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-align: left;
+}
+
 .report-question-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -4105,7 +4162,7 @@
 }
 
 .fault-cost-summary {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .fault-fines-panel {
@@ -8042,6 +8099,7 @@
   .public-feature-grid,
   .public-steps,
   .public-extra-pricing,
+  .report-active-summary,
   .report-question-grid,
   .reports-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8177,6 +8235,7 @@
   .billing-plan-grid,
   .billing-form-grid,
   .cost-home-metrics,
+  .report-active-summary,
   .report-question-grid,
   .fault-cost-summary {
     grid-template-columns: 1fr;
@@ -8414,6 +8473,7 @@
   .reports-kpi-grid,
   .fault-cost-grid,
   .fault-cost-controls,
+  .report-active-summary,
   .fault-cost-entry-form {
     grid-template-columns: 1fr;
   }
@@ -9099,6 +9159,7 @@
   .fault-cost-report-actions,
   .fault-cost-entry-form,
   .fault-cost-controls,
+  .report-active-summary,
   .report-question-grid,
   .fault-cost-row-actions {
     display: none !important;

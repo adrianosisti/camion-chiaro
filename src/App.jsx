@@ -12183,6 +12183,9 @@ function FaultCostReport({
     notes: '',
   })
   const defaultCurrency = getDefaultCurrency(language)
+  const driverById = useMemo(() => new Map(driverRecords.map((driver) => [driver.id, driver])), [driverRecords])
+  const vehicleById = useMemo(() => new Map(vehicleRecords.map((vehicle) => [vehicle.id, vehicle])), [vehicleRecords])
+  const assetById = useMemo(() => new Map(assetRecords.map((asset) => [asset.id, asset])), [assetRecords])
   const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
   const reportTypeLabels = {
     detail: 'Dettaglio costi',
@@ -12256,7 +12259,7 @@ function FaultCostReport({
       assignableEntry: null,
       count: 0,
       driverId: row.driverId,
-      name: row.driverId ? driverRecords.find((driver) => driver.id === row.driverId)?.name ?? 'Autista' : 'Non assegnate',
+      name: row.driverId ? driverById.get(row.driverId)?.name ?? 'Autista' : 'Non assegnate',
       totalCents: 0,
     }
     ranking.set(key, {
@@ -12267,20 +12270,22 @@ function FaultCostReport({
     })
     return ranking
   }, new Map()).values()).sort((first, second) => second.totalCents - first.totalCents)
+  const unassignedFineRows = fineRows.filter((row) => !row.driverId)
+  const unassignedFineTotalCents = unassignedFineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const selectedTargetLabel = (() => {
     if (targetFilter === 'all') return 'Tutti i costi'
     if (targetFilter === 'company') return 'Azienda generale'
 
     const [targetType, targetId] = targetFilter.split(':')
     if (targetType === 'vehicle') {
-      const vehicle = vehicleRecords.find((vehicle) => vehicle.id === targetId)
+      const vehicle = vehicleById.get(targetId)
       return vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : 'Mezzo'
     }
     if (targetType === 'driver') {
-      return driverRecords.find((driver) => driver.id === targetId)?.name ?? 'Autista'
+      return driverById.get(targetId)?.name ?? 'Autista'
     }
     if (targetType === 'asset') {
-      const asset = assetRecords.find((entry) => entry.id === targetId)
+      const asset = assetById.get(targetId)
       return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
     }
 
@@ -12289,6 +12294,18 @@ function FaultCostReport({
   const selectedCategoryLabel = ['fines', 'fine_ranking'].includes(reportType)
     ? getCostCategoryLabel('fine')
     : categoryFilter === 'all' ? 'Tutte le tipologie' : getCostCategoryLabel(categoryFilter)
+  const reportTitle = reportTypeLabels[reportType] ?? 'Report aziendale'
+  const reportSubtitle = reportType === 'fine_ranking'
+    ? 'Classifica ordinata per totale multe nel periodo selezionato.'
+    : reportType === 'fines'
+      ? 'Elenco delle sanzioni con importo, targa e autista responsabile.'
+      : 'Dettaglio economico di guasti, manutenzioni, sanzioni e spese libere.'
+  const activeFilterBadges = [
+    { label: 'Report', value: reportTitle },
+    { label: 'Periodo', value: reportPeriodLabel },
+    { label: 'Soggetto', value: selectedTargetLabel },
+    { label: 'Tipologia', value: selectedCategoryLabel },
+  ]
   const reportPresetCards = [
     {
       description: 'Importi, targhe e responsabili nel periodo scelto.',
@@ -12530,9 +12547,9 @@ function FaultCostReport({
   }
 
   function getCostTargetLabel(row) {
-    const vehicle = row.vehicleId ? vehicleRecords.find((entry) => entry.id === row.vehicleId) : null
-    const asset = row.assetId ? assetRecords.find((entry) => entry.id === row.assetId) : null
-    const driver = row.driverId ? driverRecords.find((entry) => entry.id === row.driverId) : null
+    const vehicle = row.vehicleId ? vehicleById.get(row.vehicleId) : null
+    const asset = row.assetId ? assetById.get(row.assetId) : null
+    const driver = row.driverId ? driverById.get(row.driverId) : null
     const labels = [
       vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : row.vehicleId ? 'Mezzo' : '',
       asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : row.assetId ? 'Attrezzatura' : '',
@@ -12544,18 +12561,18 @@ function FaultCostReport({
 
   function getCostVehicleLabel(row) {
     if (!row.vehicleId) return ''
-    const vehicle = vehicleRecords.find((entry) => entry.id === row.vehicleId)
+    const vehicle = vehicleById.get(row.vehicleId)
     return vehicle ? `${vehicle.plate} · ${getFleetTypeLabel(vehicle.fleetType)}` : 'Mezzo'
   }
 
   function getCostDriverLabel(row) {
     if (!row.driverId) return ''
-    return driverRecords.find((driver) => driver.id === row.driverId)?.name ?? 'Autista'
+    return driverById.get(row.driverId)?.name ?? 'Autista'
   }
 
   function getCostAssetLabel(row) {
     if (!row.assetId) return ''
-    const asset = assetRecords.find((entry) => entry.id === row.assetId)
+    const asset = assetById.get(row.assetId)
     return asset ? `${asset.code} · ${asset.model || 'Attrezzatura'}` : 'Attrezzatura'
   }
 
@@ -12567,8 +12584,19 @@ function FaultCostReport({
       return new Intl.DateTimeFormat('it-IT').format(date)
     }
     const rowsForExport = reportType === 'fines' ? fineRows : reportRows
+    const csvMetadataRows = [
+      ['Report', reportTitle],
+      ['Periodo', reportPeriodLabel],
+      ['Soggetto', selectedTargetLabel],
+      ['Tipologia', selectedCategoryLabel],
+      ['Totale periodo', (Number(totalCents ?? 0) / 100).toFixed(2), defaultCurrency],
+      ['Voci filtrate', summaryRows.length],
+      ['Multe non assegnate', unassignedFineRows.length, (Number(unassignedFineTotalCents ?? 0) / 100).toFixed(2), defaultCurrency],
+      [],
+    ]
     const csvRows = reportType === 'fine_ranking'
       ? [
+          ...csvMetadataRows,
           ['Posizione', 'Autista', 'Numero multe', 'Totale', 'Media'],
           ...fineRanking.map((row, index) => [
             index + 1,
@@ -12579,26 +12607,27 @@ function FaultCostReport({
           ]),
         ]
       : [
-      ['Data', 'Titolo', 'Categoria', 'Targa o mezzo', 'Autista', 'Attrezzatura', 'Soggetto completo', 'Importo', 'Valuta', 'Tipo', 'Fornitore', 'Km', 'Note'],
-      ...rowsForExport.map((row) => {
-        const source = row.source ?? {}
-        return [
-          formatCsvDate(row.date),
-          row.title,
-          getCostCategoryLabel(row.category),
-          getCostVehicleLabel(row),
-          getCostDriverLabel(row),
-          getCostAssetLabel(row),
-          getCostTargetLabel(row),
-          (Number(row.amountCents ?? 0) / 100).toFixed(2),
-          row.currency || defaultCurrency,
-          row.kind === 'fault' ? 'Guasto' : 'Spesa libera',
-          source.supplier ?? '',
-          source.odometerKm ?? '',
-          row.description ?? '',
+          ...csvMetadataRows,
+          ['Data', 'Titolo', 'Categoria', 'Targa o mezzo', 'Autista', 'Attrezzatura', 'Soggetto completo', 'Importo', 'Valuta', 'Tipo', 'Fornitore', 'Km', 'Note'],
+          ...rowsForExport.map((row) => {
+            const source = row.source ?? {}
+            return [
+              formatCsvDate(row.date),
+              row.title,
+              getCostCategoryLabel(row.category),
+              getCostVehicleLabel(row),
+              getCostDriverLabel(row),
+              getCostAssetLabel(row),
+              getCostTargetLabel(row),
+              (Number(row.amountCents ?? 0) / 100).toFixed(2),
+              row.currency || defaultCurrency,
+              row.kind === 'fault' ? 'Guasto' : 'Spesa libera',
+              source.supplier ?? '',
+              source.odometerKm ?? '',
+              row.description ?? '',
+            ]
+          }),
         ]
-      }),
-    ]
     const csv = csvRows
       .map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';'))
       .join('\n')
@@ -12620,7 +12649,6 @@ function FaultCostReport({
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;')
-    const reportTitle = reportTypeLabels[reportType] ?? 'Report aziendale'
     const rowsHtml = reportType === 'fine_ranking'
       ? fineRanking.map((row, index) => `
           <tr>
@@ -12659,7 +12687,7 @@ function FaultCostReport({
             body { color: #111827; font-family: Arial, sans-serif; margin: 28px; }
             h1 { font-size: 24px; margin: 0 0 6px; }
             p { color: #4b5563; margin: 0 0 18px; }
-            .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+            .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
             .summary div { border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; }
             .summary strong { display: block; font-size: 18px; }
             .summary span { color: #6b7280; font-size: 12px; }
@@ -12670,11 +12698,12 @@ function FaultCostReport({
         </head>
         <body>
           <h1>${escapeHtml(reportTitle)}</h1>
-          <p>${escapeHtml(selectedTargetLabel)} · ${escapeHtml(reportPeriodLabel)} · ${escapeHtml(selectedCategoryLabel)}</p>
+          <p>${escapeHtml(reportSubtitle)}<br>${escapeHtml(selectedTargetLabel)} · ${escapeHtml(reportPeriodLabel)} · ${escapeHtml(selectedCategoryLabel)}</p>
           <section class="summary">
             <div><strong>${escapeHtml(formatMoneyCents(totalCents, defaultCurrency))}</strong><span>Totale periodo</span></div>
             <div><strong>${summaryRows.length}</strong><span>Voci costo</span></div>
             <div><strong>${escapeHtml(formatMoneyCents(fineTotalCents, defaultCurrency))}</strong><span>Totale sanzioni</span></div>
+            <div><strong>${unassignedFineRows.length}</strong><span>Multe non assegnate</span></div>
           </section>
           <table>
             <thead>${headerHtml}</thead>
@@ -12695,9 +12724,9 @@ function FaultCostReport({
       <div className="fault-cost-report-header">
         <div>
           <p className="overline">{isReportWorkspace ? 'Report aziendali' : 'Centro costi'}</p>
-          <h3>{isReportWorkspace ? 'Cosa vuoi stampare o esportare?' : selectedTargetLabel}</h3>
+          <h3>{isReportWorkspace ? reportTitle : selectedTargetLabel}</h3>
           {isReportWorkspace ? (
-            <span>Filtra per periodo, targa, autista, muletto, categoria o multe e genera solo il file che serve.</span>
+            <span>{reportSubtitle}</span>
           ) : null}
         </div>
         <div className="fault-cost-report-actions">
@@ -12706,6 +12735,10 @@ function FaultCostReport({
               <button className="secondary-button compact-button" onClick={() => (isAddingCost ? resetCostForm() : openNewCostForm())} type="button">
                 <Plus size={16} />
                 {isAddingCost ? 'Chiudi' : 'Aggiungi spesa'}
+              </button>
+              <button className="secondary-button compact-button tone-warning-button" onClick={() => openNewCostForm('fine')} type="button">
+                <AlertTriangle size={16} />
+                Nuova sanzione
               </button>
               <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
                 <Download size={16} />
@@ -12725,6 +12758,25 @@ function FaultCostReport({
         </div>
       </div>
       {isReportWorkspace ? (
+        <div className="report-active-summary" aria-label="Filtri report applicati">
+          {activeFilterBadges.map((badge) => (
+            <span key={badge.label}>
+              <small>{badge.label}</small>
+              <strong>{badge.value}</strong>
+            </span>
+          ))}
+          {unassignedFineRows.length > 0 ? (
+            <button className="report-warning-chip" onClick={() => {
+              setReportType('fine_ranking')
+              setCategoryFilter('fine')
+            }} type="button">
+              <AlertTriangle size={15} />
+              {unassignedFineRows.length} multe non assegnate · {formatMoneyCents(unassignedFineTotalCents, defaultCurrency)}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {isReportWorkspace ? (
         <div className="report-question-grid" aria-label="Domande rapide report">
           {reportPresetCards.map((card) => (
             <button className="report-question-card" key={card.label} onClick={card.onClick} type="button">
@@ -12737,12 +12789,20 @@ function FaultCostReport({
       {isAddingCost ? (
         <form className="fault-cost-entry-form" onSubmit={handleSubmitCostEntry}>
           <div className="fault-cost-entry-title fault-cost-entry-wide">
-            <strong>{costForm.id ? 'Modifica spesa libera' : 'Nuova spesa libera'}</strong>
-            <span>Registra manutenzioni, gomme, assicurazioni, revisioni, muletti o costi aziendali anche senza guasto.</span>
+            <strong>
+              {isFineCostForm
+                ? costForm.id ? 'Modifica sanzione' : 'Nuova sanzione'
+                : costForm.id ? 'Modifica spesa libera' : 'Nuova spesa libera'}
+            </strong>
+            <span>
+              {isFineCostForm
+                ? 'Registra importo, data, autista responsabile e targa collegata. Se manca l autista finisce in Non assegnate.'
+                : 'Registra manutenzioni, gomme, assicurazioni, revisioni, muletti o costi aziendali anche senza guasto.'}
+            </span>
           </div>
           <label>
-            Titolo spesa
-            <input required value={costForm.title} onChange={(event) => updateCostForm('title', event.target.value)} placeholder="Tagliando, gomme, fattura officina..." />
+            {isFineCostForm ? 'Titolo / verbale' : 'Titolo spesa'}
+            <input required value={costForm.title} onChange={(event) => updateCostForm('title', event.target.value)} placeholder={isFineCostForm ? 'Verbale, sanzione ZTL, eccesso velocita...' : 'Tagliando, gomme, fattura officina...'} />
           </label>
           <label>
             Importo + IVA
@@ -12961,6 +13021,10 @@ function FaultCostReport({
         <div>
           <strong>{formatMoneyCents(averageCents, defaultCurrency)}</strong>
           <span>Media</span>
+        </div>
+        <div>
+          <strong>{unassignedFineRows.length}</strong>
+          <span>Multe non assegnate</span>
         </div>
       </div>
       <div className="fault-fines-panel">

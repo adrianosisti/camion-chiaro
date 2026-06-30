@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ChatScreen } from './ChatScreen'
+import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
 function getInitials(value = 'A') {
@@ -77,6 +78,7 @@ export function CompanyChatScreen({
 }) {
   const [isStartingNewChat, setIsStartingNewChat] = useState(false)
   const [chatListMode, setChatListMode] = useState('all')
+  const [fallbackDriverPhotoUrls, setFallbackDriverPhotoUrls] = useState({})
   const safeChatThreads = Array.isArray(chatThreads) ? chatThreads : []
   const safeDrivers = Array.isArray(drivers) ? drivers : []
   const safePeople = Array.isArray(people) ? people : []
@@ -186,6 +188,28 @@ export function CompanyChatScreen({
   const totalUnreadCount = directUnreadCount + groupUnreadCount
   const hasVisibleRows = visibleChatRows.length || (chatListMode === 'direct' && isStartingNewChat && staffPeople.length)
 
+  useEffect(() => {
+    let isActive = true
+
+    async function loadMissingDriverPhoto() {
+      if (!selectedDriver?.id || !selectedDriver.profileImagePath || driverPhotoUrls[selectedDriver.id] || fallbackDriverPhotoUrls[selectedDriver.id]) return
+
+      const result = await createCompanyAssetSignedUrl(selectedDriver.profileImagePath)
+      if (!isActive || !result.data?.signedUrl) return
+
+      setFallbackDriverPhotoUrls((currentUrls) => ({
+        ...currentUrls,
+        [selectedDriver.id]: result.data.signedUrl,
+      }))
+    }
+
+    void loadMissingDriverPhoto()
+
+    return () => {
+      isActive = false
+    }
+  }, [driverPhotoUrls, fallbackDriverPhotoUrls, selectedDriver?.id, selectedDriver?.profileImagePath])
+
   if (selectedTeamThread && isCompanyVisibleThread(selectedTeamThread)) {
     const directPerson = getCompanyDirectPerson(selectedTeamThread, personById)
     const directPersonPhotoUrl = getPersonAvatarUrl(directPerson, driverPhotoUrls, driverByPersonId)
@@ -242,7 +266,7 @@ export function CompanyChatScreen({
   }
 
   if (selectedDriver) {
-    const driverPhotoUrl = driverPhotoUrls[selectedDriver.id] ?? ''
+    const driverPhotoUrl = driverPhotoUrls[selectedDriver.id] ?? fallbackDriverPhotoUrls[selectedDriver.id] ?? ''
 
     return (
       <View style={styles.chatWrap}>

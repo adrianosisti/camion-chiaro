@@ -360,7 +360,7 @@ async function fetchCompanyPersonContext(serviceClient, person) {
     teamThreadIds.length
       ? serviceClient
           .from('team_chat_threads')
-          .select('id, company_id, thread_type, audience_type, title, status, last_message_at, created_at')
+          .select('id, company_id, thread_type, audience_type, direct_key, title, status, last_message_at, created_at')
           .in('id', teamThreadIds)
           .neq('status', 'archived')
           .order('last_message_at', { ascending: false, nullsFirst: false })
@@ -476,7 +476,7 @@ async function fetchDriverContext(serviceClient, driver) {
     teamThreadIds.length
       ? serviceClient
           .from('team_chat_threads')
-          .select('id, company_id, thread_type, audience_type, title, status, last_message_at, created_at')
+          .select('id, company_id, thread_type, audience_type, direct_key, title, status, last_message_at, created_at')
           .in('id', teamThreadIds)
           .neq('status', 'archived')
           .order('last_message_at', { ascending: false, nullsFirst: false })

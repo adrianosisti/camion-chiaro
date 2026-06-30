@@ -233,6 +233,7 @@ export function DriverChatHubScreen({
           companyOnline={isDirectChat ? directPartnerOnline : false}
           companyTyping={isTeamTyping}
           currentUserRole={currentUserRole}
+          currentPersonId={currentPersonByName?.id ?? ''}
           driverName={driverName}
           driverProfileUrl={driverProfileUrl}
           incomingShare={incomingShare}

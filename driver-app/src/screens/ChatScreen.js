@@ -597,6 +597,7 @@ function ChatInfoModal({
 }
 
 function MessageBubble({
+  currentPersonId = '',
   currentUserRole,
   message,
   onAvatarPress,
@@ -609,9 +610,11 @@ function MessageBubble({
   senderName,
   showSenderNames = false,
 }) {
-  const isOwn = message.senderPersonId && currentUserRole === 'company'
-    ? false
-    : message.senderRole === currentUserRole
+  const isOwn = currentPersonId && message.senderPersonId
+    ? message.senderPersonId === currentPersonId
+    : message.senderPersonId && currentUserRole === 'company'
+      ? false
+      : message.senderRole === currentUserRole
   const readAt = currentUserRole === 'driver' ? message.readByCompanyAt : message.readByDriverAt
   const isRead = Boolean(readAt)
   const groupReadCount = Number(message.readCount ?? 0)
@@ -704,6 +707,7 @@ export function ChatScreen({
   companyOnline = false,
   companyTyping = false,
   currentUserRole = 'driver',
+  currentPersonId = '',
   driverProfileUrl,
   incomingShare,
   messages = [],
@@ -1229,6 +1233,7 @@ export function ChatScreen({
         refreshControl={<RefreshControl onRefresh={handleRefresh} refreshing={isRefreshing} tintColor={colors.cyan} />}
         renderItem={({ item }) => (
           <MessageBubble
+            currentPersonId={currentPersonId}
             currentUserRole={currentUserRole}
             message={item}
             onAvatarPress={openAvatarPreview}

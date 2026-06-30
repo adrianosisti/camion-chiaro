@@ -9461,6 +9461,8 @@ function AdminWorkspace({
 }) {
   const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCompanyId, setSelectedCompanyId] = useState('')
+  const [adminCopyStatus, setAdminCopyStatus] = useState('')
   const companies = overview?.companies ?? []
   const summary = overview?.summary ?? {
     activeCompanies: 0,
@@ -9477,7 +9479,13 @@ function AdminWorkspace({
     ok: 'Regolare',
     storage: 'Spazio alto',
   }
-  const filteredCompanies = companies.filter((company) => {
+  const healthDescriptions = {
+    attention: 'Ha criticita operative aperte.',
+    billing: 'Pagamento o piano da verificare.',
+    ok: 'Nessuna criticita prioritaria.',
+    storage: 'Spazio utilizzato vicino al limite.',
+  }
+  const filteredCompanies = useMemo(() => companies.filter((company) => {
     const matchesFilter = filter === 'all' || company.health === filter
     const cleanSearch = searchTerm.trim().toLowerCase()
     const matchesSearch = !cleanSearch || [
@@ -9488,14 +9496,52 @@ function AdminWorkspace({
     ].some((value) => String(value ?? '').toLowerCase().includes(cleanSearch))
 
     return matchesFilter && matchesSearch
-  })
-  const filterButtons = [
+  }), [companies, filter, searchTerm])
+  const filterButtons = useMemo(() => [
     { id: 'all', label: 'Tutte', value: companies.length },
     { id: 'attention', label: 'Da seguire', value: companies.filter((company) => company.health === 'attention').length },
     { id: 'billing', label: 'Pagamenti', value: companies.filter((company) => company.health === 'billing').length },
     { id: 'storage', label: 'Spazio alto', value: companies.filter((company) => company.health === 'storage').length },
     { id: 'ok', label: 'Regolari', value: companies.filter((company) => company.health === 'ok').length },
-  ]
+  ], [companies])
+  const attentionCompanyCount = companies.filter((company) => company.health !== 'ok').length
+  const storageLimitTotalBytes = companies.reduce((total, company) => total + Number(company.storageLimitBytes ?? 0), 0)
+  const storageUsagePercent = storageLimitTotalBytes
+    ? Math.min(100, Math.round((Number(summary.storageBytes ?? 0) / storageLimitTotalBytes) * 100))
+    : 0
+  const selectedCompany =
+    filteredCompanies.find((company) => company.id === selectedCompanyId) ??
+    companies.find((company) => company.id === selectedCompanyId) ??
+    filteredCompanies[0] ??
+    companies[0] ??
+    null
+
+  useEffect(() => {
+    if (!filteredCompanies.length) {
+      setSelectedCompanyId('')
+      return
+    }
+
+    if (!filteredCompanies.some((company) => company.id === selectedCompanyId)) {
+      setSelectedCompanyId(filteredCompanies[0].id)
+    }
+  }, [filteredCompanies, selectedCompanyId])
+
+  async function copyAdminValue(value, label) {
+    if (!value) return
+
+    await navigator.clipboard?.writeText(value)
+    setAdminCopyStatus(`${label} copiato.`)
+    window.setTimeout(() => setAdminCopyStatus(''), 1600)
+  }
+
+  function getAdminRecommendation(company) {
+    if (!company) return 'Seleziona un cliente per vedere la prossima azione consigliata.'
+    if (company.health === 'billing') return 'Verifica pagamento, piano e periodo: questo cliente non deve restare bloccato per errore.'
+    if (company.health === 'attention') return 'Apri un contatto operativo: ci sono guasti, check, scadenze o documenti da far sistemare.'
+    if (company.health === 'storage') return 'Proponi upgrade spazio o pulizia allegati prima che arrivi al limite.'
+    return 'Cliente regolare: controlla ultimo utilizzo e valuta upsell su report/chat premium.'
+  }
 
   if (!isAdminSession) {
     return (
@@ -9516,9 +9562,8 @@ function AdminWorkspace({
     <section className="admin-workspace" aria-label="Pannello admin Camion Chiaro">
       <div className="panel admin-hero-panel">
         <div>
-          <p className="overline">Camion Chiaro Admin</p>
           <h2>Controllo clienti</h2>
-          <span>Aziende, piani, utilizzo, criticita e segnali operativi in una sola console.</span>
+          <span>Console interna per aziende, pagamenti, utilizzo, spazio e criticita operative.</span>
         </div>
         <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
           <RadioTower size={16} />
@@ -9530,114 +9575,175 @@ function AdminWorkspace({
         <article>
           <Building2 size={20} />
           <strong>{summary.companyCount}</strong>
-          <span>aziende totali</span>
+          <span>Aziende</span>
         </article>
         <article>
           <BadgeCheck size={20} />
           <strong>{summary.activeCompanies}</strong>
-          <span>abbonamenti attivi</span>
+          <span>Attive</span>
         </article>
-        <article className={summary.alertCount ? 'is-warning' : ''}>
+        <article className={attentionCompanyCount ? 'is-warning' : ''}>
           <AlertTriangle size={20} />
-          <strong>{summary.alertCount}</strong>
-          <span>criticita clienti</span>
+          <strong>{attentionCompanyCount}</strong>
+          <span>Da seguire</span>
         </article>
         <article>
-          <Truck size={20} />
-          <strong>{summary.fleetCount}</strong>
-          <span>mezzi gestiti</span>
+          <Upload size={20} />
+          <strong>{storageUsagePercent}%</strong>
+          <span>{formatBytes(summary.storageBytes)} usati</span>
         </article>
-        <article>
-          <Users size={20} />
-          <strong>{summary.driverCount}</strong>
-          <span>autisti gestiti</span>
-        </article>
-        <article>
-          <Banknote size={20} />
-          <strong>{formatMoneyCents(summary.costMonthCents, 'EUR')}</strong>
-          <span>costi mese tracciati</span>
-        </article>
-      </div>
-
-      <div className="admin-toolbar">
-        <label className="admin-search">
-          <Search size={16} />
-          <input
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Cerca azienda, email, partita IVA..."
-            value={searchTerm}
-          />
-        </label>
-        <div className="admin-filter-row">
-          {filterButtons.map((button) => (
-            <button
-              className={filter === button.id ? 'is-active' : ''}
-              key={button.id}
-              onClick={() => setFilter(button.id)}
-              type="button"
-            >
-              <span>{button.label}</span>
-              <strong>{button.value}</strong>
-            </button>
-          ))}
-        </div>
       </div>
 
       {statusMessage ? <p className="admin-status-line">{statusMessage}</p> : null}
 
-      <div className="admin-company-list">
-        {filteredCompanies.map((company) => (
-          <article className={`admin-company-card is-${company.health}`} key={company.id}>
-            <div className="admin-company-main">
-              <span className={`admin-health-dot is-${company.health}`}>{healthLabels[company.health] ?? company.health}</span>
-              <div>
-                <h3>{company.name}</h3>
-                <p>{company.billingEmail || company.vatNumber || company.headquarters || 'Dati fiscali non inseriti'}</p>
-              </div>
+      <div className="admin-layout">
+        <section className="admin-client-panel" aria-label="Clienti Camion Chiaro">
+          <div className="admin-toolbar">
+            <label className="admin-search">
+              <Search size={16} />
+              <input
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Cerca azienda, email, partita IVA..."
+                value={searchTerm}
+              />
+            </label>
+            <div className="admin-filter-row">
+              {filterButtons.map((button) => (
+                <button
+                  className={filter === button.id ? 'is-active' : ''}
+                  key={button.id}
+                  onClick={() => setFilter(button.id)}
+                  type="button"
+                >
+                  <span>{button.label}</span>
+                  <strong>{button.value}</strong>
+                </button>
+              ))}
             </div>
-            <div className="admin-company-metrics">
-              <div>
-                <strong>{getBillingPlanLabel(company.billingPlan)}</strong>
-                <span>{getBillingStatusLabel(company.billingStatus)}</span>
-              </div>
-              <div>
-                <strong>{company.fleetCount}</strong>
-                <span>mezzi</span>
-              </div>
-              <div>
-                <strong>{company.driverCount + company.peopleCount}</strong>
-                <span>utenti</span>
-              </div>
-              <div>
-                <strong>{company.alertCount}</strong>
-                <span>alert</span>
-              </div>
-              <div>
-                <strong>{formatMoneyCents(company.costMonthCents, 'EUR')}</strong>
-                <span>costi mese</span>
-              </div>
-              <div>
-                <strong>{company.storageUsagePercent}%</strong>
-                <span>{formatBytes(company.storageBytes)} / {formatBytes(company.storageLimitBytes)}</span>
-              </div>
-            </div>
-            <div className="admin-company-details">
-              <span>Guasti aperti: {company.openFaultCount}</span>
-              <span>Check critici: {company.urgentCheckCount}</span>
-              <span>Scadenze: {company.urgentDeadlineCount}</span>
-              <span>Documenti scaduti: {company.documentExpiredCount}</span>
-              <span>Chat non lette: {company.unreadChatCount}</span>
-              <span>Ultima attivita: {company.lastActivityAt ? formatShortDateTime(company.lastActivityAt) : formatDate(company.createdAt)}</span>
-            </div>
-          </article>
-        ))}
-        {!filteredCompanies.length ? (
-          <div className="panel admin-empty-panel">
-            <ShieldCheck size={24} />
-            <strong>Nessuna azienda trovata</strong>
-            <span>Modifica filtri o ricerca per vedere altri clienti.</span>
           </div>
-        ) : null}
+
+          <div className="admin-table-wrap">
+            <table className="admin-client-table">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Stato</th>
+                  <th>Piano</th>
+                  <th>Utenti</th>
+                  <th>Mezzi</th>
+                  <th>Alert</th>
+                  <th>Spazio</th>
+                  <th>Ultima attività</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCompanies.map((company) => (
+                  <tr
+                    className={company.id === selectedCompany?.id ? 'is-selected' : ''}
+                    key={company.id}
+                    onClick={() => setSelectedCompanyId(company.id)}
+                  >
+                    <td>
+                      <strong>{company.name}</strong>
+                      <span>{company.billingEmail || company.vatNumber || 'Dati fiscali mancanti'}</span>
+                    </td>
+                    <td>
+                      <b className={`admin-health-dot is-${company.health}`}>{healthLabels[company.health] ?? company.health}</b>
+                    </td>
+                    <td>
+                      <strong>{getBillingPlanLabel(company.billingPlan)}</strong>
+                      <span>{getBillingStatusLabel(company.billingStatus)}</span>
+                    </td>
+                    <td>{company.driverCount + company.peopleCount}</td>
+                    <td>{company.fleetCount}</td>
+                    <td>{company.alertCount}</td>
+                    <td>
+                      <strong>{company.storageUsagePercent}%</strong>
+                      <span>{formatBytes(company.storageBytes)}</span>
+                    </td>
+                    <td>{company.lastActivityAt ? formatShortDateTime(company.lastActivityAt) : formatDate(company.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!filteredCompanies.length ? (
+              <div className="admin-empty-panel">
+                <ShieldCheck size={24} />
+                <strong>Nessuna azienda trovata</strong>
+                <span>Modifica filtri o ricerca per vedere altri clienti.</span>
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <aside className="admin-detail-panel" aria-label="Dettaglio cliente selezionato">
+          {selectedCompany ? (
+            <>
+              <div className="admin-detail-head">
+                <span className={`admin-health-dot is-${selectedCompany.health}`}>
+                  {healthLabels[selectedCompany.health] ?? selectedCompany.health}
+                </span>
+                <h3>{selectedCompany.name}</h3>
+                <p>{healthDescriptions[selectedCompany.health] ?? 'Cliente da verificare.'}</p>
+              </div>
+
+              <div className="admin-detail-grid">
+                <div>
+                  <span>Piano</span>
+                  <strong>{getBillingPlanLabel(selectedCompany.billingPlan)}</strong>
+                </div>
+                <div>
+                  <span>Pagamento</span>
+                  <strong>{getBillingStatusLabel(selectedCompany.billingStatus)}</strong>
+                </div>
+                <div>
+                  <span>Costi mese</span>
+                  <strong>{formatMoneyCents(selectedCompany.costMonthCents, 'EUR')}</strong>
+                </div>
+                <div>
+                  <span>Spazio</span>
+                  <strong>{selectedCompany.storageUsagePercent}%</strong>
+                </div>
+              </div>
+
+              <div className="admin-detail-alerts">
+                <strong>Situazione operativa</strong>
+                <span>Guasti aperti: {selectedCompany.openFaultCount}</span>
+                <span>Check critici: {selectedCompany.urgentCheckCount}</span>
+                <span>Scadenze: {selectedCompany.urgentDeadlineCount}</span>
+                <span>Documenti scaduti: {selectedCompany.documentExpiredCount}</span>
+                <span>Chat non lette: {selectedCompany.unreadChatCount}</span>
+              </div>
+
+              <div className="admin-next-action">
+                <strong>Prossima azione</strong>
+                <p>{getAdminRecommendation(selectedCompany)}</p>
+              </div>
+
+              <div className="admin-action-row">
+                <button className="secondary-button compact-button" onClick={() => copyAdminValue(selectedCompany.id, 'ID cliente')} type="button">
+                  <Copy size={15} />
+                  Copia ID
+                </button>
+                <button className="secondary-button compact-button" onClick={() => copyAdminValue(selectedCompany.billingEmail || selectedCompany.name, 'Riferimento cliente')} type="button">
+                  <Mail size={15} />
+                  Copia email
+                </button>
+                <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
+                  <RadioTower size={15} />
+                  Aggiorna
+                </button>
+              </div>
+              {adminCopyStatus ? <p className="admin-copy-status">{adminCopyStatus}</p> : null}
+            </>
+          ) : (
+            <div className="admin-empty-panel">
+              <ShieldCheck size={24} />
+              <strong>Seleziona un cliente</strong>
+              <span>Qui vedrai dettagli e prossima azione.</span>
+            </div>
+          )}
+        </aside>
       </div>
     </section>
   )

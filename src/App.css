@@ -3953,14 +3953,14 @@
 
 .admin-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
 .admin-kpi-grid article {
   display: grid;
   gap: 6px;
-  min-height: 104px;
+  min-height: 96px;
   border: 1px solid #c8edf5;
   border-radius: 8px;
   background: #ffffff;
@@ -3993,10 +3993,7 @@
   grid-template-columns: minmax(260px, 1fr) auto;
   gap: 10px;
   align-items: center;
-  border: 1px solid #d6eef5;
-  border-radius: 8px;
-  background: #f8fdff;
-  padding: 10px;
+  padding: 0;
 }
 
 .admin-search {
@@ -4058,6 +4055,171 @@
   font-weight: 760;
 }
 
+.admin-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 14px;
+  align-items: start;
+}
+
+.admin-client-panel,
+.admin-detail-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #c8edf5;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.admin-detail-panel {
+  position: sticky;
+  top: 18px;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e4f3f7;
+  border-radius: 8px;
+}
+
+.admin-client-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+.admin-client-table th,
+.admin-client-table td {
+  border-bottom: 1px solid #edf5f8;
+  padding: 11px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-client-table th {
+  background: #f8fdff;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.admin-client-table td {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 820;
+}
+
+.admin-client-table td span,
+.admin-client-table td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.admin-client-table tr {
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.admin-client-table tbody tr:hover,
+.admin-client-table tbody tr.is-selected {
+  background: #ecfeff;
+}
+
+.admin-client-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-detail-head {
+  display: grid;
+  gap: 7px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e4f3f7;
+}
+
+.admin-detail-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.admin-detail-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-detail-grid div,
+.admin-next-action,
+.admin-detail-alerts {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e4f3f7;
+  border-radius: 8px;
+  background: #f8fdff;
+  padding: 10px;
+}
+
+.admin-detail-grid span,
+.admin-detail-alerts span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.admin-detail-grid strong,
+.admin-detail-alerts strong,
+.admin-next-action strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.admin-next-action {
+  border-color: #bae6fd;
+  background: #ecfeff;
+}
+
+.admin-next-action p {
+  margin: 0;
+  color: #075985;
+  font-size: 0.8rem;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
+.admin-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-action-row .compact-button {
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-copy-status {
+  margin: 0;
+  color: #047857;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
 .admin-company-list {
   display: grid;
   gap: 10px;
@@ -4108,6 +4270,9 @@
 }
 
 .admin-health-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   order: 2;
   flex: 0 0 auto;
   border: 1px solid #c8edf5;
@@ -8706,6 +8871,14 @@
 }
 
 @media (max-width: 1240px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-detail-panel {
+    position: static;
+  }
+
   .public-feature-grid,
   .public-steps,
   .public-extra-pricing,
@@ -9085,6 +9258,11 @@
 }
 
 @media (max-width: 720px) {
+  .admin-action-row,
+  .admin-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
   .public-extra-pricing,
   .reports-kpi-grid,
   .fault-cost-grid,

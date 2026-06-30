@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { MetricPill } from '../components/MetricPill'
 import { Panel } from '../components/Panel'
+import { getWheelOptionLabel, SelectionWheelModal, WheelPickerField } from '../components/WheelPicker'
 import { getLocale, t } from '../i18n/native'
 import { colors, layout } from '../theme'
 
@@ -140,9 +142,15 @@ export function HomeScreen({
   const openFaults = faults.filter((fault) => fault.status !== 'closed')
   const driveableVehicles = vehicles.filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
   const selectedDailyVehicle = driveableVehicles.find((vehicle) => vehicle.id === selectedDailyVehicleId) ?? null
+  const vehicleOptions = driveableVehicles.map((vehicle) => ({
+    id: vehicle.id,
+    label: vehicle.plate,
+    subtitle: [vehicle.model, formatVehicleType(vehicle.fleetType || vehicle.type)].filter(Boolean).join(' · '),
+  }))
   const criticalChecks = checks.filter(isCheckCritical)
   const latestChecks = checks.slice(0, 3)
   const dailyPhrase = getDailyPhrase(language)
+  const [wheelPicker, setWheelPicker] = useState(null)
 
   async function pickProfilePhoto(source) {
     const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
@@ -278,27 +286,17 @@ export function HomeScreen({
             : 'Ogni giorno seleziona il mezzo che stai usando. Se cambi mezzo durante il turno, puoi cambiarlo qui e i prossimi check o guasti useranno quello nuovo.'}
         </Text>
         {driveableVehicles.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.vehicleSelectorScroll}>
-            <View style={styles.vehicleSelectorRow}>
-              {driveableVehicles.map((vehicle) => {
-                const isSelected = selectedDailyVehicle?.id === vehicle.id
-                return (
-                  <Pressable
-                    key={vehicle.id}
-                    onPress={() => onSelectDailyVehicle?.(vehicle.id)}
-                    style={[styles.vehicleChip, isSelected && styles.vehicleChipActive]}
-                  >
-                    <Text numberOfLines={1} style={[styles.vehiclePlate, isSelected && styles.vehiclePlateActive]}>
-                      {vehicle.plate}
-                    </Text>
-                    <Text numberOfLines={1} style={[styles.vehicleType, isSelected && styles.vehicleTypeActive]}>
-                      {formatVehicleType(vehicle.fleetType || vehicle.type)}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </ScrollView>
+          <WheelPickerField
+            helper="Tocca e scorri la ruota"
+            label="Mezzo del turno"
+            onPress={() => setWheelPicker({
+              onSelect: (value) => onSelectDailyVehicle?.(value),
+              options: vehicleOptions,
+              title: 'Scegli mezzo',
+              value: selectedDailyVehicleId,
+            })}
+            value={getWheelOptionLabel(vehicleOptions, selectedDailyVehicleId, 'Scegli mezzo')}
+          />
         ) : (
           <Text style={styles.selectorEmpty}>L azienda deve prima aggiungere furgoni, motrici o trattori.</Text>
         )}
@@ -371,6 +369,17 @@ export function HomeScreen({
         ))}
         {!documents.length ? <Text style={styles.bodyText}>Non risultano documenti visibili.</Text> : null}
       </Panel>
+      <SelectionWheelModal
+        onClose={() => setWheelPicker(null)}
+        onConfirm={(value) => {
+          wheelPicker?.onSelect?.(value)
+          setWheelPicker(null)
+        }}
+        options={wheelPicker?.options ?? []}
+        title={wheelPicker?.title ?? 'Seleziona'}
+        value={wheelPicker?.value ?? ''}
+        visible={Boolean(wheelPicker)}
+      />
     </ScrollView>
   )
 }

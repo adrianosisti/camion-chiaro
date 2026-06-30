@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { DateField } from '../components/DateField'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { getWheelOptionLabel, SelectionWheelModal, WheelPickerField } from '../components/WheelPicker'
 import { getLocale } from '../i18n/native'
 import { getDaysUntilDate, isComplianceActionRequired, sortByDueDate } from '../services/deadlineRules'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
@@ -81,7 +82,17 @@ const costPeriodOptions = [
   { id: 'all', label: 'Sempre' },
 ]
 
-const wheelItemHeight = 58
+const archiveListOptions = [
+  { id: 'people', label: 'Persone' },
+  { id: 'office', label: 'Ufficio' },
+  { id: 'warehouse', label: 'Magazzino' },
+  { id: 'drivers', label: 'Autisti' },
+  { id: 'vehicles', label: 'Flotta' },
+  { id: 'faults', label: 'Guasti' },
+  { id: 'checks', label: 'Check' },
+  { id: 'deadlines', label: 'Scadenze' },
+  { id: 'costs', label: 'Centro costi' },
+]
 
 const createFormOptions = [
   { icon: 'person-add-outline', id: 'driver', label: 'Autista' },
@@ -105,10 +116,6 @@ function getDeadlineTone(item) {
   if (days < 0) return 'danger'
   if (days <= 30) return 'warning'
   return 'info'
-}
-
-function getOptionLabel(options = [], value = '', fallback = 'Seleziona') {
-  return options.find((option) => option.id === value)?.label ?? fallback
 }
 
 function getDeadlineStatusLabel(item) {
@@ -327,114 +334,6 @@ function RelatedDeadlines({ deadlines, language = 'it' }) {
         )
       })}
     </View>
-  )
-}
-
-function Chip({ active, label, onPress, style, textStyle }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.chip, style, active && styles.chipActive]}>
-      <Text numberOfLines={2} style={[styles.chipText, textStyle, active && styles.chipTextActive]}>{label}</Text>
-    </Pressable>
-  )
-}
-
-function WheelPickerField({ helper, label, onPress, value }) {
-  return (
-    <View style={styles.wheelField}>
-      <Text style={styles.costFilterLabel}>{label}</Text>
-      <Pressable onPress={onPress} style={styles.wheelFieldButton}>
-        <View style={styles.wheelFieldCopy}>
-          <Text numberOfLines={1} style={styles.wheelFieldValue}>{value || 'Seleziona'}</Text>
-          {helper ? <Text numberOfLines={1} style={styles.wheelFieldHelper}>{helper}</Text> : null}
-        </View>
-        <View style={styles.wheelFieldIcon}>
-          <Ionicons color={colors.cyanDark} name="chevron-expand-outline" size={19} />
-        </View>
-      </Pressable>
-    </View>
-  )
-}
-
-function SelectionWheelModal({ onClose, onConfirm, options = [], title = 'Seleziona', value = '', visible = false }) {
-  const scrollRef = useRef(null)
-  const [pendingValue, setPendingValue] = useState(value)
-
-  useEffect(() => {
-    if (!visible) return undefined
-
-    const safeOptions = options.length ? options : [{ id: '', label: 'Nessun dato' }]
-    const selectedIndex = Math.max(0, safeOptions.findIndex((option) => option.id === value))
-    const nextValue = safeOptions[selectedIndex]?.id ?? ''
-    setPendingValue(nextValue)
-
-    const timer = setTimeout(() => {
-      scrollRef.current?.scrollTo({ animated: false, y: selectedIndex * wheelItemHeight })
-    }, 60)
-
-    return () => clearTimeout(timer)
-  }, [options, value, visible])
-
-  if (!visible) return null
-
-  const safeOptions = options.length ? options : [{ id: '', label: 'Nessun dato' }]
-
-  function moveToIndex(index, animated = true) {
-    const nextIndex = Math.max(0, Math.min(index, safeOptions.length - 1))
-    setPendingValue(safeOptions[nextIndex]?.id ?? '')
-    scrollRef.current?.scrollTo({ animated, y: nextIndex * wheelItemHeight })
-  }
-
-  function handleScrollEnd(event) {
-    const offsetY = event.nativeEvent.contentOffset.y
-    moveToIndex(Math.round(offsetY / wheelItemHeight), false)
-  }
-
-  return (
-    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <View style={styles.wheelBackdrop}>
-        <Pressable onPress={onClose} style={styles.wheelBackdropDismissArea} />
-        <View style={styles.wheelSheet}>
-          <View style={styles.wheelGrip} />
-          <View style={styles.wheelHeader}>
-            <Pressable onPress={onClose} style={styles.wheelHeaderButton}>
-              <Text style={styles.wheelHeaderButtonText}>Annulla</Text>
-            </Pressable>
-            <Text numberOfLines={1} style={styles.wheelTitle}>{title}</Text>
-            <Pressable onPress={() => onConfirm?.(pendingValue)} style={styles.wheelHeaderButton}>
-              <Text style={styles.wheelHeaderConfirmText}>Conferma</Text>
-            </Pressable>
-          </View>
-          <View style={styles.wheelWindow}>
-            <View pointerEvents="none" style={styles.wheelHighlight} />
-            <ScrollView
-              decelerationRate="fast"
-              nestedScrollEnabled
-              onMomentumScrollEnd={handleScrollEnd}
-              ref={scrollRef}
-              showsVerticalScrollIndicator={false}
-              snapToInterval={wheelItemHeight}
-              style={styles.wheelScroller}
-            >
-              <View style={styles.wheelSpacer} />
-              {safeOptions.map((option, index) => {
-                const active = option.id === pendingValue
-                return (
-                  <Pressable key={`${option.id}-${index}`} onPress={() => moveToIndex(index)} style={styles.wheelOption}>
-                    <Text numberOfLines={1} style={[styles.wheelOptionText, active && styles.wheelOptionTextActive]}>{option.label}</Text>
-                    {option.subtitle ? (
-                      <Text numberOfLines={1} style={[styles.wheelOptionSubtitle, active && styles.wheelOptionSubtitleActive]}>
-                        {option.subtitle}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                )
-              })}
-              <View style={styles.wheelSpacer} />
-            </ScrollView>
-          </View>
-        </View>
-      </View>
-    </Modal>
   )
 }
 
@@ -784,36 +683,6 @@ function FaultRepairModal({ fault, language = 'it', onClose, onSave, vehicles = 
   )
 }
 
-function CreateTypeSelector({ activeForm, onSelect }) {
-  const activeIndex = Math.max(0, createFormOptions.findIndex((option) => option.id === activeForm))
-  const activeOption = createFormOptions[activeIndex] ?? createFormOptions[0]
-
-  function move(direction) {
-    const nextIndex = (activeIndex + direction + createFormOptions.length) % createFormOptions.length
-    onSelect(createFormOptions[nextIndex].id)
-  }
-
-  return (
-    <View style={styles.createTypePanel}>
-      <Text style={styles.createTypeLabel}>Cosa vuoi aggiungere</Text>
-      <View style={styles.createTypePicker}>
-        <Pressable accessibilityLabel="Tipo precedente" onPress={() => move(-1)} style={styles.createTypeArrow}>
-          <Ionicons color={colors.ink} name="chevron-back" size={20} />
-        </Pressable>
-        <View style={styles.createTypeSelected}>
-          <View style={styles.createTypeIcon}>
-            <Ionicons color={colors.cyanDark} name={activeOption.icon} size={20} />
-          </View>
-          <Text numberOfLines={1} style={styles.createTypeSelectedText}>{activeOption.label}</Text>
-        </View>
-        <Pressable accessibilityLabel="Tipo successivo" onPress={() => move(1)} style={styles.createTypeArrow}>
-          <Ionicons color={colors.ink} name="chevron-forward" size={20} />
-        </Pressable>
-      </View>
-    </View>
-  )
-}
-
 export function CompanyManagementScreen({
   context,
   initialSection = 'drivers',
@@ -1010,6 +879,24 @@ export function CompanyManagementScreen({
     if (deadlineForm.scope === 'asset') return warehouseAssets
     return []
   }, [activeVehicles, allPeople, deadlineForm.scope, drivers, warehouseAssets])
+  const deadlineAssigneeOptions = useMemo(
+    () => deadlineAssignees.map((item) => ({
+      id: item.id,
+      label: deadlineForm.scope === 'driver'
+        ? item.name
+        : deadlineForm.scope === 'vehicle'
+          ? item.plate
+          : deadlineForm.scope === 'asset'
+            ? item.code
+            : item.name,
+      subtitle: deadlineForm.scope === 'vehicle'
+        ? item.model || item.fleetType || ''
+        : deadlineForm.scope === 'asset'
+          ? item.model || item.location || ''
+          : item.phone || item.jobTitle || '',
+    })),
+    [deadlineAssignees, deadlineForm.scope],
+  )
   const deadlinesToWork = useMemo(
     () => sortByDueDate(deadlines.filter(isComplianceActionRequired)),
     [deadlines],
@@ -1214,6 +1101,14 @@ export function CompanyManagementScreen({
         totalCents: archiveCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0),
       }
     }), [allCostRows, checks, deadlines, faults, language])
+  const monthlyArchiveOptions = useMemo(
+    () => monthlyArchiveRows.map((row) => ({
+      id: row.key,
+      label: row.label,
+      subtitle: `${formatMoneyCents(row.totalCents, defaultCurrency)} · ${row.costCount} costi`,
+    })),
+    [defaultCurrency, monthlyArchiveRows],
+  )
 
   useEffect(() => {
     if (initialSection) {
@@ -1779,7 +1674,20 @@ export function CompanyManagementScreen({
         </View>
       ) : null}
 
-      {mode === 'create' ? <CreateTypeSelector activeForm={activeForm} onSelect={setActiveForm} /> : null}
+      {mode === 'create' ? (
+        <View style={styles.createTypePanel}>
+          <WheelPickerField
+            label="Cosa vuoi aggiungere"
+            onPress={() => openWheelPicker({
+              onSelect: setActiveForm,
+              options: createFormOptions,
+              title: 'Cosa vuoi aggiungere',
+              value: activeForm,
+            })}
+            value={getWheelOptionLabel(createFormOptions, activeForm)}
+          />
+        </View>
+      ) : null}
 
       {mode === 'create' && activeForm === 'driver' ? (
         <Panel
@@ -1810,28 +1718,26 @@ export function CompanyManagementScreen({
           title="Aggiungi persona"
         >
           <TextField label="Nome e cognome" onChangeText={(value) => updatePersonForm('name', value)} placeholder="Paola Rossi" value={personForm.name} />
-          <Text style={styles.label}>Reparto</Text>
-          <View style={styles.chipGrid}>
-            {departmentOptions.map((item) => (
-              <Chip
-                active={personForm.department === item.id}
-                key={item.id}
-                label={item.label}
-                onPress={() => updatePersonForm('department', item.id)}
-              />
-            ))}
-          </View>
-          <Text style={styles.label}>Ruolo</Text>
-          <View style={styles.chipGrid}>
-            {(personTypeOptions[personForm.department] ?? []).map((item) => (
-              <Chip
-                active={personForm.personType === item.id}
-                key={item.id}
-                label={item.label}
-                onPress={() => updatePersonForm('personType', item.id)}
-              />
-            ))}
-          </View>
+          <WheelPickerField
+            label="Reparto"
+            onPress={() => openWheelPicker({
+              onSelect: (value) => updatePersonForm('department', value),
+              options: departmentOptions,
+              title: 'Reparto',
+              value: personForm.department,
+            })}
+            value={getWheelOptionLabel(departmentOptions, personForm.department)}
+          />
+          <WheelPickerField
+            label="Ruolo"
+            onPress={() => openWheelPicker({
+              onSelect: (value) => updatePersonForm('personType', value),
+              options: personTypeOptions[personForm.department] ?? [],
+              title: 'Ruolo persona',
+              value: personForm.personType,
+            })}
+            value={getWheelOptionLabel(personTypeOptions[personForm.department] ?? [], personForm.personType)}
+          />
           <TextField label="Mansione libera" onChangeText={(value) => updatePersonForm('jobTitle', value)} placeholder="Es. ufficio traffico, carrellista..." value={personForm.jobTitle} />
           <TextField label="Telefono" keyboardType="phone-pad" onChangeText={(value) => updatePersonForm('phone', value)} placeholder="+39..." value={personForm.phone} />
           <TextField label="Email" keyboardType="email-address" onChangeText={(value) => updatePersonForm('email', value)} placeholder="nome@azienda.it" value={personForm.email} />
@@ -1854,17 +1760,16 @@ export function CompanyManagementScreen({
           right={formPanelRight}
           title="Aggiungi attrezzatura"
         >
-          <Text style={styles.label}>Tipo</Text>
-          <View style={styles.chipGrid}>
-            {assetTypes.map((item) => (
-              <Chip
-                active={assetForm.assetType === item.id}
-                key={item.id}
-                label={item.label}
-                onPress={() => updateAssetForm('assetType', item.id)}
-              />
-            ))}
-          </View>
+          <WheelPickerField
+            label="Tipo"
+            onPress={() => openWheelPicker({
+              onSelect: (value) => updateAssetForm('assetType', value),
+              options: assetTypes,
+              title: 'Tipo attrezzatura',
+              value: assetForm.assetType,
+            })}
+            value={getWheelOptionLabel(assetTypes, assetForm.assetType)}
+          />
           <TextField label="Codice interno" onChangeText={(value) => updateAssetForm('code', value)} placeholder="MUL-01" value={assetForm.code} />
           <TextField label="Modello" onChangeText={(value) => updateAssetForm('model', value)} placeholder="Still, Toyota..." value={assetForm.model} />
           <TextField label="Matricola" onChangeText={(value) => updateAssetForm('serialNumber', value)} placeholder="Opzionale" value={assetForm.serialNumber} />
@@ -1882,17 +1787,16 @@ export function CompanyManagementScreen({
           title="Aggiungi mezzo"
         >
           <TextField label="Targa" onChangeText={(value) => updateVehicleForm('plate', value)} placeholder="AB123CD" value={vehicleForm.plate} />
-          <Text style={styles.label}>Tipo flotta</Text>
-          <View style={styles.chipGrid}>
-            {fleetTypes.map((item) => (
-              <Chip
-                active={vehicleForm.fleetType === item.id}
-                key={item.id}
-                label={item.label}
-                onPress={() => updateVehicleForm('fleetType', item.id)}
-              />
-            ))}
-          </View>
+          <WheelPickerField
+            label="Tipo flotta"
+            onPress={() => openWheelPicker({
+              onSelect: (value) => updateVehicleForm('fleetType', value),
+              options: fleetTypes,
+              title: 'Tipo flotta',
+              value: vehicleForm.fleetType,
+            })}
+            value={getWheelOptionLabel(fleetTypes, vehicleForm.fleetType)}
+          />
           <TextField label="Modello" onChangeText={(value) => updateVehicleForm('model', value)} placeholder="Iveco, Volvo..." value={vehicleForm.model} />
           <TextField label="Allestimento" onChangeText={(value) => updateVehicleForm('type', value)} placeholder="Centinato, frigo..." value={vehicleForm.type} />
           <TextField label="Km" keyboardType="number-pad" onChangeText={(value) => updateVehicleForm('km', value)} placeholder="0" value={vehicleForm.km} />
@@ -1936,47 +1840,40 @@ export function CompanyManagementScreen({
           title="Aggiungi scadenza"
         >
           <TextField label="Tipo scadenza" onChangeText={(value) => updateDeadlineForm('type', value)} placeholder="Revisione, assicurazione, CQC..." value={deadlineForm.type} />
-          <Text style={styles.label}>Categoria</Text>
-          <View style={styles.chipGrid}>
-            {currentScopes.map((item) => (
-              <Chip
-                active={deadlineForm.scope === item.id}
-                key={item.id}
-                label={item.label}
-                onPress={() => setDeadlineForm((currentForm) => ({ ...currentForm, assigneeId: '', scope: item.id }))}
-              />
-            ))}
-          </View>
+          <WheelPickerField
+            label="Categoria"
+            onPress={() => openWheelPicker({
+              onSelect: (value) => setDeadlineForm((currentForm) => ({ ...currentForm, assigneeId: '', scope: value })),
+              options: currentScopes,
+              title: 'Categoria scadenza',
+              value: deadlineForm.scope,
+            })}
+            value={getWheelOptionLabel(currentScopes, deadlineForm.scope)}
+          />
           {deadlineForm.scope !== 'company' ? (
             <>
-              <Text style={styles.label}>Soggetto</Text>
-              <View style={styles.selectorList}>
-                {deadlineAssignees.map((item) => (
-                  <Chip
-                    active={deadlineForm.assigneeId === item.id}
-                    key={item.id}
-                    label={deadlineForm.scope === 'driver'
-                      ? item.name
-                      : deadlineForm.scope === 'vehicle'
-                        ? item.plate
-                        : deadlineForm.scope === 'asset'
-                          ? item.code
-                          : item.name}
-                    onPress={() => updateDeadlineForm('assigneeId', item.id)}
-                  />
-                ))}
-                {!deadlineAssignees.length ? (
-                  <Text style={styles.emptyText}>
-                    Aggiungi prima {deadlineForm.scope === 'driver'
-                      ? 'un autista'
-                      : deadlineForm.scope === 'vehicle'
-                        ? 'un mezzo'
-                        : deadlineForm.scope === 'asset'
-                          ? "un'attrezzatura"
-                          : 'una persona'}.
-                  </Text>
-                ) : null}
-              </View>
+              {deadlineAssigneeOptions.length ? (
+                <WheelPickerField
+                  label="Soggetto"
+                  onPress={() => openWheelPicker({
+                    onSelect: (value) => updateDeadlineForm('assigneeId', value),
+                    options: deadlineAssigneeOptions,
+                    title: 'Soggetto scadenza',
+                    value: deadlineForm.assigneeId,
+                  })}
+                  value={getWheelOptionLabel(deadlineAssigneeOptions, deadlineForm.assigneeId)}
+                />
+              ) : (
+                <Text style={styles.emptyText}>
+                  Aggiungi prima {deadlineForm.scope === 'driver'
+                    ? 'un autista'
+                    : deadlineForm.scope === 'vehicle'
+                      ? 'un mezzo'
+                      : deadlineForm.scope === 'asset'
+                        ? "un'attrezzatura"
+                        : 'una persona'}.
+                </Text>
+              )}
             </>
           ) : null}
           <DateField label="Data scadenza" language={language} onChange={(value) => updateDeadlineForm('dueDate', value)} value={deadlineForm.dueDate} />
@@ -1994,17 +1891,16 @@ export function CompanyManagementScreen({
 
       {mode === 'archive' ? (
         <Panel kicker="Archivio" title="Dati azienda">
-          <View style={styles.archiveTabs}>
-            <Chip active={activeList === 'people'} label="Persone" onPress={() => setActiveList('people')} />
-            <Chip active={activeList === 'office'} label="Ufficio" onPress={() => setActiveList('office')} />
-            <Chip active={activeList === 'warehouse'} label="Magazzino" onPress={() => setActiveList('warehouse')} />
-            <Chip active={activeList === 'drivers'} label="Autisti" onPress={() => setActiveList('drivers')} />
-            <Chip active={activeList === 'vehicles'} label="Flotta" onPress={() => setActiveList('vehicles')} />
-            <Chip active={activeList === 'faults'} label="Guasti" onPress={() => setActiveList('faults')} />
-            <Chip active={activeList === 'checks'} label="Check" onPress={() => setActiveList('checks')} />
-            <Chip active={activeList === 'deadlines'} label="Scadenze" onPress={() => setActiveList('deadlines')} />
-            <Chip active={activeList === 'costs'} label="Centro costi" onPress={() => setActiveList('costs')} />
-          </View>
+          <WheelPickerField
+            label="Sezione archivio"
+            onPress={() => openWheelPicker({
+              onSelect: setActiveList,
+              options: archiveListOptions,
+              title: 'Sezione archivio',
+              value: activeList,
+            })}
+            value={getWheelOptionLabel(archiveListOptions, activeList)}
+          />
 
         {activeList === 'people' ? (
           <View style={styles.archiveList}>
@@ -2247,7 +2143,7 @@ export function CompanyManagementScreen({
                   title: 'Categoria spesa',
                   value: costForm.category,
                 })}
-                value={getOptionLabel(costCategoryOptions, costForm.category)}
+                value={getWheelOptionLabel(costCategoryOptions, costForm.category)}
               />
               {costForm.category === 'fine' ? (
                 <>
@@ -2259,7 +2155,7 @@ export function CompanyManagementScreen({
                       title: 'Autista responsabile',
                       value: costForm.driverId,
                     })}
-                    value={getOptionLabel(costDriverOptions, costForm.driverId)}
+                    value={getWheelOptionLabel(costDriverOptions, costForm.driverId)}
                   />
                   <WheelPickerField
                     label="Targa collegata"
@@ -2269,7 +2165,7 @@ export function CompanyManagementScreen({
                       title: 'Targa collegata',
                       value: costForm.vehicleId,
                     })}
-                    value={getOptionLabel(costVehicleOptions, costForm.vehicleId)}
+                    value={getWheelOptionLabel(costVehicleOptions, costForm.vehicleId)}
                   />
                 </>
               ) : (
@@ -2282,7 +2178,7 @@ export function CompanyManagementScreen({
                       title: 'Collega spesa a',
                       value: costForm.targetType,
                     })}
-                    value={getOptionLabel(costTargetTypeOptions, costForm.targetType)}
+                    value={getWheelOptionLabel(costTargetTypeOptions, costForm.targetType)}
                   />
                   {costForm.targetType === 'vehicle' ? (
                     <WheelPickerField
@@ -2293,7 +2189,7 @@ export function CompanyManagementScreen({
                         title: 'Scegli targa',
                         value: costForm.vehicleId,
                       })}
-                      value={getOptionLabel(costVehicleOptions, costForm.vehicleId)}
+                      value={getWheelOptionLabel(costVehicleOptions, costForm.vehicleId)}
                     />
                   ) : null}
                   {costForm.targetType === 'asset' ? (
@@ -2305,7 +2201,7 @@ export function CompanyManagementScreen({
                         title: 'Scegli attrezzatura',
                         value: costForm.assetId,
                       })}
-                      value={getOptionLabel(costAssetOptions, costForm.assetId)}
+                      value={getWheelOptionLabel(costAssetOptions, costForm.assetId)}
                     />
                   ) : null}
                   {costForm.targetType === 'driver' ? (
@@ -2317,7 +2213,7 @@ export function CompanyManagementScreen({
                         title: 'Scegli autista',
                         value: costForm.driverId,
                       })}
-                      value={getOptionLabel(costDriverOptions, costForm.driverId)}
+                      value={getWheelOptionLabel(costDriverOptions, costForm.driverId)}
                     />
                   ) : null}
                 </>
@@ -2341,7 +2237,7 @@ export function CompanyManagementScreen({
                   title: 'Periodo report',
                   value: costPeriod,
                 })}
-                value={getOptionLabel(costPeriodOptions, costPeriod)}
+                value={getWheelOptionLabel(costPeriodOptions, costPeriod)}
               />
               <WheelPickerField
                 label="Filtro report"
@@ -2351,7 +2247,7 @@ export function CompanyManagementScreen({
                   title: 'Filtro report',
                   value: costTargetFilter,
                 })}
-                value={getOptionLabel(costReportFilterOptions, costTargetFilter)}
+                value={getWheelOptionLabel(costReportFilterOptions, costTargetFilter)}
               />
               <Text style={styles.costTotal}>{formatMoneyCents(repairCostTotalCents, defaultCurrency)}</Text>
               <View style={styles.costMetricRow}>
@@ -2389,26 +2285,16 @@ export function CompanyManagementScreen({
                   </View>
                   <Ionicons color={colors.cyanDark} name="document-text-outline" size={22} />
                 </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthlyArchiveScroller}>
-                  <View style={styles.monthlyArchiveRow}>
-                    {monthlyArchiveRows.map((row) => (
-                      <Pressable
-                        key={row.key}
-                        onPress={() => setSelectedArchiveMonthKey(row.key)}
-                        style={[
-                          styles.monthlyArchiveChip,
-                          row.key === selectedArchiveMonthKey ? styles.monthlyArchiveChipActive : null,
-                        ]}
-                      >
-                        <Text numberOfLines={1} style={styles.monthlyArchiveChipTitle}>{row.label}</Text>
-                        <Text style={styles.monthlyArchiveChipValue}>{formatMoneyCents(row.totalCents, defaultCurrency)}</Text>
-                        <Text numberOfLines={2} style={styles.monthlyArchiveChipMeta}>
-                          {row.costCount} costi · {row.faultCount} guasti · {row.criticalCheckCount} critici · {row.deadlineCount} scad.
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
+                <WheelPickerField
+                  label="Mese archivio"
+                  onPress={() => openWheelPicker({
+                    onSelect: setSelectedArchiveMonthKey,
+                    options: monthlyArchiveOptions,
+                    title: 'Mese report',
+                    value: selectedArchiveMonthKey,
+                  })}
+                  value={getWheelOptionLabel(monthlyArchiveOptions, selectedArchiveMonthKey, monthlyRange.label)}
+                />
                 <View style={styles.monthlyPremiumGrid}>
                   <View style={styles.monthlyPremiumMetric}>
                     <Text style={styles.summaryLabel}>Costi mese</Text>
@@ -2644,148 +2530,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 10,
-  },
-  wheelBackdrop: {
-    backgroundColor: 'rgba(2, 6, 23, 0.48)',
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  wheelBackdropDismissArea: {
-    flex: 1,
-  },
-  wheelField: {
-    marginBottom: 10,
-  },
-  wheelFieldButton: {
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderColor: '#a5f3fc',
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    minHeight: 54,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  wheelFieldCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  wheelFieldHelper: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  wheelFieldIcon: {
-    alignItems: 'center',
-    backgroundColor: '#ecfeff',
-    borderRadius: 14,
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  wheelFieldValue: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  wheelGrip: {
-    alignSelf: 'center',
-    backgroundColor: '#cbd5e1',
-    borderRadius: 999,
-    height: 5,
-    marginBottom: 12,
-    width: 44,
-  },
-  wheelHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  wheelHeaderButton: {
-    alignItems: 'center',
-    minHeight: 38,
-    justifyContent: 'center',
-    minWidth: 72,
-  },
-  wheelHeaderButtonText: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  wheelHeaderConfirmText: {
-    color: colors.cyanDark,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  wheelHighlight: {
-    backgroundColor: '#ecfeff',
-    borderColor: '#67e8f9',
-    borderRadius: 18,
-    borderWidth: 1,
-    height: wheelItemHeight,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: wheelItemHeight * 2,
-  },
-  wheelOption: {
-    alignItems: 'center',
-    height: wheelItemHeight,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  wheelOptionSubtitle: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  wheelOptionSubtitleActive: {
-    color: colors.cyanDark,
-  },
-  wheelOptionText: {
-    color: '#64748b',
-    fontSize: 16,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  wheelOptionTextActive: {
-    color: colors.ink,
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  wheelScroller: {
-    zIndex: 1,
-  },
-  wheelSheet: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    elevation: 24,
-    maxHeight: '76%',
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    zIndex: 2,
-  },
-  wheelSpacer: {
-    height: wheelItemHeight * 2,
-  },
-  wheelTitle: {
-    color: colors.ink,
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  wheelWindow: {
-    height: wheelItemHeight * 5,
-    marginTop: 12,
-    overflow: 'hidden',
   },
   costEntryIntro: {
     backgroundColor: '#ffffff',

@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { getWheelOptionLabel, SelectionWheelModal, WheelPickerField } from '../components/WheelPicker'
 import { t } from '../i18n/native'
 import { colors, layout } from '../theme'
 
@@ -35,33 +36,11 @@ function ToggleRow({ label, onValueChange, value }) {
   )
 }
 
-function VehicleSelector({ emptyLabel, onSelect, selectedId, vehicles }) {
-  if (!vehicles.length) {
-    return <Text style={styles.helper}>{emptyLabel}</Text>
-  }
-
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectorScroll}>
-      <View style={styles.selectorRow}>
-        {vehicles.map((vehicle) => {
-          const selected = vehicle.id === selectedId
-          return (
-            <Pressable
-              key={vehicle.id}
-              onPress={() => onSelect(vehicle.id)}
-              style={[styles.vehicleChip, selected && styles.vehicleChipActive]}
-            >
-              <Text style={[styles.vehiclePlate, selected && styles.vehiclePlateActive]}>{vehicle.plate}</Text>
-              <Text style={[styles.vehicleType, selected && styles.vehicleTypeActive]}>
-                {vehicle.fleetType || vehicle.type || 'Mezzo'}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </View>
-    </ScrollView>
-  )
-}
+const severityOptions = [
+  { id: 'low', label: 'Bassa' },
+  { id: 'medium', label: 'Media' },
+  { id: 'high', label: 'Alta' },
+]
 
 export function OperationsScreen({
   checks = [],
@@ -76,6 +55,14 @@ export function OperationsScreen({
   const driveableVehicles = vehicles.filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
   const trailers = vehicles.filter((vehicle) => vehicle.fleetType === 'semirimorchio')
   const selectedVehicle = driveableVehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? null
+  const trailerOptions = [
+    { id: '', label: 'Nessun semirimorchio', subtitle: 'Non agganciato o non indicato' },
+    ...trailers.map((vehicle) => ({
+      id: vehicle.id,
+      label: vehicle.plate,
+      subtitle: vehicle.model || vehicle.type || 'Semirimorchio',
+    })),
+  ]
   const [checkForm, setCheckForm] = useState({
     documentsOnBoard: true,
     lightsOk: true,
@@ -95,6 +82,7 @@ export function OperationsScreen({
   })
   const [isSendingCheck, setIsSendingCheck] = useState(false)
   const [isSendingFault, setIsSendingFault] = useState(false)
+  const [wheelPicker, setWheelPicker] = useState(null)
 
   useEffect(() => {
     setCheckForm((currentForm) => ({
@@ -191,12 +179,15 @@ export function OperationsScreen({
           <Text style={styles.selectedVehiclePlate}>{selectedVehicle?.plate ?? 'Non selezionato'}</Text>
           <Text style={styles.selectedVehicleMeta}>{selectedVehicle?.model || selectedVehicle?.fleetType || 'Mezzo flotta'}</Text>
         </View>
-        <Text style={styles.sectionLabel}>Semirimorchio opzionale</Text>
-        <VehicleSelector
-          emptyLabel="Nessun semirimorchio in flotta."
-          onSelect={(semitrailerId) => setCheckForm((currentForm) => ({ ...currentForm, semitrailerId }))}
-          selectedId={checkForm.semitrailerId}
-          vehicles={trailers}
+        <WheelPickerField
+          label="Semirimorchio opzionale"
+          onPress={() => setWheelPicker({
+            onSelect: (semitrailerId) => setCheckForm((currentForm) => ({ ...currentForm, semitrailerId })),
+            options: trailerOptions,
+            title: 'Semirimorchio check',
+            value: checkForm.semitrailerId,
+          })}
+          value={getWheelOptionLabel(trailerOptions, checkForm.semitrailerId)}
         />
         <ToggleRow
           label="Luci ok"
@@ -238,12 +229,15 @@ export function OperationsScreen({
           <Text style={styles.selectedVehiclePlate}>{selectedVehicle?.plate ?? 'Non selezionato'}</Text>
           <Text style={styles.selectedVehicleMeta}>{selectedVehicle?.model || selectedVehicle?.fleetType || 'Mezzo flotta'}</Text>
         </View>
-        <Text style={styles.sectionLabel}>Semirimorchio agganciato</Text>
-        <VehicleSelector
-          emptyLabel="Nessun semirimorchio in flotta."
-          onSelect={(semitrailerId) => setFaultForm((currentForm) => ({ ...currentForm, semitrailerId }))}
-          selectedId={faultForm.semitrailerId}
-          vehicles={trailers}
+        <WheelPickerField
+          label="Semirimorchio agganciato"
+          onPress={() => setWheelPicker({
+            onSelect: (semitrailerId) => setFaultForm((currentForm) => ({ ...currentForm, semitrailerId })),
+            options: trailerOptions,
+            title: 'Semirimorchio guasto',
+            value: faultForm.semitrailerId,
+          })}
+          value={getWheelOptionLabel(trailerOptions, faultForm.semitrailerId)}
         />
         <TextInput
           onChangeText={(value) => setFaultForm((currentForm) => ({ ...currentForm, title: value }))}
@@ -260,19 +254,16 @@ export function OperationsScreen({
           style={[styles.input, styles.textArea]}
           value={faultForm.description}
         />
-        <View style={styles.severityRow}>
-          {['low', 'medium', 'high'].map((severity) => (
-            <Pressable
-              key={severity}
-              onPress={() => setFaultForm((currentForm) => ({ ...currentForm, severity }))}
-              style={[styles.severityButton, faultForm.severity === severity && styles.severityButtonActive]}
-            >
-              <Text style={[styles.severityText, faultForm.severity === severity && styles.severityTextActive]}>
-                {severity === 'low' ? 'Bassa' : severity === 'high' ? 'Alta' : 'Media'}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <WheelPickerField
+          label="Gravità"
+          onPress={() => setWheelPicker({
+            onSelect: (severity) => setFaultForm((currentForm) => ({ ...currentForm, severity })),
+            options: severityOptions,
+            title: 'Gravità guasto',
+            value: faultForm.severity,
+          })}
+          value={getWheelOptionLabel(severityOptions, faultForm.severity)}
+        />
         <Text style={styles.sectionLabel}>Foto guasto</Text>
         <View style={styles.photoActions}>
           <Pressable onPress={() => pickFaultPhotoFrom('camera')} style={styles.photoButton}>
@@ -290,6 +281,17 @@ export function OperationsScreen({
         <Text style={styles.helper}>Check inviati: {checks.length}</Text>
         <Text style={styles.helper}>Guasti segnalati: {faults.length}</Text>
       </Panel>
+      <SelectionWheelModal
+        onClose={() => setWheelPicker(null)}
+        onConfirm={(value) => {
+          wheelPicker?.onSelect?.(value)
+          setWheelPicker(null)
+        }}
+        options={wheelPicker?.options ?? []}
+        title={wheelPicker?.title ?? 'Seleziona'}
+        value={wheelPicker?.value ?? ''}
+        visible={Boolean(wheelPicker)}
+      />
     </ScrollView>
   )
 }

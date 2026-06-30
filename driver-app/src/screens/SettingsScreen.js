@@ -1,6 +1,8 @@
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { useState } from 'react'
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { getWheelOptionLabel, SelectionWheelModal, WheelPickerField } from '../components/WheelPicker'
 import { t } from '../i18n/native'
 import { colors, layout } from '../theme'
 
@@ -28,6 +30,8 @@ export function SettingsScreen({
   onResetChatBadge,
   onSignOut,
 }) {
+  const [wheelPicker, setWheelPicker] = useState(null)
+
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <Panel kicker="App" title={t(language, 'appSettings')}>
@@ -39,20 +43,17 @@ export function SettingsScreen({
       </Panel>
 
       <Panel kicker={t(language, 'language')} title={t(language, 'languageApp')}>
-        <View style={styles.languageGrid}>
-          {languages.map((item) => {
-            const selected = item.id === language
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => onLanguageChange?.(item.id)}
-                style={[styles.languageButton, selected && styles.languageButtonActive]}
-              >
-                <Text style={[styles.languageText, selected && styles.languageTextActive]}>{item.label}</Text>
-              </Pressable>
-            )
+        <WheelPickerField
+          helper="Scegli la lingua dell'app"
+          label={t(language, 'language')}
+          onPress={() => setWheelPicker({
+            onSelect: (nextLanguage) => onLanguageChange?.(nextLanguage),
+            options: languages,
+            title: t(language, 'languageApp'),
+            value: language,
           })}
-        </View>
+          value={getWheelOptionLabel(languages, language)}
+        />
       </Panel>
 
       <Panel kicker="Telefono" title="Notifiche app">
@@ -105,6 +106,17 @@ export function SettingsScreen({
         <View style={styles.buttonGap} />
         <PrimaryButton onPress={onSignOut} title={t(language, 'signOut')} />
       </Panel>
+      <SelectionWheelModal
+        onClose={() => setWheelPicker(null)}
+        onConfirm={(value) => {
+          wheelPicker?.onSelect?.(value)
+          setWheelPicker(null)
+        }}
+        options={wheelPicker?.options ?? []}
+        title={wheelPicker?.title ?? 'Seleziona'}
+        value={wheelPicker?.value ?? ''}
+        visible={Boolean(wheelPicker)}
+      />
     </ScrollView>
   )
 }

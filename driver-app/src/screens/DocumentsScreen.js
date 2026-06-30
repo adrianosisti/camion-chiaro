@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { DateField } from '../components/DateField'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { getWheelOptionLabel, SelectionWheelModal, WheelPickerField } from '../components/WheelPicker'
 import { getLocale, t } from '../i18n/native'
 import { createDriverDocumentSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
@@ -19,6 +20,8 @@ const documentPresets = [
   'Carta identita',
   'Permesso di soggiorno',
 ]
+
+const documentPresetOptions = documentPresets.map((preset) => ({ id: preset, label: preset }))
 
 function formatDocumentDate(value, language) {
   if (!value) return t(language, 'noDeadline')
@@ -414,6 +417,7 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
   const [expiresAt, setExpiresAt] = useState('')
   const [renewRequestDocumentId, setRenewRequestDocumentId] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [wheelPicker, setWheelPicker] = useState(null)
   const latestDocuments = getLatestDocumentsByType(documents)
   const sortedDocuments = latestDocuments
     .slice()
@@ -479,20 +483,20 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
       ) : null}
 
       <Panel kicker="Nuovo" title={t(language, 'newDocument')}>
-        <View style={styles.presetGrid}>
-          {documentPresets.map((preset) => (
-            <Pressable
-              key={preset}
-              onPress={() => setDocumentType(preset)}
-              style={[styles.presetChip, documentType === preset && styles.presetChipActive]}
-            >
-              <Text style={[styles.presetText, documentType === preset && styles.presetTextActive]}>{preset}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <WheelPickerField
+          helper="Scegli un tipo rapido oppure scrivilo sotto"
+          label="Tipo rapido"
+          onPress={() => setWheelPicker({
+            onSelect: setDocumentType,
+            options: documentPresetOptions,
+            title: 'Tipo documento',
+            value: documentType,
+          })}
+          value={getWheelOptionLabel(documentPresetOptions, documentType, documentType || 'Scegli tipo')}
+        />
         <TextInput
           onChangeText={setDocumentType}
-          placeholder="Tipo documento"
+          placeholder="Tipo documento personalizzato"
           placeholderTextColor="#94a3b8"
           style={styles.input}
           value={documentType}
@@ -530,6 +534,17 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
       {latestDocuments.length === 0 ? (
         <Text style={styles.emptyText}>Nessun documento visibile al momento.</Text>
       ) : null}
+      <SelectionWheelModal
+        onClose={() => setWheelPicker(null)}
+        onConfirm={(value) => {
+          wheelPicker?.onSelect?.(value)
+          setWheelPicker(null)
+        }}
+        options={wheelPicker?.options ?? []}
+        title={wheelPicker?.title ?? 'Seleziona'}
+        value={wheelPicker?.value ?? ''}
+        visible={Boolean(wheelPicker)}
+      />
     </ScrollView>
   )
 }

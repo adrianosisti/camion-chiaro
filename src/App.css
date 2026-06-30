@@ -93,14 +93,14 @@
 
 .public-hero-logo-title {
   display: block;
-  width: min(800px, 100%);
+  width: min(560px, 100%);
   line-height: 0;
 }
 
 .public-hero-logo-title img {
   display: block;
   width: 100%;
-  max-width: 800px;
+  max-width: 560px;
   height: auto;
 }
 

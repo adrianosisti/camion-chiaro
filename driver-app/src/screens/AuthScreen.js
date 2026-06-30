@@ -124,7 +124,7 @@ export function AuthScreen({ language = 'it', onAuthenticated }) {
 
 const styles = StyleSheet.create({
   brandLogo: {
-    height: 92,
+    height: 72,
     width: '100%',
   },
   brandLogoWrap: {
@@ -132,7 +132,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     justifyContent: 'center',
     marginBottom: 14,
-    width: '96%',
+    maxWidth: 320,
+    width: '84%',
   },
   footerText: {
     color: colors.muted,

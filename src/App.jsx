@@ -12140,6 +12140,20 @@ function getCurrentMonthRange(referenceDate = new Date()) {
   return { end, label, start }
 }
 
+function getMonthArchiveKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function getMonthRangeFromKey(monthKey) {
+  const [year, month] = String(monthKey ?? '').split('-').map((part) => Number(part))
+  if (!year || !month) return getCurrentMonthRange()
+
+  return getCurrentMonthRange(new Date(year, month - 1, 1))
+}
+
 function isDateInRange(value, startDate, endDate) {
   if (!value) return false
 
@@ -12235,6 +12249,7 @@ function FaultCostReport({
   const [reportType, setReportType] = useState('detail')
   const [isAddingCost, setIsAddingCost] = useState(false)
   const [isSavingCost, setIsSavingCost] = useState(false)
+  const [selectedArchiveMonthKey, setSelectedArchiveMonthKey] = useState(() => getMonthArchiveKey())
   const [costForm, setCostForm] = useState({
     amount: '',
     assetId: '',
@@ -12362,7 +12377,7 @@ function FaultCostReport({
   }))
   const topTargetCost = targetCostRanking[0] ?? null
   const topCategoryCost = categoryCostRanking[0] ?? null
-  const monthlyRange = getCurrentMonthRange()
+  const monthlyRange = getMonthRangeFromKey(selectedArchiveMonthKey)
   const monthlyCostRows = costRows.filter((row) => isDateInRange(row.date, monthlyRange.start, monthlyRange.end))
   const monthlyFaultRows = faultReportRecords.filter((report) => isDateInRange(report.createdAt || report.updatedAt, monthlyRange.start, monthlyRange.end))
   const monthlyOpenFaultRows = faultReportRecords.filter((report) => !isFaultArchived(report))
@@ -12439,9 +12454,37 @@ function FaultCostReport({
           body: monthlyTopTargetCost
             ? `Voce più pesante: ${monthlyTopTargetCost.name}.`
             : 'Nessun centro di costo dominante.',
-        }
+    }
       : null,
   ].filter(Boolean).slice(0, 5)
+  const monthlyArchiveRows = Array.from(new Set([
+    getMonthArchiveKey(),
+    ...costRows.map((row) => getMonthArchiveKey(row.date)),
+    ...faultReportRecords.map((report) => getMonthArchiveKey(report.createdAt || report.updatedAt)),
+    ...vehicleCheckRecords.map((check) => getMonthArchiveKey(check.createdAt || check.updatedAt)),
+    ...complianceItems.map((item) => getMonthArchiveKey(item.dueDate)),
+  ].filter(Boolean)))
+    .sort((first, second) => second.localeCompare(first))
+    .slice(0, 18)
+    .map((monthKey) => {
+      const range = getMonthRangeFromKey(monthKey)
+      const archiveCostRows = costRows.filter((row) => isDateInRange(row.date, range.start, range.end))
+      const archiveCheckRows = vehicleCheckRecords.filter((check) => isDateInRange(check.createdAt || check.updatedAt, range.start, range.end))
+      const archiveCriticalChecks = archiveCheckRows.filter(hasCheckIssues)
+      const archiveDeadlineRows = complianceItems.filter((item) => !isComplianceClosed(item) && isDateInRange(item.dueDate, range.start, range.end))
+      const archiveFaultRows = faultReportRecords.filter((report) => isDateInRange(report.createdAt || report.updatedAt, range.start, range.end))
+
+      return {
+        checkCount: archiveCheckRows.length,
+        costCount: archiveCostRows.length,
+        criticalCheckCount: archiveCriticalChecks.length,
+        deadlineCount: archiveDeadlineRows.length,
+        faultCount: archiveFaultRows.length,
+        key: monthKey,
+        label: range.label,
+        totalCents: archiveCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0),
+      }
+    })
   const selectedTargetLabel = (() => {
     if (targetFilter === 'all') return 'Tutti i costi'
     if (targetFilter === 'company') return 'Azienda generale'
@@ -13168,6 +13211,28 @@ function FaultCostReport({
                 <FileText size={16} />
                 Stampa mese
               </button>
+            </div>
+          </div>
+          <div className="monthly-archive-panel">
+            <div className="monthly-archive-heading">
+              <strong>Archivio report mensili</strong>
+              <span>Ogni mese si compone automaticamente dai dati storici. Scegli il mese e poi stampa o esporta.</span>
+            </div>
+            <div className="monthly-archive-strip" aria-label="Archivio mesi disponibili">
+              {monthlyArchiveRows.map((row) => (
+                <button
+                  className={row.key === selectedArchiveMonthKey ? 'is-active' : ''}
+                  key={row.key}
+                  onClick={() => setSelectedArchiveMonthKey(row.key)}
+                  type="button"
+                >
+                  <strong>{row.label}</strong>
+                  <span>{formatMoneyCents(row.totalCents, defaultCurrency)}</span>
+                  <small>
+                    {row.costCount} costi · {row.faultCount} guasti · {row.criticalCheckCount} check critici · {row.deadlineCount} scadenze
+                  </small>
+                </button>
+              ))}
             </div>
           </div>
           <div className="monthly-report-grid">

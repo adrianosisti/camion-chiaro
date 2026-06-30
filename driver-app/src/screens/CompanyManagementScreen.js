@@ -178,6 +178,20 @@ function getCurrentMonthRange(referenceDate = new Date(), language = 'it') {
   return { end, label, start }
 }
 
+function getMonthArchiveKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value)
+  if (!Number.isFinite(date.getTime())) return ''
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function getMonthRangeFromKey(monthKey, language = 'it') {
+  const [year, month] = String(monthKey ?? '').split('-').map((part) => Number(part))
+  if (!year || !month) return getCurrentMonthRange(new Date(), language)
+
+  return getCurrentMonthRange(new Date(year, month - 1, 1), language)
+}
+
 function isDateInRange(value, startDate, endDate) {
   if (!value) return false
 
@@ -810,6 +824,7 @@ export function CompanyManagementScreen({
   const [isSavingCost, setIsSavingCost] = useState(false)
   const [costPeriod, setCostPeriod] = useState('month')
   const [costTargetFilter, setCostTargetFilter] = useState('all')
+  const [selectedArchiveMonthKey, setSelectedArchiveMonthKey] = useState(() => getMonthArchiveKey())
   const [showAllDeadlines, setShowAllDeadlines] = useState(false)
   const currentScopes = workforceSchemaReady ? workforceScopes : scopes
   const deadlineAssignees = useMemo(() => {
@@ -831,8 +846,7 @@ export function CompanyManagementScreen({
     () => (showAllDeadlines ? allDeadlineRows : deadlinesToWork),
     [allDeadlineRows, deadlinesToWork, showAllDeadlines],
   )
-  const costRows = useMemo(() => {
-    const periodStart = getRepairPeriodStart(costPeriod)
+  const allCostRows = useMemo(() => {
     const faultRows = faults
       .filter((fault) => Number(fault.repairCostCents ?? 0) > 0)
       .map((fault) => ({
@@ -866,7 +880,12 @@ export function CompanyManagementScreen({
         vehicleId: entry.vehicleId ?? '',
       }))
 
-    return [...faultRows, ...entryRows]
+    return [...faultRows, ...entryRows].sort((first, second) => new Date(second.date) - new Date(first.date))
+  }, [costEntries, defaultCurrency, faults])
+  const costRows = useMemo(() => {
+    const periodStart = getRepairPeriodStart(costPeriod)
+
+    return allCostRows
       .filter((row) => {
         if (costTargetFilter === 'all') return true
         if (costTargetFilter === 'company') return !row.vehicleId && !row.assetId && !row.driverId
@@ -883,9 +902,7 @@ export function CompanyManagementScreen({
         const costDate = new Date(row.date)
         return Number.isFinite(costDate.getTime()) && costDate >= periodStart
       })
-      .slice()
-      .sort((first, second) => new Date(second.date) - new Date(first.date))
-  }, [costEntries, costPeriod, costTargetFilter, defaultCurrency, faults])
+  }, [allCostRows, costPeriod, costTargetFilter])
   const repairCostTotalCents = costRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const repairCostAverageCents = costRows.length ? Math.round(repairCostTotalCents / costRows.length) : 0
   const fineCostRows = costRows.filter((row) => row.category === 'fine')
@@ -922,45 +939,11 @@ export function CompanyManagementScreen({
   }))
   const topTargetCost = targetCostRanking[0] ?? null
   const topCategoryCost = categoryCostRanking[0] ?? null
-  const monthlyRange = useMemo(() => getCurrentMonthRange(new Date(), language), [language])
-  const monthlyCostRows = useMemo(() => {
-    const faultRows = faults
-      .filter((fault) => Number(fault.repairCostCents ?? 0) > 0)
-      .map((fault) => ({
-        amountCents: Number(fault.repairCostCents ?? 0),
-        assetId: '',
-        category: 'repair',
-        currency: fault.repairCostCurrency || defaultCurrency,
-        date: getRepairCostDate(fault),
-        description: fault.description ?? '',
-        driverId: fault.driverId ?? '',
-        fault,
-        id: `fault-${fault.id}`,
-        kind: 'fault',
-        title: fault.title,
-        vehicleId: fault.vehicleId,
-      }))
-    const entryRows = costEntries
-      .filter((entry) => Number(entry.amountCents ?? 0) > 0)
-      .map((entry) => ({
-        amountCents: Number(entry.amountCents ?? 0),
-        assetId: entry.assetId ?? '',
-        category: entry.category ?? 'maintenance',
-        currency: entry.currency || defaultCurrency,
-        date: getCostEntryDate(entry),
-        description: entry.notes ?? '',
-        driverId: entry.driverId ?? '',
-        entry,
-        id: `entry-${entry.id}`,
-        kind: 'entry',
-        title: entry.title,
-        vehicleId: entry.vehicleId ?? '',
-      }))
-
-    return [...faultRows, ...entryRows]
-      .filter((row) => isDateInRange(row.date, monthlyRange.start, monthlyRange.end))
-      .sort((first, second) => new Date(second.date) - new Date(first.date))
-  }, [costEntries, defaultCurrency, faults, monthlyRange.end, monthlyRange.start])
+  const monthlyRange = useMemo(() => getMonthRangeFromKey(selectedArchiveMonthKey, language), [language, selectedArchiveMonthKey])
+  const monthlyCostRows = useMemo(
+    () => allCostRows.filter((row) => isDateInRange(row.date, monthlyRange.start, monthlyRange.end)),
+    [allCostRows, monthlyRange.end, monthlyRange.start],
+  )
   const monthlyTotalCents = monthlyCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const monthlyFineRows = monthlyCostRows.filter((row) => row.category === 'fine')
   const monthlyFineTotalCents = monthlyFineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
@@ -1028,6 +1011,33 @@ export function CompanyManagementScreen({
         }
       : null,
   ].filter(Boolean).slice(0, 4)
+  const monthlyArchiveRows = useMemo(() => Array.from(new Set([
+    getMonthArchiveKey(),
+    ...allCostRows.map((row) => getMonthArchiveKey(row.date)),
+    ...faults.map((fault) => getMonthArchiveKey(fault.createdAt || fault.updatedAt)),
+    ...checks.map((check) => getMonthArchiveKey(check.createdAt || check.updatedAt)),
+    ...deadlines.map((item) => getMonthArchiveKey(item.dueDate)),
+  ].filter(Boolean)))
+    .sort((first, second) => second.localeCompare(first))
+    .slice(0, 18)
+    .map((monthKey) => {
+      const range = getMonthRangeFromKey(monthKey, language)
+      const archiveCostRows = allCostRows.filter((row) => isDateInRange(row.date, range.start, range.end))
+      const archiveFaultRows = faults.filter((fault) => isDateInRange(fault.createdAt || fault.updatedAt, range.start, range.end))
+      const archiveCheckRows = checks.filter((check) => isDateInRange(check.createdAt || check.updatedAt, range.start, range.end))
+      const archiveCriticalChecks = archiveCheckRows.filter((check) => getCheckIssues(check).length > 0)
+      const archiveDeadlineRows = deadlines.filter((item) => !['done', 'archived'].includes(item.status) && isDateInRange(item.dueDate, range.start, range.end))
+
+      return {
+        costCount: archiveCostRows.length,
+        criticalCheckCount: archiveCriticalChecks.length,
+        deadlineCount: archiveDeadlineRows.length,
+        faultCount: archiveFaultRows.length,
+        key: monthKey,
+        label: range.label,
+        totalCents: archiveCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0),
+      }
+    }), [allCostRows, checks, deadlines, faults, language])
 
   useEffect(() => {
     if (initialSection) {
@@ -2204,10 +2214,30 @@ export function CompanyManagementScreen({
                 <View style={styles.monthlyPremiumHeader}>
                   <View style={styles.listCopy}>
                     <Text style={styles.monthlyPremiumTitle}>Report mensile Premium</Text>
-                    <Text style={styles.listMeta}>{monthlyRange.label} · riepilogo automatico titolare</Text>
+                    <Text style={styles.listMeta}>{monthlyRange.label} · archivio automatico titolare</Text>
                   </View>
                   <Ionicons color={colors.cyanDark} name="document-text-outline" size={22} />
                 </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthlyArchiveScroller}>
+                  <View style={styles.monthlyArchiveRow}>
+                    {monthlyArchiveRows.map((row) => (
+                      <Pressable
+                        key={row.key}
+                        onPress={() => setSelectedArchiveMonthKey(row.key)}
+                        style={[
+                          styles.monthlyArchiveChip,
+                          row.key === selectedArchiveMonthKey ? styles.monthlyArchiveChipActive : null,
+                        ]}
+                      >
+                        <Text numberOfLines={1} style={styles.monthlyArchiveChipTitle}>{row.label}</Text>
+                        <Text style={styles.monthlyArchiveChipValue}>{formatMoneyCents(row.totalCents, defaultCurrency)}</Text>
+                        <Text numberOfLines={2} style={styles.monthlyArchiveChipMeta}>
+                          {row.costCount} costi · {row.faultCount} guasti · {row.criticalCheckCount} critici · {row.deadlineCount} scad.
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
                 <View style={styles.monthlyPremiumGrid}>
                   <View style={styles.monthlyPremiumMetric}>
                     <Text style={styles.summaryLabel}>Costi mese</Text>
@@ -2518,6 +2548,46 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 12,
     padding: 12,
+  },
+  monthlyArchiveChip: {
+    backgroundColor: colors.white,
+    borderColor: '#d6eef5',
+    borderRadius: 14,
+    borderWidth: 1,
+    minHeight: 86,
+    padding: 10,
+    width: 168,
+  },
+  monthlyArchiveChipActive: {
+    backgroundColor: '#ecfeff',
+    borderColor: colors.cyanDark,
+  },
+  monthlyArchiveChipMeta: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 15,
+    marginTop: 4,
+  },
+  monthlyArchiveChipTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+    textTransform: 'capitalize',
+  },
+  monthlyArchiveChipValue: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  monthlyArchiveRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 2,
+  },
+  monthlyArchiveScroller: {
+    marginHorizontal: -2,
   },
   monthlyPremiumDanger: {
     backgroundColor: '#fff1f2',

@@ -4091,6 +4091,88 @@
   gap: 8px;
 }
 
+.monthly-archive-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #c8edf5;
+  border-radius: 8px;
+  background: #f8fdff;
+  padding: 10px;
+}
+
+.monthly-archive-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.monthly-archive-heading strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.monthly-archive-heading span {
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.monthly-archive-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.monthly-archive-strip button {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid #d6eef5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 10px;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.monthly-archive-strip button:hover,
+.monthly-archive-strip button.is-active {
+  border-color: #0891b2;
+  box-shadow: 0 10px 24px rgba(8, 145, 178, 0.12);
+  transform: translateY(-1px);
+}
+
+.monthly-archive-strip button.is-active {
+  background: #ecfeff;
+}
+
+.monthly-archive-strip strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monthly-archive-strip span {
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.monthly-archive-strip small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
 .monthly-report-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -8355,6 +8437,7 @@
   .public-steps,
   .public-extra-pricing,
   .cost-insight-grid,
+  .monthly-archive-strip,
   .monthly-report-grid,
   .report-active-summary,
   .report-question-grid,
@@ -8731,6 +8814,7 @@
   .reports-kpi-grid,
   .fault-cost-grid,
   .fault-cost-controls,
+  .monthly-archive-strip,
   .monthly-report-grid,
   .report-active-summary,
   .fault-cost-entry-form {
@@ -8739,8 +8823,13 @@
 
   .reports-hero-panel,
   .fault-cost-report-header,
+  .monthly-archive-heading,
   .monthly-report-head {
     display: grid;
+  }
+
+  .monthly-archive-heading span {
+    text-align: left;
   }
 
   .fault-cost-report-actions,

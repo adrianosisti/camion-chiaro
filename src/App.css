@@ -91,6 +91,27 @@
   letter-spacing: 0;
 }
 
+.public-hero-logo-title {
+  display: block;
+  width: min(760px, 100%);
+  line-height: 0;
+}
+
+.public-hero-logo-title img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.public-hero-logo-title span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .public-hero-copy > p:not(.overline) {
   max-width: 720px;
   margin: 0;
@@ -735,6 +756,7 @@
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .language-selector {

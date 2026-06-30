@@ -14,9 +14,9 @@ La direzione scelta arriva dalla **Tavola 1 - Camion e percorso**, combinando qu
 - **Logo orizzontale / scritta Vygo:** riga 1 centrale, camion + strada + scritta Vygo.
 - **Icona secondaria / favicon:** riga 2, quadratino nero con V + strada.
 
-File identici alla scelta: [assets/brand-exact](assets/brand-exact).
+File finali puliti dalla scelta: [assets/brand-render-clean](assets/brand-render-clean).
 
-Motivo: l icona camion su fondo nero richiama subito il mondo trasporto e il logo orizzontale centrale della riga 1 e quello piu riconoscibile per sito e materiali. L icona nera V-strada della riga 2 resta perfetta come simbolo piccolo o favicon.
+Motivo: l icona camion su fondo nero richiama subito il mondo trasporto e il logo orizzontale centrale della riga 1 e quello piu riconoscibile per sito e materiali. L icona V-strada della riga 2 resta perfetta come simbolo piccolo o favicon. I file finali sono puliti dai bordi sporchi del rendering originale.
 
 ## Tavola 1 - Camion e percorso
 

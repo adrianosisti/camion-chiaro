@@ -53,13 +53,13 @@ Elementi scelti:
 - Logo orizzontale / scritta Vygo: riga 1 centrale, camion + strada + scritta Vygo.
 - Icona secondaria / favicon: riga 2, quadratino nero con V + strada.
 
-Usare **solo i file identici** in [assets/brand-exact](assets/brand-exact).
+Usare **solo i file puliti finali** in [assets/brand-render-clean](assets/brand-render-clean).
 
-- App icon principale: [vygo-app-icon-truck-black-1024.png](assets/brand-exact/vygo-app-icon-truck-black-1024.png).
-- Logo orizzontale: [vygo-logo-horizontal-truck-3200.png](assets/brand-exact/vygo-logo-horizontal-truck-3200.png).
-- Icona piccola/favicon: [vygo-small-icon-v-road-black-512.png](assets/brand-exact/vygo-small-icon-v-road-black-512.png).
+- App icon principale: [vygo-app-icon-render-clean-1024.png](assets/brand-render-clean/vygo-app-icon-render-clean-1024.png).
+- Logo orizzontale: [vygo-logo-horizontal-render-raster-clean-1600.png](assets/brand-render-clean/vygo-logo-horizontal-render-raster-clean-1600.png).
+- Icona piccola/favicon: [vygo-small-icon-render-clean-512.png](assets/brand-render-clean/vygo-small-icon-render-clean-512.png).
 
-Il segno deve mantenere esattamente camion, strada e movimento della tavola scelta. Non ridisegnare liberamente: il logo finale vettoriale dovra essere tracciato fedelmente da questi file, senza cambiare stile.
+Il segno deve mantenere camion, strada, V e movimento della tavola scelta. Non ridisegnare liberamente: i file finali derivano dal rendering selezionato e sono stati ripuliti tecnicamente per eliminare cornici e bordi sporchi.
 
 ## Frase breve
 

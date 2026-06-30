@@ -8339,7 +8339,9 @@ function CompanyLicenseGate({
     <main className="license-gate">
       <section className="license-gate-panel license-checkout-panel">
         <div className="license-gate-heading">
-          <div className="brand-mark">CC</div>
+          <div className="brand-mark">
+            <CamionChiaroMark />
+          </div>
           <div>
             <p className="overline">Vygo</p>
             <h1>{companyName}</h1>
@@ -8489,7 +8491,9 @@ function DriverLicenseBlockedScreen({ companyName, onSignOut }) {
   return (
     <main className="license-gate is-driver">
       <section className="license-gate-panel">
-        <div className="brand-mark">CC</div>
+        <div className="brand-mark">
+          <CamionChiaroMark />
+        </div>
         <p className="overline">{companyName}</p>
         <h1>Area autista non disponibile</h1>
         <p>
@@ -8673,7 +8677,10 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
       <section className="public-hero" id="prodotto">
         <div className="public-hero-copy">
           <p className="overline">Move. Manage. Succeed.</p>
-          <h1>Vygo</h1>
+          <h1 className="public-hero-logo-title">
+            <img src="/brand/vygo-logo-horizontal.png" alt="Vygo - Move. Manage. Succeed." />
+            <span>Vygo</span>
+          </h1>
           <p>
             Basta documenti sparsi, scadenze ricordate a memoria e guasti persi in chat. Vygo mette flotta,
             autisti, documenti, notifiche, guasti, chat e costi in un unico posto semplice da usare.

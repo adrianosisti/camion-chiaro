@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +14,8 @@ import { PrimaryButton } from '../components/PrimaryButton'
 import { t } from '../i18n/native'
 import { signInCompany, signInDriver } from '../services/driverApi'
 import { colors, layout } from '../theme'
+
+const vygoLogo = require('../../assets/brand/logo-horizontal.png')
 
 export function AuthScreen({ language = 'it', onAuthenticated }) {
   const [accountType, setAccountType] = useState('driver')
@@ -50,10 +53,9 @@ export function AuthScreen({ language = 'it', onAuthenticated }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.screen}
     >
-      <View style={styles.brandMark}>
-        <Text style={styles.brandInitial}>CC</Text>
+      <View style={styles.brandLogoWrap}>
+        <Image resizeMode="contain" source={vygoLogo} style={styles.brandLogo} />
       </View>
-      <Text style={styles.title}>Vygo</Text>
       <Text style={styles.subtitle}>{isCompany ? t(language, 'companyArea') : t(language, 'driverArea')}</Text>
 
       <View style={styles.form}>
@@ -121,20 +123,16 @@ export function AuthScreen({ language = 'it', onAuthenticated }) {
 }
 
 const styles = StyleSheet.create({
-  brandInitial: {
-    color: colors.ink,
-    fontSize: 18,
-    fontWeight: '900',
+  brandLogo: {
+    height: 92,
+    width: '100%',
   },
-  brandMark: {
+  brandLogoWrap: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: colors.cyan,
-    borderRadius: 20,
-    height: 72,
     justifyContent: 'center',
-    marginBottom: 18,
-    width: 72,
+    marginBottom: 14,
+    width: '96%',
   },
   footerText: {
     color: colors.muted,
@@ -205,12 +203,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     fontWeight: '800',
-    textAlign: 'center',
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: '900',
     textAlign: 'center',
   },
 })

@@ -13,6 +13,16 @@ const storagePlanLimitsBytes = {
   fleet50: 75 * 1024 * 1024 * 1024,
   starter: 10 * 1024 * 1024 * 1024,
 }
+const monthlyPlanAmountsCents = {
+  business: 65000,
+  enterprise: 150000,
+  fleet10: 45000,
+  fleet20: 65000,
+  fleet30: 85000,
+  fleet50: 120000,
+  pro: 45000,
+  starter: 30000,
+}
 
 function jsonResponse(statusCode, body) {
   return {
@@ -107,6 +117,14 @@ function getStorageLimitBytes(plan) {
   return storagePlanLimitsBytes[plan] ?? storagePlanLimitsBytes.starter
 }
 
+function getMonthlyPlanCents(plan) {
+  return monthlyPlanAmountsCents[plan] ?? monthlyPlanAmountsCents.starter
+}
+
+function isPaidInvoice(invoice) {
+  return ['paid', 'succeeded'].includes(invoice.status) || Boolean(invoice.paid_at)
+}
+
 function buildCompanySummary(company, collections) {
   const companyId = company.id
   const drivers = getCompanyRows(collections.drivers, companyId)
@@ -118,6 +136,7 @@ function buildCompanySummary(company, collections) {
   const checks = getCompanyRows(collections.checks, companyId)
   const faults = getCompanyRows(collections.faults, companyId)
   const costs = getCompanyRows(collections.costs, companyId)
+  const invoices = getCompanyRows(collections.invoices, companyId)
   const chatMessages = getCompanyRows(collections.chatMessages, companyId)
   const teamMessages = getCompanyRows(collections.teamMessages, companyId)
   const storageFiles = getCompanyRows(collections.storageFiles, companyId).filter((file) => !file.deleted_at)
@@ -135,6 +154,13 @@ function buildCompanySummary(company, collections) {
   )
   const storageBytes = storageFiles.reduce((total, file) => total + Number(file.size_bytes ?? 0), 0)
   const storageLimitBytes = getStorageLimitBytes(company.billing_plan)
+  const billingStatus = company.billing_status ?? 'active'
+  const monthlyPlanCents = billingStatus === 'active' ? getMonthlyPlanCents(company.billing_plan ?? 'starter') : 0
+  const paidInvoices = invoices.filter(isPaidInvoice)
+  const lifetimeRevenueCents = paidInvoices.reduce((total, invoice) => total + Number(invoice.amount_cents ?? 0), 0)
+  const invoiceMonthCents = paidInvoices
+    .filter((invoice) => isCurrentMonth(invoice.paid_at || invoice.issued_at || invoice.created_at))
+    .reduce((total, invoice) => total + Number(invoice.amount_cents ?? 0), 0)
   const costMonthCents =
     costs
       .filter((entry) => isCurrentMonth(entry.spent_at))
@@ -156,7 +182,6 @@ function buildCompanySummary(company, collections) {
     teamMessages.map((row) => row.created_at),
   )
   const alertCount = openFaults.length + criticalChecks.length + urgentDeadlines.length + expiredDocuments.length
-  const billingStatus = company.billing_status ?? 'active'
   const health =
     billingStatus !== 'active'
       ? 'billing'
@@ -180,7 +205,10 @@ function buildCompanySummary(company, collections) {
     health,
     headquarters: company.headquarters ?? '',
     id: companyId,
+    invoiceMonthCents,
     lastActivityAt: latestActivityAt,
+    lifetimeRevenueCents,
+    monthlyPlanCents,
     name: company.name ?? 'Azienda',
     openFaultCount: openFaults.length,
     peopleCount: people.filter((person) => !isArchivedStatus(person.status)).length,
@@ -279,6 +307,7 @@ export async function handler(event) {
       chatMessages,
       teamMessages,
       storageFiles,
+      invoices,
     ] = await Promise.all([
       safeSelect(serviceClient, 'drivers', 'company_id, status, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'vehicles', 'company_id, status, created_at', issues, { limit: 10000 }),
@@ -292,6 +321,7 @@ export async function handler(event) {
       safeSelect(serviceClient, 'chat_messages', 'company_id, sender_role, read_by_company_at, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'team_chat_messages', 'company_id, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'company_storage_files', 'company_id, size_bytes, category, deleted_at, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'company_invoices', 'company_id, invoice_number, issued_at, paid_at, amount_cents, currency, status, created_at', issues, { limit: 10000 }),
     ])
 
     const collections = {
@@ -303,6 +333,7 @@ export async function handler(event) {
       documents,
       drivers,
       faults,
+      invoices,
       people,
       storageFiles,
       teamMessages,
@@ -317,6 +348,9 @@ export async function handler(event) {
         costMonthCents: totals.costMonthCents + company.costMonthCents,
         driverCount: totals.driverCount + company.driverCount,
         fleetCount: totals.fleetCount + company.fleetCount,
+        invoiceMonthCents: totals.invoiceMonthCents + company.invoiceMonthCents,
+        lifetimeRevenueCents: totals.lifetimeRevenueCents + company.lifetimeRevenueCents,
+        mrrCents: totals.mrrCents + company.monthlyPlanCents,
         storageBytes: totals.storageBytes + company.storageBytes,
       }),
       {
@@ -326,6 +360,9 @@ export async function handler(event) {
         costMonthCents: 0,
         driverCount: 0,
         fleetCount: 0,
+        invoiceMonthCents: 0,
+        lifetimeRevenueCents: 0,
+        mrrCents: 0,
         storageBytes: 0,
       },
     )

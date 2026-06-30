@@ -7994,23 +7994,25 @@ function App() {
         session={session}
         t={t}
       />
-      <main className={activeView === 'dashboard' ? 'workspace is-dashboard-home' : 'workspace'}>
-        <Topbar
-          acknowledgedCheckIds={acknowledgedCheckIds}
-          assetPreviewUrl={getAssetPreviewUrl}
-          driverRecords={driverRecords}
-          faultReportRecords={visibleFaultReportRecords}
-          notificationCount={notificationCount}
-          onAcknowledgeCheck={acknowledgeCheck}
-          onMarkCheckUnread={markCheckUnread}
-          onOpenNotifications={() => openNotifications('inbox')}
-          onUpdateFaultStatus={updateFaultReportStatus}
-          query={query}
-          setQuery={setQuery}
-          t={t}
-          vehicleCheckRecords={vehicleCheckRecords}
-          vehicleRecords={vehicleRecords}
-        />
+      <main className={activeView === 'dashboard' ? 'workspace is-dashboard-home' : activeView === 'admin' ? 'workspace is-admin-workspace' : 'workspace'}>
+        {activeView !== 'admin' ? (
+          <Topbar
+            acknowledgedCheckIds={acknowledgedCheckIds}
+            assetPreviewUrl={getAssetPreviewUrl}
+            driverRecords={driverRecords}
+            faultReportRecords={visibleFaultReportRecords}
+            notificationCount={notificationCount}
+            onAcknowledgeCheck={acknowledgeCheck}
+            onMarkCheckUnread={markCheckUnread}
+            onOpenNotifications={() => openNotifications('inbox')}
+            onUpdateFaultStatus={updateFaultReportStatus}
+            query={query}
+            setQuery={setQuery}
+            t={t}
+            vehicleCheckRecords={vehicleCheckRecords}
+            vehicleRecords={vehicleRecords}
+          />
+        ) : null}
         {activeView === 'admin' ? (
           <AdminWorkspace
             isAdminSession={isAdminSession}
@@ -9471,6 +9473,9 @@ function AdminWorkspace({
     costMonthCents: 0,
     driverCount: 0,
     fleetCount: 0,
+    invoiceMonthCents: 0,
+    lifetimeRevenueCents: 0,
+    mrrCents: 0,
     storageBytes: 0,
   }
   const healthLabels = {
@@ -9563,7 +9568,7 @@ function AdminWorkspace({
       <div className="panel admin-hero-panel">
         <div>
           <h2>Controllo clienti</h2>
-          <span>Console interna per aziende, pagamenti, utilizzo, spazio e criticita operative.</span>
+          <span>Ricavi, aziende attive, utilizzo e criticita operative in una sola schermata.</span>
         </div>
         <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
           <RadioTower size={16} />
@@ -9572,15 +9577,20 @@ function AdminWorkspace({
       </div>
 
       <div className="admin-kpi-grid">
+        <article className="is-money">
+          <Banknote size={20} />
+          <strong>{formatMoneyCents(summary.mrrCents, 'EUR')}</strong>
+          <span>Guadagno mensile stimato</span>
+        </article>
+        <article className="is-money">
+          <BadgeCheck size={20} />
+          <strong>{formatMoneyCents(summary.lifetimeRevenueCents, 'EUR')}</strong>
+          <span>Incassato da sempre</span>
+        </article>
         <article>
           <Building2 size={20} />
           <strong>{summary.companyCount}</strong>
           <span>Aziende</span>
-        </article>
-        <article>
-          <BadgeCheck size={20} />
-          <strong>{summary.activeCompanies}</strong>
-          <span>Attive</span>
         </article>
         <article className={attentionCompanyCount ? 'is-warning' : ''}>
           <AlertTriangle size={20} />
@@ -9594,7 +9604,9 @@ function AdminWorkspace({
         </article>
       </div>
 
-      {statusMessage ? <p className="admin-status-line">{statusMessage}</p> : null}
+      <p className="admin-status-line">
+        {statusMessage || 'Pannello aggiornato.'} · Fatture incassate questo mese: {formatMoneyCents(summary.invoiceMonthCents, 'EUR')} · Aziende attive: {summary.activeCompanies}
+      </p>
 
       <div className="admin-layout">
         <section className="admin-client-panel" aria-label="Clienti Camion Chiaro">
@@ -9629,8 +9641,8 @@ function AdminWorkspace({
                   <th>Cliente</th>
                   <th>Stato</th>
                   <th>Piano</th>
-                  <th>Utenti</th>
-                  <th>Mezzi</th>
+                  <th>Canone</th>
+                  <th>Flotta</th>
                   <th>Alert</th>
                   <th>Spazio</th>
                   <th>Ultima attività</th>
@@ -9654,8 +9666,11 @@ function AdminWorkspace({
                       <strong>{getBillingPlanLabel(company.billingPlan)}</strong>
                       <span>{getBillingStatusLabel(company.billingStatus)}</span>
                     </td>
-                    <td>{company.driverCount + company.peopleCount}</td>
-                    <td>{company.fleetCount}</td>
+                    <td>{formatMoneyCents(company.monthlyPlanCents, 'EUR')}</td>
+                    <td>
+                      <strong>{company.fleetCount}</strong>
+                      <span>{company.driverCount + company.peopleCount} utenti</span>
+                    </td>
                     <td>{company.alertCount}</td>
                     <td>
                       <strong>{company.storageUsagePercent}%</strong>
@@ -9697,8 +9712,16 @@ function AdminWorkspace({
                   <strong>{getBillingStatusLabel(selectedCompany.billingStatus)}</strong>
                 </div>
                 <div>
-                  <span>Costi mese</span>
-                  <strong>{formatMoneyCents(selectedCompany.costMonthCents, 'EUR')}</strong>
+                  <span>Canone mensile</span>
+                  <strong>{formatMoneyCents(selectedCompany.monthlyPlanCents, 'EUR')}</strong>
+                </div>
+                <div>
+                  <span>Incassato storico</span>
+                  <strong>{formatMoneyCents(selectedCompany.lifetimeRevenueCents, 'EUR')}</strong>
+                </div>
+                <div>
+                  <span>Incasso mese</span>
+                  <strong>{formatMoneyCents(selectedCompany.invoiceMonthCents, 'EUR')}</strong>
                 </div>
                 <div>
                   <span>Spazio</span>

@@ -16,6 +16,12 @@ Non e un gestionale pesante. E il pannello che l azienda apre ogni giorno per ca
 
 Meno caos operativo. Piu controllo su flotta, documenti, persone e costi.
 
+## Slogan
+
+Move. Manage. Succeed.
+
+Slogan internazionale, corto e immediato: movimento, gestione e risultato. In italiano resta coerente con la promessa commerciale: muovi la flotta, gestisci l operativita, fai lavorare meglio l azienda.
+
 ## Claim principali
 
 - La flotta sotto controllo.

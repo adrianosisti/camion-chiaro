@@ -20,7 +20,7 @@ L azienda vede in una sola dashboard cosa richiede attenzione. Gli autisti e il 
 
 Ogni segnalazione resta tracciata. Ogni documento resta collegato. Ogni costo puo diventare report.
 
-Vyko. La flotta sotto controllo.
+Vyko. Move. Manage. Succeed.
 
 ### Chiusura video
 
@@ -64,7 +64,7 @@ E il posto dove l operativita quotidiana diventa chiara.
 
 Meno rincorse. Meno dimenticanze. Meno informazioni perse.
 
-Vyko. La flotta sotto controllo.
+Vyko. Move. Manage. Succeed.
 
 ### Call to action
 

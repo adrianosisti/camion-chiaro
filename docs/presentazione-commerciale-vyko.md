@@ -3,7 +3,7 @@
 ## Slide 1 - Titolo
 Vyko
 
-La flotta sotto controllo, ogni giorno.
+Move. Manage. Succeed.
 
 Sottotitolo:
 Scadenze, documenti, autisti, guasti, chat, notifiche e costi in un unico centro operativo per aziende di trasporto e logistica.

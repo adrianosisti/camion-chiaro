@@ -394,7 +394,7 @@ const translations = {
     'auth.registrationSent': 'Registrazione inviata. Controlla la mail per confermare l account.',
     'auth.signinButton': 'Accedi',
     'auth.signupButton': 'Registrati',
-    'brand.tagline': 'Scadenze e notifiche flotta',
+    'brand.tagline': 'Move. Manage. Succeed.',
     'driver.area': 'Area autista',
     'driver.emptyMessage': 'Riprova tra qualche secondo o accedi di nuovo.',
     'driver.emptyTitle': 'Area autista non disponibile',
@@ -576,7 +576,7 @@ const translations = {
     'auth.registrationSent': 'Registration sent. Check your email to confirm the account.',
     'auth.signinButton': 'Sign in',
     'auth.signupButton': 'Register',
-    'brand.tagline': 'Fleet deadlines and alerts',
+    'brand.tagline': 'Move. Manage. Succeed.',
     'driver.area': 'Driver area',
     'driver.emptyMessage': 'Try again in a few seconds or sign in again.',
     'driver.emptyTitle': 'Driver area unavailable',
@@ -758,7 +758,7 @@ const translations = {
     'auth.registrationSent': 'Registro enviado. Revisa el email para confirmar la cuenta.',
     'auth.signinButton': 'Acceder',
     'auth.signupButton': 'Registrarse',
-    'brand.tagline': 'Vencimientos y avisos de flota',
+    'brand.tagline': 'Move. Manage. Succeed.',
     'driver.area': 'Area conductor',
     'driver.emptyMessage': 'Prueba de nuevo en unos segundos o inicia sesion otra vez.',
     'driver.emptyTitle': 'Area conductor no disponible',
@@ -888,7 +888,7 @@ const translations = {
     'auth.registrationSent': 'Inscription envoyee. Controle ton email pour confirmer le compte.',
     'auth.signinButton': 'Se connecter',
     'auth.signupButton': 'S inscrire',
-    'brand.tagline': 'Echeances et alertes flotte',
+    'brand.tagline': 'Move. Manage. Succeed.',
     'driver.area': 'Espace chauffeur',
     'driver.emptyMessage': 'Reessaie dans quelques secondes ou reconnecte-toi.',
     'driver.emptyTitle': 'Espace chauffeur indisponible',
@@ -1018,7 +1018,7 @@ const translations = {
     'auth.registrationSent': 'Registrierung gesendet. E-Mail bestatigen, um das Konto zu aktivieren.',
     'auth.signinButton': 'Einloggen',
     'auth.signupButton': 'Registrieren',
-    'brand.tagline': 'Flottenfristen und Hinweise',
+    'brand.tagline': 'Move. Manage. Succeed.',
     'driver.area': 'Fahrerbereich',
     'driver.emptyMessage': 'In einigen Sekunden erneut versuchen oder neu anmelden.',
     'driver.emptyTitle': 'Fahrerbereich nicht verfugbar',
@@ -3091,7 +3091,7 @@ const regionalTranslations = {
   ro: {
     'auth.companyTab': 'Firma',
     'auth.driverTab': 'Sofer',
-    'brand.tagline': 'Scadente si notificari flota',
+    'brand.tagline': 'Move. Manage. Succeed.',
     'common.add': 'Adauga',
     'common.back': 'Inapoi',
     'common.close': 'Inchide',
@@ -3142,7 +3142,7 @@ const regionalTranslations = {
   pl: {
     'auth.companyTab': 'Firma',
     'auth.driverTab': 'Kierowca',
-    'brand.tagline': 'Terminy i powiadomienia floty',
+    'brand.tagline': 'Move. Manage. Succeed.',
     'common.add': 'Dodaj',
     'common.back': 'Wstecz',
     'common.close': 'Zamknij',
@@ -8672,7 +8672,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
 
       <section className="public-hero" id="prodotto">
         <div className="public-hero-copy">
-          <p className="overline">Centro operativo per trasportatori</p>
+          <p className="overline">Move. Manage. Succeed.</p>
           <h1>Vyko</h1>
           <p>
             Basta documenti sparsi, scadenze ricordate a memoria e guasti persi in chat. Vyko mette flotta,

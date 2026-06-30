@@ -4,7 +4,7 @@
 
 # Vyko
 
-## La flotta sotto controllo.
+## Move. Manage. Succeed.
 
 Scadenze, documenti, guasti, check, chat, costi e report in un unico sistema operativo per aziende di trasporto e logistica.
 
@@ -101,4 +101,4 @@ Vyko non promette di eliminare ogni problema.
 
 Promette una cosa piu concreta: farti vedere prima quello che oggi rischia di restare nascosto.
 
-Vyko. La flotta sotto controllo.
+Vyko. Move. Manage. Succeed.

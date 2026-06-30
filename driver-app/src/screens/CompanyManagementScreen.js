@@ -310,10 +310,10 @@ function RelatedDeadlines({ deadlines, language = 'it' }) {
   )
 }
 
-function Chip({ active, label, onPress }) {
+function Chip({ active, label, onPress, style, textStyle }) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    <Pressable onPress={onPress} style={[styles.chip, style, active && styles.chipActive]}>
+      <Text numberOfLines={2} style={[styles.chipText, textStyle, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
   )
 }
@@ -2050,85 +2050,74 @@ export function CompanyManagementScreen({
               <TextField label="Titolo spesa" onChangeText={(value) => updateCostForm('title', value)} placeholder="Tagliando, gomme, assicurazione..." value={costForm.title} />
               <TextField keyboardType="decimal-pad" label="Importo + IVA" onChangeText={(value) => updateCostForm('amount', value)} placeholder="2000,00" value={costForm.amount} />
               <Text style={styles.costFilterLabel}>Categoria</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                <View style={styles.inlineChipRow}>
-                  {costCategoryOptions.map((option) => (
-                    <Chip
-                      active={costForm.category === option.id}
-                      key={option.id}
-                      label={option.label}
-                      onPress={() => updateCostForm('category', option.id)}
-                    />
-                  ))}
-                </View>
-              </ScrollView>
+              <View style={styles.costChoiceGrid}>
+                {costCategoryOptions.map((option) => (
+                  <Chip
+                    active={costForm.category === option.id}
+                    key={option.id}
+                    label={option.label}
+                    onPress={() => updateCostForm('category', option.id)}
+                    style={styles.costChoiceChip}
+                  />
+                ))}
+              </View>
               {costForm.category === 'fine' ? (
                 <>
                   <Text style={styles.costFilterLabel}>Autista responsabile</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                    <View style={styles.inlineChipRow}>
-                      <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} />
-                      {drivers.map((driver) => (
-                        <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} />
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <View style={styles.costChoiceGrid}>
+                    <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} style={styles.costChoiceChip} />
+                    {drivers.map((driver) => (
+                      <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} style={styles.costChoiceChip} />
+                    ))}
+                  </View>
                   <Text style={styles.costFilterLabel}>Targa collegata</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                    <View style={styles.inlineChipRow}>
-                      <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} />
-                      {vehicles.map((vehicle) => (
-                        <Chip active={costForm.vehicleId === vehicle.id} key={vehicle.id} label={vehicle.plate} onPress={() => updateCostForm('vehicleId', vehicle.id)} />
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <View style={styles.costChoiceGrid}>
+                    <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} style={styles.costChoiceChip} />
+                    {vehicles.map((vehicle) => (
+                      <Chip active={costForm.vehicleId === vehicle.id} key={vehicle.id} label={vehicle.plate} onPress={() => updateCostForm('vehicleId', vehicle.id)} style={styles.costChoiceChip} />
+                    ))}
+                  </View>
                 </>
               ) : (
                 <>
                   <Text style={styles.costFilterLabel}>Collegata a</Text>
-                  <View style={styles.chipGrid}>
-                    <Chip active={costForm.targetType === 'vehicle'} label="Mezzo" onPress={() => updateCostForm('targetType', 'vehicle')} />
-                    <Chip active={costForm.targetType === 'asset'} label="Attrezzatura" onPress={() => updateCostForm('targetType', 'asset')} />
-                    <Chip active={costForm.targetType === 'driver'} label="Autista" onPress={() => updateCostForm('targetType', 'driver')} />
-                    <Chip active={costForm.targetType === 'company'} label="Azienda" onPress={() => updateCostForm('targetType', 'company')} />
+                  <View style={styles.costChoiceGrid}>
+                    <Chip active={costForm.targetType === 'vehicle'} label="Mezzo" onPress={() => updateCostForm('targetType', 'vehicle')} style={styles.costChoiceChip} />
+                    <Chip active={costForm.targetType === 'asset'} label="Attrezzatura" onPress={() => updateCostForm('targetType', 'asset')} style={styles.costChoiceChip} />
+                    <Chip active={costForm.targetType === 'driver'} label="Autista" onPress={() => updateCostForm('targetType', 'driver')} style={styles.costChoiceChip} />
+                    <Chip active={costForm.targetType === 'company'} label="Azienda" onPress={() => updateCostForm('targetType', 'company')} style={styles.costChoiceChip} />
                   </View>
                   {costForm.targetType === 'vehicle' ? (
                     <>
                       <Text style={styles.costFilterLabel}>Targa</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                        <View style={styles.inlineChipRow}>
-                          <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} />
-                          {vehicles.map((vehicle) => (
-                            <Chip active={costForm.vehicleId === vehicle.id} key={vehicle.id} label={vehicle.plate} onPress={() => updateCostForm('vehicleId', vehicle.id)} />
-                          ))}
-                        </View>
-                      </ScrollView>
+                      <View style={styles.costChoiceGrid}>
+                        <Chip active={!costForm.vehicleId} label="Senza targa" onPress={() => updateCostForm('vehicleId', '')} style={styles.costChoiceChip} />
+                        {vehicles.map((vehicle) => (
+                          <Chip active={costForm.vehicleId === vehicle.id} key={vehicle.id} label={vehicle.plate} onPress={() => updateCostForm('vehicleId', vehicle.id)} style={styles.costChoiceChip} />
+                        ))}
+                      </View>
                     </>
                   ) : null}
                   {costForm.targetType === 'asset' ? (
                     <>
                       <Text style={styles.costFilterLabel}>Attrezzatura</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                        <View style={styles.inlineChipRow}>
-                          <Chip active={!costForm.assetId} label="Senza codice" onPress={() => updateCostForm('assetId', '')} />
-                          {warehouseAssets.map((asset) => (
-                            <Chip active={costForm.assetId === asset.id} key={asset.id} label={asset.code} onPress={() => updateCostForm('assetId', asset.id)} />
-                          ))}
-                        </View>
-                      </ScrollView>
+                      <View style={styles.costChoiceGrid}>
+                        <Chip active={!costForm.assetId} label="Senza codice" onPress={() => updateCostForm('assetId', '')} style={styles.costChoiceChip} />
+                        {warehouseAssets.map((asset) => (
+                          <Chip active={costForm.assetId === asset.id} key={asset.id} label={asset.code} onPress={() => updateCostForm('assetId', asset.id)} style={styles.costChoiceChip} />
+                        ))}
+                      </View>
                     </>
                   ) : null}
                   {costForm.targetType === 'driver' ? (
                     <>
                       <Text style={styles.costFilterLabel}>Autista</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                        <View style={styles.inlineChipRow}>
-                          <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} />
-                          {drivers.map((driver) => (
-                            <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} />
-                          ))}
-                        </View>
-                      </ScrollView>
+                      <View style={styles.costChoiceGrid}>
+                        <Chip active={!costForm.driverId} label="Senza autista" onPress={() => updateCostForm('driverId', '')} style={styles.costChoiceChip} />
+                        {drivers.map((driver) => (
+                          <Chip active={costForm.driverId === driver.id} key={driver.id} label={driver.name} onPress={() => updateCostForm('driverId', driver.id)} style={styles.costChoiceChip} />
+                        ))}
+                      </View>
                     </>
                   ) : null}
                 </>
@@ -2152,16 +2141,16 @@ export function CompanyManagementScreen({
                 <Chip active={costPeriod === 'all'} label="Sempre" onPress={() => setCostPeriod('all')} />
               </View>
               <Text style={styles.costFilterLabel}>Filtro report</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroller}>
-                <View style={styles.inlineChipRow}>
-                <Chip active={costTargetFilter === 'all'} label="Tutti" onPress={() => setCostTargetFilter('all')} />
-                <Chip active={costTargetFilter === 'company'} label="Azienda" onPress={() => setCostTargetFilter('company')} />
+              <View style={styles.costChoiceGrid}>
+                <Chip active={costTargetFilter === 'all'} label="Tutti" onPress={() => setCostTargetFilter('all')} style={styles.costChoiceChip} />
+                <Chip active={costTargetFilter === 'company'} label="Azienda" onPress={() => setCostTargetFilter('company')} style={styles.costChoiceChip} />
                 {vehicles.map((vehicle) => (
                   <Chip
                     active={costTargetFilter === `vehicle:${vehicle.id}`}
                     key={vehicle.id}
                     label={`Mezzo ${vehicle.plate}`}
                     onPress={() => setCostTargetFilter(`vehicle:${vehicle.id}`)}
+                    style={styles.costChoiceChip}
                   />
                 ))}
                 {drivers.map((driver) => (
@@ -2170,6 +2159,7 @@ export function CompanyManagementScreen({
                     key={driver.id}
                     label={`Autista ${driver.name}`}
                     onPress={() => setCostTargetFilter(`driver:${driver.id}`)}
+                    style={styles.costChoiceChip}
                   />
                 ))}
                 {warehouseAssets.map((asset) => (
@@ -2178,10 +2168,10 @@ export function CompanyManagementScreen({
                     key={asset.id}
                     label={`Attr. ${asset.code}`}
                     onPress={() => setCostTargetFilter(`asset:${asset.id}`)}
+                    style={styles.costChoiceChip}
                   />
                 ))}
-                </View>
-              </ScrollView>
+              </View>
               <Text style={styles.costTotal}>{formatMoneyCents(repairCostTotalCents, defaultCurrency)}</Text>
               <View style={styles.costMetricRow}>
                 <View style={styles.costMetricCard}>
@@ -2283,11 +2273,13 @@ export function CompanyManagementScreen({
               </View>
               <View style={styles.fineReportCard}>
                 <View style={styles.fineReportHeader}>
-                  <View>
+                  <View style={styles.fineReportHeadingCopy}>
                     <Text style={styles.fineReportTitle}>Sanzioni</Text>
                     <Text style={styles.listMeta}>Totale multe pagate e classifica autisti</Text>
                   </View>
-                  <Text style={styles.fineReportAmount}>{formatMoneyCents(fineCostTotalCents, defaultCurrency)}</Text>
+                  <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={styles.fineReportAmount}>
+                    {formatMoneyCents(fineCostTotalCents, defaultCurrency)}
+                  </Text>
                 </View>
                 {fineRanking.map((row, index) => (
                   <View key={row.driverId || 'unassigned'} style={styles.fineRankingRow}>
@@ -2447,6 +2439,22 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 7,
     marginTop: 14,
+  },
+  costChoiceChip: {
+    alignSelf: 'stretch',
+    borderRadius: 14,
+    flexGrow: 1,
+    minHeight: 44,
+    minWidth: '47%',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  costChoiceGrid: {
+    alignItems: 'stretch',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
   },
   costEntryIntro: {
     backgroundColor: '#ffffff',
@@ -2663,8 +2671,10 @@ const styles = StyleSheet.create({
   },
   fineReportAmount: {
     color: colors.ink,
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '900',
+    textAlign: 'center',
+    width: '100%',
   },
   fineReportCard: {
     backgroundColor: '#fff7ed',
@@ -2676,15 +2686,19 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   fineReportHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  fineReportHeadingCopy: {
+    alignItems: 'center',
+    width: '100%',
   },
   fineReportTitle: {
     color: colors.ink,
     fontSize: 14,
     fontWeight: '900',
+    textAlign: 'center',
   },
   costTotal: {
     color: colors.ink,

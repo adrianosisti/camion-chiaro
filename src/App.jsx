@@ -92,6 +92,7 @@ import {
   fetchCompanyInvoices,
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
+  fetchAdminOverview,
   fetchDriverDocuments,
   fetchDriverSessionData,
   fetchDrivers,
@@ -186,6 +187,12 @@ const emptyCompanyStorageSummary = {
 }
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.camionchiaro.app'
+const adminEmails = new Set(
+  String(import.meta.env.VITE_ADMIN_EMAILS ?? 'sisti.adriano@icloud.com')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+)
 const demoCompanyName = 'Azienda Demo SRL'
 const supportEmail = 'assistenza@camionchiaro.it'
 const placeholderCompanyNames = new Set(['Camion Chiaro', 'Camion Chiaro Demo'])
@@ -295,7 +302,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['chat', 'deadlines', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'reports', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'deadlines', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'reports', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -4413,6 +4420,10 @@ function getDisplayCompanyName(name) {
   return trimmedName
 }
 
+function isAdminEmail(email = '') {
+  return adminEmails.has(String(email ?? '').trim().toLowerCase())
+}
+
 function getBillingPlanLabel(plan) {
   return billingPlanLabels[plan] ?? plan ?? 'Start 5'
 }
@@ -4948,6 +4959,9 @@ function App() {
   const [costEntryRecords, setCostEntryRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
   const [companyStorageSummary, setCompanyStorageSummary] = useState(emptyCompanyStorageSummary)
+  const [adminOverview, setAdminOverview] = useState(null)
+  const [adminOverviewStatus, setAdminOverviewStatus] = useState('')
+  const [isAdminOverviewLoading, setIsAdminOverviewLoading] = useState(false)
   const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState({
     billingActivatedAt: '',
@@ -6025,6 +6039,9 @@ function App() {
     setDocumentEventRecords([])
     setCompanyInvoiceRecords([])
     setCompanyStorageSummary(emptyCompanyStorageSummary)
+    setAdminOverview(null)
+    setAdminOverviewStatus('')
+    setIsAdminOverviewLoading(false)
     setChatSyncStatus('')
     setCompanyProfile({
       billingActivatedAt: '',
@@ -7615,6 +7632,38 @@ function App() {
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
   ).length
   const companyLicenseActive = isCompanyLicenseActive(companyProfile)
+  const isAdminSession = Boolean(session?.role === 'company' && isAdminEmail(session.email))
+
+  const refreshAdminOverview = useCallback(async () => {
+    if (!isAdminSession) {
+      setAdminOverview(null)
+      setAdminOverviewStatus('Account non autorizzato al Pannello Admin.')
+      return
+    }
+
+    setIsAdminOverviewLoading(true)
+    setAdminOverviewStatus('Caricamento pannello admin...')
+    const result = await fetchAdminOverview()
+    setIsAdminOverviewLoading(false)
+
+    if (result.error) {
+      setAdminOverview(null)
+      setAdminOverviewStatus(result.error.message)
+      return
+    }
+
+    setAdminOverview(result.data?.overview ?? null)
+    setAdminOverviewStatus(
+      result.data?.issues?.length
+        ? `Pannello caricato. Tabelle opzionali mancanti: ${result.data.issues.length}.`
+        : `Pannello aggiornato alle ${formatShortDateTime(result.data?.generatedAt)}.`,
+    )
+  }, [isAdminSession])
+
+  useEffect(() => {
+    if (activeView !== 'admin') return
+    void refreshAdminOverview()
+  }, [activeView, refreshAdminOverview])
 
   if (!session) {
     return (
@@ -7696,7 +7745,7 @@ function App() {
     activeDriverCount + personRecords.filter((person) => !['archived', 'Archiviato'].includes(person.status)).length
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
-  if (!companyLicenseActive) {
+  if (!companyLicenseActive && activeView !== 'admin') {
     return (
         <I18nContext.Provider value={i18nValue}>
         <CompanyLicenseGate
@@ -7937,6 +7986,7 @@ function App() {
       <Sidebar
         activeView={activeView}
         chatNotificationCount={companyUnreadChatCount}
+        isAdminSession={isAdminSession}
         notificationCount={notificationCount}
         onHome={openDashboardHome}
         onNavigate={navigateCompanyView}
@@ -7961,7 +8011,16 @@ function App() {
           vehicleCheckRecords={vehicleCheckRecords}
           vehicleRecords={vehicleRecords}
         />
-        {activeView === 'records' ? (
+        {activeView === 'admin' ? (
+          <AdminWorkspace
+            isAdminSession={isAdminSession}
+            isLoading={isAdminOverviewLoading}
+            onRefresh={refreshAdminOverview}
+            overview={adminOverview}
+            sessionEmail={session.email}
+            statusMessage={adminOverviewStatus}
+          />
+        ) : activeView === 'records' ? (
           <RecordsWorkspace
             acknowledgedCheckIds={acknowledgedCheckIds}
             assetPreviewUrl={getAssetPreviewUrl}
@@ -8925,7 +8984,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
   )
 }
 
-function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onHome, onNavigate, onSignOut, session, t }) {
+function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false, notificationCount, onHome, onNavigate, onSignOut, session, t }) {
   const navItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'records', label: t('nav.records'), icon: Users },
@@ -8934,6 +8993,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, notificationCount, onH
     { id: 'reports', label: t('nav.reports'), icon: FileText },
     { id: 'support', label: t('nav.support'), icon: BookOpen },
     { id: 'settings', label: t('nav.settings'), icon: SettingsIcon },
+    ...(isAdminSession ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck }] : []),
   ]
 
   return (
@@ -9388,6 +9448,198 @@ function PhotoPreviewModal({ imageUrl, name, onClose }) {
         <img alt={`Foto profilo ${name}`} src={imageUrl} />
       </div>
     </div>
+  )
+}
+
+function AdminWorkspace({
+  isAdminSession,
+  isLoading,
+  onRefresh,
+  overview,
+  sessionEmail,
+  statusMessage,
+}) {
+  const [filter, setFilter] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const companies = overview?.companies ?? []
+  const summary = overview?.summary ?? {
+    activeCompanies: 0,
+    alertCount: 0,
+    companyCount: 0,
+    costMonthCents: 0,
+    driverCount: 0,
+    fleetCount: 0,
+    storageBytes: 0,
+  }
+  const healthLabels = {
+    attention: 'Da seguire',
+    billing: 'Pagamento',
+    ok: 'Regolare',
+    storage: 'Spazio alto',
+  }
+  const filteredCompanies = companies.filter((company) => {
+    const matchesFilter = filter === 'all' || company.health === filter
+    const cleanSearch = searchTerm.trim().toLowerCase()
+    const matchesSearch = !cleanSearch || [
+      company.name,
+      company.billingEmail,
+      company.vatNumber,
+      company.headquarters,
+    ].some((value) => String(value ?? '').toLowerCase().includes(cleanSearch))
+
+    return matchesFilter && matchesSearch
+  })
+  const filterButtons = [
+    { id: 'all', label: 'Tutte', value: companies.length },
+    { id: 'attention', label: 'Da seguire', value: companies.filter((company) => company.health === 'attention').length },
+    { id: 'billing', label: 'Pagamenti', value: companies.filter((company) => company.health === 'billing').length },
+    { id: 'storage', label: 'Spazio alto', value: companies.filter((company) => company.health === 'storage').length },
+    { id: 'ok', label: 'Regolari', value: companies.filter((company) => company.health === 'ok').length },
+  ]
+
+  if (!isAdminSession) {
+    return (
+      <section className="admin-workspace">
+        <div className="panel admin-locked-panel">
+          <ShieldCheck size={28} />
+          <div>
+            <p className="overline">Camion Chiaro Admin</p>
+            <h2>Pannello riservato</h2>
+            <p>Questo accesso e riservato alle email admin. Account attuale: {sessionEmail || 'non disponibile'}.</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="admin-workspace" aria-label="Pannello admin Camion Chiaro">
+      <div className="panel admin-hero-panel">
+        <div>
+          <p className="overline">Camion Chiaro Admin</p>
+          <h2>Controllo clienti</h2>
+          <span>Aziende, piani, utilizzo, criticita e segnali operativi in una sola console.</span>
+        </div>
+        <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
+          <RadioTower size={16} />
+          {isLoading ? 'Aggiorno...' : 'Aggiorna'}
+        </button>
+      </div>
+
+      <div className="admin-kpi-grid">
+        <article>
+          <Building2 size={20} />
+          <strong>{summary.companyCount}</strong>
+          <span>aziende totali</span>
+        </article>
+        <article>
+          <BadgeCheck size={20} />
+          <strong>{summary.activeCompanies}</strong>
+          <span>abbonamenti attivi</span>
+        </article>
+        <article className={summary.alertCount ? 'is-warning' : ''}>
+          <AlertTriangle size={20} />
+          <strong>{summary.alertCount}</strong>
+          <span>criticita clienti</span>
+        </article>
+        <article>
+          <Truck size={20} />
+          <strong>{summary.fleetCount}</strong>
+          <span>mezzi gestiti</span>
+        </article>
+        <article>
+          <Users size={20} />
+          <strong>{summary.driverCount}</strong>
+          <span>autisti gestiti</span>
+        </article>
+        <article>
+          <Banknote size={20} />
+          <strong>{formatMoneyCents(summary.costMonthCents, 'EUR')}</strong>
+          <span>costi mese tracciati</span>
+        </article>
+      </div>
+
+      <div className="admin-toolbar">
+        <label className="admin-search">
+          <Search size={16} />
+          <input
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Cerca azienda, email, partita IVA..."
+            value={searchTerm}
+          />
+        </label>
+        <div className="admin-filter-row">
+          {filterButtons.map((button) => (
+            <button
+              className={filter === button.id ? 'is-active' : ''}
+              key={button.id}
+              onClick={() => setFilter(button.id)}
+              type="button"
+            >
+              <span>{button.label}</span>
+              <strong>{button.value}</strong>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {statusMessage ? <p className="admin-status-line">{statusMessage}</p> : null}
+
+      <div className="admin-company-list">
+        {filteredCompanies.map((company) => (
+          <article className={`admin-company-card is-${company.health}`} key={company.id}>
+            <div className="admin-company-main">
+              <span className={`admin-health-dot is-${company.health}`}>{healthLabels[company.health] ?? company.health}</span>
+              <div>
+                <h3>{company.name}</h3>
+                <p>{company.billingEmail || company.vatNumber || company.headquarters || 'Dati fiscali non inseriti'}</p>
+              </div>
+            </div>
+            <div className="admin-company-metrics">
+              <div>
+                <strong>{getBillingPlanLabel(company.billingPlan)}</strong>
+                <span>{getBillingStatusLabel(company.billingStatus)}</span>
+              </div>
+              <div>
+                <strong>{company.fleetCount}</strong>
+                <span>mezzi</span>
+              </div>
+              <div>
+                <strong>{company.driverCount + company.peopleCount}</strong>
+                <span>utenti</span>
+              </div>
+              <div>
+                <strong>{company.alertCount}</strong>
+                <span>alert</span>
+              </div>
+              <div>
+                <strong>{formatMoneyCents(company.costMonthCents, 'EUR')}</strong>
+                <span>costi mese</span>
+              </div>
+              <div>
+                <strong>{company.storageUsagePercent}%</strong>
+                <span>{formatBytes(company.storageBytes)} / {formatBytes(company.storageLimitBytes)}</span>
+              </div>
+            </div>
+            <div className="admin-company-details">
+              <span>Guasti aperti: {company.openFaultCount}</span>
+              <span>Check critici: {company.urgentCheckCount}</span>
+              <span>Scadenze: {company.urgentDeadlineCount}</span>
+              <span>Documenti scaduti: {company.documentExpiredCount}</span>
+              <span>Chat non lette: {company.unreadChatCount}</span>
+              <span>Ultima attivita: {company.lastActivityAt ? formatShortDateTime(company.lastActivityAt) : formatDate(company.createdAt)}</span>
+            </div>
+          </article>
+        ))}
+        {!filteredCompanies.length ? (
+          <div className="panel admin-empty-panel">
+            <ShieldCheck size={24} />
+            <strong>Nessuna azienda trovata</strong>
+            <span>Modifica filtri o ricerca per vedere altri clienti.</span>
+          </div>
+        ) : null}
+      </div>
+    </section>
   )
 }
 

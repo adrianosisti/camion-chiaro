@@ -887,6 +887,45 @@ export async function fetchCompanyStorageSummary(companyId = configuredCompanyId
   return { data: mapCompanyStorageSummary(row), error }
 }
 
+export async function fetchAdminOverview() {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase non configurato.' } }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione admin mancante. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/admin-overview', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'GET',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload.error ?? 'Pannello admin non disponibile.' } }
+    }
+
+    return { data: payload, error: null }
+  } catch {
+    return {
+      data: null,
+      error: {
+        message: 'Funzione Netlify admin non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+      },
+    }
+  }
+}
+
 export async function markDriverDocumentStorageFileDeleted(filePath) {
   await markCompanyStorageFileDeleted({ bucket: driverDocumentsBucket, filePath })
 }

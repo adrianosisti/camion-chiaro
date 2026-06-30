@@ -137,6 +137,7 @@ function buildCompanySummary(company, collections) {
   const faults = getCompanyRows(collections.faults, companyId)
   const costs = getCompanyRows(collections.costs, companyId)
   const invoices = getCompanyRows(collections.invoices, companyId)
+  const control = getCompanyRows(collections.controls, companyId)[0] ?? {}
   const chatMessages = getCompanyRows(collections.chatMessages, companyId)
   const teamMessages = getCompanyRows(collections.teamMessages, companyId)
   const storageFiles = getCompanyRows(collections.storageFiles, companyId).filter((file) => !file.deleted_at)
@@ -193,6 +194,12 @@ function buildCompanySummary(company, collections) {
 
   return {
     alertCount,
+    adminNextFollowUp: control.next_follow_up ?? '',
+    adminNotes: control.notes ?? '',
+    adminOwnerName: control.owner_name ?? '',
+    adminPriority: control.priority ?? 'normal',
+    adminSalesStage: control.sales_stage ?? 'active',
+    adminUpdatedAt: control.updated_at ?? '',
     billingEmail: company.billing_email ?? '',
     billingPlan: company.billing_plan ?? 'starter',
     billingProvider: company.billing_provider ?? 'manual',
@@ -308,6 +315,7 @@ export async function handler(event) {
       teamMessages,
       storageFiles,
       invoices,
+      controls,
     ] = await Promise.all([
       safeSelect(serviceClient, 'drivers', 'company_id, status, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'vehicles', 'company_id, status, created_at', issues, { limit: 10000 }),
@@ -322,6 +330,7 @@ export async function handler(event) {
       safeSelect(serviceClient, 'team_chat_messages', 'company_id, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'company_storage_files', 'company_id, size_bytes, category, deleted_at, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'company_invoices', 'company_id, invoice_number, issued_at, paid_at, amount_cents, currency, status, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'admin_company_controls', 'company_id, sales_stage, priority, owner_name, next_follow_up, notes, updated_at', issues, { limit: 10000 }),
     ])
 
     const collections = {
@@ -329,6 +338,7 @@ export async function handler(event) {
       chatMessages,
       checks,
       compliance,
+      controls,
       costs,
       documents,
       drivers,

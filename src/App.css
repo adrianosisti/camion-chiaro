@@ -4223,6 +4223,95 @@
   font-size: 0.8rem;
 }
 
+.admin-crm-form {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(19, 197, 223, 0.12), rgba(255, 255, 255, 0)),
+    #f8fdff;
+  padding: 9px;
+}
+
+.admin-crm-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-crm-heading strong,
+.admin-note-field > span,
+.admin-crm-grid label > span {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.admin-crm-heading span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 780;
+}
+
+.admin-crm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.admin-crm-grid label,
+.admin-note-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-crm-grid input,
+.admin-crm-grid select,
+.admin-note-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #c8edf5;
+  border-radius: 8px;
+  outline: 0;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 780;
+}
+
+.admin-crm-grid input,
+.admin-crm-grid select {
+  height: 34px;
+  padding: 0 9px;
+}
+
+.admin-note-field textarea {
+  height: 58px;
+  min-height: 58px;
+  max-height: 88px;
+  resize: vertical;
+  padding: 8px 9px;
+  line-height: 1.35;
+}
+
+.admin-crm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-crm-actions span {
+  color: #047857;
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-align: right;
+}
+
 .admin-next-action {
   border-color: #bae6fd;
   background: #ecfeff;
@@ -9306,6 +9395,7 @@
 
 @media (max-width: 720px) {
   .admin-action-row,
+  .admin-crm-grid,
   .admin-detail-grid {
     grid-template-columns: 1fr;
   }

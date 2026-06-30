@@ -93,6 +93,7 @@ import {
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
   fetchAdminOverview,
+  updateAdminCompanyControl,
   fetchDriverDocuments,
   fetchDriverSessionData,
   fetchDrivers,
@@ -275,6 +276,26 @@ const billingCheckoutPlans = [
     price: '1.200 euro/mese + IVA',
     title: 'Fleet 50',
   },
+]
+const adminBillingPlanOptions = [
+  ...billingCheckoutPlans.map((plan) => ({ label: plan.title, value: plan.id })),
+  { label: 'Enterprise', value: 'enterprise' },
+]
+const adminBillingStatusOptions = Object.entries(billingStatusLabels).map(([value, label]) => ({ label, value }))
+const adminSalesStageOptions = [
+  { label: 'Contatto nuovo', value: 'lead' },
+  { label: 'In prova', value: 'trial' },
+  { label: 'Onboarding', value: 'onboarding' },
+  { label: 'Cliente attivo', value: 'active' },
+  { label: 'A rischio', value: 'risk' },
+  { label: 'Upsell possibile', value: 'upsell' },
+  { label: 'Perso', value: 'lost' },
+]
+const adminPriorityOptions = [
+  { label: 'Bassa', value: 'low' },
+  { label: 'Normale', value: 'normal' },
+  { label: 'Alta', value: 'high' },
+  { label: 'Urgente', value: 'urgent' },
 ]
 const faultSeverityOptions = [
   { value: 'low', label: 'Bassa' },
@@ -4432,6 +4453,10 @@ function getBillingStatusLabel(status) {
   return billingStatusLabels[status] ?? status ?? 'Attivo'
 }
 
+function getOptionLabel(options, value, fallback = '') {
+  return options.find((option) => option.value === value)?.label ?? fallback
+}
+
 function isCompanyLicenseActive(profile) {
   if (!profile?.billingStatus) return true
   if (profile.billingStatus !== 'active') return false
@@ -7660,9 +7685,33 @@ function App() {
     )
   }, [isAdminSession])
 
+  const handleUpdateAdminCompany = useCallback(async (companyId, updates) => {
+    if (!isAdminSession) {
+      return { error: { message: 'Account non autorizzato al Pannello Admin.' } }
+    }
+
+    setIsAdminOverviewLoading(true)
+    setAdminOverviewStatus('Salvataggio gestione cliente...')
+    const result = await updateAdminCompanyControl(companyId, updates)
+
+    if (result.error) {
+      setIsAdminOverviewLoading(false)
+      setAdminOverviewStatus(result.error.message)
+      return result
+    }
+
+    await refreshAdminOverview()
+    setAdminOverviewStatus('Gestione cliente salvata.')
+    return result
+  }, [isAdminSession, refreshAdminOverview])
+
   useEffect(() => {
     if (activeView !== 'admin') return
-    void refreshAdminOverview()
+    const timerId = window.setTimeout(() => {
+      void refreshAdminOverview()
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
   }, [activeView, refreshAdminOverview])
 
   if (!session) {
@@ -8018,6 +8067,7 @@ function App() {
             isAdminSession={isAdminSession}
             isLoading={isAdminOverviewLoading}
             onRefresh={refreshAdminOverview}
+            onUpdateCompany={handleUpdateAdminCompany}
             overview={adminOverview}
             sessionEmail={session.email}
             statusMessage={adminOverviewStatus}
@@ -9457,6 +9507,7 @@ function AdminWorkspace({
   isAdminSession,
   isLoading,
   onRefresh,
+  onUpdateCompany,
   overview,
   sessionEmail,
   statusMessage,
@@ -9465,7 +9516,17 @@ function AdminWorkspace({
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
   const [adminCopyStatus, setAdminCopyStatus] = useState('')
-  const companies = overview?.companies ?? []
+  const [adminSaveStatus, setAdminSaveStatus] = useState('')
+  const [adminForm, setAdminForm] = useState({
+    adminNextFollowUp: '',
+    adminNotes: '',
+    adminOwnerName: '',
+    adminPriority: 'normal',
+    adminSalesStage: 'active',
+    billingPlan: 'starter',
+    billingStatus: 'pending',
+  })
+  const companies = useMemo(() => overview?.companies ?? [], [overview?.companies])
   const summary = overview?.summary ?? {
     activeCompanies: 0,
     alertCount: 0,
@@ -9522,15 +9583,38 @@ function AdminWorkspace({
     null
 
   useEffect(() => {
+    let timerId = 0
+
     if (!filteredCompanies.length) {
-      setSelectedCompanyId('')
-      return
+      timerId = window.setTimeout(() => setSelectedCompanyId(''), 0)
+      return () => window.clearTimeout(timerId)
     }
 
     if (!filteredCompanies.some((company) => company.id === selectedCompanyId)) {
-      setSelectedCompanyId(filteredCompanies[0].id)
+      timerId = window.setTimeout(() => setSelectedCompanyId(filteredCompanies[0].id), 0)
     }
+
+    return () => window.clearTimeout(timerId)
   }, [filteredCompanies, selectedCompanyId])
+
+  useEffect(() => {
+    if (!selectedCompany) return
+
+    const timerId = window.setTimeout(() => {
+      setAdminForm({
+        adminNextFollowUp: selectedCompany.adminNextFollowUp ?? '',
+        adminNotes: selectedCompany.adminNotes ?? '',
+        adminOwnerName: selectedCompany.adminOwnerName ?? '',
+        adminPriority: selectedCompany.adminPriority ?? 'normal',
+        adminSalesStage: selectedCompany.adminSalesStage ?? 'active',
+        billingPlan: selectedCompany.billingPlan ?? 'starter',
+        billingStatus: selectedCompany.billingStatus ?? 'pending',
+      })
+      setAdminSaveStatus('')
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
+  }, [selectedCompany])
 
   async function copyAdminValue(value, label) {
     if (!value) return
@@ -9542,10 +9626,31 @@ function AdminWorkspace({
 
   function getAdminRecommendation(company) {
     if (!company) return 'Seleziona un cliente per vedere la prossima azione consigliata.'
+    if (company.adminPriority === 'urgent') return 'Priorita urgente: contatta il cliente e aggiorna note e prossimo follow-up.'
+    if (company.adminSalesStage === 'risk') return 'Cliente a rischio: verifica motivazione, pagamento, uso reale e blocchi operativi.'
     if (company.health === 'billing') return 'Verifica pagamento, piano e periodo: questo cliente non deve restare bloccato per errore.'
     if (company.health === 'attention') return 'Apri un contatto operativo: ci sono guasti, check, scadenze o documenti da far sistemare.'
     if (company.health === 'storage') return 'Proponi upgrade spazio o pulizia allegati prima che arrivi al limite.'
     return 'Cliente regolare: controlla ultimo utilizzo e valuta upsell su report/chat premium.'
+  }
+
+  function updateAdminForm(field, value) {
+    setAdminForm((current) => ({ ...current, [field]: value }))
+  }
+
+  async function handleSaveAdminCompany(event) {
+    event.preventDefault()
+    if (!selectedCompany || !onUpdateCompany) return
+
+    setAdminSaveStatus('Salvataggio in corso...')
+    const result = await onUpdateCompany(selectedCompany.id, adminForm)
+
+    if (result?.error) {
+      setAdminSaveStatus(result.error.message)
+      return
+    }
+
+    setAdminSaveStatus('Cliente aggiornato.')
   }
 
   if (!isAdminSession) {
@@ -9658,6 +9763,9 @@ function AdminWorkspace({
                     <td>
                       <strong>{company.name}</strong>
                       <span>{company.billingEmail || company.vatNumber || 'Dati fiscali mancanti'}</span>
+                      <small>
+                        {getOptionLabel(adminSalesStageOptions, company.adminSalesStage, 'Cliente attivo')} · {getOptionLabel(adminPriorityOptions, company.adminPriority, 'Normale')}
+                      </small>
                     </td>
                     <td>
                       <b className={`admin-health-dot is-${company.health}`}>{healthLabels[company.health] ?? company.health}</b>
@@ -9728,6 +9836,81 @@ function AdminWorkspace({
                   <strong>{selectedCompany.storageUsagePercent}%</strong>
                 </div>
               </div>
+
+              <form className="admin-crm-form" onSubmit={handleSaveAdminCompany}>
+                <div className="admin-crm-heading">
+                  <strong>Gestione cliente</strong>
+                  <span>{selectedCompany.adminUpdatedAt ? `Aggiornato ${formatShortDateTime(selectedCompany.adminUpdatedAt)}` : 'Note interne Camion Chiaro'}</span>
+                </div>
+
+                <div className="admin-crm-grid">
+                  <label>
+                    <span>Piano</span>
+                    <select value={adminForm.billingPlan} onChange={(event) => updateAdminForm('billingPlan', event.target.value)}>
+                      {adminBillingPlanOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Pagamento</span>
+                    <select value={adminForm.billingStatus} onChange={(event) => updateAdminForm('billingStatus', event.target.value)}>
+                      {adminBillingStatusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Fase</span>
+                    <select value={adminForm.adminSalesStage} onChange={(event) => updateAdminForm('adminSalesStage', event.target.value)}>
+                      {adminSalesStageOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Priorita</span>
+                    <select value={adminForm.adminPriority} onChange={(event) => updateAdminForm('adminPriority', event.target.value)}>
+                      {adminPriorityOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Referente interno</span>
+                    <input
+                      onChange={(event) => updateAdminForm('adminOwnerName', event.target.value)}
+                      placeholder="Es. Adriano"
+                      value={adminForm.adminOwnerName}
+                    />
+                  </label>
+                  <label>
+                    <span>Prossimo contatto</span>
+                    <input
+                      onChange={(event) => updateAdminForm('adminNextFollowUp', event.target.value)}
+                      type="date"
+                      value={adminForm.adminNextFollowUp}
+                    />
+                  </label>
+                </div>
+
+                <label className="admin-note-field">
+                  <span>Note interne</span>
+                  <textarea
+                    onChange={(event) => updateAdminForm('adminNotes', event.target.value)}
+                    placeholder="Telefonata, richiesta, promessa commerciale, cosa fare dopo..."
+                    value={adminForm.adminNotes}
+                  />
+                </label>
+
+                <div className="admin-crm-actions">
+                  <button className="primary-button compact-button" disabled={isLoading} type="submit">
+                    <Save size={15} />
+                    Salva gestione
+                  </button>
+                  {adminSaveStatus ? <span>{adminSaveStatus}</span> : null}
+                </div>
+              </form>
 
               <div className="admin-detail-alerts">
                 <strong>Situazione operativa</strong>
@@ -12603,7 +12786,6 @@ function getFaultCostSummary(faultReportRecords = [], costEntryRecords = []) {
 }
 
 function FaultCostReport({
-  acknowledgedCheckIds = [],
   assetRecords = [],
   companyName = 'Azienda',
   complianceItems = [],

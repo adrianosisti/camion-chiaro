@@ -4298,6 +4298,25 @@
   line-height: 1.35;
 }
 
+.admin-crm-grid select:disabled,
+.admin-crm-grid input:disabled {
+  color: #64748b;
+  background: #eef7fb;
+  cursor: not-allowed;
+}
+
+.admin-internal-note {
+  margin: 0;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #e0f2fe;
+  color: #075985;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.35;
+  padding: 7px 9px;
+}
+
 .admin-crm-actions {
   display: flex;
   align-items: center;
@@ -4424,6 +4443,12 @@
   border-color: #ddd6fe;
   background: #f5f3ff;
   color: #6d28d9;
+}
+
+.admin-health-dot.is-internal {
+  border-color: #bae6fd;
+  background: #e0f2fe;
+  color: #075985;
 }
 
 .admin-health-dot.is-ok {

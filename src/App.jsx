@@ -4450,6 +4450,7 @@ function getBillingPlanLabel(plan) {
 }
 
 function getBillingStatusLabel(status) {
+  if (status === 'internal') return 'Interno admin'
   return billingStatusLabels[status] ?? status ?? 'Attivo'
 }
 
@@ -7656,8 +7657,8 @@ function App() {
   const companyUnreadChatCount = chatMessageRecords.filter(
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
   ).length
-  const companyLicenseActive = isCompanyLicenseActive(companyProfile)
   const isAdminSession = Boolean(session?.role === 'company' && isAdminEmail(session.email))
+  const companyLicenseActive = isAdminSession || isCompanyLicenseActive(companyProfile)
 
   const refreshAdminOverview = useCallback(async () => {
     if (!isAdminSession) {
@@ -9542,12 +9543,14 @@ function AdminWorkspace({
   const healthLabels = {
     attention: 'Da seguire',
     billing: 'Pagamento',
+    internal: 'Admin',
     ok: 'Regolare',
     storage: 'Spazio alto',
   }
   const healthDescriptions = {
     attention: 'Ha criticita operative aperte.',
     billing: 'Pagamento o piano da verificare.',
+    internal: 'Account interno Camion Chiaro: non entra nei clienti paganti.',
     ok: 'Nessuna criticita prioritaria.',
     storage: 'Spazio utilizzato vicino al limite.',
   }
@@ -9567,6 +9570,7 @@ function AdminWorkspace({
     { id: 'all', label: 'Tutte', value: companies.length },
     { id: 'attention', label: 'Da seguire', value: companies.filter((company) => company.health === 'attention').length },
     { id: 'billing', label: 'Pagamenti', value: companies.filter((company) => company.health === 'billing').length },
+    { id: 'internal', label: 'Interni', value: companies.filter((company) => company.health === 'internal').length },
     { id: 'storage', label: 'Spazio alto', value: companies.filter((company) => company.health === 'storage').length },
     { id: 'ok', label: 'Regolari', value: companies.filter((company) => company.health === 'ok').length },
   ], [companies])
@@ -9608,7 +9612,7 @@ function AdminWorkspace({
         adminPriority: selectedCompany.adminPriority ?? 'normal',
         adminSalesStage: selectedCompany.adminSalesStage ?? 'active',
         billingPlan: selectedCompany.billingPlan ?? 'starter',
-        billingStatus: selectedCompany.billingStatus ?? 'pending',
+      billingStatus: selectedCompany.isInternalAdminCompany ? 'active' : selectedCompany.billingStatus ?? 'pending',
       })
       setAdminSaveStatus('')
     }, 0)
@@ -9626,6 +9630,7 @@ function AdminWorkspace({
 
   function getAdminRecommendation(company) {
     if (!company) return 'Seleziona un cliente per vedere la prossima azione consigliata.'
+    if (company.isInternalAdminCompany) return 'Account interno: non richiede pagamento. Usalo per amministrare Camion Chiaro.'
     if (company.adminPriority === 'urgent') return 'Priorita urgente: contatta il cliente e aggiorna note e prossimo follow-up.'
     if (company.adminSalesStage === 'risk') return 'Cliente a rischio: verifica motivazione, pagamento, uso reale e blocchi operativi.'
     if (company.health === 'billing') return 'Verifica pagamento, piano e periodo: questo cliente non deve restare bloccato per errore.'
@@ -9643,7 +9648,11 @@ function AdminWorkspace({
     if (!selectedCompany || !onUpdateCompany) return
 
     setAdminSaveStatus('Salvataggio in corso...')
-    const result = await onUpdateCompany(selectedCompany.id, adminForm)
+    const { billingPlan, billingStatus, ...crmOnlyForm } = adminForm
+    const result = await onUpdateCompany(
+      selectedCompany.id,
+      selectedCompany.isInternalAdminCompany ? crmOnlyForm : { billingPlan, billingStatus, ...crmOnlyForm },
+    )
 
     if (result?.error) {
       setAdminSaveStatus(result.error.message)
@@ -9846,7 +9855,11 @@ function AdminWorkspace({
                 <div className="admin-crm-grid">
                   <label>
                     <span>Piano</span>
-                    <select value={adminForm.billingPlan} onChange={(event) => updateAdminForm('billingPlan', event.target.value)}>
+                    <select
+                      disabled={selectedCompany.isInternalAdminCompany}
+                      value={adminForm.billingPlan}
+                      onChange={(event) => updateAdminForm('billingPlan', event.target.value)}
+                    >
                       {adminBillingPlanOptions.map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
@@ -9854,7 +9867,11 @@ function AdminWorkspace({
                   </label>
                   <label>
                     <span>Pagamento</span>
-                    <select value={adminForm.billingStatus} onChange={(event) => updateAdminForm('billingStatus', event.target.value)}>
+                    <select
+                      disabled={selectedCompany.isInternalAdminCompany}
+                      value={adminForm.billingStatus}
+                      onChange={(event) => updateAdminForm('billingStatus', event.target.value)}
+                    >
                       {adminBillingStatusOptions.map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
@@ -9893,6 +9910,10 @@ function AdminWorkspace({
                     />
                   </label>
                 </div>
+
+                {selectedCompany.isInternalAdminCompany ? (
+                  <p className="admin-internal-note">Account interno Camion Chiaro: non viene conteggiato nei clienti paganti e non richiede abbonamento.</p>
+                ) : null}
 
                 <label className="admin-note-field">
                   <span>Note interne</span>

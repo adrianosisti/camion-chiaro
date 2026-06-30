@@ -125,8 +125,11 @@ function isPaidInvoice(invoice) {
   return ['paid', 'succeeded'].includes(invoice.status) || Boolean(invoice.paid_at)
 }
 
-function buildCompanySummary(company, collections) {
+function buildCompanySummary(company, collections, options = {}) {
   const companyId = company.id
+  const isInternalAdminCompany =
+    options.adminCompanyIds?.has(companyId) ||
+    options.adminEmails?.has(String(company.billing_email ?? '').trim().toLowerCase())
   const drivers = getCompanyRows(collections.drivers, companyId)
   const vehicles = getCompanyRows(collections.vehicles, companyId)
   const people = getCompanyRows(collections.people, companyId)
@@ -156,7 +159,7 @@ function buildCompanySummary(company, collections) {
   const storageBytes = storageFiles.reduce((total, file) => total + Number(file.size_bytes ?? 0), 0)
   const storageLimitBytes = getStorageLimitBytes(company.billing_plan)
   const billingStatus = company.billing_status ?? 'active'
-  const monthlyPlanCents = billingStatus === 'active' ? getMonthlyPlanCents(company.billing_plan ?? 'starter') : 0
+  const monthlyPlanCents = !isInternalAdminCompany && billingStatus === 'active' ? getMonthlyPlanCents(company.billing_plan ?? 'starter') : 0
   const paidInvoices = invoices.filter(isPaidInvoice)
   const lifetimeRevenueCents = paidInvoices.reduce((total, invoice) => total + Number(invoice.amount_cents ?? 0), 0)
   const invoiceMonthCents = paidInvoices
@@ -184,7 +187,9 @@ function buildCompanySummary(company, collections) {
   )
   const alertCount = openFaults.length + criticalChecks.length + urgentDeadlines.length + expiredDocuments.length
   const health =
-    billingStatus !== 'active'
+    isInternalAdminCompany
+      ? 'internal'
+      : billingStatus !== 'active'
       ? 'billing'
       : alertCount > 0
         ? 'attention'
@@ -203,7 +208,7 @@ function buildCompanySummary(company, collections) {
     billingEmail: company.billing_email ?? '',
     billingPlan: company.billing_plan ?? 'starter',
     billingProvider: company.billing_provider ?? 'manual',
-    billingStatus,
+    billingStatus: isInternalAdminCompany ? 'internal' : billingStatus,
     costMonthCents,
     createdAt: company.created_at ?? '',
     documentExpiredCount: expiredDocuments.length,
@@ -213,6 +218,7 @@ function buildCompanySummary(company, collections) {
     headquarters: company.headquarters ?? '',
     id: companyId,
     invoiceMonthCents,
+    isInternalAdminCompany,
     lastActivityAt: latestActivityAt,
     lifetimeRevenueCents,
     monthlyPlanCents,
@@ -301,6 +307,21 @@ export async function handler(event) {
       )
     }
 
+    const { data: adminMembershipRows, error: adminMembershipError } = await serviceClient
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', authData.user.id)
+
+    if (adminMembershipError) {
+      if (isMissingRelation(adminMembershipError)) {
+        issues.push(`company_members: ${adminMembershipError.message}`)
+      } else {
+        throw adminMembershipError
+      }
+    }
+
+    const adminCompanyIds = new Set((adminMembershipRows ?? []).map((row) => row.company_id).filter(Boolean))
+
     const [
       drivers,
       vehicles,
@@ -349,12 +370,15 @@ export async function handler(event) {
       teamMessages,
       vehicles,
     }
-    const companySummaries = companies.map((company) => buildCompanySummary(company, collections))
+    const companySummaries = companies.map((company) => buildCompanySummary(company, collections, {
+      adminCompanyIds,
+      adminEmails,
+    }))
     const summary = companySummaries.reduce(
       (totals, company) => ({
-        activeCompanies: totals.activeCompanies + (company.billingStatus === 'active' ? 1 : 0),
-        alertCount: totals.alertCount + company.alertCount,
-        companyCount: totals.companyCount + 1,
+        activeCompanies: totals.activeCompanies + (!company.isInternalAdminCompany && company.billingStatus === 'active' ? 1 : 0),
+        alertCount: totals.alertCount + (!company.isInternalAdminCompany ? company.alertCount : 0),
+        companyCount: totals.companyCount + (!company.isInternalAdminCompany ? 1 : 0),
         costMonthCents: totals.costMonthCents + company.costMonthCents,
         driverCount: totals.driverCount + company.driverCount,
         fleetCount: totals.fleetCount + company.fleetCount,

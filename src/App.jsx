@@ -15376,16 +15376,16 @@ function ChatWorkspace({
   }, [scrollCompanyChatToBottom, selectedDriverIsTyping])
 
   useEffect(() => {
-    if (selectedThread?.id && hasUnreadDriverMessages) {
+    if (isCompanyChatOpen && selectedThread?.id && hasUnreadDriverMessages) {
       onMarkRead?.(selectedThread.id, 'company')
     }
-  }, [hasUnreadDriverMessages, onMarkRead, selectedThread?.id])
+  }, [hasUnreadDriverMessages, isCompanyChatOpen, onMarkRead, selectedThread?.id])
 
   useEffect(() => {
-    if (selectedTeamThread?.id && hasUnreadTeamMessages) {
+    if (isCompanyChatOpen && selectedTeamThread?.id && hasUnreadTeamMessages) {
       onMarkTeamRead?.(selectedTeamThread.id)
     }
-  }, [hasUnreadTeamMessages, onMarkTeamRead, selectedTeamThread?.id])
+  }, [hasUnreadTeamMessages, isCompanyChatOpen, onMarkTeamRead, selectedTeamThread?.id])
 
   function getDriverThread(driverId) {
     return chatThreads.find((thread) => thread.driverId === driverId && thread.contextType === 'general')

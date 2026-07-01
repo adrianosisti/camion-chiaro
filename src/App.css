@@ -3839,6 +3839,100 @@
   overflow: hidden;
 }
 
+.operations-command-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 0 20px 14px;
+}
+
+.operations-priority-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid #bcecf5;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(18, 198, 223, 0.14), rgba(255, 255, 255, 0) 58%),
+    #ffffff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 10px;
+  text-align: left;
+}
+
+.operations-priority-card:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.operations-priority-card > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.operations-priority-card small {
+  color: #075985;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.operations-priority-card strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.94rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-priority-card em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(94px, 1fr));
+  gap: 8px;
+}
+
+.operations-quick-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid #d6eef5;
+  border-radius: 8px;
+  color: #075985;
+  background: #f8fdff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.operations-quick-actions button:hover {
+  border-color: #0891b2;
+  background: #ecfeff;
+}
+
+.operations-quick-actions button.is-active {
+  border-color: #0891b2;
+  color: #020617;
+  background: linear-gradient(135deg, #ecfeff, #ffffff);
+  box-shadow: 0 8px 18px rgba(8, 145, 178, 0.14);
+}
+
 .operation-detail-header-actions {
   display: inline-flex;
   align-items: center;
@@ -4012,6 +4106,39 @@
   font-size: 0.78rem;
   font-weight: 780;
   line-height: 1.35;
+}
+
+.report-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #c8edf5;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.report-section-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid #d6eef5;
+  border-radius: 8px;
+  color: #075985;
+  background: #f8fdff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.report-section-tabs button.is-active {
+  border-color: #0891b2;
+  color: #020617;
+  background: #ecfeff;
+  box-shadow: 0 8px 18px rgba(8, 145, 178, 0.12);
 }
 
 .admin-workspace {
@@ -9216,6 +9343,212 @@
   border: 0;
 }
 
+@media (min-width: 981px) {
+  .workspace.workspace-records,
+  .workspace.workspace-reports,
+  .workspace.workspace-notifications {
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100svh;
+    overflow: hidden;
+    padding: 18px 20px;
+  }
+
+  .records-workspace,
+  .reports-workspace,
+  .operations-workspace {
+    min-height: 0;
+    height: calc(100svh - 94px);
+    overflow: hidden;
+  }
+
+  .records-workspace {
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .records-switch-panel .panel-header {
+    padding: 12px 16px 8px;
+  }
+
+  .records-tabs {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 14px 14px;
+  }
+
+  .records-tab {
+    min-height: 56px;
+    padding: 10px;
+  }
+
+  .records-tab small {
+    display: none;
+  }
+
+  .records-tab b {
+    min-width: 26px;
+    height: 26px;
+    font-size: 0.78rem;
+  }
+
+  .drivers-workspace,
+  .fleet-workspace,
+  .documents-workspace,
+  .people-workspace,
+  .archive-workspace {
+    min-height: 0;
+    height: 100%;
+    gap: 14px;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .drivers-main,
+  .fleet-main,
+  .documents-main,
+  .people-main,
+  .archive-main {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .drivers-panel,
+  .fleet-management-panel,
+  .documents-management-panel,
+  .people-panel,
+  .archive-panel,
+  .operations-panel {
+    display: grid;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .drivers-panel,
+  .fleet-management-panel,
+  .documents-management-panel,
+  .people-panel {
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+
+  .archive-panel {
+    grid-template-rows: auto auto minmax(0, 0.78fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
+  }
+
+  .operations-panel {
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  }
+
+  .drivers-table,
+  .fleet-management-list,
+  .document-management-list,
+  .people-section-list,
+  .operations-list {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .archive-section-grid,
+  .archive-panel > .archive-list-section > .archive-list {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .document-history-panel {
+    display: none;
+  }
+
+  .driver-create-panel,
+  .vehicle-create-panel,
+  .document-create-panel,
+  .person-create-panel,
+  .documents-side-column,
+  .archive-detail-panel,
+  .operation-detail-panel {
+    position: static;
+    max-height: 100%;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .reports-workspace {
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .panel.reports-hero-panel {
+    align-items: center;
+    padding: 13px 16px;
+  }
+
+  .reports-hero-panel h2 {
+    font-size: 1.22rem;
+  }
+
+  .reports-hero-copy > span {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .reports-kpi-grid article {
+    min-height: 64px;
+    padding: 10px;
+  }
+
+  .fault-cost-report.is-report-workspace {
+    display: grid;
+    grid-auto-rows: max-content;
+    align-content: start;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+  }
+
+  .fault-cost-report.is-report-workspace .fault-cost-report-header {
+    padding-bottom: 2px;
+  }
+
+  .fault-cost-report.is-report-workspace .report-question-grid,
+  .fault-cost-report.is-report-workspace .report-action-board,
+  .fault-cost-report.is-report-workspace .monthly-premium-report,
+  .fault-cost-report.is-report-workspace .fault-cost-controls,
+  .fault-cost-report.is-report-workspace .fault-cost-summary,
+  .fault-cost-report.is-report-workspace .cost-insight-grid,
+  .fault-cost-report.is-report-workspace .fault-fines-panel,
+  .fault-cost-report.is-report-workspace .fault-cost-list {
+    margin-top: 10px;
+  }
+
+  .fault-cost-report.is-report-workspace .fault-cost-list,
+  .fault-cost-report.is-report-workspace .monthly-premium-report {
+    max-height: calc(100svh - 380px);
+    overflow: auto;
+  }
+
+  .operations-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  }
+
+  .operations-summary-grid {
+    padding-bottom: 10px;
+  }
+
+  .operations-summary-grid div {
+    padding: 10px 12px;
+  }
+
+  .operations-summary-grid strong {
+    font-size: 1.18rem;
+  }
+
+  .operations-filters {
+    padding-inline: 20px;
+  }
+
+  .operation-row {
+    padding-block: 12px;
+  }
+}
+
 @media (max-width: 1380px) {
   .drivers-workspace,
   .fleet-workspace,
@@ -9230,6 +9563,33 @@
   .document-create-panel,
   .documents-side-column {
     position: static;
+  }
+}
+
+@media (min-width: 981px) and (max-width: 1380px) {
+  .drivers-workspace,
+  .fleet-workspace,
+  .documents-workspace,
+  .people-workspace,
+  .archive-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
+  }
+
+  .documents-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(290px, 340px);
+  }
+
+  .archive-workspace,
+  .operations-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
+  }
+
+  .driver-create-panel,
+  .vehicle-create-panel,
+  .document-create-panel,
+  .documents-side-column {
+    max-height: 100%;
+    overflow: auto;
   }
 }
 
@@ -9295,6 +9655,12 @@
 
   .driver-row > .status-pill {
     justify-self: start;
+  }
+}
+
+@media (min-width: 981px) and (max-width: 1240px) {
+  .operations-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(290px, 330px);
   }
 }
 

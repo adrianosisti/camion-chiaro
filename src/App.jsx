@@ -20,6 +20,7 @@ import Download from 'lucide-react/dist/esm/icons/download.mjs'
 import ExternalLink from 'lucide-react/dist/esm/icons/external-link.mjs'
 import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
 import Filter from 'lucide-react/dist/esm/icons/filter.mjs'
+import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
 import Globe2 from 'lucide-react/dist/esm/icons/globe-2.mjs'
 import ImageIcon from 'lucide-react/dist/esm/icons/image.mjs'
 import KeyRound from 'lucide-react/dist/esm/icons/key-round.mjs'
@@ -8165,7 +8166,14 @@ function App() {
         session={session}
         t={t}
       />
-      <main className={activeView === 'dashboard' ? 'workspace is-dashboard-home' : activeView === 'admin' ? 'workspace is-admin-workspace' : 'workspace'}>
+      <main
+        className={[
+          'workspace',
+          `workspace-${activeView}`,
+          activeView === 'dashboard' ? 'is-dashboard-home' : '',
+          activeView === 'admin' ? 'is-admin-workspace' : '',
+        ].filter(Boolean).join(' ')}
+      >
         {activeView !== 'admin' ? (
           <Topbar
             acknowledgedCheckIds={acknowledgedCheckIds}
@@ -8238,6 +8246,7 @@ function App() {
             assetPreviewUrl={getAssetPreviewUrl}
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
+            itemRecords={items}
             onAcknowledgeCheck={acknowledgeCheck}
             onFilterChange={setOperationsFilter}
             onMarkCheckUnread={markCheckUnread}
@@ -12866,6 +12875,7 @@ function FaultCostReport({
   const [isAddingCost, setIsAddingCost] = useState(false)
   const [isSavingCost, setIsSavingCost] = useState(false)
   const [selectedArchiveMonthKey, setSelectedArchiveMonthKey] = useState(() => getMonthArchiveKey())
+  const [reportSection, setReportSection] = useState('overview')
   const [costForm, setCostForm] = useState({
     amount: '',
     assetId: '',
@@ -13245,6 +13255,7 @@ function FaultCostReport({
   }
 
   function openNewCostForm(type = 'cost') {
+    if (isReportWorkspace) setReportSection('actions')
     setCostForm(type === 'fine' ? getFineCostFormPreset() : getEmptyCostForm())
     setFaultCostForm({ amount: '', id: '', notes: '' })
     if (type === 'fine') {
@@ -13319,6 +13330,7 @@ function FaultCostReport({
   }
 
   function startEditingCostEntry(entry = {}) {
+    if (isReportWorkspace) setReportSection('actions')
     setCostForm({
       amount: entry.amountCents ? String((Number(entry.amountCents) / 100).toFixed(2)).replace('.', ',') : '',
       assetId: entry.assetId ?? '',
@@ -13350,6 +13362,7 @@ function FaultCostReport({
   }
 
   function startEditingFaultCost(report = {}) {
+    if (isReportWorkspace) setReportSection('actions')
     setFaultCostForm({
       amount: report.repairCostCents ? String((Number(report.repairCostCents) / 100).toFixed(2)).replace('.', ',') : '',
       id: report.id ?? '',
@@ -13760,6 +13773,16 @@ function FaultCostReport({
   }
 
   const isFineCostForm = costForm.category === 'fine'
+  const reportSections = [
+    { id: 'overview', icon: Gauge, label: 'Panoramica' },
+    { id: 'actions', icon: Plus, label: 'Inserisci' },
+    { id: 'monthly', icon: CalendarClock, label: 'Mensile' },
+    { id: 'details', icon: FileText, label: 'Dettaglio' },
+  ]
+  const showReportOverview = !isReportWorkspace || reportSection === 'overview'
+  const showReportActions = !isReportWorkspace || reportSection === 'actions'
+  const showReportMonthly = isReportWorkspace && reportSection === 'monthly'
+  const showReportDetails = !isReportWorkspace || reportSection === 'details'
 
   return (
     <section className={`fault-cost-report ${isReportWorkspace ? 'is-report-workspace' : ''}`} id="fault-cost-report">
@@ -13792,6 +13815,23 @@ function FaultCostReport({
         </div>
       </div>
       {isReportWorkspace ? (
+        <div className="report-section-tabs" role="tablist" aria-label="Sezioni report">
+          {reportSections.map((section) => (
+            <button
+              aria-selected={reportSection === section.id}
+              className={reportSection === section.id ? 'is-active' : ''}
+              key={section.id}
+              onClick={() => setReportSection(section.id)}
+              role="tab"
+              type="button"
+            >
+              <section.icon size={16} />
+              {section.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {isReportWorkspace && (showReportOverview || showReportDetails) ? (
         <div className="report-active-summary" aria-label="Filtri report applicati">
           {activeFilterBadges.map((badge) => (
             <span key={badge.label}>
@@ -13810,7 +13850,7 @@ function FaultCostReport({
           ) : null}
         </div>
       ) : null}
-      {isReportWorkspace ? (
+      {isReportWorkspace && showReportOverview ? (
         <div className="report-question-grid" aria-label="Domande rapide report">
           {reportPresetCards.map((card) => (
             <button className="report-question-card" key={card.label} onClick={card.onClick} type="button">
@@ -13820,7 +13860,7 @@ function FaultCostReport({
           ))}
         </div>
       ) : null}
-      {isReportWorkspace ? (
+      {isReportWorkspace && showReportActions ? (
         <div className="report-action-board" aria-label="Azioni report e inserimento costi">
           <div>
             <p className="overline">Inserimento dati</p>
@@ -13859,7 +13899,7 @@ function FaultCostReport({
           </div>
         </div>
       ) : null}
-      {isAddingCost ? (
+      {isAddingCost && (!isReportWorkspace || showReportActions) ? (
         <form className={`fault-cost-entry-form ${isFineCostForm ? 'is-fine-entry' : ''}`} onSubmit={handleSubmitCostEntry} ref={costEditorRef}>
           <div className="fault-cost-entry-title fault-cost-entry-wide">
             <strong>
@@ -13984,7 +14024,7 @@ function FaultCostReport({
           </button>
         </form>
       ) : null}
-      {faultCostForm.id ? (
+      {faultCostForm.id && (!isReportWorkspace || showReportActions) ? (
         <form className="fault-cost-entry-form" onSubmit={submitFaultCostEdit} ref={costEditorRef}>
           <div className="fault-cost-entry-title fault-cost-entry-wide">
             <strong>Modifica costo guasto</strong>
@@ -14006,7 +14046,7 @@ function FaultCostReport({
           </button>
         </form>
       ) : null}
-      {isReportWorkspace ? (
+      {showReportMonthly ? (
         <section className="monthly-premium-report" aria-label="Report mensile premium">
           <div className="monthly-report-head">
             <div>
@@ -14093,6 +14133,7 @@ function FaultCostReport({
           </div>
         </section>
       ) : null}
+      {(showReportOverview || showReportDetails) ? (
       <div className="fault-cost-controls">
         <label>
           {isReportWorkspace ? 'Che report vuoi?' : 'Vista costi'}
@@ -14167,6 +14208,8 @@ function FaultCostReport({
           </>
         ) : null}
       </div>
+      ) : null}
+      {(showReportOverview || showReportDetails) ? (
       <div className="fault-cost-summary">
         <div>
           <strong>{formatMoneyCents(totalCents, defaultCurrency)}</strong>
@@ -14185,6 +14228,8 @@ function FaultCostReport({
           <span>Multe non assegnate</span>
         </div>
       </div>
+      ) : null}
+      {(showReportOverview || showReportDetails) ? (
       <div className="cost-insight-grid" aria-label="Analisi premium centro costi">
         <article>
           <span>Soggetto più costoso</span>
@@ -14207,6 +14252,8 @@ function FaultCostReport({
           <small>Da collegare a targa, autista o attrezzatura</small>
         </article>
       </div>
+      ) : null}
+      {(showReportOverview || showReportDetails) ? (
       <div className="fault-fines-panel">
         <div className="fault-fines-head">
           <div>
@@ -14249,6 +14296,8 @@ function FaultCostReport({
           <p className="archive-note">Nessuna sanzione registrata con questi filtri.</p>
         )}
       </div>
+      ) : null}
+      {showReportDetails ? (
       <div className="fault-cost-list">
         {reportType === 'fine_ranking' ? fineRanking.map((row, index) => (
           <article className="fault-cost-row" key={row.driverId || 'unassigned'}>
@@ -14305,6 +14354,7 @@ function FaultCostReport({
         {reportType === 'fine_ranking' && !fineRanking.length ? <p className="archive-note">Nessuna multa da classificare con questi filtri.</p> : null}
         {reportType !== 'fine_ranking' && !reportRows.length ? <p className="archive-note">Nessun costo registrato per questo filtro.</p> : null}
       </div>
+      ) : null}
     </section>
   )
 }
@@ -14314,6 +14364,7 @@ function OperationsWorkspace({
   assetPreviewUrl,
   driverRecords,
   faultReportRecords,
+  itemRecords = [],
   onAcknowledgeCheck,
   onFilterChange,
   onMarkCheckUnread,
@@ -14334,12 +14385,20 @@ function OperationsWorkspace({
   const archivedChecks = vehicleCheckRecords.filter((check) => isVehicleCheckArchived(check, acknowledgedCheckIds))
   const criticalChecks = unreadChecks.filter(hasCheckIssues)
   const criticalFaults = faultReportRecords.filter(isCriticalFault)
+  const actionableDeadlines = itemRecords.filter(isComplianceActionRequired)
+  const criticalDeadlines = actionableDeadlines.filter((item) => daysUntil(item.dueDate) <= 7)
   const allOperations = [
     ...faultReportRecords.map((report) => ({
       createdAt: report.createdAt,
       data: report,
       id: report.id,
       kind: 'fault',
+    })),
+    ...actionableDeadlines.map((item) => ({
+      createdAt: item.dueDate,
+      data: item,
+      id: item.id,
+      kind: 'deadline',
     })),
     ...vehicleCheckRecords.map((check) => ({
       createdAt: check.createdAt,
@@ -14353,12 +14412,14 @@ function OperationsWorkspace({
       if (filter === 'inbox') {
         return (
           (operation.kind === 'fault' && isFaultUnread(operation.data)) ||
+          (operation.kind === 'deadline' && isComplianceActionRequired(operation.data)) ||
           (operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds))
         )
       }
       if (filter === 'critical') {
         return (
           (operation.kind === 'fault' && isCriticalFault(operation.data)) ||
+          (operation.kind === 'deadline' && daysUntil(operation.data.dueDate) <= 7) ||
           (operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds) && hasCheckIssues(operation.data))
         )
       }
@@ -14371,6 +14432,7 @@ function OperationsWorkspace({
           (operation.kind === 'check' && isVehicleCheckArchived(operation.data, acknowledgedCheckIds))
         )
       }
+      if (filter === 'deadlines') return operation.kind === 'deadline'
       if (filter === 'faults') return operation.kind === 'fault' && isFaultUnread(operation.data)
       if (filter === 'checks') return operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds)
       return false
@@ -14380,6 +14442,35 @@ function OperationsWorkspace({
   const modalOperation = allOperations.find((operation) => `${operation.kind}-${operation.id}` === modalOperationKey)
   const fallbackSelection = operations[0]
   const detailOperation = selectedOperation ?? fallbackSelection
+  const priorityOperation =
+    [
+      ...criticalFaults.map((report) => ({ createdAt: report.createdAt, data: report, id: report.id, kind: 'fault' })),
+      ...criticalDeadlines.map((item) => ({ createdAt: item.dueDate, data: item, id: item.id, kind: 'deadline' })),
+      ...criticalChecks.map((check) => ({ createdAt: check.createdAt, data: check, id: check.id, kind: 'check' })),
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] ??
+    operations[0] ??
+    null
+  const priorityDriver = priorityOperation
+    ? driverRecords.find((driver) => driver.id === priorityOperation.data.driverId)
+    : null
+  const priorityVehicle = priorityOperation
+    ? vehicleRecords.find((vehicle) => vehicle.id === (priorityOperation.kind === 'fault' ? priorityOperation.data.vehicleId : priorityOperation.data.tractorId))
+    : null
+  const priorityTitle = priorityOperation
+    ? priorityOperation.kind === 'fault'
+      ? priorityOperation.data.title
+      : priorityOperation.kind === 'deadline'
+        ? priorityOperation.data.type || 'Scadenza'
+        : t('driverApp.morningCheck')
+    : 'Nessuna notifica da lavorare'
+  const priorityDetail = priorityOperation
+    ? [
+        priorityOperation.kind === 'fault' ? t('operations.fault') : priorityOperation.kind === 'deadline' ? 'Scadenza' : t('operations.check'),
+        priorityOperation.kind === 'deadline' ? priorityOperation.data.assignee || priorityOperation.data.owner || 'Azienda' : priorityDriver?.name ?? t('common.driverMissing'),
+        priorityOperation.kind === 'deadline' ? priorityOperation.data.detail || formatDate(priorityOperation.data.dueDate) : priorityVehicle?.plate ?? t('common.vehicleMissing'),
+        formatShortDateTime(priorityOperation.createdAt),
+      ].join(' · ')
+    : 'Quando arrivano check, guasti o scadenze importanti li trovi qui.'
 
   async function openOperation(operation) {
     setSelectedOperationKey(`${operation.kind}-${operation.id}`)
@@ -14403,11 +14494,11 @@ function OperationsWorkspace({
         </div>
         <div className="operations-summary-grid">
           <div>
-            <strong>{newFaults.length + unreadChecks.length}</strong>
+            <strong>{newFaults.length + unreadChecks.length + actionableDeadlines.length}</strong>
             <span>{t('operations.inbox').toLowerCase()}</span>
           </div>
           <div>
-            <strong>{criticalFaults.length + criticalChecks.length}</strong>
+            <strong>{criticalFaults.length + criticalChecks.length + criticalDeadlines.length}</strong>
             <span>{t('operations.criticalCount')}</span>
           </div>
           <div>
@@ -14415,22 +14506,65 @@ function OperationsWorkspace({
             <span>{t('operations.activeFaults')}</span>
           </div>
           <div>
-            <strong>{archivedFaults.length + archivedChecks.length}</strong>
-            <span>{t('operations.archivedCount')}</span>
+            <strong>{actionableDeadlines.length}</strong>
+            <span>scadenze da lavorare</span>
+          </div>
+        </div>
+        <div className="operations-command-strip">
+          <button
+            className="operations-priority-card"
+            disabled={!priorityOperation}
+            onClick={() => priorityOperation && openOperation(priorityOperation)}
+            type="button"
+          >
+            <span className={priorityOperation?.kind === 'fault' || priorityOperation?.kind === 'deadline' ? 'operation-icon tone-danger' : 'operation-icon tone-info'}>
+              {priorityOperation?.kind === 'fault' ? <Wrench size={19} /> : priorityOperation?.kind === 'deadline' ? <CalendarClock size={19} /> : <Bell size={19} />}
+            </span>
+            <span>
+              <small>Priorità adesso</small>
+              <strong>{priorityTitle}</strong>
+              <em>{priorityDetail}</em>
+            </span>
+            {priorityOperation ? <ChevronRight size={17} /> : null}
+          </button>
+          <div className="operations-quick-actions">
+            <button className={filter === 'critical' ? 'is-active' : ''} onClick={() => changeFilter('critical')} type="button">
+              <AlertTriangle size={15} />
+              Critiche
+            </button>
+            <button className={filter === 'faults' ? 'is-active' : ''} onClick={() => changeFilter('faults')} type="button">
+              <Wrench size={15} />
+              Guasti
+            </button>
+            <button className={filter === 'checks' ? 'is-active' : ''} onClick={() => changeFilter('checks')} type="button">
+              <ClipboardCheck size={15} />
+              Check
+            </button>
+            <button className={filter === 'deadlines' ? 'is-active' : ''} onClick={() => changeFilter('deadlines')} type="button">
+              <CalendarClock size={15} />
+              Scadenze
+            </button>
+            <button className={filter === 'archive' ? 'is-active' : ''} onClick={() => changeFilter('archive')} type="button">
+              <Clock3 size={15} />
+              Archivio
+            </button>
           </div>
         </div>
         <div className="filter-tabs operations-filters" role="tablist" aria-label={t('notifications.filterAria')}>
           <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('inbox')} type="button">
-            {t('operations.inbox')} ({newFaults.length + unreadChecks.length})
+            {t('operations.inbox')} ({newFaults.length + unreadChecks.length + actionableDeadlines.length})
           </button>
           <button className={filter === 'critical' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical')} type="button">
-            {t('operations.critical')} ({criticalFaults.length + criticalChecks.length})
+            {t('operations.critical')} ({criticalFaults.length + criticalChecks.length + criticalDeadlines.length})
           </button>
           <button className={filter === 'critical_checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical_checks')} type="button">
             {t('operations.checkCritical')} ({criticalChecks.length})
           </button>
           <button className={filter === 'checks' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('checks')} type="button">
             {t('operations.check')} ({unreadChecks.length})
+          </button>
+          <button className={filter === 'deadlines' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('deadlines')} type="button">
+            Scadenze ({actionableDeadlines.length})
           </button>
           <button className={filter === 'faults' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('faults')} type="button">
             {t('operations.faults')} ({newFaults.length})
@@ -14451,6 +14585,13 @@ function OperationsWorkspace({
                 selected={detailOperation?.kind === 'fault' && detailOperation.id === operation.id}
                 trailer={vehicleRecords.find((vehicle) => vehicle.id === operation.data.semitrailerId)}
                 vehicle={vehicleRecords.find((vehicle) => vehicle.id === operation.data.vehicleId)}
+              />
+            ) : operation.kind === 'deadline' ? (
+              <DeadlineOperationRow
+                item={operation.data}
+                key={`deadline-${operation.id}`}
+                onOpen={() => openOperation(operation)}
+                selected={detailOperation?.kind === 'deadline' && detailOperation.id === operation.id}
               />
             ) : (
               <CheckOperationRow
@@ -16073,6 +16214,45 @@ function CheckOperationRow({ check, driver, onMarkRead, onMarkUnread, onOpen, re
   )
 }
 
+function DeadlineOperationRow({ item, onOpen, selected }) {
+  const { t } = useI18n()
+  const days = typeof item.urgency?.days === 'number' ? item.urgency.days : daysUntil(item.dueDate)
+  const urgency = item.urgency ?? {
+    days,
+    key: days < 0 ? 'expired' : days <= 7 ? 'critical' : 'soon',
+    label: days < 0 ? 'Scaduta' : days <= 7 ? 'Critica' : 'In scadenza',
+    tone: days <= 7 ? 'danger' : 'warning',
+  }
+  const rowClassName = ['operation-row', selected ? 'is-selected' : '']
+    .filter(Boolean)
+    .join(' ')
+
+  return (
+    <article className={rowClassName}>
+      <div className={`operation-icon tone-${urgency.tone}`}>
+        <CalendarClock size={20} />
+      </div>
+      <div className="operation-main">
+        <div className="operation-title">
+          <strong>{item.type || 'Scadenza documentale'}</strong>
+          <span className={`status-pill tone-${urgency.tone}`}>{getUrgencyLabel(urgency, t)}</span>
+        </div>
+        <p>{item.assignee || item.owner || 'Azienda'} · {formatDate(item.dueDate)}</p>
+        <small>
+          {item.detail || item.scope || 'Pratica documentale'}
+          {item.documentNumber ? ` · ${item.documentNumber}` : ''}
+        </small>
+        {item.notes ? <em>{item.notes}</em> : null}
+      </div>
+      <div className="operation-actions">
+        <button className="small-button" onClick={onOpen} type="button">
+          {t('operations.open')}
+        </button>
+      </div>
+    </article>
+  )
+}
+
 function OperationDetailPanel({
   acknowledgedCheckIds,
   assetPreviewUrl = () => '',
@@ -16176,6 +16356,62 @@ function OperationDetailShell({
           <Bell size={20} />
         </div>
         <p className="operation-detail-empty">{t('operations.detailEmptyText')}</p>
+      </Shell>
+    )
+  }
+
+  if (operation.kind === 'deadline') {
+    const item = operation.data
+    const days = typeof item.urgency?.days === 'number' ? item.urgency.days : daysUntil(item.dueDate)
+    const urgency = item.urgency ?? {
+      days,
+      key: days < 0 ? 'expired' : days <= 7 ? 'critical' : 'soon',
+      label: days < 0 ? 'Scaduta' : days <= 7 ? 'Critica' : 'In scadenza',
+      tone: days <= 7 ? 'danger' : 'warning',
+    }
+    const daysLabel =
+      days < 0
+        ? t('deadline.daysAgo', { count: Math.abs(days) })
+        : days === 0
+          ? 'Oggi'
+          : t('deadline.days', { count: days })
+    const subjectType = item.subjectKind ?? (item.scope === 'driver' ? 'Autista' : item.scope === 'vehicle' ? 'Mezzo' : item.scope === 'person' ? 'Persona' : 'Azienda')
+
+    return (
+      <Shell className={shellClassName} {...shellProps}>
+        <div className="panel-header compact">
+          <div>
+            <p className="overline">Scadenza</p>
+            <h2>{item.type || 'Scadenza documentale'}</h2>
+          </div>
+          <div className="operation-detail-header-actions">
+            <CalendarClock size={20} />
+            {surface === 'modal' && (
+              <button aria-label={t('common.close')} className="icon-button operation-modal-close" onClick={onClose} type="button">
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="operation-detail-body">
+          <DetailLine label={t('common.status')} value={`${getUrgencyLabel(urgency, t)} · ${daysLabel}`} />
+          <DetailLine label="Ambito" value={subjectType} />
+          <DetailLine label={t('deadline.subject')} value={item.assignee || item.owner || 'Azienda'} />
+          <DetailLine label="Dettaglio" value={item.detail} />
+          <DetailLine label={t('deadline.dueDate')} value={formatDate(item.dueDate)} />
+          <DetailLine label="Numero documento" value={item.documentNumber} />
+          <DetailLine label={t('deadline.owner')} value={item.owner} />
+          {item.notes ? (
+            <div className="detail-note">
+              <strong>{t('common.notes')}</strong>
+              <p>{item.notes}</p>
+            </div>
+          ) : null}
+          <div className={urgency.tone === 'danger' ? 'detail-note is-critical' : 'detail-note'}>
+            <strong>Da lavorare</strong>
+            <p>Apri Scadenze o Anagrafiche per rinnovare il documento, caricare il file aggiornato o chiudere la pratica.</p>
+          </div>
+        </div>
       </Shell>
     )
   }

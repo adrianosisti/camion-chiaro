@@ -661,6 +661,7 @@ const translations = {
     'homeStatus.files': 'Spazio file',
     'homeStatus.lastCheck': 'Ultimo controllo',
     'homeStatus.notifications': 'Notifiche',
+    'homeStatus.optional': 'Opzionali',
     'homeStatus.now': 'Adesso',
     'homeStatus.ready': 'Attive',
     'homeStatus.storageDetail': '{files} file',
@@ -848,6 +849,7 @@ const translations = {
     'homeStatus.files': 'File space',
     'homeStatus.lastCheck': 'Last check',
     'homeStatus.notifications': 'Notifications',
+    'homeStatus.optional': 'Optional',
     'homeStatus.now': 'Now',
     'homeStatus.ready': 'Active',
     'homeStatus.storageDetail': '{files} files',
@@ -5377,6 +5379,63 @@ function App() {
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
   }, [])
 
+  const refreshPhoneNotificationState = useCallback(async ({ autoRegisterIfAllowed = false } = {}) => {
+    const support = getPushSupportStatus()
+
+    if (!support.supported) {
+      setPhoneNotificationEnabled(false)
+      if (support.reason) setPhoneNotificationStatus(support.reason)
+      return false
+    }
+
+    try {
+      const existingSubscription = await getExistingPushSubscription()
+
+      if (existingSubscription) {
+        setPhoneNotificationEnabled(true)
+        setPhoneNotificationStatus('Notifiche gia attive su questo dispositivo.')
+
+        if (session && activeCompanyId) {
+          await savePushSubscription(
+            existingSubscription.toJSON(),
+            session.role === 'driver' ? activeCompanyId || null : activeCompanyId,
+          )
+        }
+
+        return true
+      }
+
+      if (
+        autoRegisterIfAllowed
+        && typeof window !== 'undefined'
+        && window.Notification?.permission === 'granted'
+        && session
+        && activeCompanyId
+      ) {
+        const subscriptionResult = await subscribeCurrentBrowserToPush()
+
+        if (subscriptionResult.subscription) {
+          const saveResult = await savePushSubscription(
+            subscriptionResult.subscription,
+            session.role === 'driver' ? activeCompanyId || null : activeCompanyId,
+          )
+
+          if (!saveResult.error) {
+            setPhoneNotificationEnabled(true)
+            setPhoneNotificationStatus('Notifiche telefono abilitate.')
+            return true
+          }
+        }
+      }
+    } catch {
+      setPhoneNotificationEnabled(false)
+      return false
+    }
+
+    setPhoneNotificationEnabled(false)
+    return false
+  }, [activeCompanyId, session])
+
   useEffect(() => {
     function handleBeforeInstallPrompt(event) {
       event.preventDefault()
@@ -5392,15 +5451,41 @@ function App() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.addEventListener('appinstalled', handleInstalled)
 
-    getExistingPushSubscription()
-      .then((subscription) => setPhoneNotificationEnabled(Boolean(subscription)))
-      .catch(() => {})
+    const notificationTimerId = window.setTimeout(() => {
+      void refreshPhoneNotificationState()
+    }, 0)
 
     return () => {
+      window.clearTimeout(notificationTimerId)
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleInstalled)
     }
-  }, [])
+  }, [refreshPhoneNotificationState])
+
+  useEffect(() => {
+    if (!session) return
+    if (isSupabaseConfigured && !activeCompanyId) return
+
+    let isMounted = true
+
+    window.setTimeout(() => {
+      if (!isMounted) return
+      void refreshPhoneNotificationState({ autoRegisterIfAllowed: true })
+    }, 0)
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        void refreshPhoneNotificationState({ autoRegisterIfAllowed: true })
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      isMounted = false
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [activeCompanyId, refreshPhoneNotificationState, session])
 
   useEffect(() => {
     if (!isSupabaseConfigured || assetPaths.length === 0) return
@@ -8338,23 +8423,7 @@ function App() {
   )).length
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
-  if (!companyLicenseActive && activeView !== 'admin') {
-    return (
-        <I18nContext.Provider value={i18nValue}>
-        <CompanyLicenseGate
-          checkoutStatus={billingCheckoutStatus}
-          companyEmail={session.email}
-          companyName={companyName}
-          companyProfile={companyProfile}
-          isCheckoutLoading={isBillingCheckoutLoading}
-          onSignOut={handleSignOut}
-          onStartCheckout={startBillingCheckout}
-        />
-      </I18nContext.Provider>
-    )
-  }
-
-  if (activeCompanyId && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
+  if (activeCompanyId && activeView !== 'admin' && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
     return (
       <I18nContext.Provider value={i18nValue}>
         <LegalAcceptanceGate
@@ -8365,6 +8434,22 @@ function App() {
           message={legalAcceptanceStatus.message}
           onAccept={acceptLegalDocuments}
           onSignOut={handleSignOut}
+        />
+      </I18nContext.Provider>
+    )
+  }
+
+  if (!companyLicenseActive && activeView !== 'admin') {
+    return (
+      <I18nContext.Provider value={i18nValue}>
+        <CompanyLicenseGate
+          checkoutStatus={billingCheckoutStatus}
+          companyEmail={session.email}
+          companyName={companyName}
+          companyProfile={companyProfile}
+          isCheckoutLoading={isBillingCheckoutLoading}
+          onSignOut={handleSignOut}
+          onStartCheckout={startBillingCheckout}
         />
       </I18nContext.Provider>
     )
@@ -8530,6 +8615,13 @@ function App() {
       value: '',
     },
   ]
+  const pushSupportStatus = getPushSupportStatus()
+  const homeNotificationStatus = phoneNotificationEnabled
+    ? { tone: 'success', value: t('homeStatus.ready') }
+    : {
+        tone: pushSupportStatus.supported ? 'info' : 'warning',
+        value: pushSupportStatus.supported ? t('homeStatus.optional') : 'In app',
+      }
   const homeStatusItems = [
     {
       icon: RadioTower,
@@ -8540,8 +8632,8 @@ function App() {
     {
       icon: Bell,
       label: t('homeStatus.notifications'),
-      tone: phoneNotificationEnabled ? 'success' : 'warning',
-      value: phoneNotificationEnabled ? t('homeStatus.ready') : t('homeStatus.waiting'),
+      tone: homeNotificationStatus.tone,
+      value: homeNotificationStatus.value,
     },
     {
       icon: Upload,

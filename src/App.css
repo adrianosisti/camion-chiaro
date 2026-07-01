@@ -36,11 +36,25 @@
 
 .public-brand {
   flex: 0 0 auto;
+  min-width: 0;
   width: auto;
+}
+
+.public-brand > div:last-child {
+  min-width: 0;
+}
+
+.public-brand strong,
+.public-brand span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .public-nav {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   justify-content: center;
   gap: clamp(12px, 3vw, 28px);
@@ -60,8 +74,10 @@
 
 .public-header-actions {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   min-width: 0;
 }
@@ -647,8 +663,11 @@
 .legal-link-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   gap: 7px;
   margin-top: 7px;
+  width: 100%;
 }
 
 .inline-legal-button {
@@ -661,6 +680,7 @@
   font: inherit;
   font-size: 0.74rem;
   font-weight: 900;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -10302,6 +10322,10 @@
     gap: 12px;
   }
 
+  .public-brand {
+    flex: 1 1 auto;
+  }
+
   .public-nav {
     order: 3;
     width: 100%;
@@ -10837,12 +10861,22 @@
     justify-content: space-between;
   }
 
+  .public-header-actions .compact-button {
+    flex: 0 0 auto;
+    padding-inline: 10px;
+  }
+
   .public-header-actions .language-selector {
     flex: 1 1 auto;
   }
 
+  .public-header-actions .language-selector span {
+    display: none;
+  }
+
   .public-header-actions .language-selector select {
     min-width: 0;
+    width: 100%;
   }
 
   .public-hero-copy h1 {

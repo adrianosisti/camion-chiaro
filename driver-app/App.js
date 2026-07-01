@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -46,6 +47,7 @@ import {
   fetchCompanyContext,
   fetchCompanyDriverChat,
   fetchDriverChat,
+  fetchLegalAcceptanceStatus,
   fetchTeamChat,
   fetchDriverContext,
   getCurrentSession,
@@ -54,6 +56,7 @@ import {
   markTeamThreadRead,
   renewDriverDocument,
   renewCompanyComplianceItem,
+  recordLegalAcceptances,
   resetCompanyAccessPassword,
   saveNativePushToken,
   sendChatMessage,
@@ -79,6 +82,55 @@ import { t } from './src/i18n/native'
 import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
+
+const nativeLegalDocuments = {
+  dpa: {
+    intro: 'Nomina Vygo a responsabile del trattamento per i dati gestiti per conto dell azienda.',
+    sections: [
+      ['Ruoli privacy', 'L azienda cliente resta titolare dei dati. Vygo opera come fornitore tecnico per app, dashboard, notifiche, documenti, chat, report e assistenza.'],
+      ['Dati trattati', 'Vygo puo trattare dati di utenti, autisti, personale, mezzi, documenti, chat, file, foto, video, audio, scadenze, guasti, check, costi e log operativi.'],
+      ['Sicurezza', 'Il servizio usa autenticazione, permessi per azienda, regole database, archiviazione file, log e separazione dei dati tra aziende.'],
+      ['Fine servizio', 'Alla cessazione l azienda potra richiedere esportazione o cancellazione dei dati secondo contratto e procedure operative.'],
+    ],
+    title: 'Nomina responsabile trattamento',
+    version: 'vygo-dpa-2026-07-01',
+  },
+  privacy: {
+    intro: 'Informativa Privacy Vygo per app, dashboard, utenti, chat, documenti, notifiche e file.',
+    sections: [
+      ['Quali dati trattiamo', 'Vygo tratta i dati necessari a gestire aziende logistiche, personale, mezzi, documenti, scadenze, guasti, chat, notifiche, costi, report e assistenza.'],
+      ['Perche li usiamo', 'I dati servono a far funzionare il servizio, mostrare documenti e avvisi, inviare notifiche, gestire comunicazioni aziendali, creare report e garantire sicurezza.'],
+      ['Chi puo vederli', 'I dati aziendali sono visibili solo agli utenti autorizzati dalla rispettiva azienda. Vygo non vende dati personali.'],
+      ['Conservazione e diritti', 'I dati restano per il tempo necessario al servizio e agli obblighi amministrativi. Gli utenti possono chiedere informazioni, rettifica o cancellazione ove applicabile.'],
+      ['Chat e documenti', 'Chat, foto, audio, video e documenti sono strumenti di lavoro aziendale e vanno usati secondo le regole interne dell azienda.'],
+    ],
+    title: 'Informativa Privacy Vygo',
+    version: 'vygo-privacy-2026-07-01',
+  },
+  staffTerms: {
+    intro: 'Regole base per autisti, magazzino, ufficio e personale che usa l app Vygo.',
+    sections: [
+      ['Account personale', 'Username e password sono personali e non vanno condivisi. Se il dispositivo viene perso bisogna avvisare subito l azienda.'],
+      ['Uso corretto', 'L app va usata per finalita lavorative: chat aziendale, check, guasti, documenti, notifiche, scadenze, foto, video, audio e informazioni operative.'],
+      ['Allegati', 'Documenti, foto e file caricati devono essere pertinenti, leggibili e collegati al lavoro.'],
+      ['Check e guasti', 'Segnalazioni di guasto, check e anomalie devono essere veritiere e complete.'],
+    ],
+    title: 'Regole uso app personale',
+    version: 'vygo-staff-terms-2026-07-01',
+  },
+  terms: {
+    intro: 'Termini e Condizioni SaaS Vygo per aziende di trasporto e logistica.',
+    sections: [
+      ['Oggetto del servizio', 'Vygo include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, notifiche, centro costi e report secondo il piano acquistato.'],
+      ['Piani e limiti', 'Ogni piano puo prevedere limiti su mezzi, strumenti, account utenti, storage, chat, centro costi, report e funzioni avanzate.'],
+      ['Responsabilita azienda', 'L azienda e responsabile della correttezza dei dati inseriti, della gestione degli utenti e dell uso conforme alle proprie regole interne.'],
+      ['Pagamenti', 'Gli abbonamenti sono gestiti dal sistema di pagamento configurato. Mancato pagamento o piano scaduto possono limitare funzioni non incluse o non pagate.'],
+      ['Cessazione', 'Alla fine del rapporto l azienda potra richiedere esportazione o cancellazione dei dati disponibili secondo le procedure concordate.'],
+    ],
+    title: 'Termini e Condizioni SaaS',
+    version: 'vygo-terms-2026-07-01',
+  },
+}
 
 class ScreenErrorBoundary extends Component {
   constructor(props) {
@@ -114,6 +166,147 @@ class ScreenErrorBoundary extends Component {
 
     return this.props.children
   }
+}
+
+function LegalAcceptanceScreen({
+  accountRole = 'staff',
+  companyName = 'Vygo',
+  isLoading = false,
+  isSaving = false,
+  message = '',
+  onAccept,
+  onSignOut,
+}) {
+  const isCompany = accountRole === 'company'
+  const [accepted, setAccepted] = useState({
+    dpa: false,
+    marketing: false,
+    privacy: false,
+    staffTerms: false,
+    terms: false,
+  })
+  const [openDocumentId, setOpenDocumentId] = useState('')
+  const openDocument = nativeLegalDocuments[openDocumentId]
+  const canAccept = isCompany
+    ? accepted.terms && accepted.privacy && accepted.dpa
+    : accepted.staffTerms && accepted.privacy
+
+  function toggleAccepted(field) {
+    setAccepted((current) => ({ ...current, [field]: !current[field] }))
+  }
+
+  function renderLegalRow(field, text, documentId, buttonLabel = 'Leggi') {
+    const isChecked = Boolean(accepted[field])
+
+    return (
+      <Pressable onPress={() => toggleAccepted(field)} style={styles.legalNativeRow}>
+        <Ionicons
+          color={isChecked ? colors.cyanDark : colors.muted}
+          name={isChecked ? 'checkbox' : 'square-outline'}
+          size={23}
+        />
+        <View style={styles.legalNativeRowText}>
+          <Text style={styles.legalNativeCopy}>{text}</Text>
+          {documentId ? (
+            <Pressable
+              onPress={(event) => {
+                event.stopPropagation()
+                setOpenDocumentId(documentId)
+              }}
+              style={styles.legalNativeReadButton}
+            >
+              <Text style={styles.legalNativeReadText}>{buttonLabel}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </Pressable>
+    )
+  }
+
+  if (openDocument) {
+    return (
+      <SafeAreaView style={styles.legalNativeScreen}>
+        <ExpoStatusBar style="dark" />
+        <ScrollView contentContainerStyle={styles.legalNativeContent}>
+          <View style={styles.legalNativePanel}>
+            <View style={styles.legalNativeHeader}>
+              <View>
+                <Text style={styles.legalNativeOverline}>Documento consultabile</Text>
+                <Text style={styles.legalNativeTitle}>{openDocument.title}</Text>
+                <Text style={styles.legalNativeVersion}>Versione {openDocument.version}</Text>
+              </View>
+              <Pressable onPress={() => setOpenDocumentId('')} style={styles.legalNativeIconButton}>
+                <Ionicons color={colors.ink} name="close" size={22} />
+              </Pressable>
+            </View>
+            <Text style={styles.legalNativeIntro}>{openDocument.intro}</Text>
+            {openDocument.sections.map(([title, body]) => (
+              <View key={title} style={styles.legalNativeSection}>
+                <Text style={styles.legalNativeSectionTitle}>{title}</Text>
+                <Text style={styles.legalNativeSectionBody}>{body}</Text>
+              </View>
+            ))}
+            <Pressable onPress={() => setOpenDocumentId('')} style={styles.legalNativePrimaryButton}>
+              <Text style={styles.legalNativePrimaryText}>Ho letto</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    )
+  }
+
+  return (
+    <SafeAreaView style={styles.legalNativeScreen}>
+      <ExpoStatusBar style="dark" />
+      <ScrollView contentContainerStyle={styles.legalNativeContent}>
+        <View style={styles.legalNativePanel}>
+          <Image resizeMode="contain" source={vygoLogoHorizontal} style={styles.legalNativeLogo} />
+          <Text style={styles.legalNativeOverline}>{isCompany ? 'Primo accesso azienda' : 'Primo accesso personale'}</Text>
+          <Text style={styles.legalNativeTitle}>{companyName}</Text>
+          <Text style={styles.legalNativeIntro}>
+            Prima di usare Vygo dobbiamo salvare le accettazioni corrette. I testi restano consultabili e la conferma viene
+            registrata su azienda, utente, data e versione documento.
+          </Text>
+
+          {isLoading ? (
+            <View style={styles.legalNativeLoading}>
+              <ActivityIndicator color={colors.cyan} />
+              <Text style={styles.legalNativeIntro}>Controllo accettazioni...</Text>
+            </View>
+          ) : (
+            <View style={styles.legalNativeList}>
+              {isCompany ? (
+                <>
+                  {renderLegalRow('terms', 'Accetto Termini e Condizioni SaaS Vygo per uso aziendale, abbonamenti, limiti piano e supporto.', 'terms')}
+                  {renderLegalRow('privacy', 'Ho letto l Informativa Privacy Vygo per dati aziendali, utenti, chat, documenti, notifiche e file.', 'privacy')}
+                  {renderLegalRow('dpa', 'Confermo la nomina Vygo a responsabile del trattamento per i dati gestiti per conto dell azienda.', 'dpa', 'Leggi nomina')}
+                  {renderLegalRow('marketing', 'Voglio ricevere comunicazioni commerciali e aggiornamenti prodotto. Facoltativo.', '')}
+                </>
+              ) : (
+                <>
+                  {renderLegalRow('privacy', 'Ho letto l informativa privacy sull uso di app, profilo, documenti, notifiche e messaggi aziendali.', 'privacy')}
+                  {renderLegalRow('staffTerms', 'Accetto le regole d uso di Vygo per chat, documenti, check, guasti, allegati e notifiche aziendali.', 'staffTerms')}
+                </>
+              )}
+            </View>
+          )}
+
+          {message ? <Text style={styles.legalNativeMessage}>{message}</Text> : null}
+
+          <Pressable
+            disabled={!canAccept || isLoading || isSaving}
+            onPress={() => onAccept?.(accepted.marketing)}
+            style={[styles.legalNativePrimaryButton, (!canAccept || isLoading || isSaving) && styles.legalNativeDisabledButton]}
+          >
+            <Text style={styles.legalNativePrimaryText}>{isSaving ? 'Salvataggio...' : 'Accetta e continua'}</Text>
+          </Pressable>
+          <Pressable onPress={onSignOut} style={styles.legalNativeSecondaryButton}>
+            <Text style={styles.legalNativeSecondaryText}>Esci</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
 }
 
 function getNativePushPromptStorageKey(accountType, companyId, driverId = '') {
@@ -480,6 +673,12 @@ function CamionChiaroApp() {
   const [incomingChatShare, setIncomingChatShare] = useState(null)
   const [isAssistantOpen, setIsAssistantOpen] = useState(false)
   const [language, setLanguage] = useState('it')
+  const [legalAcceptanceStatus, setLegalAcceptanceStatus] = useState({
+    accepted: true,
+    isSaving: false,
+    loading: false,
+    message: '',
+  })
   const [logoUrl, setLogoUrl] = useState('')
   const [managementInitialSection, setManagementInitialSection] = useState('drivers')
   const [managementCostStartKey, setManagementCostStartKey] = useState(0)
@@ -515,6 +714,9 @@ function CamionChiaroApp() {
   const companyName = accountType === 'company'
     ? activeCompanyContext?.companyProfile?.name ?? 'Azienda'
     : getCompanyName(context)
+  const currentCompanyId = accountType === 'company'
+    ? companyContext?.companyProfile?.id ?? ''
+    : driver?.companyId ?? currentPerson?.companyId ?? context?.companyProfile?.id ?? ''
   const driverName = getDriverName(context)
   const headerSubtitle = accountType === 'company' ? t(language, 'accountAreaCompany') : driverName
   const selectedCompanyDriver = companyContext?.drivers?.find((currentDriver) => currentDriver.id === selectedCompanyDriverId) ?? null
@@ -922,6 +1124,54 @@ function CamionChiaroApp() {
     if (!settingsReady) return
     AsyncStorage.setItem(settingsStorageKey, JSON.stringify({ chatSoundEnabled, language }))
   }, [chatSoundEnabled, language, settingsReady])
+
+  useEffect(() => {
+    if (!session) {
+      setLegalAcceptanceStatus({
+        accepted: true,
+        isSaving: false,
+        loading: false,
+        message: '',
+      })
+      return undefined
+    }
+
+    if (!currentCompanyId) return undefined
+
+    let isActive = true
+    const accountRole = accountType === 'company' ? 'company' : 'staff'
+
+    setLegalAcceptanceStatus((currentStatus) => ({
+      ...currentStatus,
+      loading: true,
+      message: '',
+    }))
+
+    fetchLegalAcceptanceStatus({ accountRole, companyId: currentCompanyId }).then((result) => {
+      if (!isActive) return
+
+      if (result.error) {
+        setLegalAcceptanceStatus({
+          accepted: true,
+          isSaving: false,
+          loading: false,
+          message: result.error.message,
+        })
+        return
+      }
+
+      setLegalAcceptanceStatus({
+        accepted: Boolean(result.data?.accepted),
+        isSaving: false,
+        loading: false,
+        message: result.data?.missingTable ? 'Registro privacy non ancora installato. Esegui SQL 46 per attivarlo.' : '',
+      })
+    })
+
+    return () => {
+      isActive = false
+    }
+  }, [accountType, currentCompanyId, session])
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -1530,6 +1780,40 @@ function CamionChiaroApp() {
     }
   }
 
+  async function handleAcceptNativeLegal(marketingAccepted = false) {
+    if (!session || !currentCompanyId) return false
+    const accountRole = accountType === 'company' ? 'company' : 'staff'
+
+    setLegalAcceptanceStatus((currentStatus) => ({
+      ...currentStatus,
+      isSaving: true,
+      message: 'Salvataggio accettazioni...',
+    }))
+
+    const result = await recordLegalAcceptances({
+      accountRole,
+      companyId: currentCompanyId,
+      marketingAccepted,
+    })
+
+    if (result.error) {
+      setLegalAcceptanceStatus((currentStatus) => ({
+        ...currentStatus,
+        isSaving: false,
+        message: result.error.message,
+      }))
+      return false
+    }
+
+    setLegalAcceptanceStatus({
+      accepted: true,
+      isSaving: false,
+      loading: false,
+      message: 'Accettazioni salvate.',
+    })
+    return true
+  }
+
   async function handleSignOut() {
     await signOutDriver()
     setAccountType('driver')
@@ -1550,6 +1834,12 @@ function CamionChiaroApp() {
     setIsCompanyOnline(false)
     setIsCompanyTyping(false)
     setIsSelectedDriverTyping(false)
+    setLegalAcceptanceStatus({
+      accepted: true,
+      isSaving: false,
+      loading: false,
+      message: '',
+    })
     setLogoUrl('')
     setOnlineDriverIds([])
     setSelectedCompanyDriverId('')
@@ -3003,6 +3293,20 @@ function CamionChiaroApp() {
     )
   }
 
+  if (currentCompanyId && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
+    return (
+      <LegalAcceptanceScreen
+        accountRole={accountType === 'company' ? 'company' : 'staff'}
+        companyName={companyName}
+        isLoading={legalAcceptanceStatus.loading}
+        isSaving={legalAcceptanceStatus.isSaving}
+        message={legalAcceptanceStatus.message}
+        onAccept={handleAcceptNativeLegal}
+        onSignOut={handleSignOut}
+      />
+    )
+  }
+
   return (
     <View style={styles.shell}>
       <ExpoStatusBar backgroundColor="#020617" style="light" translucent={false} />
@@ -3096,6 +3400,175 @@ const styles = StyleSheet.create({
   authShell: {
     backgroundColor: colors.background,
     flex: 1,
+  },
+  legalNativeContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: layout.screenPadding,
+    paddingBottom: 30,
+  },
+  legalNativeCopy: {
+    color: colors.ink,
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 19,
+  },
+  legalNativeDisabledButton: {
+    opacity: 0.48,
+  },
+  legalNativeHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  legalNativeIconButton: {
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 999,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  legalNativeIntro: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  legalNativeList: {
+    gap: 10,
+    marginTop: 8,
+  },
+  legalNativeLoading: {
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 18,
+  },
+  legalNativeLogo: {
+    alignSelf: 'center',
+    height: 64,
+    width: 230,
+  },
+  legalNativeMessage: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  legalNativeOverline: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  legalNativePanel: {
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 14,
+    padding: 18,
+    shadowColor: '#020617',
+    shadowOffset: { height: 12, width: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 3,
+  },
+  legalNativePrimaryButton: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    justifyContent: 'center',
+    minHeight: 48,
+    marginTop: 4,
+    paddingHorizontal: 16,
+  },
+  legalNativePrimaryText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  legalNativeReadButton: {
+    alignSelf: 'center',
+    backgroundColor: '#ecfeff',
+    borderColor: '#67e8f9',
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 8,
+    minHeight: 30,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  legalNativeReadText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  legalNativeRow: {
+    alignItems: 'flex-start',
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  legalNativeRowText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  legalNativeScreen: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+  legalNativeSecondaryButton: {
+    alignItems: 'center',
+    borderColor: colors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  legalNativeSecondaryText: {
+    color: colors.cyanDark,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  legalNativeSection: {
+    backgroundColor: '#f8fbff',
+    borderRadius: 14,
+    gap: 5,
+    padding: 12,
+  },
+  legalNativeSectionBody: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
+  legalNativeSectionTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  legalNativeTitle: {
+    color: colors.ink,
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  legalNativeVersion: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 3,
   },
   companyName: {
     color: colors.ink,

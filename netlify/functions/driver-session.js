@@ -403,7 +403,18 @@ async function fetchDriverContext(serviceClient, driver) {
     .neq('status', 'archived')
     .maybeSingle()
 
-  const currentPerson = personResult.data ? mapCompanyPerson(personResult.data) : null
+  let currentPersonRow = personResult.data ?? null
+  if (currentPersonRow && !currentPersonRow.user_id && driver.user_id) {
+    const { data: updatedPerson } = await serviceClient
+      .from('company_people')
+      .update({ user_id: driver.user_id })
+      .eq('id', currentPersonRow.id)
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .maybeSingle()
+
+    if (updatedPerson) currentPersonRow = updatedPerson
+  }
+  const currentPerson = currentPersonRow ? mapCompanyPerson(currentPersonRow) : null
   let teamThreadIds = []
 
   if (currentPerson?.id) {

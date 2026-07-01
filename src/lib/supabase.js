@@ -399,7 +399,7 @@ function mapTeamChatMessage(row) {
     id: row.id,
     readByCompanyAt: row.read_by_company_at ?? '',
     readByDriverAt: '',
-    reactions: {},
+    reactions: row.reactions ?? {},
     senderPersonId: row.sender_person_id ?? '',
     senderRole: row.sender_role,
     senderUserId: row.sender_user_id,
@@ -448,6 +448,20 @@ const teamChatThreadSelectColumns = `
 `
 
 const teamChatMessageSelectColumns = `
+  id,
+  thread_id,
+  company_id,
+  sender_user_id,
+  sender_person_id,
+  sender_role,
+  body,
+  attachment_path,
+  reactions,
+  read_by_company_at,
+  created_at
+`
+
+const teamChatMessageSelectColumnsWithoutReactions = `
   id,
   thread_id,
   company_id,
@@ -1665,12 +1679,24 @@ export async function fetchTeamChatMessages(companyId = configuredCompanyId) {
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('team_chat_messages')
     .select(teamChatMessageSelectColumns)
     .eq('company_id', companyId)
     .order('created_at', { ascending: true })
     .limit(700)
+
+  if (isMissingReactionsColumn(error)) {
+    const fallbackResult = await supabase
+      .from('team_chat_messages')
+      .select(teamChatMessageSelectColumnsWithoutReactions)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: true })
+      .limit(700)
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   if (isMissingWorkforceSchemaError(error)) {
     return { data: [], error: null }
@@ -2381,11 +2407,22 @@ export async function createTeamChatMessageRecord(message, companyId = configure
     thread_id: message.threadId,
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('team_chat_messages')
     .insert(payload)
     .select(teamChatMessageSelectColumns)
     .single()
+
+  if (isMissingReactionsColumn(error)) {
+    const fallbackResult = await supabase
+      .from('team_chat_messages')
+      .insert(payload)
+      .select(teamChatMessageSelectColumnsWithoutReactions)
+      .single()
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   if (error && attachmentPath) {
     await supabase.storage.from(companyAssetsBucket).remove([attachmentPath])
@@ -2518,6 +2555,31 @@ export async function updateChatMessageReaction(message, actorRole, reaction) {
   }
 
   return { data: data ? mapChatMessage(data) : null, error }
+}
+
+export async function updateTeamChatMessageReaction(message, actorRole, reaction) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !message?.id) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('set_team_chat_message_reaction', {
+    actor_role: actorRole === 'company' ? 'company' : 'person',
+    reaction_value: reaction || null,
+    target_message_id: message.id,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return {
+      data: null,
+      error: {
+        message: 'Manca SQL reazioni chat gruppi. Esegui il file 44_team_chat_reazioni.sql in Supabase.',
+      },
+    }
+  }
+
+  return { data: data ? mapTeamChatMessage(data) : null, error }
 }
 
 export async function updateFaultReportStatus(reportId, status, repair = {}) {

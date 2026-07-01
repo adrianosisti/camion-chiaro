@@ -49,6 +49,14 @@ const reactionOptions = [
 ]
 
 const audioWaveHeights = [9, 16, 22, 13, 27, 19, 11, 24, 15, 29, 20, 12, 25, 18]
+const oneMegabyte = 1024 * 1024
+const maxChatAttachments = 5
+const maxChatAttachmentSizeByKind = {
+  audio: 8 * oneMegabyte,
+  file: 10 * oneMegabyte,
+  image: 5 * oneMegabyte,
+  video: 25 * oneMegabyte,
+}
 
 function getMessageText(message) {
   return String(message.body ?? '').trim()
@@ -274,9 +282,20 @@ function createPendingAttachment(asset, index = 0) {
     id: `${asset.assetId || asset.uri || timestamp}-${index}`,
     kind,
     name: asset.fileName || `allegato-${timestamp}-${index + 1}.${extension}`,
+    size: asset.fileSize || asset.size || 0,
     type: asset.mimeType || asset.type || (kind === 'video' ? 'video/mp4' : kind === 'audio' ? 'audio/mp4' : kind === 'image' ? 'image/jpeg' : 'application/octet-stream'),
     uri: asset.uri,
   }
+}
+
+function formatAttachmentSize(bytes = 0) {
+  if (!bytes) return ''
+  return `${(bytes / oneMegabyte).toFixed(bytes >= 10 * oneMegabyte ? 0 : 1)} MB`
+}
+
+function isAttachmentWithinLimit(attachment) {
+  const limit = maxChatAttachmentSizeByKind[attachment.kind] ?? maxChatAttachmentSizeByKind.file
+  return !attachment.size || attachment.size <= limit
 }
 
 function getAttachmentDefaultText(attachment) {
@@ -950,11 +969,24 @@ export function ChatScreen({
     const selectedAttachments = assets
       .filter((asset) => asset?.uri)
       .map(createPendingAttachment)
+    const acceptedAttachments = selectedAttachments.filter(isAttachmentWithinLimit)
+    const rejectedAttachments = selectedAttachments.filter((attachment) => !isAttachmentWithinLimit(attachment))
 
-    if (!selectedAttachments.length) return
+    if (rejectedAttachments.length) {
+      const rejectedSummary = rejectedAttachments
+        .slice(0, 3)
+        .map((attachment) => `${attachment.kind === 'video' ? 'video' : attachment.kind === 'image' ? 'foto' : attachment.kind === 'audio' ? 'audio' : 'file'} ${formatAttachmentSize(attachment.size)}`.trim())
+        .join(', ')
+      Alert.alert(
+        'File troppo pesante',
+        `Per tenere Vygo veloce e leggera, invia foto fino a 5 MB, video fino a 25 MB e audio fino a 8 MB.${rejectedSummary ? ` Scartati: ${rejectedSummary}.` : ''}`,
+      )
+    }
+
+    if (!acceptedAttachments.length) return
 
     setPendingAttachments((currentAttachments) => (
-      [...currentAttachments, ...selectedAttachments].slice(0, 10)
+      [...currentAttachments, ...acceptedAttachments].slice(0, maxChatAttachments)
     ))
   }
 
@@ -966,8 +998,8 @@ export function ChatScreen({
       allowsMultipleSelection: true,
       mediaTypes: ['images', 'videos'],
       orderedSelection: true,
-      quality: 0.45,
-      selectionLimit: 10,
+      quality: 0.35,
+      selectionLimit: maxChatAttachments,
     })
 
     if (result.canceled || !result.assets?.[0]) return
@@ -987,8 +1019,8 @@ export function ChatScreen({
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: false,
       mediaTypes: ['images', 'videos'],
-      quality: 0.45,
-      videoMaxDuration: 60,
+      quality: 0.35,
+      videoMaxDuration: 30,
     })
 
     if (result.canceled || !result.assets?.[0]) return

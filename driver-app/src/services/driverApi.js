@@ -1214,7 +1214,7 @@ async function uploadChatAttachment({ attachment, companyId, folder = 'chat', th
   const filePath = `${companyId}/${folder}/${threadId}/${Date.now()}-${cleanFileName}`
   const fileBody = await getFileBodyFromUri(attachment.uri)
   const { error } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
-    cacheControl: '3600',
+    cacheControl: '31536000',
     contentType: attachment.type || 'application/octet-stream',
     upsert: false,
   })
@@ -1602,7 +1602,7 @@ export async function markChatMessagesRead(threadId, readerRole) {
 
 export async function createCompanyAssetSignedUrl(filePath) {
   if (!isSupabaseConfigured || !filePath) return { data: null, error: null }
-  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 3600)
+  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 86400)
 }
 
 export async function createDriverDocumentSignedUrl(filePath) {
@@ -2110,7 +2110,7 @@ export async function createCompanyComplianceItem({ companyId, file = null, item
     fileBody = await getFileBodyFromUri(file.uri)
 
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: file.type || 'application/octet-stream',
       upsert: false,
     })
@@ -2189,7 +2189,7 @@ export async function createCompanyCostEntry({ companyId, entry, file = null }) 
     fileBody = await getFileBodyFromUri(file.uri)
 
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: file.type || 'application/octet-stream',
       upsert: false,
     })
@@ -2260,7 +2260,7 @@ export async function updateCompanyCostEntry({ companyId, entryId, entry, file =
     fileBody = await getFileBodyFromUri(file.uri)
 
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: file.type || 'application/octet-stream',
       upsert: false,
     })
@@ -2351,7 +2351,7 @@ export async function renewCompanyComplianceItem({ companyId, file = null, item,
     fileBody = await getFileBodyFromUri(file.uri)
 
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: uploadedFileType,
       upsert: false,
     })
@@ -2458,7 +2458,7 @@ export async function renewCompanyComplianceItem({ companyId, file = null, item,
     if (file?.uri && fileBody) {
       driverDocumentFilePath = `${companyId}/${item.driverId}/${targetDocument.id}/${Date.now()}-${uploadedFileName || sanitizeFileName(file.name ?? 'documento')}`
       const { error: documentUploadError } = await supabase.storage.from(driverDocumentsBucket).upload(driverDocumentFilePath, fileBody, {
-        cacheControl: '3600',
+        cacheControl: '31536000',
         contentType: uploadedFileType || file.type || 'application/octet-stream',
         upsert: false,
       })
@@ -2542,7 +2542,7 @@ export async function uploadDriverDocumentFile({ companyId, documentId, driverId
   const fileBody = await getFileBodyFromUri(file.uri)
 
   const { error: uploadError } = await supabase.storage.from(driverDocumentsBucket).upload(filePath, fileBody, {
-    cacheControl: '3600',
+    cacheControl: '31536000',
     contentType: file.type || 'application/octet-stream',
     upsert: false,
   })
@@ -2576,7 +2576,7 @@ export async function renewDriverDocument({ companyId, document, driverId, file 
     fileBody = await getFileBodyFromUri(file.uri)
 
     const { error: uploadError } = await supabase.storage.from(driverDocumentsBucket).upload(filePath, fileBody, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: file.type || 'application/octet-stream',
       upsert: false,
     })
@@ -2629,7 +2629,7 @@ export async function uploadDriverProfileImage({ companyId, driverId, file }) {
   const fileBody = await getFileBodyFromUri(file.uri)
 
   const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
-    cacheControl: '3600',
+    cacheControl: '31536000',
     contentType: file.type || 'image/jpeg',
     upsert: false,
   })
@@ -2680,7 +2680,7 @@ export async function createFaultReport(payload) {
     photoPath = `${payload.companyId}/faults/${payload.driverId}/${Date.now()}-${cleanFileName}`
     const fileBody = await getFileBodyFromUri(payload.photo.uri)
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(photoPath, fileBody, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: payload.photo.type || 'image/jpeg',
       upsert: false,
     })

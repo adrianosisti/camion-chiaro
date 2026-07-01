@@ -1227,7 +1227,7 @@ export async function renewCompanyComplianceItem({ companyId = configuredCompany
     const subjectId = item.driverId || item.vehicleId || item.personId || item.assetId || 'azienda'
     filePath = `${companyId}/compliance/${item.scope}/${subjectId}/${Date.now()}-${cleanFileName}`
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, file, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: file.type || undefined,
       upsert: false,
     })
@@ -1358,7 +1358,7 @@ export async function renewCompanyComplianceItem({ companyId = configuredCompany
       const cleanFileName = sanitizeStorageFileName(file.name ?? `documento-${Date.now()}`)
       driverDocumentFilePath = `${companyId}/${item.driverId}/${targetDocument.id}/${Date.now()}-${cleanFileName}`
       const { error: documentUploadError } = await supabase.storage.from(driverDocumentsBucket).upload(driverDocumentFilePath, file, {
-        cacheControl: '3600',
+        cacheControl: '31536000',
         contentType: file.type || undefined,
         upsert: false,
       })
@@ -2086,7 +2086,7 @@ export async function createFaultReportRecord(report, companyId = configuredComp
     const cleanFileName = sanitizeStorageFileName(photoFile.name)
     photoPath = `${companyId}/faults/${report.driverId}/${Date.now()}-${cleanFileName}`
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(photoPath, photoFile, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: photoFile.type || undefined,
       upsert: false,
     })
@@ -2133,7 +2133,7 @@ export async function createCostEntryRecord(entry, companyId = configuredCompany
     const cleanFileName = sanitizeStorageFileName(receiptFile.name ?? `spesa-${Date.now()}`)
     filePath = `${companyId}/costs/${Date.now()}-${cleanFileName}`
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, receiptFile, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: receiptFile.type || undefined,
       upsert: false,
     })
@@ -2206,7 +2206,7 @@ export async function updateCostEntryRecord(entryId, updates = {}, companyId = c
     const cleanFileName = sanitizeStorageFileName(receiptFile.name ?? `spesa-${Date.now()}`)
     filePath = `${companyId}/costs/${Date.now()}-${cleanFileName}`
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, receiptFile, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: receiptFile.type || undefined,
       upsert: false,
     })
@@ -2342,7 +2342,7 @@ export async function createChatMessageRecord(message, companyId = configuredCom
     const cleanFileName = sanitizeStorageFileName(attachmentFile.name)
     attachmentPath = `${companyId}/chat/${message.threadId}/${Date.now()}-${cleanFileName}`
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(attachmentPath, attachmentFile, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: attachmentFile.type || undefined,
       upsert: false,
     })
@@ -2388,7 +2388,7 @@ export async function createTeamChatMessageRecord(message, companyId = configure
     const cleanFileName = sanitizeStorageFileName(attachmentFile.name)
     attachmentPath = `${companyId}/team-chat/${message.threadId}/${Date.now()}-${cleanFileName}`
     const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(attachmentPath, attachmentFile, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       contentType: attachmentFile.type || undefined,
       upsert: false,
     })
@@ -2713,7 +2713,7 @@ export async function uploadDriverDocumentFile(document, file, companyId = confi
   const cleanFileName = sanitizeStorageFileName(file.name)
   const filePath = `${companyId}/${document.driverId}/${document.id}/${Date.now()}-${cleanFileName}`
   const { error: uploadError } = await supabase.storage.from(driverDocumentsBucket).upload(filePath, file, {
-    cacheControl: '3600',
+    cacheControl: '31536000',
     contentType: file.type || undefined,
     upsert: false,
   })
@@ -2756,7 +2756,7 @@ export async function uploadCompanyLogoFile(file, companyId = configuredCompanyI
   const cleanFileName = sanitizeStorageFileName(file.name)
   const filePath = `${companyId}/company-logo/${Date.now()}-${cleanFileName}`
   const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, file, {
-    cacheControl: '3600',
+    cacheControl: '31536000',
     contentType: file.type || undefined,
     upsert: false,
   })
@@ -2797,7 +2797,7 @@ export async function uploadDriverProfileImageFile(driverId, file, companyId = c
   const cleanFileName = sanitizeStorageFileName(file.name)
   const filePath = `${companyId}/drivers/${driverId}/profile/${Date.now()}-${cleanFileName}`
   const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(filePath, file, {
-    cacheControl: '3600',
+    cacheControl: '31536000',
     contentType: file.type || undefined,
     upsert: false,
   })
@@ -2860,7 +2860,7 @@ export async function createCompanyAssetSignedUrl(filePath) {
     return { data: null, error: null }
   }
 
-  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 3600)
+  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 86400)
 }
 
 export async function createCompanyInvoiceSignedUrl(filePath) {

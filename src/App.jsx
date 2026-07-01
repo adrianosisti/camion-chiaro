@@ -4760,18 +4760,6 @@ function getChatAttachmentKind(value = '', mimeType = '') {
   return value ? 'file' : ''
 }
 
-function getChatAudioMimeType(value = '') {
-  const extension = getFileExtension(value)
-
-  if (['aac', 'm4a', 'mp4'].includes(extension)) return 'audio/mp4'
-  if (['ogg', 'opus'].includes(extension)) return 'audio/ogg'
-  if (extension === 'wav') return 'audio/wav'
-  if (extension === 'webm') return 'audio/webm'
-  if (extension === 'mp3') return 'audio/mpeg'
-
-  return 'audio/mp4'
-}
-
 function getChatAttachmentLabel(kind, t) {
   if (kind === 'audio') return t('chat.audioAttached')
   if (kind === 'video') return t('chat.videoAttached')
@@ -5112,9 +5100,10 @@ function App() {
         ...faultReportRecords.map((report) => report.photoPath),
         ...costEntryRecords.map((entry) => entry.filePath),
         ...chatMessageRecords.map((message) => message.attachmentPath),
+        ...teamChatMessageRecords.map((message) => message.attachmentPath),
       ]
         .filter(isPreviewableAssetPath),
-    [chatMessageRecords, companyProfile.logoPath, costEntryRecords, driverRecords, faultReportRecords],
+    [chatMessageRecords, companyProfile.logoPath, costEntryRecords, driverRecords, faultReportRecords, teamChatMessageRecords],
   )
 
   useEffect(() => {
@@ -14590,13 +14579,11 @@ function ChatAttachment({ attachmentPath, compact = false, onLoad, onMediaError,
           <img alt={label} onError={onMediaError} onLoad={onLoad} src={url} />
         </a>
       ) : attachmentKind === 'video' ? (
-        <video controls onError={onMediaError} onLoadedMetadata={onLoad} playsInline preload="metadata" src={url} />
+        <video controls key={url} onError={onMediaError} onLoadedMetadata={onLoad} playsInline preload="metadata" src={url} />
       ) : attachmentKind === 'audio' ? (
         <div className="chat-audio-attachment">
           <Mic size={16} />
-          <audio controls onError={onMediaError} onLoadedMetadata={onLoad} preload="metadata">
-            <source src={url} type={getChatAudioMimeType(attachmentPath)} />
-          </audio>
+          <audio controls key={url} onError={onMediaError} onLoadedMetadata={onLoad} preload="metadata" src={url} />
           <button
             aria-label={t('chat.downloadMedia')}
             className="chat-audio-download-button"

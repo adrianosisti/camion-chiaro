@@ -309,6 +309,32 @@ function LegalAcceptanceScreen({
   )
 }
 
+function NativeLicenseGate({ companyName = 'Azienda', onRefresh, onSignOut, profile = {} }) {
+  return (
+    <SafeAreaView style={styles.legalNativeSafe}>
+      <View style={styles.nativeLicenseContent}>
+        <View style={styles.nativeLicenseCard}>
+          <Image accessibilityIgnoresInvertColors resizeMode="contain" source={vygoLogoHorizontal} style={styles.legalNativeLogo} />
+          <Text style={styles.legalNativeOverline}>Piano da attivare</Text>
+          <Text style={styles.legalNativeTitle}>{companyName}</Text>
+          <Text style={styles.legalNativeIntro}>
+            Il piano {getNativeBillingPlanLabel(profile.billingPlan)} risulta {profile.billingStatus || 'da verificare'}.
+            Completa o riattiva l abbonamento dal sito Vygo per usare dashboard, chat, documenti e report.
+          </Text>
+          <View style={styles.nativeLicenseActions}>
+            <Pressable onPress={onRefresh} style={styles.legalNativePrimaryButton}>
+              <Text style={styles.legalNativePrimaryText}>Aggiorna stato</Text>
+            </Pressable>
+            <Pressable onPress={onSignOut} style={styles.legalNativeSecondaryButton}>
+              <Text style={styles.legalNativeSecondaryText}>Esci</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </SafeAreaView>
+  )
+}
+
 function getNativePushPromptStorageKey(accountType, companyId, driverId = '') {
   return `camion-chiaro-native-push-prompt:${accountType}:${companyId}:${driverId || 'company'}`
 }
@@ -340,6 +366,72 @@ const currencyByLanguage = {
 
 function getDefaultCurrency(language = 'it') {
   return currencyByLanguage[language] ?? 'EUR'
+}
+
+const nativeBillingPlanLabels = {
+  business: 'Fleet 20',
+  enterprise: 'Enterprise',
+  fleet10: 'Fleet 10',
+  fleet20: 'Fleet 20',
+  fleet30: 'Fleet 30',
+  fleet50: 'Fleet 50',
+  pro: 'Fleet 10',
+  starter: 'Start 5',
+}
+
+const nativeBillingPlanCapabilities = {
+  business: { chat: true, costCenter: true, departments: true, maxAssets: 10, maxUsers: 40, maxVehicles: 20, reports: true },
+  enterprise: { chat: true, costCenter: true, departments: true, maxAssets: Infinity, maxUsers: Infinity, maxVehicles: Infinity, reports: true },
+  fleet10: { chat: true, costCenter: false, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: false },
+  fleet20: { chat: true, costCenter: true, departments: true, maxAssets: 10, maxUsers: 40, maxVehicles: 20, reports: true },
+  fleet30: { chat: true, costCenter: true, departments: true, maxAssets: 15, maxUsers: 60, maxVehicles: 30, reports: true },
+  fleet50: { chat: true, costCenter: true, departments: true, maxAssets: 25, maxUsers: 100, maxVehicles: 50, reports: true },
+  pro: { chat: true, costCenter: false, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: false },
+  starter: { chat: false, costCenter: false, departments: false, maxAssets: 3, maxUsers: 10, maxVehicles: 5, reports: false },
+}
+
+const nativePlanFeatureLabels = {
+  chat: 'chat aziendale',
+  costCenter: 'centro costi',
+  departments: 'reparti e gruppi',
+  reports: 'report avanzati',
+}
+
+const nativePlanResourceLabels = {
+  assets: 'strumenti o muletti',
+  users: 'account utenti',
+  vehicles: 'mezzi',
+}
+
+const nativePlanResourceLimitFields = {
+  assets: 'maxAssets',
+  users: 'maxUsers',
+  vehicles: 'maxVehicles',
+}
+
+function getNativeBillingPlanLabel(plan) {
+  return nativeBillingPlanLabels[plan] ?? plan ?? 'Start 5'
+}
+
+function getNativeCompanyPlanCapabilities(profile = {}) {
+  const baseCapabilities = nativeBillingPlanCapabilities[profile?.billingPlan] ?? nativeBillingPlanCapabilities.starter
+
+  return {
+    ...baseCapabilities,
+    chat: Boolean(baseCapabilities.chat || profile?.billingAddonChat),
+    costCenter: Boolean(baseCapabilities.costCenter || profile?.billingAddonCostCenter),
+    reports: Boolean(baseCapabilities.reports || profile?.billingAddonReports),
+  }
+}
+
+function isNativeCompanyLicenseActive(profile = {}) {
+  if (!profile?.billingStatus) return true
+  if (profile.billingStatus !== 'active') return false
+  if (!profile.billingCurrentPeriodEnd) return true
+
+  const periodEnd = new Date(profile.billingCurrentPeriodEnd).getTime()
+  if (Number.isNaN(periodEnd)) return true
+  return periodEnd > Date.now()
 }
 
 const driverTabs = [
@@ -741,6 +833,64 @@ function CamionChiaroApp() {
   const chatBadgeCount = accountType === 'company'
     ? unreadDriverMessages + unreadTeamMessages
     : activeTab === 'chat' && driverChatMode !== 'list' ? 0 : driverTotalUnreadMessages
+  const currentCompanyProfile = activeCompanyContext?.companyProfile ?? {}
+  const currentPlanCapabilities = getNativeCompanyPlanCapabilities(currentCompanyProfile)
+  const currentCompanyLicenseActive = isNativeCompanyLicenseActive(currentCompanyProfile)
+
+  function getNativePlanResourceUsage(resource) {
+    if (resource === 'assets') {
+      return (companyContext?.assets ?? []).filter((asset) => !['archived', 'Archiviato'].includes(asset.status)).length
+    }
+
+    if (resource === 'users') {
+      const activeDrivers = (companyContext?.drivers ?? []).filter((entry) => entry.status !== 'Archiviato' && entry.status !== 'archived').length
+      const activePeople = (companyContext?.people ?? []).filter((entry) => !['archived', 'Archiviato'].includes(entry.status) && entry.department !== 'drivers').length
+      return activeDrivers + activePeople + 1
+    }
+
+    if (resource === 'vehicles') {
+      return (companyContext?.vehicles ?? []).filter((entry) => entry.status !== 'Archiviato' && entry.status !== 'archived').length
+    }
+
+    return 0
+  }
+
+  function canUseNativePlanResource(resource, nextAmount = 1) {
+    const limit = currentPlanCapabilities[nativePlanResourceLimitFields[resource]]
+    if (!Number.isFinite(limit)) return true
+    return getNativePlanResourceUsage(resource) + nextAmount <= limit
+  }
+
+  function showNativePlanResourceLimit(resource) {
+    const limit = currentPlanCapabilities[nativePlanResourceLimitFields[resource]]
+    Alert.alert(
+      'Limite piano raggiunto',
+      `${getNativeBillingPlanLabel(currentCompanyProfile.billingPlan)} consente ${Number.isFinite(limit) ? limit : 'illimitati'} ${nativePlanResourceLabels[resource]}. Aggiorna piano per continuare.`,
+    )
+    return false
+  }
+
+  function canUseNativePlanFeature(feature) {
+    return Boolean(currentPlanCapabilities[feature])
+  }
+
+  function showNativePlanFeatureLimit(feature) {
+    Alert.alert(
+      'Funzione non inclusa',
+      `${getNativeBillingPlanLabel(currentCompanyProfile.billingPlan)} non include ${nativePlanFeatureLabels[feature] ?? 'questa funzione'}. Aggiorna piano o attiva l'addon per usarla.`,
+    )
+    return false
+  }
+
+  function openNativeChatTab() {
+    if (!canUseNativePlanFeature('chat')) {
+      showNativePlanFeatureLimit('chat')
+      return
+    }
+
+    setActiveTab('chat')
+  }
+
   function clearDriverUnreadMessages(messages = chatMessages) {
     const latestCompanyMessageTime = messages
       .filter((message) => message.senderRole === 'company')
@@ -1199,6 +1349,12 @@ function CamionChiaroApp() {
     if (routedShareIdRef.current === incomingChatShare.id) return
 
     routedShareIdRef.current = incomingChatShare.id
+
+    if (!canUseNativePlanFeature('chat')) {
+      showNativePlanFeatureLimit('chat')
+      return
+    }
+
     setActiveTab('chat')
 
     if (accountType === 'company') {
@@ -1913,6 +2069,11 @@ function CamionChiaroApp() {
   }
 
   function openDriverChat(mode = 'list') {
+    if (!canUseNativePlanFeature('chat')) {
+      showNativePlanFeatureLimit('chat')
+      return
+    }
+
     if (mode === 'company') {
       markDriverChatReadLocally()
     }
@@ -1936,7 +2097,6 @@ function CamionChiaroApp() {
     const unreadThread = (context?.teamChatThreads ?? []).find((thread) => Number(unreadByThreadId[thread.id] ?? 0) > 0)
     if (unreadThread) {
       void handleSelectDriverTeamThread(unreadThread)
-      setActiveTab('chat')
       return
     }
 
@@ -1963,6 +2123,7 @@ function CamionChiaroApp() {
 
   async function handleSendChatMessage(body, attachment = null) {
     if (!driver || (!body.trim() && !attachment?.uri)) return false
+    if (!canUseNativePlanFeature('chat')) return showNativePlanFeatureLimit('chat')
 
     const result = await sendChatMessage({
       attachment,
@@ -1998,6 +2159,11 @@ function CamionChiaroApp() {
 
   async function handleSelectDriverTeamThread(nextThread) {
     if (!nextThread?.id) return
+    if (!canUseNativePlanFeature('chat')) {
+      showNativePlanFeatureLimit('chat')
+      return
+    }
+
     setDriverChatMode('team')
     setSelectedDriverTeamThreadId(nextThread.id)
     await loadDriverTeamChatData(nextThread)
@@ -2006,6 +2172,7 @@ function CamionChiaroApp() {
   async function handleSelectDriverPerson(nextPerson, displayTitle = '') {
     const companyId = driver?.companyId ?? currentPerson?.companyId
     if (!companyId || !nextPerson?.id) return false
+    if (!canUseNativePlanFeature('chat')) return showNativePlanFeatureLimit('chat')
 
     const result = await ensureDirectTeamThread({
       companyId,
@@ -2048,6 +2215,7 @@ function CamionChiaroApp() {
     const messageActorPerson = actorPerson
     const companyId = driver?.companyId ?? messageActorPerson?.companyId
     if (!companyId || !messageActorPerson?.id || !selectedDriverTeamThread || (!body.trim() && !attachment?.uri)) return false
+    if (!canUseNativePlanFeature('chat')) return showNativePlanFeatureLimit('chat')
 
     const senderRole = messageActorPerson?.department === 'warehouse'
       ? 'warehouse'
@@ -2100,6 +2268,11 @@ function CamionChiaroApp() {
 
   async function handleSelectCompanyDriver(nextDriver) {
     if (!nextDriver?.id) return
+    if (!canUseNativePlanFeature('chat')) {
+      showNativePlanFeatureLimit('chat')
+      return
+    }
+
     setSelectedCompanyDriverId(nextDriver.id)
     setSelectedCompanyTeamThreadId('')
     setCompanyTeamChatMessages([])
@@ -2108,6 +2281,11 @@ function CamionChiaroApp() {
 
   async function handleSelectCompanyTeamThread(nextThread) {
     if (!nextThread?.id) return
+    if (!canUseNativePlanFeature('chat')) {
+      showNativePlanFeatureLimit('chat')
+      return
+    }
+
     setSelectedCompanyTeamThreadId(nextThread.id)
     setSelectedCompanyDriverId('')
     setCompanyChatMessages([])
@@ -2118,6 +2296,7 @@ function CamionChiaroApp() {
   async function handleSelectCompanyPerson(nextPerson) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !nextPerson?.id) return false
+    if (!canUseNativePlanFeature('chat')) return showNativePlanFeatureLimit('chat')
 
     const result = await ensureDirectTeamThread({
       companyId,
@@ -2151,6 +2330,7 @@ function CamionChiaroApp() {
   async function handleSendCompanyChatMessage(body, attachment = null) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !selectedCompanyDriver || (!body.trim() && !attachment?.uri)) return false
+    if (!canUseNativePlanFeature('chat')) return showNativePlanFeatureLimit('chat')
 
     const result = await sendCompanyChatMessage({
       attachment,
@@ -2206,6 +2386,7 @@ function CamionChiaroApp() {
   async function handleSendCompanyTeamChatMessage(body, attachment = null) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !selectedCompanyTeamThread || (!body.trim() && !attachment?.uri)) return false
+    if (!canUseNativePlanFeature('chat')) return showNativePlanFeatureLimit('chat')
 
     const result = await sendTeamChatMessage({
       attachment,
@@ -2549,6 +2730,10 @@ function CamionChiaroApp() {
   async function handleCreateCompanyDriver(payload, password) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId) return null
+    if (!canUseNativePlanResource('users')) {
+      showNativePlanResourceLimit('users')
+      return null
+    }
 
     const result = await createCompanyDriverAccount({
       companyId,
@@ -2568,6 +2753,10 @@ function CamionChiaroApp() {
   async function handleCreateCompanyVehicle(payload) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId) return null
+    if (!canUseNativePlanResource('vehicles')) {
+      showNativePlanResourceLimit('vehicles')
+      return null
+    }
 
     const result = await createCompanyVehicle({
       companyId,
@@ -2586,6 +2775,14 @@ function CamionChiaroApp() {
   async function handleCreateCompanyPerson(payload) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId) return null
+    if (!canUseNativePlanFeature('departments')) {
+      showNativePlanFeatureLimit('departments')
+      return null
+    }
+    if (!canUseNativePlanResource('users')) {
+      showNativePlanResourceLimit('users')
+      return null
+    }
 
     const result = await createCompanyPerson({
       companyId,
@@ -2627,6 +2824,14 @@ function CamionChiaroApp() {
   async function handleCreateCompanyWarehouseAsset(payload) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId) return null
+    if (!canUseNativePlanFeature('departments')) {
+      showNativePlanFeatureLimit('departments')
+      return null
+    }
+    if (!canUseNativePlanResource('assets')) {
+      showNativePlanResourceLimit('assets')
+      return null
+    }
 
     const result = await createCompanyWarehouseAsset({
       asset: payload,
@@ -2664,6 +2869,10 @@ function CamionChiaroApp() {
   async function handleCreateCompanyCostEntry(payload, file = null) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId) return null
+    if (!canUseNativePlanFeature('costCenter')) {
+      showNativePlanFeatureLimit('costCenter')
+      return null
+    }
 
     const result = await createCompanyCostEntry({
       companyId,
@@ -2690,6 +2899,10 @@ function CamionChiaroApp() {
   async function handleUpdateCompanyCostEntry(entryId, payload, file = null, previousEntry = null) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !entryId) return null
+    if (!canUseNativePlanFeature('costCenter')) {
+      showNativePlanFeatureLimit('costCenter')
+      return null
+    }
 
     const result = await updateCompanyCostEntry({
       companyId,
@@ -2983,6 +3196,21 @@ function CamionChiaroApp() {
   }
 
   function openCompanyManagement(section = 'drivers', options = {}) {
+    if (section === 'costs' && !canUseNativePlanFeature('costCenter')) {
+      showNativePlanFeatureLimit('costCenter')
+      return
+    }
+
+    if (section === 'reports' && !canUseNativePlanFeature('reports')) {
+      showNativePlanFeatureLimit('reports')
+      return
+    }
+
+    if (['people', 'warehouse'].includes(section) && !canUseNativePlanFeature('departments')) {
+      showNativePlanFeatureLimit('departments')
+      return
+    }
+
     setManagementInitialSection(section)
     if (section === 'costs' && options?.addCost) {
       setManagementCostStartKey(Date.now())
@@ -3091,11 +3319,11 @@ function CamionChiaroApp() {
       return (
         <CompanyHomeScreen
           context={companyContext}
-          isRefreshing={isRefreshing}
-          language={language}
-          logoUrl={logoUrl}
-          onOpenChat={() => setActiveTab('chat')}
-          onOpenAssistant={() => setIsAssistantOpen(true)}
+	          isRefreshing={isRefreshing}
+	          language={language}
+	          logoUrl={logoUrl}
+	          onOpenChat={openNativeChatTab}
+	          onOpenAssistant={() => setIsAssistantOpen(true)}
           onOpenManagement={openCompanyManagement}
           onRefresh={() => loadCompanyData()}
           onCloseDeadline={handleCloseCompanyDeadline}
@@ -3202,7 +3430,7 @@ function CamionChiaroApp() {
           companyName={companyName}
           context={context}
           language={language}
-          onOpenChat={() => openDriverChat('list')}
+	          onOpenChat={() => openDriverChat('list')}
           onOpenSettings={() => setActiveTab('settings')}
           unreadChatMessages={driverTotalUnreadMessages}
         />
@@ -3307,6 +3535,17 @@ function CamionChiaroApp() {
     )
   }
 
+  if (accountType === 'company' && companyContext?.companyProfile?.id && !currentCompanyLicenseActive) {
+    return (
+      <NativeLicenseGate
+        companyName={companyName}
+        onRefresh={() => loadCompanyData()}
+        onSignOut={handleSignOut}
+        profile={companyContext.companyProfile}
+      />
+    )
+  }
+
   return (
     <View style={styles.shell}>
       <ExpoStatusBar backgroundColor="#020617" style="light" translucent={false} />
@@ -3362,11 +3601,16 @@ function CamionChiaroApp() {
             <Pressable
               accessibilityLabel={tabLabel}
               key={tab.id}
-              onPress={() => {
-                if (accountType === 'driver' && tab.id === 'chat') {
-                  openDriverChat()
-                  return
-                }
+	              onPress={() => {
+	                if (tab.id === 'chat' && accountType === 'company') {
+	                  openNativeChatTab()
+	                  return
+	                }
+
+	                if (accountType === 'driver' && tab.id === 'chat') {
+	                  openDriverChat()
+	                  return
+	                }
 
                 setActiveTab(tab.id)
               }}
@@ -3524,6 +3768,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  legalNativeSafe: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
   legalNativeScreen: {
     backgroundColor: colors.background,
     flex: 1,
@@ -3569,6 +3817,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     marginTop: 3,
+  },
+  nativeLicenseActions: {
+    gap: 10,
+    marginTop: 4,
+  },
+  nativeLicenseCard: {
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 14,
+    padding: 20,
+    shadowColor: '#020617',
+    shadowOffset: { height: 12, width: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 3,
+  },
+  nativeLicenseContent: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: layout.screenPadding,
   },
   companyName: {
     color: colors.ink,

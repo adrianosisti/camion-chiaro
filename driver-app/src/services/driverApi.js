@@ -112,6 +112,15 @@ function isMissingLegalSchemaError(error) {
 
 function mapCompanyProfile(row = {}) {
   return {
+    billingActivatedAt: row.billing_activated_at ?? row.billingActivatedAt ?? '',
+    billingAddonChat: Boolean(row.billing_addon_chat ?? row.billingAddonChat),
+    billingAddonCostCenter: Boolean(row.billing_addon_cost_center ?? row.billingAddonCostCenter),
+    billingAddonReports: Boolean(row.billing_addon_reports ?? row.billingAddonReports),
+    billingCurrentPeriodEnd: row.billing_current_period_end ?? row.billingCurrentPeriodEnd ?? '',
+    billingPlan: row.billing_plan ?? row.billingPlan ?? 'starter',
+    billingProvider: row.billing_provider ?? row.billingProvider ?? 'manual',
+    billingStatus: row.billing_status ?? row.billingStatus ?? 'active',
+    billingStorageExtraGb: Number(row.billing_storage_extra_gb ?? row.billingStorageExtraGb ?? 0),
     headquarters: row.headquarters ?? '',
     id: row.id,
     logoPath: row.logo_path ?? row.logoPath ?? '',
@@ -119,6 +128,9 @@ function mapCompanyProfile(row = {}) {
     vatNumber: row.vat_number ?? row.vatNumber ?? '',
   }
 }
+
+const companyProfileSelect =
+  'id, name, vat_number, headquarters, logo_path, billing_plan, billing_status, billing_provider, billing_current_period_end, billing_activated_at, billing_addon_chat, billing_addon_cost_center, billing_addon_reports, billing_storage_extra_gb'
 
 function mapComplianceItem(row = {}) {
   return {
@@ -894,7 +906,7 @@ async function fetchDriverContextDirect() {
   ] = await Promise.all([
     supabase
       .from('companies')
-      .select('id, name, vat_number, headquarters, logo_path')
+      .select(companyProfileSelect)
       .eq('id', driver.company_id)
       .maybeSingle(),
     supabase
@@ -1002,7 +1014,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
   ] = await Promise.all([
     supabase
       .from('companies')
-      .select('id, name, vat_number, headquarters, logo_path')
+      .select(companyProfileSelect)
       .eq('id', companyId)
       .maybeSingle(),
     supabase
@@ -1147,7 +1159,7 @@ export async function fetchCompanyContext() {
   ] = await Promise.all([
     supabase
       .from('companies')
-      .select('id, name, vat_number, headquarters, logo_path')
+      .select(companyProfileSelect)
       .eq('id', companyId)
       .maybeSingle(),
     supabase

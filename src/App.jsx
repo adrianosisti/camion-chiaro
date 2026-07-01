@@ -176,11 +176,13 @@ const maxChatVideoFileSize = 64 * 1024 * 1024
 const imageCompressionMaxSide = 1600
 const imageCompressionQuality = 0.76
 const storagePlanLimitsBytes = {
+  business: 30 * 1024 * 1024 * 1024,
   enterprise: 100 * 1024 * 1024 * 1024,
   fleet10: 20 * 1024 * 1024 * 1024,
   fleet20: 30 * 1024 * 1024 * 1024,
   fleet30: 50 * 1024 * 1024 * 1024,
   fleet50: 75 * 1024 * 1024 * 1024,
+  pro: 20 * 1024 * 1024 * 1024,
   starter: 10 * 1024 * 1024 * 1024,
 }
 const emptyCompanyStorageSummary = {
@@ -368,6 +370,12 @@ const planResourceLabels = {
   assets: 'strumenti o muletti',
   users: 'account utenti',
   vehicles: 'mezzi',
+}
+const planFeatureLabels = {
+  chat: 'chat aziendale',
+  costCenter: 'centro costi',
+  departments: 'reparti e gruppi',
+  reports: 'report avanzati',
 }
 const planResourceLimitFields = {
   assets: 'maxAssets',
@@ -4714,6 +4722,19 @@ function getBillingPlanCapabilities(plan) {
   return billingPlanCapabilities[plan] ?? billingPlanCapabilities.starter
 }
 
+function getCompanyPlanCapabilities(profile = {}) {
+  const baseCapabilities = getBillingPlanCapabilities(profile?.billingPlan)
+  const storageExtraGb = Math.max(0, Number(profile?.billingStorageExtraGb ?? 0) || 0)
+
+  return {
+    ...baseCapabilities,
+    chat: Boolean(baseCapabilities.chat || profile?.billingAddonChat),
+    costCenter: Boolean(baseCapabilities.costCenter || profile?.billingAddonCostCenter),
+    reports: Boolean(baseCapabilities.reports || profile?.billingAddonReports),
+    storageGb: (baseCapabilities.storageGb ?? 0) + storageExtraGb,
+  }
+}
+
 function getOptionLabel(options, value, fallback = '') {
   return options.find((option) => option.value === value)?.label ?? fallback
 }
@@ -4729,13 +4750,8 @@ function isCompanyLicenseActive(profile) {
   return periodEnd > Date.now()
 }
 
-function isManualBillingGrace(profile) {
-  return profile?.billingProvider === 'manual' && profile?.billingStatus === 'active'
-}
-
 function hasPlanFeature(profile, feature) {
-  if (isManualBillingGrace(profile)) return true
-  return Boolean(getBillingPlanCapabilities(profile?.billingPlan)[feature])
+  return Boolean(getCompanyPlanCapabilities(profile)[feature])
 }
 
 function formatPlanLimit(limit) {
@@ -5053,12 +5069,19 @@ function formatBytes(bytes) {
   return `${(safeBytes / 1024 / 1024 / 1024).toFixed(1)} GB`
 }
 
-function getStorageLimitBytes(plan) {
-  return storagePlanLimitsBytes[plan] ?? storagePlanLimitsBytes.starter
+function getStorageLimitBytes(plan, extraStorageGb = 0) {
+  const baseLimitBytes = storagePlanLimitsBytes[plan] ?? storagePlanLimitsBytes.starter
+  const extraLimitBytes = Math.max(0, Number(extraStorageGb ?? 0) || 0) * 1024 * 1024 * 1024
+
+  return baseLimitBytes + extraLimitBytes
 }
 
-function getStorageUsagePercent(summary, plan) {
-  const limitBytes = getStorageLimitBytes(plan)
+function getCompanyStorageLimitBytes(profile = {}) {
+  return getStorageLimitBytes(profile?.billingPlan, profile?.billingStorageExtraGb)
+}
+
+function getStorageUsagePercent(summary, profile) {
+  const limitBytes = getCompanyStorageLimitBytes(profile)
   if (!limitBytes) return 0
   return Math.min(100, Math.round(((summary?.totalBytes ?? 0) / limitBytes) * 100))
 }
@@ -5250,15 +5273,19 @@ function App() {
   const [adminOverviewStatus, setAdminOverviewStatus] = useState('')
   const [isAdminOverviewLoading, setIsAdminOverviewLoading] = useState(false)
   const [activeCompanyId, setActiveCompanyId] = useState('')
-  const [companyProfile, setCompanyProfile] = useState({
-    billingActivatedAt: '',
-    billingCustomerId: '',
-    billingCurrentPeriodEnd: '',
-    billingEmail: '',
-    billingPlan: 'starter',
-    billingProvider: 'manual',
-    billingStatus: 'active',
-    billingSubscriptionId: '',
+	  const [companyProfile, setCompanyProfile] = useState({
+	    billingActivatedAt: '',
+	    billingAddonChat: false,
+	    billingAddonCostCenter: false,
+	    billingAddonReports: false,
+	    billingCustomerId: '',
+	    billingCurrentPeriodEnd: '',
+	    billingEmail: '',
+	    billingPlan: 'starter',
+	    billingProvider: 'manual',
+	    billingStatus: 'active',
+	    billingStorageExtraGb: 0,
+	    billingSubscriptionId: '',
     headquarters: company.location,
     id: '',
     logoPath: company.logoPath ?? '',
@@ -5614,7 +5641,7 @@ function App() {
   }
 
   function isCurrentPlanUnlimited() {
-    return (session?.role === 'company' && isAdminEmail(session.email)) || isManualBillingGrace(companyProfile)
+    return session?.role === 'company' && isAdminEmail(session.email)
   }
 
   function getCurrentPlanResourceUsage(resource) {
@@ -5638,7 +5665,7 @@ function App() {
   function canUsePlanResource(resource, nextAmount = 1) {
     if (isCurrentPlanUnlimited()) return true
 
-    const capabilities = getBillingPlanCapabilities(companyProfile.billingPlan)
+    const capabilities = getCompanyPlanCapabilities(companyProfile)
     const limit = capabilities[planResourceLimitFields[resource]]
 
     if (!Number.isFinite(limit)) return true
@@ -5646,7 +5673,7 @@ function App() {
   }
 
   function getPlanLimitMessage(resource) {
-    const capabilities = getBillingPlanCapabilities(companyProfile.billingPlan)
+    const capabilities = getCompanyPlanCapabilities(companyProfile)
     const limit = capabilities[planResourceLimitFields[resource]]
     const planName = getBillingPlanLabel(companyProfile.billingPlan)
     return `${planName}: limite ${planResourceLabels[resource]} raggiunto (${formatPlanLimit(limit)}). Aggiorna piano per continuare.`
@@ -5656,11 +5683,23 @@ function App() {
     return (session?.role === 'company' && isAdminEmail(session.email)) || hasPlanFeature(companyProfile, feature)
   }
 
+  function getPlanFeatureLimitMessage(feature) {
+    const featureName = planFeatureLabels[feature] ?? 'questa funzione'
+    return `${getBillingPlanLabel(companyProfile.billingPlan)} non include ${featureName}. Aggiorna piano o attiva l'addon per usarla.`
+  }
+
+  function showPlanFeatureLimit(feature, setStatus = setCompanySettingsStatus) {
+    const message = getPlanFeatureLimitMessage(feature)
+    setStatus(message)
+    window.alert(message)
+    return false
+  }
+
   async function ensureStorageBudget(file, setStatus) {
     if (!file || !hasCompanyDataConnection) return true
 
     const latestSummary = await refreshStorageSummary(activeCompanyId)
-    const limitBytes = getStorageLimitBytes(companyProfile.billingPlan)
+    const limitBytes = getCompanyStorageLimitBytes(companyProfile)
     const nextTotalBytes = (latestSummary?.totalBytes ?? 0) + file.size
 
     if (nextTotalBytes <= limitBytes) return true
@@ -6784,6 +6823,11 @@ function App() {
   }
 
   async function addPersonRecord(person) {
+    if (!canUseCurrentPlanFeature('departments')) {
+      setPeopleSyncStatus(getPlanFeatureLimitMessage('departments'))
+      return false
+    }
+
     if (!canUsePlanResource('users')) {
       setPeopleSyncStatus(getPlanLimitMessage('users'))
       return false
@@ -7053,6 +7097,11 @@ function App() {
   }
 
   async function editCostEntryRecord(entryId, updates, receiptFile = null, previousEntry = null) {
+    if (!canUseCurrentPlanFeature('costCenter')) {
+      setOperationsSyncStatus('Centro costi non incluso nel piano attuale. Aggiorna piano per modificare spese, multe e manutenzioni.')
+      return false
+    }
+
     const cleanEntry = {
       ...updates,
       amountCents: Number(updates.amountCents ?? 0),
@@ -8469,6 +8518,11 @@ function App() {
   }
 
   function openCostReport(options = {}) {
+    if (!canUseCurrentPlanFeature('costCenter')) {
+      showPlanFeatureLimit('costCenter', setOperationsSyncStatus)
+      return
+    }
+
     const shouldStartAdding = options?.add === true
 
     if (shouldStartAdding) {
@@ -8484,6 +8538,11 @@ function App() {
   }
 
   function openReports() {
+    if (!canUseCurrentPlanFeature('reports')) {
+      showPlanFeatureLimit('reports', setOperationsSyncStatus)
+      return
+    }
+
     setCostReportResetKey(Date.now())
     setActiveView('reports')
     window.setTimeout(() => {
@@ -8492,9 +8551,23 @@ function App() {
   }
 
   function openRecords(tab = recordsTab) {
+    if ((tab === 'people' || tab === 'warehouse') && !canUseCurrentPlanFeature('departments')) {
+      showPlanFeatureLimit('departments', setPeopleSyncStatus)
+      return
+    }
+
     setCostReportResetKey(Date.now())
     setRecordsTab(tab)
     setActiveView('records')
+  }
+
+  function openCompanyChat() {
+    if (!canUseCurrentPlanFeature('chat')) {
+      showPlanFeatureLimit('chat', setChatSyncStatus)
+      return
+    }
+
+    setActiveView('chat')
   }
 
   function openComplianceFilter(filter) {
@@ -8514,6 +8587,11 @@ function App() {
 
     if (viewId === 'records') {
       openRecords()
+      return
+    }
+
+    if (viewId === 'chat') {
+      openCompanyChat()
       return
     }
 
@@ -8594,7 +8672,7 @@ function App() {
       detail: t('homeCommand.chatDetail'),
       icon: Mail,
       label: t('homeCommand.chatLabel'),
-      onClick: () => setActiveView('chat'),
+      onClick: openCompanyChat,
       tone: companyUnreadChatCount > 0 ? 'warning' : 'info',
       value: companyUnreadChatCount,
     },
@@ -11029,8 +11107,8 @@ function SettingsWorkspace({
     vatNumber: companyProfile.vatNumber ?? '',
   })
   const [isSaving, setIsSaving] = useState(false)
-  const storageLimitBytes = getStorageLimitBytes(companyProfile.billingPlan)
-  const storageUsagePercent = getStorageUsagePercent(companyStorageSummary, companyProfile.billingPlan)
+  const storageLimitBytes = getCompanyStorageLimitBytes(companyProfile)
+  const storageUsagePercent = getStorageUsagePercent(companyStorageSummary, companyProfile)
   const storageBreakdown = [
     ['Documenti', companyStorageSummary.documentBytes],
     ['Chat', companyStorageSummary.chatBytes],

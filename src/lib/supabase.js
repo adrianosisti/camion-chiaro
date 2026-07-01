@@ -245,12 +245,16 @@ function mapCostEntry(row) {
 function mapCompanyProfile(row) {
   return {
     billingActivatedAt: row.billing_activated_at ?? '',
+    billingAddonChat: Boolean(row.billing_addon_chat),
+    billingAddonCostCenter: Boolean(row.billing_addon_cost_center),
+    billingAddonReports: Boolean(row.billing_addon_reports),
     billingCustomerId: row.billing_customer_id ?? '',
     billingCurrentPeriodEnd: row.billing_current_period_end ?? '',
     billingEmail: row.billing_email ?? '',
     billingPlan: row.billing_plan ?? 'starter',
     billingProvider: row.billing_provider ?? 'manual',
     billingStatus: row.billing_status ?? 'active',
+    billingStorageExtraGb: Number(row.billing_storage_extra_gb ?? 0),
     billingSubscriptionId: row.billing_subscription_id ?? '',
     headquarters: row.headquarters ?? '',
     id: row.id,
@@ -302,7 +306,11 @@ const companyProfileBillingSelectColumns = `
   billing_customer_id,
   billing_subscription_id,
   billing_current_period_end,
-  billing_activated_at
+  billing_activated_at,
+  billing_addon_chat,
+  billing_addon_cost_center,
+  billing_addon_reports,
+  billing_storage_extra_gb
 `
 
 function isMissingBillingColumn(error) {

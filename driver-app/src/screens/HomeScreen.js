@@ -124,6 +124,7 @@ export function HomeScreen({
   onSelectDailyVehicle,
   onUpdateProfilePhoto,
   selectedDailyVehicleId = '',
+  unreadChatMessages = 0,
   unreadCompanyMessages = 0,
 }) {
   const documents = context?.documents ?? []
@@ -151,6 +152,7 @@ export function HomeScreen({
   const latestChecks = checks.slice(0, 3)
   const dailyPhrase = getDailyPhrase(language)
   const [wheelPicker, setWheelPicker] = useState(null)
+  const unreadMessages = Number(unreadChatMessages || unreadCompanyMessages || 0)
 
   async function pickProfilePhoto(source) {
     const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
@@ -209,7 +211,7 @@ export function HomeScreen({
           </View>
         </View>
         <View style={styles.metricRow}>
-          <MetricPill label="Messaggi" onPress={onOpenChat} tone={unreadCompanyMessages ? 'warning' : 'info'} value={unreadCompanyMessages} />
+          <MetricPill label="Messaggi" onPress={onOpenChat} tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
           <MetricPill label="Documenti" onPress={() => onOpenDocuments?.(criticalDocuments[0]?.id ?? '')} tone={documentAlertTone} value={criticalDocuments.length} />
           <MetricPill label={t(language, 'faultsOpen')} tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
         </View>
@@ -245,7 +247,7 @@ export function HomeScreen({
         <ActionTile
           icon="chatbubbles-outline"
           label="Chat"
-          meta={unreadCompanyMessages ? `${unreadCompanyMessages} da leggere` : 'Tutto letto'}
+          meta={unreadMessages ? `${unreadMessages} da leggere` : 'Tutto letto'}
           onPress={onOpenChat}
           tone="dark"
         />
@@ -270,12 +272,12 @@ export function HomeScreen({
             <Ionicons color={colors.ink} name="arrow-forward" size={18} />
           </Pressable>
         }
-        title={unreadCompanyMessages ? 'Messaggi da leggere' : 'Tutto letto'}
+        title={unreadMessages ? 'Messaggi da leggere' : 'Tutto letto'}
       >
         <Text style={styles.bodyText}>
-          {unreadCompanyMessages
-            ? `${unreadCompanyMessages} messaggi azienda aspettano risposta o lettura.`
-            : 'Nessun messaggio azienda non letto in questo momento.'}
+          {unreadMessages
+            ? `${unreadMessages} messaggi in chat aspettano lettura.`
+            : 'Nessun messaggio non letto in questo momento.'}
         </Text>
       </Panel>
 

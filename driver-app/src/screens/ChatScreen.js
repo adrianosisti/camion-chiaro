@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
@@ -450,6 +451,66 @@ function VideoAttachment({ expanded = false, onOpen, path, signedUrl }) {
         </Pressable>
       </View>
     </View>
+  )
+}
+
+function VideoPreviewModal({ onClose, preview }) {
+  const { height, width } = useWindowDimensions()
+  const signedUrl = String(preview?.uri ?? '').trim()
+  const player = useVideoPlayer(signedUrl || null, (videoPlayer) => {
+    videoPlayer.loop = false
+  })
+
+  useEffect(() => {
+    if (!signedUrl) return undefined
+
+    const timer = setTimeout(() => {
+      try {
+        player.play()
+      } catch {
+        // Native controls remain available if autoplay is blocked.
+      }
+    }, 180)
+
+    return () => clearTimeout(timer)
+  }, [player, signedUrl])
+
+  if (!preview) return null
+
+  const playerHeight = Math.max(280, height - 174)
+  const playerWidth = Math.max(280, width)
+
+  return (
+    <Modal animationType="fade" visible={Boolean(preview)} onRequestClose={onClose}>
+      <View style={styles.videoModalScreen}>
+        <Pressable onPress={onClose} style={styles.videoModalClose}>
+          <Ionicons color={colors.white} name="close" size={24} />
+        </Pressable>
+        <View style={styles.videoModalPlayerShell}>
+          {signedUrl ? (
+            <VideoView
+              allowsFullscreen
+              contentFit="contain"
+              key={signedUrl}
+              nativeControls
+              player={player}
+              style={[styles.videoModalPlayer, { height: playerHeight, width: playerWidth }]}
+            />
+          ) : (
+            <View style={[styles.videoModalPlayer, styles.videoModalFallback, { height: playerHeight, width: playerWidth }]}>
+              <Text style={styles.videoModalFallbackText}>Video non caricato</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.videoModalActions}>
+          <Text numberOfLines={1} style={styles.videoModalTitle}>{preview?.name}</Text>
+          <Pressable disabled={!signedUrl} onPress={() => saveMediaToGallery(signedUrl, preview?.path)} style={styles.videoModalActionButton}>
+            <Ionicons color={colors.ink} name="download-outline" size={16} />
+            <Text style={styles.videoModalActionText}>Salva</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   )
 }
 
@@ -1381,17 +1442,7 @@ export function ChatScreen({
       </Modal>
 
       {photoPreview?.kind === 'video' ? (
-        <Modal animationType="fade" visible={Boolean(photoPreview)} onRequestClose={() => setPhotoPreview(null)}>
-          <View style={styles.videoModalScreen}>
-            <Pressable onPress={() => setPhotoPreview(null)} style={styles.videoModalClose}>
-              <Ionicons color={colors.white} name="close" size={24} />
-            </Pressable>
-            <View style={styles.videoModalPlayerShell}>
-              <VideoAttachment expanded path={photoPreview.path} signedUrl={photoPreview.uri} />
-            </View>
-            <Text numberOfLines={1} style={styles.videoModalTitle}>{photoPreview?.name}</Text>
-          </View>
-        </Modal>
+        <VideoPreviewModal onClose={() => setPhotoPreview(null)} preview={photoPreview} />
       ) : (
         <Modal animationType="fade" transparent visible={Boolean(photoPreview)} onRequestClose={() => setPhotoPreview(null)}>
           <Pressable onPress={() => setPhotoPreview(null)} style={styles.photoModalBackdrop}>
@@ -1960,11 +2011,49 @@ const styles = StyleSheet.create({
     width: 44,
     zIndex: 4,
   },
+  videoModalActionButton: {
+    alignItems: 'center',
+    backgroundColor: colors.cyan,
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: 16,
+  },
+  videoModalActionText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  videoModalActions: {
+    alignItems: 'center',
+    backgroundColor: '#020617',
+    borderTopColor: '#123142',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 74,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  videoModalFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoModalFallbackText: {
+    color: '#cbd5e1',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  videoModalPlayer: {
+    backgroundColor: '#020617',
+  },
   videoModalPlayerShell: {
+    alignItems: 'center',
     flex: 1,
-    paddingHorizontal: 10,
-    paddingTop: 74,
-    paddingBottom: 22,
+    justifyContent: 'center',
+    paddingTop: 56,
     width: '100%',
   },
   videoModalScreen: {
@@ -1972,12 +2061,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   videoModalTitle: {
+    flex: 1,
     color: colors.white,
     fontSize: 14,
     fontWeight: '900',
-    paddingBottom: 16,
-    paddingHorizontal: 18,
-    textAlign: 'center',
   },
   photoModalHint: {
     color: '#cbd5e1',

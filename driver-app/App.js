@@ -279,6 +279,40 @@ function markMessagesReadLocally(messages, readerRole, readAt = new Date().toISO
   ))
 }
 
+function sumUnreadByThreadId(unreadByThreadId = {}) {
+  return Object.values(unreadByThreadId).reduce((total, count) => total + Number(count || 0), 0)
+}
+
+function isIncomingTeamMessageForActor(message = {}, actorPersonId = '') {
+  if (!message?.threadId) return false
+  if (message.senderRole === 'company') return true
+  if (!actorPersonId) return true
+  return message.senderPersonId !== actorPersonId
+}
+
+function incrementTeamUnreadInContext(currentContext, message, actorPersonId = '') {
+  if (!currentContext || !isIncomingTeamMessageForActor(message, actorPersonId)) return currentContext
+
+  const messageAlreadyKnown = (currentContext.teamChatMessages ?? []).some((currentMessage) => currentMessage.id === message.id)
+  const unreadByThreadId = { ...(currentContext.unreadTeamMessagesByThreadId ?? {}) }
+
+  if (!messageAlreadyKnown) {
+    unreadByThreadId[message.threadId] = Number(unreadByThreadId[message.threadId] ?? 0) + 1
+  }
+
+  return {
+    ...currentContext,
+    teamChatMessages: mergeChatMessage(currentContext.teamChatMessages ?? [], message),
+    teamChatThreads: (currentContext.teamChatThreads ?? []).map((thread) => (
+      thread.id === message.threadId
+        ? { ...thread, lastMessageAt: message.createdAt || thread.lastMessageAt }
+        : thread
+    )),
+    unreadTeamMessages: sumUnreadByThreadId(unreadByThreadId),
+    unreadTeamMessagesByThreadId: unreadByThreadId,
+  }
+}
+
 function getShareFileKind(file = {}) {
   const mimeType = String(file.mimeType ?? '').toLowerCase()
   const fileName = String(file.fileName ?? file.path ?? '').toLowerCase()
@@ -418,9 +452,12 @@ function CamionChiaroApp() {
   const unreadTeamMessages = accountType === 'company'
     ? companyContext?.unreadTeamMessages ?? 0
     : context?.unreadTeamMessages ?? 0
+  const driverTotalUnreadMessages = accountType === 'driver'
+    ? unreadCompanyMessages + unreadTeamMessages
+    : 0
   const chatBadgeCount = accountType === 'company'
     ? unreadDriverMessages + unreadTeamMessages
-    : activeTab === 'chat' && driverChatMode !== 'list' ? 0 : unreadCompanyMessages + unreadTeamMessages
+    : activeTab === 'chat' && driverChatMode !== 'list' ? 0 : driverTotalUnreadMessages
   function clearDriverUnreadMessages(messages = chatMessages) {
     const latestCompanyMessageTime = messages
       .filter((message) => message.senderRole === 'company')
@@ -559,6 +596,12 @@ function CamionChiaroApp() {
       setChatThread(chatResult.data.thread)
       if (driverChatReadVersionRef.current !== requestReadVersion || (activeTabRef.current === 'chat' && driverChatModeRef.current === 'company')) {
         clearDriverUnreadMessages(nextMessages)
+      } else if (!shouldMarkAsRead) {
+        setContext((currentContext) => (
+          currentContext
+            ? { ...currentContext, unreadCompanyMessages: countUnreadMessagesForRole(nextMessages, 'driver') }
+            : currentContext
+        ))
       }
       return true
     }
@@ -953,9 +996,13 @@ function CamionChiaroApp() {
     let isActive = true
     const unsubscribe = subscribeToDriverChatMessages({
       companyId: driver.companyId,
-      onMessage: async () => {
+      onMessage: async (message) => {
         if (!isActive) return
-        await loadDriverChatData(driver, { markAsRead: activeTab === 'chat' && driverChatMode === 'company' })
+        const shouldMarkAsRead = activeTab === 'chat' && driverChatMode === 'company'
+        if (!chatThread?.id || message?.threadId === chatThread.id) {
+          setChatMessages((currentMessages) => mergeChatMessage(currentMessages, message))
+        }
+        await loadDriverChatData(driver, { markAsRead: shouldMarkAsRead })
       },
     })
 
@@ -963,7 +1010,7 @@ function CamionChiaroApp() {
       isActive = false
       unsubscribe?.()
     }
-  }, [accountType, activeTab, driver?.companyId, driver?.id, driverChatMode])
+  }, [accountType, activeTab, chatThread?.id, driver?.companyId, driver?.id, driverChatMode])
 
   useEffect(() => {
     if (accountType !== 'driver' || !session) return undefined
@@ -1002,13 +1049,17 @@ function CamionChiaroApp() {
       onMessage: async (message) => {
         if (!isActive) return
 
-        if (activeTab === 'chat' && driverChatMode === 'team' && selectedDriverTeamThreadId && message?.threadId === selectedDriverTeamThreadId) {
+        const isOpenSelectedThread = activeTab === 'chat' && driverChatMode === 'team' && selectedDriverTeamThreadId && message?.threadId === selectedDriverTeamThreadId
+
+        if (isOpenSelectedThread) {
           setDriverTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, message))
           clearTeamUnreadLocally(setContext, selectedDriverTeamThreadId)
           void markTeamThreadRead(selectedDriverTeamThreadId)
           await loadDriverTeamChatData(selectedDriverTeamThread ?? { id: selectedDriverTeamThreadId })
           return
         }
+
+        setContext((currentContext) => incrementTeamUnreadInContext(currentContext, message, actorPersonId))
 
         if (message?.senderPersonId && message.senderPersonId !== actorId) {
           triggerHaptic('light')
@@ -2757,6 +2808,7 @@ function CamionChiaroApp() {
           language={language}
           onOpenChat={() => openDriverChat('list')}
           onOpenSettings={() => setActiveTab('settings')}
+          unreadChatMessages={driverTotalUnreadMessages}
         />
       )
     }
@@ -2780,6 +2832,7 @@ function CamionChiaroApp() {
         onSelectDailyVehicle={handleSelectDailyVehicle}
         onUpdateProfilePhoto={handleUpdateProfilePhoto}
         selectedDailyVehicleId={selectedDailyVehicleId}
+        unreadChatMessages={driverTotalUnreadMessages}
         unreadCompanyMessages={unreadCompanyMessages}
       />
     )
@@ -2799,6 +2852,7 @@ function CamionChiaroApp() {
     documentFocusId,
     driver,
     driverName,
+    driverTotalUnreadMessages,
     driverTeamChatMessages,
     driverProfileUrl,
     isCompanyOnline,

@@ -24,6 +24,7 @@ export function WorkforceHomeScreen({
   context,
   onOpenChat,
   onOpenSettings,
+  unreadChatMessages = 0,
 }) {
   const person = context?.currentPerson
   const deadlines = (context?.complianceItems ?? []).filter((item) => item.dueDate)
@@ -39,6 +40,7 @@ export function WorkforceHomeScreen({
         <Text style={styles.heroTitle}>Ciao {person?.name || 'collega'}</Text>
         <Text style={styles.heroMeta}>{companyName} · {getDepartmentLabel(person?.department)} · {person?.jobTitle || 'Operatore'}</Text>
         <View style={styles.metricRow}>
+          <MetricPill label="Messaggi" onPress={onOpenChat} tone={unreadChatMessages ? 'warning' : 'info'} value={unreadChatMessages} />
           <MetricPill label="Gruppi" tone="info" value={groups.length} />
           <MetricPill label="Scadenze" tone={criticalDeadlines.length ? 'warning' : 'success'} value={criticalDeadlines.length} />
         </View>
@@ -46,7 +48,9 @@ export function WorkforceHomeScreen({
 
       <Panel kicker="Chat" title="Azienda, reparti e persone">
         <Text style={styles.bodyText}>
-          Scrivi all azienda, al tuo reparto o a una persona specifica della squadra.
+          {unreadChatMessages
+            ? `${unreadChatMessages} messaggi aspettano lettura.`
+            : 'Scrivi all azienda, al tuo reparto o a una persona specifica della squadra.'}
         </Text>
         <PrimaryButton onPress={onOpenChat} title="Apri chat" />
       </Panel>

@@ -820,6 +820,13 @@ async function fetchDriverContextDirect() {
   const companyProfile = companyResult.data
     ? mapCompanyProfile(companyResult.data)
     : { id: driver.company_id, logoPath: '', name: 'Azienda' }
+  let finalTeamUnreadCountsResult = teamUnreadCountsResult
+
+  if (personResult.data && !teamUnreadCountsResult.error) {
+    const refreshedUnreadCountsResult = await fetchTeamUnreadCounts(driver.company_id)
+    if (!refreshedUnreadCountsResult.error) finalTeamUnreadCountsResult = refreshedUnreadCountsResult
+  }
+
   const peopleRows = isMissingWorkforceSchemaError(peopleResult.error)
     ? (personResult.data ? [personResult.data] : [])
     : attachDriversToPeople(peopleResult.data ?? [], driversResult.data ?? [])
@@ -836,8 +843,8 @@ async function fetchDriverContextDirect() {
       people: peopleRows,
       teamChatThreads: teamThreadsResult.data ?? [],
       unreadCompanyMessages: unreadCompanyMessagesResult.data ?? 0,
-      unreadTeamMessages: Object.values(teamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
-      unreadTeamMessagesByThreadId: teamUnreadCountsResult.data ?? {},
+      unreadTeamMessages: Object.values(finalTeamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
+      unreadTeamMessagesByThreadId: finalTeamUnreadCountsResult.data ?? {},
       vehicleChecks: checksResult.data ?? [],
       vehicles: vehiclesResult.data ?? [],
     }),

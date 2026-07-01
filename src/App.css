@@ -9469,16 +9469,17 @@
   .workspace.workspace-notifications {
     grid-template-rows: auto minmax(0, 1fr);
     height: 100svh;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     padding: 18px 20px;
   }
 
   .records-workspace,
   .reports-workspace,
   .operations-workspace {
-    min-height: 0;
-    height: calc(100svh - 94px);
-    overflow: hidden;
+    min-height: calc(100svh - 94px);
+    height: auto;
+    overflow: visible;
   }
 
   .records-workspace {
@@ -9517,10 +9518,10 @@
   .people-workspace,
   .archive-workspace {
     min-height: 0;
-    height: 100%;
+    height: auto;
     gap: 14px;
-    align-items: stretch;
-    overflow: hidden;
+    align-items: start;
+    overflow: visible;
   }
 
   .drivers-main,
@@ -9529,7 +9530,7 @@
   .people-main,
   .archive-main {
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .drivers-panel,
@@ -9540,7 +9541,7 @@
   .operations-panel {
     display: grid;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .drivers-panel,
@@ -9564,13 +9565,13 @@
   .people-section-list,
   .operations-list {
     min-height: 0;
-    overflow: auto;
+    overflow: visible;
   }
 
   .archive-section-grid,
   .archive-panel > .archive-list-section > .archive-list {
     min-height: 0;
-    overflow: auto;
+    overflow: visible;
   }
 
   .document-history-panel {
@@ -9584,8 +9585,9 @@
   .documents-side-column,
   .archive-detail-panel,
   .operation-detail-panel {
-    position: static;
-    max-height: 100%;
+    position: sticky;
+    top: 18px;
+    max-height: calc(100svh - 120px);
     min-height: 0;
     overflow: auto;
   }
@@ -9619,7 +9621,7 @@
     grid-auto-rows: max-content;
     align-content: start;
     min-height: 0;
-    overflow: auto;
+    overflow: visible;
     padding: 12px;
   }
 
@@ -9640,8 +9642,8 @@
 
   .fault-cost-report.is-report-workspace .fault-cost-list,
   .fault-cost-report.is-report-workspace .monthly-premium-report {
-    max-height: calc(100svh - 380px);
-    overflow: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .operations-workspace {

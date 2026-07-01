@@ -1676,7 +1676,7 @@ export function CompanyManagementScreen({
         <View style={styles.summaryGrid}>
           <SummaryCard icon="people-outline" label="Persone" value={allPeople.length} />
           <SummaryCard icon="briefcase-outline" label="Ufficio" value={officePeople.length} />
-          <SummaryCard icon="cube-outline" label="Magazzino" value={warehousePeople.length + warehouseAssets.length} />
+          <SummaryCard icon="cube-outline" label="Magazzino" value={warehousePeople.length} />
         </View>
       </View>
 

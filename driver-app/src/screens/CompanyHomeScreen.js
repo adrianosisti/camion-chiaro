@@ -496,7 +496,11 @@ export function CompanyHomeScreen({
   const [isResolvingDetail, setIsResolvingDetail] = useState(false)
   const company = context?.companyProfile ?? {}
   const drivers = context?.drivers ?? []
-  const peopleCount = (context?.people ?? []).length
+  const people = context?.people ?? []
+  const peopleCount = people.filter((person) => (
+    !['archived', 'Archiviato'].includes(person.status)
+      && !['driver', 'drivers'].includes(person.department)
+  )).length
   const vehicles = context?.vehicles ?? []
   const checks = context?.vehicleChecks ?? []
   const faults = context?.faultReports ?? []

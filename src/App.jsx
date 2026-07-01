@@ -422,7 +422,7 @@ const translations = {
     'homeCommand.open': 'Apri',
     'homeCommand.operationsDetail': 'Check, guasti e attivita da lavorare',
     'homeCommand.operationsLabel': 'Registro operativo',
-    'homeCommand.peopleDetail': 'Autisti, ufficio e magazzino',
+    'homeCommand.peopleDetail': 'Ufficio, magazzino e reparti',
     'homeCommand.peopleLabel': 'Persone',
     'homeCommand.quickAddDetail': 'Nuovo dato aziendale',
     'homeCommand.quickAddLabel': 'Aggiungi',
@@ -609,7 +609,7 @@ const translations = {
     'homeCommand.open': 'Open',
     'homeCommand.operationsDetail': 'Checks, faults and work to handle',
     'homeCommand.operationsLabel': 'Operations log',
-    'homeCommand.peopleDetail': 'Drivers, office and warehouse',
+    'homeCommand.peopleDetail': 'Office, warehouse and departments',
     'homeCommand.peopleLabel': 'People',
     'homeCommand.quickAddDetail': 'New company record',
     'homeCommand.quickAddLabel': 'Add',
@@ -796,7 +796,7 @@ const translations = {
     'homeCommand.open': 'Abrir',
     'homeCommand.operationsDetail': 'Checks, averias y tareas pendientes',
     'homeCommand.operationsLabel': 'Registro operativo',
-    'homeCommand.peopleDetail': 'Conductores, oficina y almacen',
+    'homeCommand.peopleDetail': 'Oficina, almacen y departamentos',
     'homeCommand.peopleLabel': 'Personas',
     'homeCommand.quickAddDetail': 'Nuevo dato de empresa',
     'homeCommand.quickAddLabel': 'Añadir',
@@ -931,7 +931,7 @@ const translations = {
     'homeCommand.open': 'Ouvrir',
     'homeCommand.operationsDetail': 'Checks, pannes et actions a traiter',
     'homeCommand.operationsLabel': 'Registre operationnel',
-    'homeCommand.peopleDetail': 'Chauffeurs, bureau et entrepot',
+    'homeCommand.peopleDetail': 'Bureau, entrepot et services',
     'homeCommand.peopleLabel': 'Personnes',
     'homeCommand.quickAddDetail': 'Nouvelle donnee entreprise',
     'homeCommand.quickAddLabel': 'Ajouter',
@@ -1066,7 +1066,7 @@ const translations = {
     'homeCommand.open': 'Offnen',
     'homeCommand.operationsDetail': 'Checks, Schaden und offene Aufgaben',
     'homeCommand.operationsLabel': 'Betriebsregister',
-    'homeCommand.peopleDetail': 'Fahrer, Buro und Lager',
+    'homeCommand.peopleDetail': 'Buro, Lager und Abteilungen',
     'homeCommand.peopleLabel': 'Personen',
     'homeCommand.quickAddDetail': 'Neue Firmendaten',
     'homeCommand.quickAddLabel': 'Hinzufugen',
@@ -7900,8 +7900,10 @@ function App() {
   const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
-  const activePeopleCount =
-    activeDriverCount + personRecords.filter((person) => !['archived', 'Archiviato'].includes(person.status)).length
+  const activePeopleCount = personRecords.filter((person) => (
+    !['archived', 'Archiviato'].includes(person.status)
+      && !['driver', 'drivers'].includes(person.department)
+  )).length
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
   if (!companyLicenseActive && activeView !== 'admin') {

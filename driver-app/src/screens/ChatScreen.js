@@ -268,15 +268,34 @@ function getPendingAttachmentKind(asset = {}) {
   return 'file'
 }
 
-function createPendingAttachment(asset, index = 0) {
-  const kind = getPendingAttachmentKind(asset)
+function getPendingAttachmentExtension(kind, mimeType = '') {
+  const cleanMimeType = String(mimeType ?? '').toLowerCase()
+
+  if (cleanMimeType === 'image/heic') return 'heic'
+  if (cleanMimeType === 'image/heif') return 'heif'
+  if (cleanMimeType === 'image/png') return 'png'
+  if (cleanMimeType === 'image/webp') return 'webp'
+  if (cleanMimeType === 'video/quicktime') return 'mov'
+  if (cleanMimeType === 'video/webm') return 'webm'
+  if (cleanMimeType === 'audio/aac') return 'aac'
+  if (cleanMimeType === 'audio/mpeg') return 'mp3'
+  if (cleanMimeType === 'audio/ogg') return 'ogg'
+  if (cleanMimeType === 'audio/wav' || cleanMimeType === 'audio/x-wav') return 'wav'
+
   const defaultExtensionMap = {
     audio: 'm4a',
     file: 'dat',
     image: 'jpg',
     video: 'mp4',
   }
-  const extension = defaultExtensionMap[kind] ?? 'dat'
+
+  return defaultExtensionMap[kind] ?? 'dat'
+}
+
+function createPendingAttachment(asset, index = 0) {
+  const kind = getPendingAttachmentKind(asset)
+  const mimeType = asset.mimeType || asset.type || ''
+  const extension = getPendingAttachmentExtension(kind, mimeType)
   const timestamp = Date.now()
 
   return {
@@ -284,7 +303,7 @@ function createPendingAttachment(asset, index = 0) {
     kind,
     name: asset.fileName || `allegato-${timestamp}-${index + 1}.${extension}`,
     size: asset.fileSize || asset.size || 0,
-    type: asset.mimeType || asset.type || (kind === 'video' ? 'video/mp4' : kind === 'audio' ? 'audio/mp4' : kind === 'image' ? 'image/jpeg' : 'application/octet-stream'),
+    type: mimeType || (kind === 'video' ? 'video/mp4' : kind === 'audio' ? 'audio/mp4' : kind === 'image' ? 'image/jpeg' : 'application/octet-stream'),
     uri: asset.uri,
   }
 }

@@ -294,13 +294,23 @@ function sanitizeFileName(value = 'file') {
 }
 
 async function getFileBodyFromUri(uri) {
-  const bytes = await new File(uri).bytes()
+  try {
+    const bytes = await new File(uri).bytes()
 
-  if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
-    return bytes.buffer
+    if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+      return bytes.buffer
+    }
+
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+  } catch (fileError) {
+    try {
+      const response = await fetch(uri)
+      if (!response.ok) throw fileError
+      return response.arrayBuffer()
+    } catch {
+      throw fileError
+    }
   }
-
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
 }
 
 function normalizeComparable(value = '') {
@@ -1249,7 +1259,17 @@ async function uploadChatAttachment({ attachment, companyId, folder = 'chat', th
 
   const cleanFileName = sanitizeFileName(attachment.name ?? `allegato-${Date.now()}`)
   const filePath = `${companyId}/${folder}/${threadId}/${Date.now()}-${cleanFileName}`
-  const fileBody = await getFileBodyFromUri(attachment.uri)
+  let fileBody
+
+  try {
+    fileBody = await getFileBodyFromUri(attachment.uri)
+  } catch {
+    return {
+      data: '',
+      error: { message: 'File non leggibile dalla galleria. Riprova selezionandolo di nuovo o scattando una nuova foto.' },
+    }
+  }
+
   const { error } = await supabase.storage.from(companyAssetsBucket).upload(filePath, fileBody, {
     cacheControl: '31536000',
     contentType: attachment.type || 'application/octet-stream',

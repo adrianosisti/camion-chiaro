@@ -313,6 +313,59 @@ function incrementTeamUnreadInContext(currentContext, message, actorPersonId = '
   }
 }
 
+function isIncomingTeamMessageForCompany(message = {}) {
+  if (!message?.threadId) return false
+  return message.senderRole !== 'company' || Boolean(message.senderPersonId)
+}
+
+function updateThreadsWithLastMessage(threads = [], threadId, createdAt) {
+  return threads.map((thread) => (
+    thread.id === threadId
+      ? { ...thread, lastMessageAt: createdAt || thread.lastMessageAt }
+      : thread
+  ))
+}
+
+function incrementCompanyDriverUnreadInContext(currentContext, message = {}) {
+  if (!currentContext || message.senderRole !== 'driver' || !message.threadId) return currentContext
+
+  const messageAlreadyKnown = (currentContext.chatMessages ?? []).some((currentMessage) => currentMessage.id === message.id)
+  const thread = (currentContext.chatThreads ?? []).find((currentThread) => currentThread.id === message.threadId)
+  const driverId = thread?.driverId
+  const unreadByDriverId = { ...(currentContext.unreadDriverMessagesByDriverId ?? {}) }
+
+  if (driverId && !messageAlreadyKnown) {
+    unreadByDriverId[driverId] = Number(unreadByDriverId[driverId] ?? 0) + 1
+  }
+
+  return {
+    ...currentContext,
+    chatMessages: mergeChatMessage(currentContext.chatMessages ?? [], message),
+    chatThreads: updateThreadsWithLastMessage(currentContext.chatThreads ?? [], message.threadId, message.createdAt),
+    unreadDriverMessages: Object.values(unreadByDriverId).reduce((total, count) => total + Number(count || 0), 0),
+    unreadDriverMessagesByDriverId: unreadByDriverId,
+  }
+}
+
+function incrementCompanyTeamUnreadInContext(currentContext, message = {}) {
+  if (!currentContext || !isIncomingTeamMessageForCompany(message)) return currentContext
+
+  const messageAlreadyKnown = (currentContext.teamChatMessages ?? []).some((currentMessage) => currentMessage.id === message.id)
+  const unreadByThreadId = { ...(currentContext.unreadTeamMessagesByThreadId ?? {}) }
+
+  if (!messageAlreadyKnown) {
+    unreadByThreadId[message.threadId] = Number(unreadByThreadId[message.threadId] ?? 0) + 1
+  }
+
+  return {
+    ...currentContext,
+    teamChatMessages: mergeChatMessage(currentContext.teamChatMessages ?? [], message),
+    teamChatThreads: updateThreadsWithLastMessage(currentContext.teamChatThreads ?? [], message.threadId, message.createdAt),
+    unreadTeamMessages: sumUnreadByThreadId(unreadByThreadId),
+    unreadTeamMessagesByThreadId: unreadByThreadId,
+  }
+}
+
 function getShareFileKind(file = {}) {
   const mimeType = String(file.mimeType ?? '').toLowerCase()
   const fileName = String(file.fileName ?? file.path ?? '').toLowerCase()
@@ -1110,26 +1163,33 @@ function CamionChiaroApp() {
       onMessage: async (message) => {
         if (!isActive) return
 
-        setCompanyContext((currentContext) => (
-          currentContext
-            ? { ...currentContext, chatMessages: mergeChatMessage(currentContext.chatMessages ?? [], message) }
-            : currentContext
-        ))
-
         const hasOpenSelectedChat = activeTab === 'chat' && selectedCompanyDriverId && (
           !companyChatThread?.id || message.threadId === companyChatThread.id
         )
 
         if (hasOpenSelectedChat) {
+          setCompanyContext((currentContext) => (
+            currentContext
+              ? { ...currentContext, chatMessages: mergeChatMessage(currentContext.chatMessages ?? [], message) }
+              : currentContext
+          ))
           const currentDriver = companyContext?.drivers?.find((entry) => entry.id === selectedCompanyDriverId)
           await loadCompanyChatData(currentDriver, { markAsRead: true })
           return
         }
 
         if (message.senderRole === 'driver') {
+          setCompanyContext((currentContext) => incrementCompanyDriverUnreadInContext(currentContext, message))
           triggerHaptic('light')
           await loadCompanyData({ silent: true })
+          return
         }
+
+        setCompanyContext((currentContext) => (
+          currentContext
+            ? { ...currentContext, chatMessages: mergeChatMessage(currentContext.chatMessages ?? [], message) }
+            : currentContext
+        ))
       },
     })
 
@@ -1149,13 +1209,12 @@ function CamionChiaroApp() {
       onMessage: async (message) => {
         if (!isActive) return
 
-        setCompanyContext((currentContext) => (
-          currentContext
-            ? { ...currentContext, teamChatMessages: mergeChatMessage(currentContext.teamChatMessages ?? [], message) }
-            : currentContext
-        ))
-
         if (activeTab === 'chat' && selectedCompanyTeamThreadId && message?.threadId === selectedCompanyTeamThreadId) {
+          setCompanyContext((currentContext) => (
+            currentContext
+              ? { ...currentContext, teamChatMessages: mergeChatMessage(currentContext.teamChatMessages ?? [], message) }
+              : currentContext
+          ))
           setCompanyTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, message))
           clearTeamUnreadLocally(setCompanyContext, selectedCompanyTeamThreadId)
           void markTeamThreadRead(selectedCompanyTeamThreadId)
@@ -1163,8 +1222,15 @@ function CamionChiaroApp() {
           return
         }
 
-        if (message?.senderPersonId || (message?.senderRole && message.senderRole !== 'company')) {
+        if (isIncomingTeamMessageForCompany(message)) {
+          setCompanyContext((currentContext) => incrementCompanyTeamUnreadInContext(currentContext, message))
           triggerHaptic('light')
+        } else {
+          setCompanyContext((currentContext) => (
+            currentContext
+              ? { ...currentContext, teamChatMessages: mergeChatMessage(currentContext.teamChatMessages ?? [], message) }
+              : currentContext
+          ))
         }
 
         await loadCompanyData({ silent: true })

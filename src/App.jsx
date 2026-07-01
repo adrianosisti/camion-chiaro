@@ -7763,9 +7763,18 @@ function App() {
   const faultCostSummary = getFaultCostSummary(visibleFaultReportRecords, costEntryRecords)
   const defaultCurrency = getDefaultCurrency(language)
   const notificationCount = unreadCheckCount + openFaultCount
-  const companyUnreadChatCount = chatMessageRecords.filter(
+  const companyVisibleTeamThreadIds = new Set(
+    teamChatThreadRecords
+      .filter(isCompanyVisibleTeamThread)
+      .map((thread) => thread.id),
+  )
+  const companyUnreadDirectChatCount = chatMessageRecords.filter(
     (message) => message.senderRole === 'driver' && !message.readByCompanyAt,
   ).length
+  const companyUnreadTeamChatCount = teamChatMessageRecords.filter(
+    (message) => companyVisibleTeamThreadIds.has(message.threadId) && isUnreadTeamMessageForCompany(message),
+  ).length
+  const companyUnreadChatCount = companyUnreadDirectChatCount + companyUnreadTeamChatCount
   const isAdminSession = Boolean(session?.role === 'company' && isAdminEmail(session.email))
   const companyLicenseActive = isAdminSession || isCompanyLicenseActive(companyProfile)
 
@@ -15018,6 +15027,14 @@ function isCompanyGroupTeamThread(thread = {}) {
   return !isTeamDirectThread(thread) && ['drivers', 'warehouse', 'office', 'all'].includes(thread.audienceType)
 }
 
+function isCompanyVisibleTeamThread(thread = {}) {
+  return isCompanyDirectTeamThread(thread) || isCompanyGroupTeamThread(thread)
+}
+
+function isUnreadTeamMessageForCompany(message = {}) {
+  return (message.senderRole !== 'company' || Boolean(message.senderPersonId)) && !message.readByCompanyAt
+}
+
 function getTeamThreadIcon(thread = {}) {
   if (isTeamDirectThread(thread)) return <UserRound size={18} />
   if (thread.audienceType === 'drivers') return <Truck size={18} />
@@ -15334,6 +15351,9 @@ function ChatWorkspace({
   const hasUnreadDriverMessages = visibleMessages.some(
     (message) => selectedDriver && message.senderRole === 'driver' && !message.readByCompanyAt,
   )
+  const hasUnreadTeamMessages = visibleMessages.some(
+    (message) => selectedTeamThread && isUnreadTeamMessageForCompany(message),
+  )
   const signalCompanyTyping = useChatTypingSignal({
     actorRole: 'company',
     onTyping,
@@ -15364,6 +15384,12 @@ function ChatWorkspace({
     }
   }, [hasUnreadDriverMessages, onMarkRead, selectedThread?.id])
 
+  useEffect(() => {
+    if (selectedTeamThread?.id && hasUnreadTeamMessages) {
+      onMarkTeamRead?.(selectedTeamThread.id)
+    }
+  }, [hasUnreadTeamMessages, onMarkTeamRead, selectedTeamThread?.id])
+
   function getDriverThread(driverId) {
     return chatThreads.find((thread) => thread.driverId === driverId && thread.contextType === 'general')
   }
@@ -15391,9 +15417,7 @@ function ChatWorkspace({
   }
 
   function getTeamUnreadMessageCount(threadId) {
-    return (teamMessagesByThread.get(threadId) ?? []).filter(
-      (message) => (message.senderRole !== 'company' || message.senderPersonId) && !message.readByCompanyAt,
-    ).length
+    return (teamMessagesByThread.get(threadId) ?? []).filter(isUnreadTeamMessageForCompany).length
   }
 
   function handleAttachmentChange(event) {

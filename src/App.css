@@ -23,10 +23,11 @@
   position: sticky;
   z-index: 40;
   top: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(150px, max-content) minmax(0, 1fr) minmax(230px, max-content);
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+  column-gap: clamp(10px, 2vw, 18px);
+  row-gap: 10px;
   width: 100%;
   padding: max(12px, calc(env(safe-area-inset-top) + 10px)) clamp(16px, 4vw, 42px) 12px;
   border-bottom: 1px solid rgba(183, 220, 231, 0.78);
@@ -35,8 +36,9 @@
 }
 
 .public-brand {
-  flex: 0 0 auto;
+  justify-self: start;
   min-width: 0;
+  max-width: min(280px, 30vw);
   width: auto;
 }
 
@@ -54,11 +56,13 @@
 
 .public-nav {
   display: flex;
-  flex: 1 1 auto;
   align-items: center;
   justify-content: center;
   gap: clamp(12px, 3vw, 28px);
+  justify-self: center;
   min-width: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .public-nav a {
@@ -66,6 +70,7 @@
   font-size: 0.9rem;
   font-weight: 760;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .public-nav a:hover {
@@ -74,12 +79,23 @@
 
 .public-header-actions {
   display: flex;
-  flex: 0 1 auto;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
+  justify-self: end;
   min-width: 0;
+  max-width: 100%;
+}
+
+.public-header-actions .language-selector {
+  flex: 0 1 188px;
+  min-width: 144px;
+}
+
+.public-header-actions .compact-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .public-hero {
@@ -10318,16 +10334,17 @@
 
   .public-header {
     position: static;
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 12px;
   }
 
   .public-brand {
-    flex: 1 1 auto;
+    max-width: none;
   }
 
   .public-nav {
-    order: 3;
+    grid-column: 1 / -1;
+    grid-row: 2;
     width: 100%;
     justify-content: flex-start;
     overflow-x: auto;
@@ -10335,6 +10352,9 @@
   }
 
   .public-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
     margin-left: auto;
   }
 
@@ -10838,6 +10858,47 @@
 
   .wide-field {
     grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .public-header {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+  }
+
+  .public-brand {
+    justify-self: center;
+    max-width: 100%;
+  }
+
+  .public-header-actions {
+    display: grid;
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-self: stretch;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .public-header-actions .language-selector {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .public-header-actions .language-selector span {
+    display: none;
+  }
+
+  .public-header-actions .language-selector select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .public-nav {
+    grid-row: 3;
+    justify-content: center;
   }
 }
 

@@ -644,6 +644,130 @@
   font-size: 0.8rem;
 }
 
+.legal-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.inline-legal-button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #67e8f9;
+  border-radius: 999px;
+  color: #075985;
+  background: #ecfeff;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.inline-legal-button:hover {
+  border-color: #029bb7;
+  color: #020617;
+  background: #cffafe;
+}
+
+.legal-document-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  background: rgba(2, 6, 23, 0.58);
+}
+
+.legal-document-modal {
+  width: min(760px, 100%);
+  max-height: min(760px, calc(100dvh - 36px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  color: #0f172a;
+  background: #ffffff;
+  box-shadow: 0 30px 90px rgba(2, 6, 23, 0.28);
+}
+
+.legal-document-header,
+.legal-document-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fbff;
+}
+
+.legal-document-footer {
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 0;
+}
+
+.legal-document-header h2 {
+  margin: 0;
+  color: #020617;
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.legal-document-header span {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 760;
+}
+
+.legal-document-body {
+  display: grid;
+  gap: 13px;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+}
+
+.legal-document-intro,
+.legal-document-warning {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  color: #075985;
+  background: #ecfeff;
+  font-size: 0.88rem;
+  font-weight: 760;
+  line-height: 1.48;
+}
+
+.legal-document-warning {
+  color: #7c2d12;
+  background: #ffedd5;
+}
+
+.legal-document-section {
+  display: grid;
+  gap: 5px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.legal-document-section h3 {
+  margin: 0;
+  color: #020617;
+  font-size: 0.98rem;
+}
+
+.legal-document-section p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.58;
+}
+
 .auth-submit {
   width: 100%;
   margin-top: 2px;

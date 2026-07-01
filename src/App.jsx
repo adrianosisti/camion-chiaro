@@ -374,6 +374,124 @@ const planResourceLimitFields = {
   users: 'maxUsers',
   vehicles: 'maxVehicles',
 }
+const legalDocumentLibrary = {
+  dpa: {
+    intro: 'Bozza di nomina a responsabile del trattamento. Prima del rilascio commerciale va revisionata da consulente privacy.',
+    sections: [
+      {
+        body: 'L azienda cliente resta titolare dei dati inseriti in Vygo. Vygo opera come fornitore tecnico e tratta i dati solo per rendere disponibili app, dashboard, notifiche, documenti, chat, report e assistenza.',
+        title: 'Ruoli privacy',
+      },
+      {
+        body: 'Vygo puo trattare dati di utenti aziendali, autisti, personale, mezzi, documenti, chat, file, foto, video, audio, scadenze, guasti, check, costi, log operativi e dati necessari alla sicurezza del servizio.',
+        title: 'Dati trattati',
+      },
+      {
+        body: 'Il trattamento avviene per conto dell azienda cliente, secondo le istruzioni ricevute, per erogare il servizio, mantenere sicurezza, continuita operativa, backup, supporto tecnico e tracciabilita.',
+        title: 'Finalita',
+      },
+      {
+        body: 'Vygo adotta misure tecniche e organizzative proporzionate: autenticazione, permessi per azienda, regole database, archiviazione file, log, backup e separazione dei dati tra aziende.',
+        title: 'Sicurezza',
+      },
+      {
+        body: 'Alla cessazione del rapporto l azienda potra richiedere esportazione o cancellazione dei dati secondo tempi e modalita definiti nel contratto e nelle procedure operative.',
+        title: 'Fine servizio',
+      },
+    ],
+    title: 'Nomina responsabile trattamento',
+    version: 'vygo-dpa-2026-07-01',
+  },
+  privacy: {
+    intro: 'Bozza informativa privacy Vygo. Serve per rendere chiaro cosa viene trattato dentro app e dashboard.',
+    sections: [
+      {
+        body: 'Vygo tratta i dati necessari a gestire aziende logistiche, utenti, autisti, personale, mezzi, documenti, scadenze, guasti, chat, notifiche, costi, report e assistenza.',
+        title: 'Quali dati trattiamo',
+      },
+      {
+        body: 'I dati vengono usati per far funzionare il servizio, mostrare documenti e avvisi, inviare notifiche, gestire comunicazioni aziendali, creare report, garantire sicurezza e fornire supporto.',
+        title: 'Perche li usiamo',
+      },
+      {
+        body: 'I dati aziendali sono visibili agli utenti autorizzati dalla rispettiva azienda. Vygo non vende dati personali. Alcuni fornitori tecnici possono trattare dati solo per hosting, database, pagamenti, notifiche o assistenza.',
+        title: 'Chi puo vederli',
+      },
+      {
+        body: 'I dati sono conservati per il tempo necessario al servizio, agli obblighi amministrativi e alla sicurezza. L azienda puo richiedere esportazione, correzione o cancellazione secondo le regole contrattuali.',
+        title: 'Conservazione',
+      },
+      {
+        body: 'Gli utenti possono chiedere informazioni sui dati, rettifica, limitazione, cancellazione ove applicabile e altre tutele previste dalla normativa privacy. Le richieste passeranno tramite azienda o supporto Vygo.',
+        title: 'Diritti',
+      },
+      {
+        body: 'Chat, foto, audio, video e documenti sono strumenti di lavoro aziendale. Ogni azienda deve informare correttamente il proprio personale sulle modalita d uso e sulle regole interne.',
+        title: 'Chat e documenti',
+      },
+    ],
+    title: 'Informativa Privacy Vygo',
+    version: 'vygo-privacy-2026-07-01',
+  },
+  staffTerms: {
+    intro: 'Regole base per autisti, magazzino, ufficio e personale che usa l app Vygo.',
+    sections: [
+      {
+        body: 'L account e personale. Username e password non vanno condivisi. Se il dispositivo viene perso o l accesso sembra compromesso, bisogna avvisare subito l azienda.',
+        title: 'Account personale',
+      },
+      {
+        body: 'L app va usata per finalita lavorative: chat aziendale, check, guasti, documenti, notifiche, scadenze, foto, video, audio e informazioni operative.',
+        title: 'Uso corretto',
+      },
+      {
+        body: 'Documenti, foto e allegati caricati devono essere pertinenti, leggibili e collegati al lavoro. Non caricare contenuti inutili, offensivi, non autorizzati o estranei all attivita aziendale.',
+        title: 'Documenti e allegati',
+      },
+      {
+        body: 'Le segnalazioni di guasto, check e anomalie devono essere veritiere e complete. Foto e note aiutano l azienda a intervenire meglio e a creare storico operativo.',
+        title: 'Check e guasti',
+      },
+      {
+        body: 'Le notifiche servono a ricevere messaggi e avvisi operativi. L utente puo gestire le impostazioni del telefono, ma alcune informazioni possono restare disponibili in app.',
+        title: 'Notifiche',
+      },
+    ],
+    title: 'Regole uso app personale',
+    version: 'vygo-staff-terms-2026-07-01',
+  },
+  terms: {
+    intro: 'Bozza Termini e Condizioni SaaS Vygo. Da validare legalmente prima del lancio commerciale.',
+    sections: [
+      {
+        body: 'Vygo e un servizio software per aziende di trasporto e logistica. Include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, notifiche, centro costi e report secondo il piano acquistato.',
+        title: 'Oggetto del servizio',
+      },
+      {
+        body: 'Ogni piano puo prevedere limiti su mezzi, strumenti, account utenti, storage, chat, centro costi, report e funzioni avanzate. Se il limite viene raggiunto, l azienda potra aggiornare piano o acquistare extra.',
+        title: 'Piani e limiti',
+      },
+      {
+        body: 'L azienda e responsabile della correttezza dei dati inseriti, della gestione degli utenti, delle autorizzazioni interne, della qualita dei documenti caricati e dell uso conforme alle proprie regole aziendali.',
+        title: 'Responsabilita azienda',
+      },
+      {
+        body: 'Vygo si impegna a mantenere il servizio disponibile e sicuro secondo mezzi ragionevoli. Possono esserci manutenzioni, aggiornamenti, interruzioni tecniche o limiti dovuti a fornitori esterni.',
+        title: 'Disponibilita',
+      },
+      {
+        body: 'Gli abbonamenti vengono gestiti tramite il sistema di pagamento configurato. Mancato pagamento, pagamento fallito o piano scaduto possono limitare o sospendere funzioni non incluse o non pagate.',
+        title: 'Pagamenti',
+      },
+      {
+        body: 'Alla fine del rapporto, l azienda potra richiedere esportazione dei dati disponibili o cancellazione secondo le procedure concordate. Alcuni dati possono restare conservati per obblighi fiscali, sicurezza o prova contrattuale.',
+        title: 'Cessazione',
+      },
+    ],
+    title: 'Termini e Condizioni SaaS',
+    version: 'vygo-terms-2026-07-01',
+  },
+}
 const adminBillingPlanOptions = [
   ...billingCheckoutPlans.map((plan) => ({ label: plan.title, value: plan.id })),
   { label: 'Enterprise', value: 'enterprise' },
@@ -8744,6 +8862,70 @@ function App() {
   )
 }
 
+function LegalReadButton({ documentId, label = 'Leggi', onOpen }) {
+  return (
+    <button
+      className="inline-legal-button"
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onOpen?.(documentId)
+      }}
+      type="button"
+    >
+      {label}
+    </button>
+  )
+}
+
+function LegalDocumentModal({ documentId, onClose }) {
+  const document = documentId ? legalDocumentLibrary[documentId] : null
+
+  if (!document) return null
+
+  return (
+    <div className="legal-document-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        aria-label={document.title}
+        aria-modal="true"
+        className="legal-document-modal"
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <header className="legal-document-header">
+          <div>
+            <p className="overline">Documento consultabile</p>
+            <h2>{document.title}</h2>
+            <span>Versione {document.version}</span>
+          </div>
+          <button aria-label="Chiudi documento" className="icon-button" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="legal-document-body">
+          <p className="legal-document-intro">{document.intro}</p>
+          {document.sections.map((section) => (
+            <article className="legal-document-section" key={section.title}>
+              <h3>{section.title}</h3>
+              <p>{section.body}</p>
+            </article>
+          ))}
+          <p className="legal-document-warning">
+            Questa e una bozza operativa interna al prodotto. Prima della vendita a clienti reali deve essere verificata e
+            adattata da un consulente privacy/legale.
+          </p>
+        </div>
+        <footer className="legal-document-footer">
+          <button className="primary-button compact-button" onClick={onClose} type="button">
+            <Check size={16} />
+            Ho letto
+          </button>
+        </footer>
+      </section>
+    </div>
+  )
+}
+
 function CompanyLicenseGate({
   checkoutStatus,
   companyEmail,
@@ -8774,6 +8956,7 @@ function CompanyLicenseGate({
     legalName: companyName,
   })
   const [billingLegalAccepted, setBillingLegalAccepted] = useState(false)
+  const [openLegalDocument, setOpenLegalDocument] = useState('')
   const [validationMessage, setValidationMessage] = useState('')
   const selectedPlanDetails = billingCheckoutPlans.find((plan) => plan.id === selectedPlan) ?? billingCheckoutPlans[1]
 
@@ -8941,6 +9124,11 @@ function CompanyLicenseGate({
             />
             <span>
               Confermo dati fiscali, piano scelto, condizioni commerciali, Privacy e gestione fatturazione tramite Stripe.
+              <span className="legal-link-row">
+                <LegalReadButton documentId="terms" onOpen={setOpenLegalDocument} />
+                <LegalReadButton documentId="privacy" onOpen={setOpenLegalDocument} />
+                <LegalReadButton documentId="dpa" label="Nomina" onOpen={setOpenLegalDocument} />
+              </span>
             </span>
           </label>
 
@@ -8969,6 +9157,7 @@ function CompanyLicenseGate({
           <DetailLine label="Fatture" value="Salvate nello storico azienda" />
         </div>
       </section>
+      <LegalDocumentModal documentId={openLegalDocument} onClose={() => setOpenLegalDocument('')} />
     </main>
   )
 }
@@ -8990,6 +9179,7 @@ function LegalAcceptanceGate({
     staffTerms: false,
     terms: false,
   })
+  const [openLegalDocument, setOpenLegalDocument] = useState('')
   const requiredAccepted = isCompany
     ? accepted.terms && accepted.privacy && accepted.dpa
     : accepted.staffTerms && accepted.privacy
@@ -9031,15 +9221,30 @@ function LegalAcceptanceGate({
               <>
                 <label className="legal-check">
                   <input checked={accepted.terms} onChange={(event) => updateAccepted('terms', event.target.checked)} type="checkbox" />
-                  <span>Accetto Termini e Condizioni SaaS Vygo per uso aziendale, abbonamenti, limiti piano e supporto.</span>
+                  <span>
+                    Accetto Termini e Condizioni SaaS Vygo per uso aziendale, abbonamenti, limiti piano e supporto.
+                    <span className="legal-link-row">
+                      <LegalReadButton documentId="terms" onOpen={setOpenLegalDocument} />
+                    </span>
+                  </span>
                 </label>
                 <label className="legal-check">
                   <input checked={accepted.privacy} onChange={(event) => updateAccepted('privacy', event.target.checked)} type="checkbox" />
-                  <span>Ho letto l Informativa Privacy Vygo per dati aziendali, utenti, chat, documenti, notifiche e file.</span>
+                  <span>
+                    Ho letto l Informativa Privacy Vygo per dati aziendali, utenti, chat, documenti, notifiche e file.
+                    <span className="legal-link-row">
+                      <LegalReadButton documentId="privacy" onOpen={setOpenLegalDocument} />
+                    </span>
+                  </span>
                 </label>
                 <label className="legal-check">
                   <input checked={accepted.dpa} onChange={(event) => updateAccepted('dpa', event.target.checked)} type="checkbox" />
-                  <span>Confermo la nomina Vygo a responsabile del trattamento per i dati gestiti per conto dell azienda.</span>
+                  <span>
+                    Confermo la nomina Vygo a responsabile del trattamento per i dati gestiti per conto dell azienda.
+                    <span className="legal-link-row">
+                      <LegalReadButton documentId="dpa" label="Leggi nomina" onOpen={setOpenLegalDocument} />
+                    </span>
+                  </span>
                 </label>
                 <label className="legal-check">
                   <input checked={accepted.marketing} onChange={(event) => updateAccepted('marketing', event.target.checked)} type="checkbox" />
@@ -9050,11 +9255,21 @@ function LegalAcceptanceGate({
               <>
                 <label className="legal-check">
                   <input checked={accepted.privacy} onChange={(event) => updateAccepted('privacy', event.target.checked)} type="checkbox" />
-                  <span>Ho letto l informativa privacy sull uso di app, profilo, documenti, notifiche e messaggi aziendali.</span>
+                  <span>
+                    Ho letto l informativa privacy sull uso di app, profilo, documenti, notifiche e messaggi aziendali.
+                    <span className="legal-link-row">
+                      <LegalReadButton documentId="privacy" onOpen={setOpenLegalDocument} />
+                    </span>
+                  </span>
                 </label>
                 <label className="legal-check">
                   <input checked={accepted.staffTerms} onChange={(event) => updateAccepted('staffTerms', event.target.checked)} type="checkbox" />
-                  <span>Accetto le regole d uso di Vygo per chat, documenti, check, guasti, allegati e notifiche aziendali.</span>
+                  <span>
+                    Accetto le regole d uso di Vygo per chat, documenti, check, guasti, allegati e notifiche aziendali.
+                    <span className="legal-link-row">
+                      <LegalReadButton documentId="staffTerms" onOpen={setOpenLegalDocument} />
+                    </span>
+                  </span>
                 </label>
               </>
             )}
@@ -9079,6 +9294,7 @@ function LegalAcceptanceGate({
           </form>
         )}
       </section>
+      <LegalDocumentModal documentId={openLegalDocument} onClose={() => setOpenLegalDocument('')} />
     </main>
   )
 }
@@ -9159,6 +9375,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
     username: '',
     password: '',
   })
+  const [openLegalDocument, setOpenLegalDocument] = useState('')
   const [status, setStatus] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -9412,7 +9629,12 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
                     required
                     type="checkbox"
                   />
-                  <span>Accetto Termini e Condizioni SaaS Vygo.</span>
+                  <span>
+                    Accetto Termini e Condizioni SaaS Vygo.
+                    <span className="legal-link-row">
+                      <LegalReadButton documentId="terms" onOpen={setOpenLegalDocument} />
+                    </span>
+                  </span>
                 </label>
                 <label className="legal-check">
                   <input
@@ -9421,7 +9643,12 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
                     required
                     type="checkbox"
                   />
-                  <span>Ho letto l Informativa Privacy.</span>
+                  <span>
+                    Ho letto l Informativa Privacy.
+                    <span className="legal-link-row">
+                      <LegalReadButton documentId="privacy" onOpen={setOpenLegalDocument} />
+                    </span>
+                  </span>
                 </label>
                 <label className="legal-check">
                   <input
@@ -9591,6 +9818,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
         </div>
       </section>
+      <LegalDocumentModal documentId={openLegalDocument} onClose={() => setOpenLegalDocument('')} />
     </main>
   )
 }

@@ -19,7 +19,6 @@ const languages = [
 export function SettingsScreen({
   accountType = 'driver',
   chatSoundEnabled = true,
-  chatDiagnostics = null,
   language = 'it',
   nativePushStatus = '',
   onChatSoundChange,
@@ -27,7 +26,6 @@ export function SettingsScreen({
   onLanguageChange,
   onOpenAssistant,
   onRefresh,
-  onResetChatBadge,
   onSignOut,
 }) {
   const [wheelPicker, setWheelPicker] = useState(null)
@@ -87,19 +85,6 @@ export function SettingsScreen({
           />
         </View>
       </Panel>
-
-      {accountType === 'driver' ? (
-        <Panel kicker="Chat" title={t(language, 'chatDiagnostics')}>
-          <Text style={styles.helper}>
-            Badge: {chatDiagnostics?.badgeCount ?? 0} | Non letti raw: {chatDiagnostics?.rawUnreadCount ?? 0} | Messaggi: {chatDiagnostics?.messageCount ?? 0}
-          </Text>
-          <Text style={styles.diagnosticLine}>Ultimo azienda: {chatDiagnostics?.latestCompanyAt || 'nessuno'}</Text>
-          <Text style={styles.diagnosticLine}>Letto fino a: {chatDiagnostics?.readWatermark || 'mai'}</Text>
-          <Text style={styles.diagnosticLine}>Ultimo letto server: {chatDiagnostics?.latestCompanyReadAt || 'vuoto'}</Text>
-          <View style={styles.buttonGap} />
-          <PrimaryButton onPress={onResetChatBadge} title="Reset badge chat" tone="light" />
-        </Panel>
-      ) : null}
 
       <Panel kicker={t(language, 'session')} title="Account">
         <PrimaryButton onPress={onRefresh} title={t(language, 'refreshData')} tone="light" />

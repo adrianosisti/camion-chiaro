@@ -79,7 +79,7 @@ const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
 const teamChatThreadSelect = 'id, company_id, thread_type, audience_type, direct_key, title, status, last_message_at, created_at'
 const teamChatMessageSelect =
-  'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, read_by_company_at, created_at'
+  'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, reactions, read_by_company_at, created_at'
 const teamChatMessageLegacySelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, created_at'
 const vehicleCheckSelect =
@@ -136,6 +136,55 @@ function mapCompanyPerson(row = {}) {
     status: row.status ?? 'active',
     username: row.username ?? '',
   }
+}
+
+function normalizeIdentityForMatch(value = '') {
+  return String(value ?? '').trim().toLowerCase()
+}
+
+function findMatchingDriverForPerson(person = {}, drivers = []) {
+  const personValues = [
+    person.linked_driver_id,
+    person.linkedDriverId,
+    person.username,
+    person.auth_email,
+    person.authEmail,
+    person.email,
+    person.phone,
+    person.full_name,
+    person.name,
+  ].map(normalizeIdentityForMatch).filter(Boolean)
+
+  if (!personValues.length) return null
+
+  return (drivers ?? []).find((driver) => {
+    const driverValues = [
+      driver.id,
+      driver.username,
+      driver.auth_email,
+      driver.authEmail,
+      driver.email,
+      driver.phone,
+      driver.full_name,
+      driver.name,
+    ].map(normalizeIdentityForMatch).filter(Boolean)
+
+    return driverValues.some((value) => personValues.includes(value))
+  }) ?? null
+}
+
+function attachDriversToPeople(people = [], drivers = []) {
+  return (people ?? []).map((person) => {
+    if (person.linked_driver_id || person.linkedDriverId) return person
+    const matchingDriver = findMatchingDriverForPerson(person, drivers)
+    if (!matchingDriver?.id) return person
+
+    return {
+      ...person,
+      linked_driver_id: matchingDriver.id,
+      linkedDriverId: matchingDriver.id,
+    }
+  })
 }
 
 function mapCompanyAsset(row = {}) {
@@ -438,6 +487,22 @@ async function fetchCurrentCompanyPerson(companyId, userId, driverId = '') {
 
     if (isMissingWorkforceSchemaError(byDriverResult.error)) {
       return { data: null, error: null, missingSchema: true }
+    }
+
+    if (byDriverResult.data && userId && !byDriverResult.data.user_id) {
+      const updatedResult = await supabase
+        .from('company_people')
+        .update({ user_id: userId })
+        .eq('id', byDriverResult.data.id)
+        .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+        .maybeSingle()
+
+      if (!updatedResult.error && updatedResult.data) {
+        return {
+          data: mapContextCompanyPerson(updatedResult.data),
+          error: null,
+        }
+      }
     }
 
     if (byDriverResult.error || byDriverResult.data) {
@@ -752,6 +817,9 @@ async function fetchDriverContextDirect() {
   const companyProfile = companyResult.data
     ? mapCompanyProfile(companyResult.data)
     : { id: driver.company_id, logoPath: '', name: 'Azienda' }
+  const peopleRows = isMissingWorkforceSchemaError(peopleResult.error)
+    ? (personResult.data ? [personResult.data] : [])
+    : attachDriversToPeople(peopleResult.data ?? [], driversResult.data ?? [])
 
   return {
     data: mapDriverContext({
@@ -762,9 +830,7 @@ async function fetchDriverContextDirect() {
       documents: documentsResult.data ?? [],
       drivers: putCurrentDriverFirst(driver, driversResult.data ?? []),
       faultReports: faultsResult.data ?? [],
-      people: isMissingWorkforceSchemaError(peopleResult.error)
-        ? (personResult.data ? [personResult.data] : [])
-        : (peopleResult.data ?? []),
+      people: peopleRows,
       teamChatThreads: teamThreadsResult.data ?? [],
       unreadTeamMessages: Object.values(teamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
       unreadTeamMessagesByThreadId: teamUnreadCountsResult.data ?? {},
@@ -825,6 +891,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
+  const peopleRows = attachDriversToPeople(peopleResult.data ?? [], driversResult.data ?? [])
 
   return {
     data: mapDriverContext({
@@ -835,7 +902,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
       documents: [],
       drivers: driversResult.data ?? [],
       faultReports: [],
-      people: (peopleResult.data ?? []).map(mapContextCompanyPerson),
+      people: peopleRows.map(mapContextCompanyPerson),
       teamChatThreads: teamThreadsResult.data ?? [],
       unreadTeamMessages: Object.values(teamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
       unreadTeamMessagesByThreadId: teamUnreadCountsResult.data ?? {},
@@ -990,6 +1057,7 @@ export async function fetchCompanyContext() {
 
   if (firstError) return { data: null, error: firstError }
   const workforceSchemaReady = !isMissingWorkforceSchemaError(peopleResult.error) && !isMissingWorkforceSchemaError(assetsResult.error)
+  const companyPeopleRows = workforceSchemaReady ? attachDriversToPeople(peopleResult.data ?? [], driversResult.data ?? []) : []
 
   const driverIdByThreadId = new Map(
     (chatThreadsResult.data ?? []).map((thread) => [thread.id, thread.driver_id]),
@@ -1015,7 +1083,7 @@ export async function fetchCompanyContext() {
       costEntries: costEntriesResult.data ?? [],
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       membership: membershipResult.data,
-      people: workforceSchemaReady ? (peopleResult.data ?? []).map(mapCompanyPerson) : [],
+      people: companyPeopleRows.map(mapCompanyPerson),
       teamChatMessages: teamChatMessagesResult.error
         ? []
         : (teamChatMessagesResult.data ?? []).map(mapTeamChatMessage),
@@ -1443,6 +1511,36 @@ export async function updateChatMessageReaction(message, actorRole, reaction) {
   }
 
   return { data: data ? mapChatMessage(data) : null, error }
+}
+
+export async function updateTeamChatMessageReaction(message, actorRole, reaction) {
+  if (!isSupabaseConfigured || !message?.id) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('set_team_chat_message_reaction', {
+    actor_role: actorRole === 'company' ? 'company' : 'person',
+    reaction_value: reaction || null,
+    target_message_id: message.id,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL reazioni chat gruppi. Esegui il file 44_team_chat_reazioni.sql in Supabase.' },
+    }
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Per usare reazioni e chat gruppi esegui prima i file SQL team chat in Supabase.' },
+    }
+  }
+
+  if (error) return { data: null, error }
+
+  return { data: data ? mapTeamChatMessage(data) : null, error: null }
 }
 
 export async function markChatMessagesRead(threadId, readerRole) {

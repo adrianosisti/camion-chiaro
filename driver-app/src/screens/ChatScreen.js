@@ -716,6 +716,7 @@ export function ChatScreen({
   participantAvatarUrl,
   participantIcon = '',
   participantName,
+  reactionKey = '',
   onIncomingShareConsumed,
   onRefresh,
   onReactToMessage,
@@ -758,6 +759,7 @@ export function ChatScreen({
     [renderedMessages],
   )
   const chatPartnerName = participantName || companyName
+  const ownReactionKey = reactionKey || currentUserRole
   const chatPartnerAvatarUrl = participantIcon ? '' : participantAvatarUrl ?? (currentUserRole === 'driver' ? companyLogoUrl : driverProfileUrl)
   const messageParticipantAvatarUrl = participantAvatarUrl ?? (currentUserRole === 'driver' ? companyLogoUrl : driverProfileUrl)
   const chatOwnAvatarUrl = ownAvatarUrl ?? (currentUserRole === 'driver' ? driverProfileUrl : companyLogoUrl)
@@ -1184,7 +1186,7 @@ export function ChatScreen({
   }
 
   async function reactToSelectedMessage(message, reaction) {
-    const currentReaction = message.reactions?.[currentUserRole] ?? ''
+    const currentReaction = message.reactions?.[ownReactionKey] ?? ''
     const nextReaction = currentReaction === reaction ? '' : reaction
     setActionMessage(null)
     await onReactToMessage?.(message, currentUserRole, nextReaction)

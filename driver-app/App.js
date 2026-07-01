@@ -64,6 +64,7 @@ import {
   subscribeToOperationalUpdates,
   subscribeToDriverPresence,
   updateChatMessageReaction,
+  updateTeamChatMessageReaction,
   updateCompanyComplianceItemStatus,
   updateCompanyCostEntry,
   updateFaultReportStatus,
@@ -401,10 +402,6 @@ function CamionChiaroApp() {
   const selectedCompanyTeamThread = companyContext?.teamChatThreads?.find((thread) => thread.id === selectedCompanyTeamThreadId) ?? null
   const selectedDriverTeamThread = context?.teamChatThreads?.find((thread) => thread.id === selectedDriverTeamThreadId) ?? null
   const selectedCompanyDriverOnline = Boolean(selectedCompanyDriverId && onlineDriverIds.includes(selectedCompanyDriverId))
-  const rawUnreadDriverMessages = useMemo(
-    () => chatMessages.filter((message) => message.senderRole === 'company' && !message.readByDriverAt),
-    [chatMessages],
-  )
   const unreadCompanyMessages = useMemo(() => {
     if (accountType !== 'driver' || activeTab === 'chat') return 0
     return countUnreadDriverMessages(chatMessages, driverChatReadWatermark)
@@ -416,22 +413,6 @@ function CamionChiaroApp() {
   const chatBadgeCount = accountType === 'company'
     ? unreadDriverMessages + unreadTeamMessages
     : activeTab === 'chat' ? 0 : unreadCompanyMessages + unreadTeamMessages
-  const driverChatDiagnostics = useMemo(() => {
-    const companyMessages = chatMessages.filter((message) => message.senderRole === 'company')
-    const latestCompanyMessage = companyMessages.reduce((latestMessage, message) => (
-      getMessageTime(message) > getMessageTime(latestMessage) ? message : latestMessage
-    ), null)
-
-    return {
-      badgeCount: unreadCompanyMessages,
-      latestCompanyAt: latestCompanyMessage?.createdAt ?? '',
-      latestCompanyReadAt: latestCompanyMessage?.readByDriverAt ?? '',
-      messageCount: chatMessages.length,
-      rawUnreadCount: rawUnreadDriverMessages.length,
-      readWatermark: driverChatReadWatermark ? new Date(driverChatReadWatermark).toISOString() : '',
-    }
-  }, [chatMessages, driverChatReadWatermark, rawUnreadDriverMessages.length, unreadCompanyMessages])
-
   function clearDriverUnreadMessages(messages = chatMessages) {
     const latestCompanyMessageTime = messages
       .filter((message) => message.senderRole === 'company')
@@ -1820,6 +1801,48 @@ function CamionChiaroApp() {
     return true
   }
 
+  async function handleReactToTeamMessage(message, actorRole, reaction) {
+    if (!message?.id) return false
+
+    const previousDriverMessages = driverTeamChatMessages
+    const previousCompanyMessages = companyTeamChatMessages
+    const nextReactions = { ...(message.reactions ?? {}) }
+    const currentActorPersonId = context?.currentPerson?.id ?? ''
+    const reactionKey = actorRole === 'company' ? 'company' : `person:${currentActorPersonId || message.senderPersonId || 'me'}`
+
+    if (reaction) {
+      nextReactions[reactionKey] = reaction
+    } else {
+      delete nextReactions[reactionKey]
+    }
+
+    const applyLocalReaction = (currentMessages) => currentMessages.map((currentMessage) => (
+      currentMessage.id === message.id ? { ...currentMessage, reactions: nextReactions } : currentMessage
+    ))
+
+    setDriverTeamChatMessages(applyLocalReaction)
+    setCompanyTeamChatMessages(applyLocalReaction)
+
+    const result = await updateTeamChatMessageReaction({ ...message, reactions: message.reactions ?? {} }, actorRole, reaction)
+
+    if (result.error) {
+      setDriverTeamChatMessages(previousDriverMessages)
+      setCompanyTeamChatMessages(previousCompanyMessages)
+      Alert.alert('Reazione non salvata', result.error.message)
+      return false
+    }
+
+    if (result.data) {
+      const applySavedReaction = (currentMessages) => currentMessages.map((currentMessage) => (
+        currentMessage.id === result.data.id ? result.data : currentMessage
+      ))
+      setDriverTeamChatMessages(applySavedReaction)
+      setCompanyTeamChatMessages(applySavedReaction)
+    }
+
+    return true
+  }
+
   function handleTyping(isTyping) {
     presenceRef.current?.sendTyping({
       isTyping,
@@ -2487,6 +2510,7 @@ function CamionChiaroApp() {
             onSelectTeamThread={handleSelectCompanyTeamThread}
             onSend={handleSendCompanyChatMessage}
             onSendTeamMessage={handleSendCompanyTeamChatMessage}
+            onReactToTeamMessage={handleReactToTeamMessage}
             onTyping={handleCompanyTyping}
             onlinePersonIds={onlinePersonIds}
             people={companyContext?.people ?? []}
@@ -2580,6 +2604,7 @@ function CamionChiaroApp() {
           driverProfileUrl={driverProfileUrl}
           driverPhotoUrls={companyDriverPhotoUrls}
           driverName={driverName}
+          drivers={context?.drivers ?? []}
           messages={chatMessages}
           incomingShare={incomingChatShare}
           onBackToList={closeDriverChatDetail}
@@ -2588,6 +2613,7 @@ function CamionChiaroApp() {
           onOpenPersonChat={handleSelectDriverPerson}
           onOpenTeamChat={handleSelectDriverTeamThread}
           onReactToMessage={handleReactToMessage}
+          onReactToTeamMessage={handleReactToTeamMessage}
           onRefreshCompanyChat={() => loadDriverChatData(driver, { markAsRead: true })}
           onRefreshTeamChat={() => loadDriverTeamChatData()}
           onSendCompanyMessage={handleSendChatMessage}
@@ -2640,7 +2666,6 @@ function CamionChiaroApp() {
         <SettingsScreen
           accountType="driver"
           chatSoundEnabled={chatSoundEnabled}
-          chatDiagnostics={driverChatDiagnostics}
           language={language}
           nativePushStatus={nativePushStatus}
           onChatSoundChange={setChatSoundEnabled}
@@ -2648,7 +2673,6 @@ function CamionChiaroApp() {
           onOpenAssistant={() => setIsAssistantOpen(true)}
           onLanguageChange={setLanguage}
           onRefresh={() => loadDriverData()}
-          onResetChatBadge={resetDriverChatBadge}
           onSignOut={handleSignOut}
         />
       )
@@ -2694,7 +2718,6 @@ function CamionChiaroApp() {
     chatSoundEnabled,
     chatMessages,
     chatThread?.id,
-    driverChatDiagnostics,
     companyContext,
     companyChatMessages,
     companyChatThread?.id,

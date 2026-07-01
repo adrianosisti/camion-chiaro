@@ -56,6 +56,7 @@ export function CompanyChatScreen({
   onBackToDrivers,
   onIncomingShareConsumed,
   onReactToMessage,
+  onReactToTeamMessage,
   onRefresh,
   onSelectDriver,
   onSelectPerson,
@@ -251,6 +252,7 @@ export function CompanyChatScreen({
           messages={normalizedTeamMessages}
           offlineLabel={isDirect ? 'non online' : 'gruppo'}
           onIncomingShareConsumed={onIncomingShareConsumed}
+          onReactToMessage={onReactToTeamMessage}
           onRefresh={onRefresh}
           onSend={onSendTeamMessage}
           onTyping={onTyping}
@@ -258,6 +260,7 @@ export function CompanyChatScreen({
           participantAvatarUrl={isDirect ? directPersonPhotoUrl : companyLogoUrl}
           participantIcon={isDirect ? '' : getGroupIcon(selectedTeamThread.audienceType)}
           participantName={selectedTitle}
+          reactionKey="company"
           showSenderNames={!isDirectThread(selectedTeamThread)}
           soundEnabled={soundEnabled}
         />
@@ -479,7 +482,7 @@ function TeamChatRow({ driverByPersonId = new Map(), driverPhotoUrls = {}, onPre
         </View>
       )}
       <View style={styles.driverCopy}>
-        <Text style={[styles.driverName, hasUnread && styles.unreadTitle]}>{thread.title}</Text>
+        <Text style={[styles.driverName, hasUnread && styles.unreadTitle]}>{targetPerson?.name ?? thread.title}</Text>
         <Text style={[styles.driverMeta, hasUnread && styles.unreadMeta]}>{subtitle}</Text>
       </View>
       <View style={styles.rowActions}>

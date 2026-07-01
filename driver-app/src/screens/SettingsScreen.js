@@ -18,10 +18,12 @@ const languages = [
 
 export function SettingsScreen({
   accountType = 'driver',
+  appUpdateStatus = '',
   chatSoundEnabled = true,
   language = 'it',
   nativePushStatus = '',
   onChatSoundChange,
+  onCheckAppUpdate,
   onEnableNativeNotifications,
   onLanguageChange,
   onOpenAssistant,
@@ -38,6 +40,9 @@ export function SettingsScreen({
             ? t(language, 'appSettingsCompanyHelp')
             : t(language, 'appSettingsDriverHelp')}
         </Text>
+        <View style={styles.buttonGap} />
+        <PrimaryButton onPress={onCheckAppUpdate} title="Controlla aggiornamenti app" tone="light" />
+        {appUpdateStatus ? <Text style={styles.diagnosticLine}>{appUpdateStatus}</Text> : null}
       </Panel>
 
       <Panel kicker={t(language, 'language')} title={t(language, 'languageApp')}>

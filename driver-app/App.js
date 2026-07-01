@@ -14,6 +14,7 @@ import {
 } from 'react-native'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import * as Haptics from 'expo-haptics'
+import * as Updates from 'expo-updates'
 import { useShareIntent } from 'expo-share-intent'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -342,6 +343,7 @@ function CamionChiaroApp() {
   const [accountType, setAccountType] = useState('driver')
   const [activeTab, setActiveTab] = useState('home')
   const [appStatus, setAppStatus] = useState('Caricamento app...')
+  const [appUpdateStatus, setAppUpdateStatus] = useState('')
   const [chatSoundEnabled, setChatSoundEnabled] = useState(true)
   const [chatMessages, setChatMessages] = useState([])
   const [chatThread, setChatThread] = useState(null)
@@ -386,6 +388,7 @@ function CamionChiaroApp() {
   const activeTabRef = useRef(activeTab)
   const driverChatModeRef = useRef(driverChatMode)
   const driverChatReadVersionRef = useRef(0)
+  const appUpdatePromptRef = useRef(false)
   const nativePushPromptRef = useRef('')
 
   const driver = context?.drivers?.[0] ?? null
@@ -707,10 +710,39 @@ function CamionChiaroApp() {
     return false
   }
 
+  async function checkForAppUpdates({ silent = false } = {}) {
+    if (!Updates.isEnabled) {
+      if (!silent) setAppUpdateStatus('Aggiornamenti automatici non disponibili su questa installazione.')
+      return false
+    }
+
+    if (appUpdatePromptRef.current) return false
+    appUpdatePromptRef.current = true
+
+    try {
+      if (!silent) setAppUpdateStatus('Controllo aggiornamenti app...')
+      const update = await Updates.checkForUpdateAsync()
+      if (update.isAvailable) {
+        setAppUpdateStatus('Aggiornamento trovato. Riapro Vygo...')
+        await Updates.fetchUpdateAsync()
+        await Updates.reloadAsync()
+        return true
+      }
+      if (!silent) setAppUpdateStatus('Vygo e gia aggiornata.')
+      return false
+    } catch {
+      if (!silent) setAppUpdateStatus('Aggiornamento non controllato. Riprova tra poco.')
+      return false
+    } finally {
+      appUpdatePromptRef.current = false
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
 
     async function boot() {
+      void checkForAppUpdates({ silent: true })
       const [sessionResult, storedSettings] = await Promise.all([
         getCurrentSession(),
         AsyncStorage.getItem(settingsStorageKey),
@@ -2534,10 +2566,12 @@ function CamionChiaroApp() {
         return (
           <SettingsScreen
             accountType="company"
+            appUpdateStatus={appUpdateStatus}
             chatSoundEnabled={chatSoundEnabled}
             language={language}
             nativePushStatus={nativePushStatus}
             onChatSoundChange={setChatSoundEnabled}
+            onCheckAppUpdate={() => checkForAppUpdates()}
             onEnableNativeNotifications={handleEnableNativeNotifications}
             onOpenAssistant={() => setIsAssistantOpen(true)}
             onLanguageChange={setLanguage}
@@ -2665,10 +2699,12 @@ function CamionChiaroApp() {
       return (
         <SettingsScreen
           accountType="driver"
+          appUpdateStatus={appUpdateStatus}
           chatSoundEnabled={chatSoundEnabled}
           language={language}
           nativePushStatus={nativePushStatus}
           onChatSoundChange={setChatSoundEnabled}
+          onCheckAppUpdate={() => checkForAppUpdates()}
           onEnableNativeNotifications={handleEnableNativeNotifications}
           onOpenAssistant={() => setIsAssistantOpen(true)}
           onLanguageChange={setLanguage}

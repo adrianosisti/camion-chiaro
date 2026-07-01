@@ -232,7 +232,7 @@ export async function handler(event) {
 
   if (!planCheck.allowed) {
     return jsonResponse(403, {
-      error: `Limite account utenti raggiunto (${planCheck.limit}). Aggiorna piano per creare altri accessi.`,
+      error: `Limite account utenti raggiunto (${planCheck.currentCount}/${planCheck.limit}). Il conteggio include azienda, autisti, ufficio e magazzino. Aggiorna piano per creare altri accessi.`,
     })
   }
 

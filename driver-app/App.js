@@ -399,7 +399,7 @@ const nativePlanFeatureLabels = {
 
 const nativePlanResourceLabels = {
   assets: 'strumenti o muletti',
-  users: 'account utenti',
+  users: 'account utenti, incluso accesso azienda',
   vehicles: 'mezzi',
 }
 
@@ -863,9 +863,13 @@ function CamionChiaroApp() {
 
   function showNativePlanResourceLimit(resource) {
     const limit = currentPlanCapabilities[nativePlanResourceLimitFields[resource]]
+    const usage = getNativePlanResourceUsage(resource)
+    const context = resource === 'users'
+      ? 'Il conteggio include azienda, autisti, ufficio e magazzino.'
+      : 'Archivia elementi non piu attivi oppure aggiorna piano.'
     Alert.alert(
       'Limite piano raggiunto',
-      `${getNativeBillingPlanLabel(currentCompanyProfile.billingPlan)} consente ${Number.isFinite(limit) ? limit : 'illimitati'} ${nativePlanResourceLabels[resource]}. Aggiorna piano per continuare.`,
+      `${getNativeBillingPlanLabel(currentCompanyProfile.billingPlan)}: limite ${nativePlanResourceLabels[resource]} raggiunto (${usage}/${Number.isFinite(limit) ? limit : 'illimitati'}). ${context} Aggiorna piano per continuare.`,
     )
     return false
   }

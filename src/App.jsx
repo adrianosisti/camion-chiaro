@@ -368,7 +368,7 @@ const billingPlanCapabilities = {
 }
 const planResourceLabels = {
   assets: 'strumenti o muletti',
-  users: 'account utenti',
+  users: 'account utenti, incluso accesso azienda',
   vehicles: 'mezzi',
 }
 const planFeatureLabels = {
@@ -4767,6 +4767,10 @@ function formatInvoiceAmount(invoice) {
   }).format((invoice.amountCents ?? 0) / 100)
 }
 
+function isArchivedStatus(status) {
+  return ['archived', 'Archiviato', 'closed'].includes(status)
+}
+
 function formatMoneyCents(cents = 0, currency = 'EUR') {
   return new Intl.NumberFormat('it-IT', {
     currency: currency || 'EUR',
@@ -5646,17 +5650,17 @@ function App() {
 
   function getCurrentPlanResourceUsage(resource) {
     if (resource === 'assets') {
-      return assetRecords.filter((asset) => !['archived', 'Archiviato'].includes(asset.status)).length
+      return assetRecords.filter((asset) => !isArchivedStatus(asset.status)).length
     }
 
     if (resource === 'users') {
-      const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
-      const activePeople = personRecords.filter((person) => !['archived', 'Archiviato'].includes(person.status)).length
+      const activeDrivers = driverRecords.filter((driver) => !isArchivedStatus(driver.status)).length
+      const activePeople = personRecords.filter((person) => !isArchivedStatus(person.status)).length
       return activeDrivers + activePeople + 1
     }
 
     if (resource === 'vehicles') {
-      return vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
+      return vehicleRecords.filter((vehicle) => !isArchivedStatus(vehicle.status)).length
     }
 
     return 0
@@ -5676,7 +5680,18 @@ function App() {
     const capabilities = getCompanyPlanCapabilities(companyProfile)
     const limit = capabilities[planResourceLimitFields[resource]]
     const planName = getBillingPlanLabel(companyProfile.billingPlan)
-    return `${planName}: limite ${planResourceLabels[resource]} raggiunto (${formatPlanLimit(limit)}). Aggiorna piano per continuare.`
+    const usage = getCurrentPlanResourceUsage(resource)
+    const context = resource === 'users'
+      ? 'Il conteggio include azienda, autisti, ufficio e magazzino.'
+      : 'Archivia elementi non piu attivi oppure aggiorna piano.'
+    return `${planName}: limite ${planResourceLabels[resource]} raggiunto (${usage}/${formatPlanLimit(limit)}). ${context} Aggiorna piano per continuare.`
+  }
+
+  function showPlanResourceLimit(resource, setStatus) {
+    const message = getPlanLimitMessage(resource)
+    setStatus(message)
+    window.alert(message)
+    return false
   }
 
   function canUseCurrentPlanFeature(feature) {
@@ -6784,8 +6799,7 @@ function App() {
 
   async function addDriverRecord(driver) {
     if (!canUsePlanResource('users')) {
-      setDriversSyncStatus(getPlanLimitMessage('users'))
-      return false
+      return showPlanResourceLimit('users', setDriversSyncStatus)
     }
 
     const temporaryPassword = driver.password?.trim() ?? ''
@@ -6804,7 +6818,9 @@ function App() {
         : await createSupabaseDriver(cleanDriver, activeCompanyId)
 
       if (result.error) {
-        setDriversSyncStatus(`Errore Supabase: ${result.error.message}`)
+        const errorMessage = `Errore Supabase: ${result.error.message}`
+        setDriversSyncStatus(errorMessage)
+        if (String(result.error.message ?? '').includes('Piano Vygo')) window.alert(result.error.message)
         return false
       }
 
@@ -6829,8 +6845,7 @@ function App() {
     }
 
     if (!canUsePlanResource('users')) {
-      setPeopleSyncStatus(getPlanLimitMessage('users'))
-      return false
+      return showPlanResourceLimit('users', setPeopleSyncStatus)
     }
 
     const temporaryPassword = person.password?.trim() ?? ''
@@ -6906,7 +6921,9 @@ function App() {
       const result = await createSupabaseCompanyPerson({ ...cleanPerson, password: temporaryPassword }, activeCompanyId)
 
       if (result.error) {
-        setPeopleSyncStatus(`Errore Supabase: ${result.error.message}`)
+        const errorMessage = `Errore Supabase: ${result.error.message}`
+        setPeopleSyncStatus(errorMessage)
+        if (String(result.error.message ?? '').includes('Piano Vygo')) window.alert(result.error.message)
         return false
       }
 
@@ -7025,8 +7042,7 @@ function App() {
 
   async function addVehicleRecord(vehicle) {
     if (!canUsePlanResource('vehicles')) {
-      setFleetSyncStatus(getPlanLimitMessage('vehicles'))
-      return false
+      return showPlanResourceLimit('vehicles', setFleetSyncStatus)
     }
 
     const cleanVehicle = {
@@ -7040,7 +7056,9 @@ function App() {
       const result = await createSupabaseVehicle(cleanVehicle, activeCompanyId)
 
       if (result.error) {
-        setFleetSyncStatus(`Errore Supabase: ${result.error.message}`)
+        const errorMessage = `Errore Supabase: ${result.error.message}`
+        setFleetSyncStatus(errorMessage)
+        if (String(result.error.message ?? '').includes('Piano Vygo')) window.alert(result.error.message)
         return false
       }
 
@@ -7497,6 +7515,13 @@ function App() {
       return false
     }
 
+    if (companyProfile.billingProvider !== 'stripe' || !companyProfile.billingCustomerId) {
+      const message = 'Portale pagamento non ancora collegato a Stripe per questa azienda. In questa fase test puoi cambiare piano da Admin o da Supabase; quando Stripe sara attivo, qui si aprira il portale cliente per upgrade, carte e fatture.'
+      setCompanySettingsStatus(message)
+      window.alert(message)
+      return false
+    }
+
     setCompanySettingsStatus('Apro portale fatturazione...')
     const result = await createBillingPortalSession(activeCompanyId)
 
@@ -7507,6 +7532,14 @@ function App() {
 
     window.location.assign(result.data.url)
     return true
+  }
+
+  function openBillingSettings() {
+    setCompanySettingsStatus('Da qui puoi vedere il piano. In questa fase test, upgrade e addon si impostano da Admin/Supabase finche Stripe non e collegato.')
+    setActiveView('settings')
+    window.setTimeout(() => {
+      document.querySelector('.billing-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 0)
   }
 
   function getDriverDisplayName(driverId) {
@@ -8887,7 +8920,7 @@ function App() {
               description="Chat singole, gruppi, reparti, foto, video, audio, allegati e notifiche non sono inclusi nel piano attuale."
               featureName="Chat aziendale"
               icon={Mail}
-              onUpgrade={() => setActiveView('settings')}
+              onUpgrade={openBillingSettings}
             />
           )
         ) : activeView === 'reports' ? (
@@ -8914,7 +8947,7 @@ function App() {
               description="Centro costi, multe, manutenzioni, CSV, stampa e report filtrati sono disponibili dai piani con report economici."
               featureName="Centro costi e report"
               icon={Banknote}
-              onUpgrade={() => setActiveView('settings')}
+              onUpgrade={openBillingSettings}
             />
           )
         ) : activeView === 'support' ? (
@@ -11215,12 +11248,11 @@ function SettingsWorkspace({
             />
             <button
               className="secondary-button full-inline-button"
-              disabled={companyProfile.billingProvider !== 'stripe' || !companyProfile.billingCustomerId}
               onClick={onOpenBillingPortal}
               type="button"
             >
               <BadgeCheck size={16} />
-              Gestisci pagamento
+              {companyProfile.billingProvider === 'stripe' && companyProfile.billingCustomerId ? 'Gestisci pagamento' : 'Richiedi upgrade'}
             </button>
           </div>
           <div className="invoice-list">
@@ -12583,7 +12615,7 @@ function DriversWorkspace({
           )}
         </div>
       </div>
-      <DriverCreatePanel onAddDriver={onAddDriver} onBackHome={onBackHome} vehicleRecords={vehicleRecords} />
+      <DriverCreatePanel onAddDriver={onAddDriver} onBackHome={onBackHome} syncStatus={syncStatus} vehicleRecords={vehicleRecords} />
       {photoPreviewDriver && (
         <PhotoPreviewModal
           imageUrl={assetPreviewUrl(photoPreviewDriver.profileImagePath)}
@@ -12699,7 +12731,7 @@ function DriverManagementRow({
   )
 }
 
-function DriverCreatePanel({ onAddDriver, onBackHome, vehicleRecords }) {
+function DriverCreatePanel({ onAddDriver, onBackHome, syncStatus, vehicleRecords }) {
   const { t } = useI18n()
   const [isSaving, setIsSaving] = useState(false)
   const [form, setForm] = useState(getDriverCreateDefaults)
@@ -12825,6 +12857,7 @@ function DriverCreatePanel({ onAddDriver, onBackHome, vehicleRecords }) {
         <span>{authEmail || t('drivers.usernameHelp')}</span>
       </div>
       {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields, t)} />}
+      {syncStatus && <p className="sync-status-line in-create-panel">{syncStatus}</p>}
       <button className="primary-button full-button" disabled={isSaving} type="submit">
         <UserPlus size={17} />
         {isSaving ? t('drivers.creatingAccount') : t('drivers.createAccount')}
@@ -12932,7 +12965,7 @@ function FleetWorkspace({ driverRecords, onAddVehicle, onArchiveVehicle, onBackH
           )}
         </div>
       </div>
-      <VehicleCreatePanel onAddVehicle={onAddVehicle} onBackHome={onBackHome} />
+      <VehicleCreatePanel onAddVehicle={onAddVehicle} onBackHome={onBackHome} syncStatus={syncStatus} />
     </section>
   )
 }
@@ -13031,7 +13064,7 @@ function VehicleManagementRow({
   )
 }
 
-function VehicleCreatePanel({ onAddVehicle, onBackHome }) {
+function VehicleCreatePanel({ onAddVehicle, onBackHome, syncStatus }) {
   const { t } = useI18n()
   const [isSaving, setIsSaving] = useState(false)
   const [showValidation, setShowValidation] = useState(false)
@@ -13147,6 +13180,7 @@ function VehicleCreatePanel({ onAddVehicle, onBackHome }) {
         </label>
       </div>
       {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields, t)} />}
+      {syncStatus && <p className="sync-status-line in-create-panel">{syncStatus}</p>}
       <button className="primary-button full-button" disabled={isSaving} type="submit">
         <Plus size={17} />
         {isSaving ? t('common.saving') : t('fleet.newVehicle')}

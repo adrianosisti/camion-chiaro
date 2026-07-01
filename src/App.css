@@ -3731,6 +3731,14 @@
   font-weight: 720;
 }
 
+.sync-status-line.in-create-panel {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(14, 165, 233, 0.24);
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.08);
+}
+
 .driver-create-panel {
   position: sticky;
   top: 22px;

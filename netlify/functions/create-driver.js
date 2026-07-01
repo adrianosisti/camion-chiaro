@@ -57,6 +57,79 @@ function mapDriver(row) {
   }
 }
 
+const planUserLimits = {
+  business: 40,
+  enterprise: Infinity,
+  fleet10: 20,
+  fleet20: 40,
+  fleet30: 60,
+  fleet50: 100,
+  pro: 20,
+  starter: 10,
+}
+
+function getPlanUserLimit(plan) {
+  return planUserLimits[plan] ?? planUserLimits.starter
+}
+
+async function countRows(query) {
+  const { count, error } = await query
+  if (error?.code === '42P01' || error?.code === '42703') return { count: 0, error: null }
+  return { count: count ?? 0, error }
+}
+
+async function verifyPlanUserLimit(serviceClient, companyId) {
+  const { data: companyRow, error: companyError } = await serviceClient
+    .from('companies')
+    .select('billing_plan, billing_provider, billing_status')
+    .eq('id', companyId)
+    .maybeSingle()
+
+  if (companyError) return { allowed: false, error: companyError }
+
+  if (companyRow?.billing_provider === 'manual' && companyRow?.billing_status === 'active') {
+    return { allowed: true, error: null }
+  }
+
+  const limit = getPlanUserLimit(companyRow?.billing_plan)
+  if (!Number.isFinite(limit)) return { allowed: true, error: null }
+
+  const [membersResult, driversResult, peopleResult] = await Promise.all([
+    countRows(
+      serviceClient
+        .from('company_members')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('company_id', companyId),
+    ),
+    countRows(
+      serviceClient
+        .from('drivers')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .neq('status', 'archived'),
+    ),
+    countRows(
+      serviceClient
+        .from('company_people')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .neq('status', 'archived')
+        .neq('department', 'drivers'),
+    ),
+  ])
+
+  const firstError = membersResult.error || driversResult.error || peopleResult.error
+  if (firstError) return { allowed: false, error: firstError }
+
+  const currentCount = membersResult.count + driversResult.count + peopleResult.count
+  return {
+    allowed: currentCount < limit,
+    currentCount,
+    error: null,
+    limit,
+  }
+}
+
 function toDriverPayload(driver, companyId, authUserId, authEmail, username) {
   return {
     auth_email: authEmail,
@@ -157,6 +230,18 @@ export async function handler(event) {
 
   if (!operatorCheck.allowed) {
     return jsonResponse(403, { error: 'Solo un operatore azienda puo creare autisti.' })
+  }
+
+  const planCheck = await verifyPlanUserLimit(serviceClient, companyId)
+
+  if (planCheck.error) {
+    return jsonResponse(500, { error: planCheck.error.message })
+  }
+
+  if (!planCheck.allowed) {
+    return jsonResponse(403, {
+      error: `Limite account utenti raggiunto (${planCheck.limit}). Aggiorna piano per creare altri accessi.`,
+    })
   }
 
   const { data: createdUser, error: createUserError } = await serviceClient.auth.admin.createUser({

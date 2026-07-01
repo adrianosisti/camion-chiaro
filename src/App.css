@@ -601,6 +601,49 @@
   outline: 0;
 }
 
+.legal-checkbox-stack,
+.legal-acceptance-form {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.legal-check {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 10px 11px;
+  border: 1px solid #d6e6f5;
+  border-radius: 8px;
+  color: #334155;
+  background: #f8fbff;
+  font-size: 0.82rem;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.legal-check input {
+  width: 16px;
+  min-height: 16px;
+  margin-top: 2px;
+  accent-color: #029bb7;
+}
+
+.legal-check-strong {
+  background: #ecfeff;
+  border-color: #bae6fd;
+}
+
+.legal-mini-copy {
+  max-width: none;
+  padding: 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 0.8rem;
+}
+
 .auth-submit {
   width: 100%;
   margin-top: 2px;
@@ -7480,6 +7523,83 @@
   min-height: 42px;
 }
 
+.legal-gate-panel {
+  width: min(100%, 720px);
+}
+
+.feature-upgrade-gate {
+  min-height: min(620px, calc(100vh - 120px));
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.feature-upgrade-card {
+  width: min(100%, 760px);
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.feature-upgrade-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #020617;
+  background: #12c6df;
+}
+
+.feature-upgrade-card h2 {
+  margin: 0;
+  color: #020617;
+  font-size: 1.6rem;
+}
+
+.feature-upgrade-card p:not(.overline) {
+  margin: 0;
+  max-width: 56ch;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.feature-limit-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.feature-limit-grid article {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #d6e6f5;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.feature-limit-grid strong {
+  color: #020617;
+}
+
+.feature-limit-grid span {
+  color: #0369a1;
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.feature-limit-grid small {
+  color: #64748b;
+  line-height: 1.35;
+}
+
 .license-checkout-form {
   width: 100%;
   display: grid;
@@ -9766,6 +9886,7 @@
   .billing-form-grid,
   .cost-insight-grid,
   .cost-home-metrics,
+  .feature-limit-grid,
   .report-active-summary,
   .report-action-board,
   .report-question-grid,

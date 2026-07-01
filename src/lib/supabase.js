@@ -7,6 +7,23 @@ export const isCompanyDataConfigured = Boolean(isSupabaseConfigured && configure
 export const driverDocumentsBucket = 'driver-documents'
 export const companyAssetsBucket = 'company-assets'
 export const companyInvoicesBucket = 'company-invoices'
+export const legalDocumentVersions = {
+  dpa: 'vygo-dpa-2026-07-01',
+  marketing: 'vygo-marketing-2026-07-01',
+  privacy: 'vygo-privacy-2026-07-01',
+  staffTerms: 'vygo-staff-terms-2026-07-01',
+  terms: 'vygo-terms-2026-07-01',
+}
+
+function getRequiredLegalDocuments(accountRole = 'company') {
+  return accountRole === 'company'
+    ? ['terms', 'privacy', 'dpa']
+    : ['staffTerms', 'privacy']
+}
+
+function isMissingLegalSchemaError(error) {
+  return ['42P01', '42703', 'PGRST204'].includes(error?.code)
+}
 
 const driverStatusLabels = {
   active: 'In servizio',
@@ -900,6 +917,119 @@ export async function fetchCompanyStorageSummary(companyId = configuredCompanyId
 
   const row = Array.isArray(data) ? data[0] : data
   return { data: mapCompanyStorageSummary(row), error }
+}
+
+export async function fetchLegalAcceptanceStatus({ accountRole = 'company', companyId = configuredCompanyId } = {}) {
+  const supabase = await getSupabaseClient()
+  const requiredDocuments = getRequiredLegalDocuments(accountRole)
+
+  if (!supabase || !companyId) {
+    return {
+      data: {
+        accepted: true,
+        missingDocuments: [],
+        requiredDocuments,
+      },
+      error: null,
+    }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id
+
+  if (!userId) {
+    return { data: null, error: { message: 'Sessione utente mancante. Fai login e riprova.' } }
+  }
+
+  const { data, error } = await supabase
+    .from('legal_acceptances')
+    .select('document_type, document_version')
+    .eq('company_id', companyId)
+    .eq('user_id', userId)
+    .in('document_type', requiredDocuments)
+
+  if (isMissingLegalSchemaError(error)) {
+    return {
+      data: {
+        accepted: true,
+        missingDocuments: [],
+        missingTable: true,
+        requiredDocuments,
+      },
+      error: null,
+    }
+  }
+
+  if (error) return { data: null, error }
+
+  const acceptedKeys = new Set(
+    (data ?? []).map((row) => `${row.document_type}:${row.document_version}`),
+  )
+  const missingDocuments = requiredDocuments.filter(
+    (documentType) => !acceptedKeys.has(`${documentType}:${legalDocumentVersions[documentType]}`),
+  )
+
+  return {
+    data: {
+      accepted: missingDocuments.length === 0,
+      missingDocuments,
+      requiredDocuments,
+    },
+    error: null,
+  }
+}
+
+export async function recordLegalAcceptances({
+  accountRole = 'company',
+  companyId = configuredCompanyId,
+  marketingAccepted = false,
+} = {}) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id
+
+  if (!userId) {
+    return { data: null, error: { message: 'Sessione utente mancante. Fai login e riprova.' } }
+  }
+
+  const acceptedAt = new Date().toISOString()
+  const documents = [
+    ...getRequiredLegalDocuments(accountRole),
+    ...(marketingAccepted ? ['marketing'] : []),
+  ]
+  const rows = documents.map((documentType) => ({
+    accepted_at: acceptedAt,
+    account_role: accountRole,
+    company_id: companyId,
+    document_type: documentType,
+    document_version: legalDocumentVersions[documentType],
+    metadata: {
+      marketingAccepted,
+    },
+    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    user_id: userId,
+  }))
+
+  const { data, error } = await supabase
+    .from('legal_acceptances')
+    .upsert(rows, {
+      onConflict: 'company_id,user_id,document_type,document_version',
+    })
+    .select('id, document_type, document_version, accepted_at')
+
+  if (isMissingLegalSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca il registro privacy. Esegui il file SQL 46_licenze_privacy_limiti.sql in Supabase.' },
+    }
+  }
+
+  return { data, error }
 }
 
 export async function fetchAdminOverview() {
@@ -3259,10 +3389,18 @@ export async function sendPushNotification(payload) {
   }
 }
 
-export async function signUpCompany({ email, password, companyName }) {
+export async function signUpCompany({
+  email,
+  password,
+  companyName,
+  marketingAccepted = false,
+  privacyAccepted = false,
+  termsAccepted = false,
+}) {
   const supabase = await getSupabaseClient()
   const cleanCompanyName = companyName?.trim() ?? ''
   const emailRedirectTo = typeof window !== 'undefined' ? window.location.origin : undefined
+  const acceptedAt = new Date().toISOString()
 
   if (!supabase) {
     return { data: null, error: null, demo: true }
@@ -3276,6 +3414,14 @@ export async function signUpCompany({ email, password, companyName }) {
       data: {
         account_type: 'company',
         company_name: cleanCompanyName,
+        legal_marketing_accepted: Boolean(marketingAccepted),
+        legal_marketing_version: legalDocumentVersions.marketing,
+        legal_privacy_accepted: Boolean(privacyAccepted),
+        legal_privacy_accepted_at: privacyAccepted ? acceptedAt : null,
+        legal_privacy_version: legalDocumentVersions.privacy,
+        legal_terms_accepted: Boolean(termsAccepted),
+        legal_terms_accepted_at: termsAccepted ? acceptedAt : null,
+        legal_terms_version: legalDocumentVersions.terms,
       },
     },
   })

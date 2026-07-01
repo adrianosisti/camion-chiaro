@@ -93,6 +93,7 @@ import {
   fetchCompanyInvoices,
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
+  fetchLegalAcceptanceStatus,
   fetchAdminOverview,
   updateAdminCompanyControl,
   fetchDriverDocuments,
@@ -108,6 +109,7 @@ import {
   markDriverDocumentStorageFileDeleted,
   savePushSubscription,
   sendPushNotification,
+  recordLegalAcceptances,
   markChatMessagesRead as markSupabaseChatMessagesRead,
   markTeamThreadRead as markSupabaseTeamThreadRead,
   resetCompanyAccessPassword as resetSupabaseCompanyAccessPassword,
@@ -280,6 +282,98 @@ const billingCheckoutPlans = [
     title: 'Fleet 50',
   },
 ]
+const billingPlanCapabilities = {
+  business: {
+    chat: true,
+    costCenter: true,
+    departments: true,
+    maxAssets: 10,
+    maxUsers: 40,
+    maxVehicles: 20,
+    reports: true,
+    storageGb: 30,
+  },
+  enterprise: {
+    chat: true,
+    costCenter: true,
+    departments: true,
+    maxAssets: Infinity,
+    maxUsers: Infinity,
+    maxVehicles: Infinity,
+    reports: true,
+    storageGb: 100,
+  },
+  fleet10: {
+    chat: true,
+    costCenter: false,
+    departments: true,
+    maxAssets: 5,
+    maxUsers: 20,
+    maxVehicles: 10,
+    reports: false,
+    storageGb: 20,
+  },
+  fleet20: {
+    chat: true,
+    costCenter: true,
+    departments: true,
+    maxAssets: 10,
+    maxUsers: 40,
+    maxVehicles: 20,
+    reports: true,
+    storageGb: 30,
+  },
+  fleet30: {
+    chat: true,
+    costCenter: true,
+    departments: true,
+    maxAssets: 15,
+    maxUsers: 60,
+    maxVehicles: 30,
+    reports: true,
+    storageGb: 50,
+  },
+  fleet50: {
+    chat: true,
+    costCenter: true,
+    departments: true,
+    maxAssets: 25,
+    maxUsers: 100,
+    maxVehicles: 50,
+    reports: true,
+    storageGb: 75,
+  },
+  pro: {
+    chat: true,
+    costCenter: false,
+    departments: true,
+    maxAssets: 5,
+    maxUsers: 20,
+    maxVehicles: 10,
+    reports: false,
+    storageGb: 20,
+  },
+  starter: {
+    chat: false,
+    costCenter: false,
+    departments: false,
+    maxAssets: 3,
+    maxUsers: 10,
+    maxVehicles: 5,
+    reports: false,
+    storageGb: 10,
+  },
+}
+const planResourceLabels = {
+  assets: 'strumenti o muletti',
+  users: 'account utenti',
+  vehicles: 'mezzi',
+}
+const planResourceLimitFields = {
+  assets: 'maxAssets',
+  users: 'maxUsers',
+  vehicles: 'maxVehicles',
+}
 const adminBillingPlanOptions = [
   ...billingCheckoutPlans.map((plan) => ({ label: plan.title, value: plan.id })),
   { label: 'Enterprise', value: 'enterprise' },
@@ -4496,6 +4590,10 @@ function getBillingStatusLabel(status) {
   return billingStatusLabels[status] ?? status ?? 'Attivo'
 }
 
+function getBillingPlanCapabilities(plan) {
+  return billingPlanCapabilities[plan] ?? billingPlanCapabilities.starter
+}
+
 function getOptionLabel(options, value, fallback = '') {
   return options.find((option) => option.value === value)?.label ?? fallback
 }
@@ -4509,6 +4607,19 @@ function isCompanyLicenseActive(profile) {
   if (Number.isNaN(periodEnd)) return true
 
   return periodEnd > Date.now()
+}
+
+function isManualBillingGrace(profile) {
+  return profile?.billingProvider === 'manual' && profile?.billingStatus === 'active'
+}
+
+function hasPlanFeature(profile, feature) {
+  if (isManualBillingGrace(profile)) return true
+  return Boolean(getBillingPlanCapabilities(profile?.billingPlan)[feature])
+}
+
+function formatPlanLimit(limit) {
+  return Number.isFinite(limit) ? String(limit) : 'illimitati'
 }
 
 function formatInvoiceAmount(invoice) {
@@ -5056,6 +5167,14 @@ function App() {
   const [companySettingsStatus, setCompanySettingsStatus] = useState('')
   const [billingCheckoutStatus, setBillingCheckoutStatus] = useState('')
   const [isBillingCheckoutLoading, setIsBillingCheckoutLoading] = useState(false)
+  const [legalAcceptanceStatus, setLegalAcceptanceStatus] = useState({
+    accepted: true,
+    isSaving: false,
+    loading: false,
+    message: '',
+    missingDocuments: [],
+    requiredDocuments: [],
+  })
   const [, setChatSyncStatus] = useState('')
   const [driverDocumentUploadStatus, setDriverDocumentUploadStatus] = useState('')
   const [driverSessionLoading, setDriverSessionLoading] = useState(false)
@@ -5202,6 +5321,14 @@ function App() {
     setCostEntryRecords([])
     setCompanyInvoiceRecords([])
     setCompanyStorageSummary(emptyCompanyStorageSummary)
+    setLegalAcceptanceStatus({
+      accepted: true,
+      isSaving: false,
+      loading: false,
+      message: '',
+      missingDocuments: [],
+      requiredDocuments: [],
+    })
 
     if (nextSession.role === 'driver') {
       if (isSupabaseConfigured) resetDriverSessionData()
@@ -5281,6 +5408,49 @@ function App() {
     }
 
     return companyStorageSummary
+  }
+
+  function isCurrentPlanUnlimited() {
+    return (session?.role === 'company' && isAdminEmail(session.email)) || isManualBillingGrace(companyProfile)
+  }
+
+  function getCurrentPlanResourceUsage(resource) {
+    if (resource === 'assets') {
+      return assetRecords.filter((asset) => !['archived', 'Archiviato'].includes(asset.status)).length
+    }
+
+    if (resource === 'users') {
+      const activeDrivers = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
+      const activePeople = personRecords.filter((person) => !['archived', 'Archiviato'].includes(person.status)).length
+      return activeDrivers + activePeople + 1
+    }
+
+    if (resource === 'vehicles') {
+      return vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
+    }
+
+    return 0
+  }
+
+  function canUsePlanResource(resource, nextAmount = 1) {
+    if (isCurrentPlanUnlimited()) return true
+
+    const capabilities = getBillingPlanCapabilities(companyProfile.billingPlan)
+    const limit = capabilities[planResourceLimitFields[resource]]
+
+    if (!Number.isFinite(limit)) return true
+    return getCurrentPlanResourceUsage(resource) + nextAmount <= limit
+  }
+
+  function getPlanLimitMessage(resource) {
+    const capabilities = getBillingPlanCapabilities(companyProfile.billingPlan)
+    const limit = capabilities[planResourceLimitFields[resource]]
+    const planName = getBillingPlanLabel(companyProfile.billingPlan)
+    return `${planName}: limite ${planResourceLabels[resource]} raggiunto (${formatPlanLimit(limit)}). Aggiorna piano per continuare.`
+  }
+
+  function canUseCurrentPlanFeature(feature) {
+    return (session?.role === 'company' && isAdminEmail(session.email)) || hasPlanFeature(companyProfile, feature)
   }
 
   async function ensureStorageBudget(file, setStatus) {
@@ -6112,6 +6282,14 @@ function App() {
     setAdminOverviewStatus('')
     setIsAdminOverviewLoading(false)
     setChatSyncStatus('')
+    setLegalAcceptanceStatus({
+      accepted: true,
+      isSaving: false,
+      loading: false,
+      message: '',
+      missingDocuments: [],
+      requiredDocuments: [],
+    })
     setCompanyProfile({
       billingActivatedAt: '',
       billingCustomerId: '',
@@ -6363,6 +6541,11 @@ function App() {
   }
 
   async function addDriverRecord(driver) {
+    if (!canUsePlanResource('users')) {
+      setDriversSyncStatus(getPlanLimitMessage('users'))
+      return false
+    }
+
     const temporaryPassword = driver.password?.trim() ?? ''
     const driverWithoutPassword = { ...driver }
     delete driverWithoutPassword.password
@@ -6398,6 +6581,11 @@ function App() {
   }
 
   async function addPersonRecord(person) {
+    if (!canUsePlanResource('users')) {
+      setPeopleSyncStatus(getPlanLimitMessage('users'))
+      return false
+    }
+
     const temporaryPassword = person.password?.trim() ?? ''
     const initialDeadlines = person.initialDeadlines ?? []
     const personWithoutPassword = { ...person }
@@ -6589,6 +6777,11 @@ function App() {
   }
 
   async function addVehicleRecord(vehicle) {
+    if (!canUsePlanResource('vehicles')) {
+      setFleetSyncStatus(getPlanLimitMessage('vehicles'))
+      return false
+    }
+
     const cleanVehicle = {
       ...vehicle,
       km: Number(vehicle.km) || 0,
@@ -6615,6 +6808,11 @@ function App() {
   }
 
   async function addCostEntryRecord(entry, receiptFile = null) {
+    if (!canUseCurrentPlanFeature('costCenter')) {
+      setOperationsSyncStatus('Centro costi non incluso nel piano attuale. Aggiorna piano per registrare spese, multe e manutenzioni.')
+      return false
+    }
+
     const cleanEntry = {
       ...entry,
       amountCents: Number(entry.amountCents ?? 0),
@@ -7759,6 +7957,89 @@ function App() {
     return () => window.clearInterval(timerId)
   }, [])
 
+  useEffect(() => {
+    if (!session || !activeCompanyId || !isSupabaseConfigured || (session.role === 'company' && isAdminEmail(session.email))) {
+      return
+    }
+
+    let isMounted = true
+    const accountRole = session.role === 'company' ? 'company' : 'staff'
+
+    window.setTimeout(() => {
+      if (!isMounted) return
+      setLegalAcceptanceStatus((currentStatus) => ({
+        ...currentStatus,
+        loading: true,
+        message: '',
+      }))
+    }, 0)
+
+    fetchLegalAcceptanceStatus({ accountRole, companyId: activeCompanyId }).then((result) => {
+      if (!isMounted) return
+
+      if (result.error) {
+        setLegalAcceptanceStatus({
+          accepted: true,
+          isSaving: false,
+          loading: false,
+          message: result.error.message,
+          missingDocuments: [],
+          requiredDocuments: [],
+        })
+        return
+      }
+
+      setLegalAcceptanceStatus({
+        accepted: Boolean(result.data?.accepted),
+        isSaving: false,
+        loading: false,
+        message: result.data?.missingTable ? 'Registro privacy non ancora installato. Esegui SQL 46 per attivarlo.' : '',
+        missingDocuments: result.data?.missingDocuments ?? [],
+        requiredDocuments: result.data?.requiredDocuments ?? [],
+      })
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [activeCompanyId, session])
+
+  async function acceptLegalDocuments(marketingAccepted = false) {
+    if (!session || !activeCompanyId) return false
+
+    const accountRole = session.role === 'company' ? 'company' : 'staff'
+    setLegalAcceptanceStatus((currentStatus) => ({
+      ...currentStatus,
+      isSaving: true,
+      message: 'Salvataggio accettazioni...',
+    }))
+
+    const result = await recordLegalAcceptances({
+      accountRole,
+      companyId: activeCompanyId,
+      marketingAccepted,
+    })
+
+    if (result.error) {
+      setLegalAcceptanceStatus((currentStatus) => ({
+        ...currentStatus,
+        isSaving: false,
+        message: result.error.message,
+      }))
+      return false
+    }
+
+    setLegalAcceptanceStatus({
+      accepted: true,
+      isSaving: false,
+      loading: false,
+      message: 'Accettazioni salvate.',
+      missingDocuments: [],
+      requiredDocuments: [],
+    })
+    return true
+  }
+
   const unreadCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds)).length
   const openFaultCount = visibleFaultReportRecords.filter(isFaultUnread).length
   const criticalCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds) && hasCheckIssues(check)).length
@@ -7779,6 +8060,12 @@ function App() {
   const companyUnreadChatCount = companyUnreadDirectChatCount + companyUnreadTeamChatCount
   const isAdminSession = Boolean(session?.role === 'company' && isAdminEmail(session.email))
   const companyLicenseActive = isAdminSession || isCompanyLicenseActive(companyProfile)
+  const planFeatureAccess = {
+    chat: isAdminSession || hasPlanFeature(companyProfile, 'chat'),
+    costCenter: isAdminSession || hasPlanFeature(companyProfile, 'costCenter'),
+    departments: isAdminSession || hasPlanFeature(companyProfile, 'departments'),
+    reports: isAdminSession || hasPlanFeature(companyProfile, 'reports'),
+  }
 
   const refreshAdminOverview = useCallback(async () => {
     if (!isAdminSession) {
@@ -7857,6 +8144,22 @@ function App() {
       )
     }
 
+    if (!driverSessionLoading && activeCompanyId && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
+      return (
+        <I18nContext.Provider value={i18nValue}>
+          <LegalAcceptanceGate
+            accountRole="staff"
+            companyName={getDisplayCompanyName(companyProfile.name || company.name)}
+            isLoading={legalAcceptanceStatus.loading}
+            isSaving={legalAcceptanceStatus.isSaving}
+            message={legalAcceptanceStatus.message}
+            onAccept={acceptLegalDocuments}
+            onSignOut={handleSignOut}
+          />
+        </I18nContext.Provider>
+      )
+    }
+
     return (
       <I18nContext.Provider value={i18nValue}>
         <DriverAppView
@@ -7928,6 +8231,22 @@ function App() {
           isCheckoutLoading={isBillingCheckoutLoading}
           onSignOut={handleSignOut}
           onStartCheckout={startBillingCheckout}
+        />
+      </I18nContext.Provider>
+    )
+  }
+
+  if (activeCompanyId && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
+    return (
+      <I18nContext.Provider value={i18nValue}>
+        <LegalAcceptanceGate
+          accountRole="company"
+          companyName={companyName}
+          isLoading={legalAcceptanceStatus.loading}
+          isSaving={legalAcceptanceStatus.isSaving}
+          message={legalAcceptanceStatus.message}
+          onAccept={acceptLegalDocuments}
+          onSignOut={handleSignOut}
         />
       </I18nContext.Provider>
     )
@@ -8257,41 +8576,59 @@ function App() {
             vehicleRecords={vehicleRecords}
           />
         ) : activeView === 'chat' ? (
-          <ChatWorkspace
-            assetPreviewUrl={getAssetPreviewUrl}
-            chatLiveState={chatLiveState}
-            chatMessages={chatMessageRecords}
-            chatThreads={chatThreadRecords}
-            driverRecords={driverRecords}
-            onMarkRead={markChatThreadRead}
-            onMarkTeamRead={markTeamChatThreadRead}
-            onReactToMessage={updateChatMessageReaction}
-            onRefreshAssetPreviewUrl={refreshAssetPreviewUrl}
-            onSendMessage={sendChatMessage}
-            onSendTeamMessage={sendTeamChatMessage}
-            onTyping={sendChatTyping}
-            personRecords={personRecords}
-            teamChatMessages={teamChatMessageRecords}
-            teamChatThreads={teamChatThreadRecords}
-          />
+          planFeatureAccess.chat ? (
+            <ChatWorkspace
+              assetPreviewUrl={getAssetPreviewUrl}
+              chatLiveState={chatLiveState}
+              chatMessages={chatMessageRecords}
+              chatThreads={chatThreadRecords}
+              driverRecords={driverRecords}
+              onMarkRead={markChatThreadRead}
+              onMarkTeamRead={markTeamChatThreadRead}
+              onReactToMessage={updateChatMessageReaction}
+              onRefreshAssetPreviewUrl={refreshAssetPreviewUrl}
+              onSendMessage={sendChatMessage}
+              onSendTeamMessage={sendTeamChatMessage}
+              onTyping={sendChatTyping}
+              personRecords={personRecords}
+              teamChatMessages={teamChatMessageRecords}
+              teamChatThreads={teamChatThreadRecords}
+            />
+          ) : (
+            <FeatureUpgradeGate
+              description="Chat singole, gruppi, reparti, foto, video, audio, allegati e notifiche non sono inclusi nel piano attuale."
+              featureName="Chat aziendale"
+              icon={Mail}
+              onUpgrade={() => setActiveView('settings')}
+            />
+          )
         ) : activeView === 'reports' ? (
-          <ReportsWorkspace
-            acknowledgedCheckIds={acknowledgedCheckIds}
-            assetRecords={assetRecords}
-            companyName={getDisplayCompanyName(companyProfile.name || companyName || company.name)}
-            complianceItems={decoratedItems}
-            costEntryRecords={costEntryRecords}
-            driverRecords={driverRecords}
-            faultReportRecords={visibleFaultReportRecords}
-            onCreateCostEntry={addCostEntryRecord}
-            onDeleteCostEntry={removeCostEntryRecord}
-            onUpdateCostEntry={editCostEntryRecord}
-            onUpdateFaultStatus={updateFaultReportStatus}
-            resetCostFormKey={costReportResetKey}
-            startAddingCostKey={costReportStartAddingKey}
-            vehicleCheckRecords={vehicleCheckRecords}
-            vehicleRecords={vehicleRecords}
-          />
+          planFeatureAccess.costCenter || planFeatureAccess.reports ? (
+            <ReportsWorkspace
+              acknowledgedCheckIds={acknowledgedCheckIds}
+              assetRecords={assetRecords}
+              companyName={getDisplayCompanyName(companyProfile.name || companyName || company.name)}
+              complianceItems={decoratedItems}
+              costEntryRecords={costEntryRecords}
+              driverRecords={driverRecords}
+              faultReportRecords={visibleFaultReportRecords}
+              onCreateCostEntry={addCostEntryRecord}
+              onDeleteCostEntry={removeCostEntryRecord}
+              onUpdateCostEntry={editCostEntryRecord}
+              onUpdateFaultStatus={updateFaultReportStatus}
+              resetCostFormKey={costReportResetKey}
+              startAddingCostKey={costReportStartAddingKey}
+              vehicleCheckRecords={vehicleCheckRecords}
+              vehicleRecords={vehicleRecords}
+            />
+          ) : (
+            <FeatureUpgradeGate
+              description="Centro costi, multe, manutenzioni, CSV, stampa e report filtrati sono disponibili dai piani con report economici."
+              featureName="Centro costi e report"
+              icon={Banknote}
+              onUpgrade={() => setActiveView('settings')}
+            />
+          )
         ) : activeView === 'support' ? (
           <SupportWorkspace t={t} />
         ) : activeView === 'settings' ? (
@@ -8418,7 +8755,7 @@ function CompanyLicenseGate({
 }) {
   const initialPlan = billingCheckoutPlans.some((plan) => plan.id === companyProfile.billingPlan)
     ? companyProfile.billingPlan
-    : 'pro'
+    : 'fleet10'
   const [selectedPlan, setSelectedPlan] = useState(initialPlan)
   const [billingForm, setBillingForm] = useState({
     addressLine1: companyProfile.headquarters ?? '',
@@ -8436,6 +8773,7 @@ function CompanyLicenseGate({
     vatNumber: companyProfile.vatNumber ?? '',
     legalName: companyName,
   })
+  const [billingLegalAccepted, setBillingLegalAccepted] = useState(false)
   const [validationMessage, setValidationMessage] = useState('')
   const selectedPlanDetails = billingCheckoutPlans.find((plan) => plan.id === selectedPlan) ?? billingCheckoutPlans[1]
 
@@ -8457,6 +8795,11 @@ function CompanyLicenseGate({
 
     if (missingField) {
       setValidationMessage(`Compila ${missingField[1]}.`)
+      return
+    }
+
+    if (!billingLegalAccepted) {
+      setValidationMessage('Conferma condizioni commerciali, Privacy e gestione fatturazione prima di procedere al pagamento.')
       return
     }
 
@@ -8590,6 +8933,17 @@ function CompanyLicenseGate({
             </label>
           </div>
 
+          <label className="legal-check legal-check-strong">
+            <input
+              checked={billingLegalAccepted}
+              onChange={(event) => setBillingLegalAccepted(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              Confermo dati fiscali, piano scelto, condizioni commerciali, Privacy e gestione fatturazione tramite Stripe.
+            </span>
+          </label>
+
           {validationMessage && <FormValidationAlert message={validationMessage} />}
           {checkoutStatus && <p className="sync-status-line">{checkoutStatus}</p>}
 
@@ -8616,6 +8970,149 @@ function CompanyLicenseGate({
         </div>
       </section>
     </main>
+  )
+}
+
+function LegalAcceptanceGate({
+  accountRole = 'company',
+  companyName,
+  isLoading = false,
+  isSaving = false,
+  message = '',
+  onAccept,
+  onSignOut,
+}) {
+  const isCompany = accountRole === 'company'
+  const [accepted, setAccepted] = useState({
+    dpa: false,
+    marketing: false,
+    privacy: false,
+    staffTerms: false,
+    terms: false,
+  })
+  const requiredAccepted = isCompany
+    ? accepted.terms && accepted.privacy && accepted.dpa
+    : accepted.staffTerms && accepted.privacy
+
+  function updateAccepted(field, value) {
+    setAccepted((currentAccepted) => ({ ...currentAccepted, [field]: value }))
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    if (!requiredAccepted || isLoading || isSaving) return
+    await onAccept?.(accepted.marketing)
+  }
+
+  return (
+    <main className="license-gate legal-gate">
+      <section className="license-gate-panel legal-gate-panel">
+        <div className="license-gate-heading">
+          <div className="brand-mark">
+            <VygoMark />
+          </div>
+          <div>
+            <p className="overline">{isCompany ? 'Attivazione legale azienda' : 'Primo accesso personale'}</p>
+            <h1>{companyName}</h1>
+          </div>
+          <ShieldCheck size={24} />
+        </div>
+
+        <p>
+          Prima di usare Vygo dobbiamo salvare le accettazioni corrette. La bozza legale sara poi validata da un
+          consulente privacy prima del rilascio commerciale.
+        </p>
+
+        {isLoading ? (
+          <p className="sync-status-line">Controllo accettazioni...</p>
+        ) : (
+          <form className="legal-acceptance-form" onSubmit={handleSubmit}>
+            {isCompany ? (
+              <>
+                <label className="legal-check">
+                  <input checked={accepted.terms} onChange={(event) => updateAccepted('terms', event.target.checked)} type="checkbox" />
+                  <span>Accetto Termini e Condizioni SaaS Vygo per uso aziendale, abbonamenti, limiti piano e supporto.</span>
+                </label>
+                <label className="legal-check">
+                  <input checked={accepted.privacy} onChange={(event) => updateAccepted('privacy', event.target.checked)} type="checkbox" />
+                  <span>Ho letto l Informativa Privacy Vygo per dati aziendali, utenti, chat, documenti, notifiche e file.</span>
+                </label>
+                <label className="legal-check">
+                  <input checked={accepted.dpa} onChange={(event) => updateAccepted('dpa', event.target.checked)} type="checkbox" />
+                  <span>Confermo la nomina Vygo a responsabile del trattamento per i dati gestiti per conto dell azienda.</span>
+                </label>
+                <label className="legal-check">
+                  <input checked={accepted.marketing} onChange={(event) => updateAccepted('marketing', event.target.checked)} type="checkbox" />
+                  <span>Voglio ricevere comunicazioni commerciali e aggiornamenti prodotto. Facoltativo.</span>
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="legal-check">
+                  <input checked={accepted.privacy} onChange={(event) => updateAccepted('privacy', event.target.checked)} type="checkbox" />
+                  <span>Ho letto l informativa privacy sull uso di app, profilo, documenti, notifiche e messaggi aziendali.</span>
+                </label>
+                <label className="legal-check">
+                  <input checked={accepted.staffTerms} onChange={(event) => updateAccepted('staffTerms', event.target.checked)} type="checkbox" />
+                  <span>Accetto le regole d uso di Vygo per chat, documenti, check, guasti, allegati e notifiche aziendali.</span>
+                </label>
+              </>
+            )}
+
+            <p className="legal-mini-copy">
+              Salviamo utente, azienda, data, versione documento e dispositivo. Il consenso marketing e separato e puo essere
+              gestito in seguito.
+            </p>
+
+            {message ? <p className="sync-status-line">{message}</p> : null}
+
+            <div className="license-gate-actions">
+              <button className="primary-button" disabled={!requiredAccepted || isSaving} type="submit">
+                <ShieldCheck size={17} />
+                {isSaving ? 'Salvataggio...' : 'Accetta e continua'}
+              </button>
+              <button className="secondary-button" onClick={onSignOut} type="button">
+                <LogOut size={17} />
+                Esci
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+    </main>
+  )
+}
+
+function FeatureUpgradeGate({
+  description,
+  featureName,
+  icon: Icon = BadgeCheck,
+  onUpgrade,
+}) {
+  return (
+    <section className="feature-upgrade-gate">
+      <div className="feature-upgrade-card">
+        <span className="feature-upgrade-icon">
+          <Icon size={26} />
+        </span>
+        <p className="overline">Funzione premium</p>
+        <h2>{featureName}</h2>
+        <p>{description}</p>
+        <div className="feature-limit-grid">
+          {billingCheckoutPlans.slice(1).map((plan) => (
+            <article key={plan.id}>
+              <strong>{plan.title}</strong>
+              <span>{plan.price}</span>
+              <small>{plan.bestFor}</small>
+            </article>
+          ))}
+        </div>
+        <button className="primary-button" onClick={onUpgrade} type="button">
+          <BadgeCheck size={17} />
+          Vai a piano e fatturazione
+        </button>
+      </div>
+    </section>
   )
 }
 
@@ -8653,7 +9150,10 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
   const [companyForm, setCompanyForm] = useState({
     companyName: '',
     email: '',
+    marketingAccepted: false,
     password: '',
+    privacyAccepted: false,
+    termsAccepted: false,
   })
   const [driverForm, setDriverForm] = useState({
     username: '',
@@ -8682,6 +9182,12 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
     if (companyMode === 'signup' && !cleanCompanyForm.companyName) {
       setIsSubmitting(false)
       setStatus(t('auth.companyNameMissing'))
+      return
+    }
+
+    if (companyMode === 'signup' && (!cleanCompanyForm.privacyAccepted || !cleanCompanyForm.termsAccepted)) {
+      setIsSubmitting(false)
+      setStatus('Per creare l account azienda devi accettare Termini e Privacy. Il marketing resta facoltativo.')
       return
     }
 
@@ -8725,7 +9231,10 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         ...currentForm,
         companyName: '',
         email: currentForm.email,
+        marketingAccepted: false,
         password: currentForm.password,
+        privacyAccepted: false,
+        termsAccepted: false,
       }))
       return
     }
@@ -8894,6 +9403,36 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
                 />
               </span>
             </label>
+            {companyMode === 'signup' && (
+              <div className="legal-checkbox-stack">
+                <label className="legal-check">
+                  <input
+                    checked={companyForm.termsAccepted}
+                    onChange={(event) => setCompanyForm({ ...companyForm, termsAccepted: event.target.checked })}
+                    required
+                    type="checkbox"
+                  />
+                  <span>Accetto Termini e Condizioni SaaS Vygo.</span>
+                </label>
+                <label className="legal-check">
+                  <input
+                    checked={companyForm.privacyAccepted}
+                    onChange={(event) => setCompanyForm({ ...companyForm, privacyAccepted: event.target.checked })}
+                    required
+                    type="checkbox"
+                  />
+                  <span>Ho letto l Informativa Privacy.</span>
+                </label>
+                <label className="legal-check">
+                  <input
+                    checked={companyForm.marketingAccepted}
+                    onChange={(event) => setCompanyForm({ ...companyForm, marketingAccepted: event.target.checked })}
+                    type="checkbox"
+                  />
+                  <span>Voglio ricevere comunicazioni commerciali. Facoltativo.</span>
+                </label>
+              </div>
+            )}
             <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
               <KeyRound size={17} />
               {companyMode === 'signup' ? t('auth.signupButton') : t('auth.signinButton')}

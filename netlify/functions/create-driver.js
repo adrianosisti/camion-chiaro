@@ -87,10 +87,6 @@ async function verifyPlanUserLimit(serviceClient, companyId) {
 
   if (companyError) return { allowed: false, error: companyError }
 
-  if (companyRow?.billing_provider === 'manual' && companyRow?.billing_status === 'active') {
-    return { allowed: true, error: null }
-  }
-
   const limit = getPlanUserLimit(companyRow?.billing_plan)
   if (!Number.isFinite(limit)) return { allowed: true, error: null }
 

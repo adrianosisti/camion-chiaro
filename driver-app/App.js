@@ -382,12 +382,12 @@ const nativeBillingPlanLabels = {
 const nativeBillingPlanCapabilities = {
   business: { chat: true, costCenter: true, departments: true, maxAssets: 10, maxUsers: 40, maxVehicles: 20, reports: true },
   enterprise: { chat: true, costCenter: true, departments: true, maxAssets: Infinity, maxUsers: Infinity, maxVehicles: Infinity, reports: true },
-  fleet10: { chat: true, costCenter: false, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: false },
+  fleet10: { chat: true, costCenter: true, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: true },
   fleet20: { chat: true, costCenter: true, departments: true, maxAssets: 10, maxUsers: 40, maxVehicles: 20, reports: true },
   fleet30: { chat: true, costCenter: true, departments: true, maxAssets: 15, maxUsers: 60, maxVehicles: 30, reports: true },
   fleet50: { chat: true, costCenter: true, departments: true, maxAssets: 25, maxUsers: 100, maxVehicles: 50, reports: true },
-  pro: { chat: true, costCenter: false, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: false },
-  starter: { chat: false, costCenter: false, departments: false, maxAssets: 3, maxUsers: 10, maxVehicles: 5, reports: false },
+  pro: { chat: true, costCenter: true, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: true },
+  starter: { chat: true, costCenter: true, departments: false, maxAssets: 3, maxUsers: 10, maxVehicles: 5, reports: true },
 }
 
 const nativePlanFeatureLabels = {
@@ -881,7 +881,7 @@ function CamionChiaroApp() {
   function showNativePlanFeatureLimit(feature) {
     Alert.alert(
       'Funzione non inclusa',
-      `${getNativeBillingPlanLabel(currentCompanyProfile.billingPlan)} non include ${nativePlanFeatureLabels[feature] ?? 'questa funzione'}. Aggiorna piano o attiva l'addon per usarla.`,
+      `${getNativeBillingPlanLabel(currentCompanyProfile.billingPlan)} non include ${nativePlanFeatureLabels[feature] ?? 'questa funzione'}. Aggiorna piano per usarla.`,
     )
     return false
   }

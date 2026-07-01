@@ -114,8 +114,8 @@ as $$
       'maxUsers', 20,
       'storageGb', 20,
       'chat', true,
-      'costCenter', false,
-      'reports', false,
+      'costCenter', true,
+      'reports', true,
       'departments', true
     )
     when 'pro' then jsonb_build_object(
@@ -124,8 +124,8 @@ as $$
       'maxUsers', 20,
       'storageGb', 20,
       'chat', true,
-      'costCenter', false,
-      'reports', false,
+      'costCenter', true,
+      'reports', true,
       'departments', true
     )
     when 'fleet20' then jsonb_build_object(
@@ -183,9 +183,9 @@ as $$
       'maxAssets', 3,
       'maxUsers', 10,
       'storageGb', 10,
-      'chat', false,
-      'costCenter', false,
-      'reports', false,
+      'chat', true,
+      'costCenter', true,
+      'reports', true,
       'departments', false
     )
   end;
@@ -255,8 +255,8 @@ begin
     raise exception 'Company not found';
   end if;
 
-  if company_row.billing_provider = 'manual' and company_row.billing_status = 'active' then
-    return;
+  if company_row.billing_status <> 'active' then
+    raise exception 'Piano Vygo non attivo. Completa o riattiva abbonamento.';
   end if;
 
   limits := public.get_company_plan_limits(target_company_id);

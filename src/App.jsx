@@ -248,39 +248,39 @@ const billingStatusLabels = {
 }
 const billingCheckoutPlans = [
   {
-    bestFor: 'Per partire con una piccola flotta senza perdere scadenze e documenti.',
-    features: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', '10 GB file inclusi'],
+    bestFor: 'Per piccole flotte che vogliono gia scadenze, chat, guasti e costi sotto controllo.',
+    features: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', 'Chat diretta inclusa', 'Centro costi e report inclusi', '10 GB file inclusi'],
     id: 'starter',
-    price: '300 euro/mese + IVA',
+    price: '299 euro/mese + IVA',
     title: 'Start 5',
   },
   {
-    bestFor: 'Per aziende che hanno gia un ufficio operativo e piu persone collegate.',
-    features: ['Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', '20 GB file inclusi'],
+    bestFor: 'Il pacchetto consigliato: tutte le funzioni Vygo sbloccate per un azienda in crescita.',
+    features: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', 'Gruppi, reparti e chat completa', '20 GB file inclusi'],
     id: 'fleet10',
     isRecommended: true,
-    price: '450 euro/mese + IVA',
+    price: '449 euro/mese + IVA',
     title: 'Fleet 10',
   },
   {
-    bestFor: 'Per flotte strutturate che vogliono report economici e storico completo.',
-    features: ['Fino a 20 mezzi', 'Fino a 10 strumenti o muletti', 'Fino a 40 account', '30 GB file inclusi'],
+    bestFor: 'Stesse funzioni complete, piu spazio operativo per flotte e personale piu ampi.',
+    features: ['Tutte le funzioni Vygo', 'Fino a 20 mezzi', 'Fino a 10 strumenti o muletti', 'Fino a 40 account', '30 GB file inclusi'],
     id: 'fleet20',
-    price: '650 euro/mese + IVA',
+    price: '699 euro/mese + IVA',
     title: 'Fleet 20',
   },
   {
     bestFor: 'Per aziende con piu reparti, magazzino e gestione manutenzioni frequente.',
-    features: ['Fino a 30 mezzi', 'Fino a 15 strumenti o muletti', 'Fino a 60 account', '50 GB file inclusi'],
+    features: ['Tutte le funzioni Vygo', 'Fino a 30 mezzi', 'Fino a 15 strumenti o muletti', 'Fino a 60 account', '50 GB file inclusi'],
     id: 'fleet30',
-    price: '850 euro/mese + IVA',
+    price: '899 euro/mese + IVA',
     title: 'Fleet 30',
   },
   {
     bestFor: 'Per flotte grandi con piu utenti e alto volume documentale.',
-    features: ['Fino a 50 mezzi', 'Fino a 25 strumenti o muletti', 'Fino a 100 account', '75 GB file inclusi'],
+    features: ['Tutte le funzioni Vygo', 'Fino a 50 mezzi', 'Fino a 25 strumenti o muletti', 'Fino a 100 account', '75 GB file inclusi'],
     id: 'fleet50',
-    price: '1.200 euro/mese + IVA',
+    price: '1.199 euro/mese + IVA',
     title: 'Fleet 50',
   },
 ]
@@ -307,12 +307,12 @@ const billingPlanCapabilities = {
   },
   fleet10: {
     chat: true,
-    costCenter: false,
+    costCenter: true,
     departments: true,
     maxAssets: 5,
     maxUsers: 20,
     maxVehicles: 10,
-    reports: false,
+    reports: true,
     storageGb: 20,
   },
   fleet20: {
@@ -347,22 +347,22 @@ const billingPlanCapabilities = {
   },
   pro: {
     chat: true,
-    costCenter: false,
+    costCenter: true,
     departments: true,
     maxAssets: 5,
     maxUsers: 20,
     maxVehicles: 10,
-    reports: false,
+    reports: true,
     storageGb: 20,
   },
   starter: {
-    chat: false,
-    costCenter: false,
+    chat: true,
+    costCenter: true,
     departments: false,
     maxAssets: 3,
     maxUsers: 10,
     maxVehicles: 5,
-    reports: false,
+    reports: true,
     storageGb: 10,
   },
 }
@@ -3835,12 +3835,12 @@ const supportSections = [
         title: 'Posso controllare multe e sanzioni?',
       },
       {
-        body: 'Il prezzo parte da 300 euro/mese + IVA perche Vygo non e una semplice agenda: include app, notifiche, documenti, storico, costi, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
+        body: 'Il prezzo parte da 299 euro/mese + IVA perche Vygo non e una semplice agenda: include app, notifiche, documenti, storico, chat, costi, report, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
         title: 'Perche vale il canone mensile?',
       },
       {
-        body: 'Il pacchetto report puo diventare premium perche trasforma guasti, multe, manutenzioni e scadenze in decisioni: quali mezzi costano troppo, quali autisti hanno bisogno di formazione e dove conviene intervenire prima.',
-        title: 'Cosa giustifica il pacchetto premium?',
+        body: 'Dal Fleet 10 in poi non vendiamo pezzi di programma: tutte le funzioni principali sono sbloccate. Il prezzo cresce per mezzi, persone, storage e livello operativo dell azienda.',
+        title: 'Perche conviene il pacchetto Fleet?',
       },
     ],
   },
@@ -5700,7 +5700,7 @@ function App() {
 
   function getPlanFeatureLimitMessage(feature) {
     const featureName = planFeatureLabels[feature] ?? 'questa funzione'
-    return `${getBillingPlanLabel(companyProfile.billingPlan)} non include ${featureName}. Aggiorna piano o attiva l'addon per usarla.`
+    return `${getBillingPlanLabel(companyProfile.billingPlan)} non include ${featureName}. Aggiorna piano per usarla.`
   }
 
   function showPlanFeatureLimit(feature, setStatus = setCompanySettingsStatus) {
@@ -7535,7 +7535,7 @@ function App() {
   }
 
   function openBillingSettings() {
-    setCompanySettingsStatus('Da qui puoi vedere il piano. In questa fase test, upgrade e addon si impostano da Admin/Supabase finche Stripe non e collegato.')
+    setCompanySettingsStatus('Da qui puoi vedere il piano. In questa fase test gli upgrade si impostano da Admin/Supabase finche Stripe non e collegato.')
     setActiveView('settings')
     window.setTimeout(() => {
       document.querySelector('.billing-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -9941,21 +9941,23 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         <div className="public-price-grid">
           <article>
             <span>Start 5</span>
-            <strong>300 euro/mese + IVA</strong>
-            <p>Per piccole flotte che vogliono smettere subito di lavorare con scadenze e documenti sparsi.</p>
+            <strong>299 euro/mese + IVA</strong>
+            <p>Per piccole flotte che vogliono smettere subito di lavorare con scadenze, chat, documenti e costi sparsi.</p>
             <ul>
               <li>Fino a 5 mezzi</li>
               <li>Fino a 3 strumenti o muletti</li>
               <li>Fino a 10 account utenti</li>
-              <li>10 GB inclusi</li>
+              <li>Chat, centro costi e report inclusi</li>
+              <li>10 GB file inclusi</li>
             </ul>
             <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Start 5</button>
           </article>
           <article className="is-featured">
             <span>Fleet 10</span>
-            <strong>450 euro/mese + IVA</strong>
-            <p>Per aziende con ufficio operativo, autisti e magazzino collegati che vogliono piu controllo ogni giorno.</p>
+            <strong>449 euro/mese + IVA</strong>
+            <p>Il pacchetto consigliato: tutte le funzioni Vygo sbloccate, con reparti, gruppi e piu capacita operativa.</p>
             <ul>
+              <li>Tutte le funzioni Vygo</li>
               <li>Fino a 10 mezzi</li>
               <li>Fino a 5 strumenti o muletti</li>
               <li>Fino a 20 account utenti</li>
@@ -9965,9 +9967,10 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
           <article>
             <span>Fleet 20+</span>
-            <strong>da 650 euro/mese + IVA</strong>
-            <p>Per flotte strutturate che vogliono storico, reparti, report economici e controllo su mezzi e strumenti.</p>
+            <strong>da 699 euro/mese + IVA</strong>
+            <p>Stesse funzioni complete, piu mezzi, piu account e piu spazio per aziende strutturate.</p>
             <ul>
+              <li>Tutte le funzioni Vygo</li>
               <li>20, 30 o 50 mezzi</li>
               <li>Strumenti e muletti inclusi</li>
               <li>Account proporzionati alla flotta</li>
@@ -9977,11 +9980,10 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
         </div>
         <div className="public-extra-pricing">
-          <div><strong>Chat aziendale</strong><span>100 euro/mese + IVA per chat singole, gruppi, foto, video, audio, allegati e notifiche.</span></div>
-          <div><strong>Centro costi Premium</strong><span>150 euro/mese + IVA per guasti, manutenzioni, sanzioni, costi per targa, autista, periodo e attrezzatura.</span></div>
-          <div><strong>Report direzionali</strong><span>250 euro/mese + IVA per report avanzati, CSV, stampa A4 e riepiloghi pronti per la direzione.</span></div>
+          <div><strong>Funzioni incluse</strong><span>Chat, guasti, check, documenti, scadenze, centro costi e report sono parte del prodotto: il piano cresce soprattutto con la dimensione della flotta.</span></div>
           <div><strong>Start-up kit</strong><span>1.500 euro + IVA una tantum per configurazione, anagrafiche iniziali, scadenze e formazione.</span></div>
           <div><strong>Storage extra</strong><span>20 GB: 49 euro/mese + IVA · 50 GB: 99 euro/mese + IVA · 100 GB: 179 euro/mese + IVA.</span></div>
+          <div><strong>Assistenza premium</strong><span>Canale prioritario, import dati e affiancamento operativo su preventivo per aziende piu strutturate.</span></div>
         </div>
       </section>
 

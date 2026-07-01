@@ -1,4 +1,5 @@
--- 46C - Funzioni limiti piano
+-- 48 - Piani commerciali Vygo a pacchetti
+-- Start 5 diventa operativo; da Fleet 10 in poi tutte le funzioni principali sono incluse.
 
 create or replace function public.get_plan_limits(input_plan text)
 returns jsonb
@@ -6,6 +7,16 @@ language sql
 stable
 as $$
   select case coalesce(input_plan, 'starter')
+    when 'starter' then jsonb_build_object(
+      'maxVehicles', 5,
+      'maxAssets', 3,
+      'maxUsers', 10,
+      'storageGb', 10,
+      'chat', true,
+      'costCenter', true,
+      'reports', true,
+      'departments', false
+    )
     when 'fleet10' then jsonb_build_object(
       'maxVehicles', 10,
       'maxAssets', 5,
@@ -89,43 +100,9 @@ as $$
   end;
 $$;
 
-create or replace function public.get_company_plan_limits(target_company_id uuid)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  company_row public.companies%rowtype;
-  limits jsonb;
-  extra_storage integer;
-begin
-  select *
-  into company_row
-  from public.companies
-  where id = target_company_id;
+comment on function public.get_plan_limits(text) is
+'Limiti piani Vygo: Start 5 operativo; Fleet 10 e superiori con funzioni principali complete. Extra commerciali: storage, onboarding, import dati e assistenza.';
 
-  if company_row.id is null then
-    raise exception 'Company not found';
-  end if;
+grant execute on function public.get_plan_limits(text) to authenticated;
 
-  limits := public.get_plan_limits(company_row.billing_plan);
-  extra_storage := coalesce(company_row.billing_storage_extra_gb, 0);
-
-  limits := jsonb_set(limits, '{storageGb}', to_jsonb(((limits ->> 'storageGb')::integer + extra_storage)));
-
-  if coalesce(company_row.billing_addon_chat, false) then
-    limits := jsonb_set(limits, '{chat}', 'true'::jsonb);
-  end if;
-
-  if coalesce(company_row.billing_addon_cost_center, false) then
-    limits := jsonb_set(limits, '{costCenter}', 'true'::jsonb);
-  end if;
-
-  if coalesce(company_row.billing_addon_reports, false) then
-    limits := jsonb_set(limits, '{reports}', 'true'::jsonb);
-  end if;
-
-  return limits;
-end;
-$$;
+select 'Piani Vygo aggiornati: Start 5 operativo, Fleet 10+ completo.' as risultato;

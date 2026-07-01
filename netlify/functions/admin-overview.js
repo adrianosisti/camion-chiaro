@@ -14,14 +14,14 @@ const storagePlanLimitsBytes = {
   starter: 10 * 1024 * 1024 * 1024,
 }
 const monthlyPlanAmountsCents = {
-  business: 65000,
+  business: 69900,
   enterprise: 150000,
-  fleet10: 45000,
-  fleet20: 65000,
-  fleet30: 85000,
-  fleet50: 120000,
-  pro: 45000,
-  starter: 30000,
+  fleet10: 44900,
+  fleet20: 69900,
+  fleet30: 89900,
+  fleet50: 119900,
+  pro: 44900,
+  starter: 29900,
 }
 
 function jsonResponse(statusCode, body) {

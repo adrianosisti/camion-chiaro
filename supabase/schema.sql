@@ -15,7 +15,7 @@ create table public.companies (
   vat_number text,
   headquarters text,
   logo_path text,
-  billing_plan text not null default 'starter' check (billing_plan in ('starter', 'pro', 'business', 'enterprise')),
+  billing_plan text not null default 'starter' check (billing_plan in ('starter', 'pro', 'business', 'enterprise', 'fleet10', 'fleet20', 'fleet30', 'fleet50')),
   billing_status text not null default 'pending' check (billing_status in ('pending', 'active', 'past_due', 'suspended', 'cancelled')),
   billing_email text,
   billing_provider text not null default 'manual' check (billing_provider in ('manual', 'stripe')),

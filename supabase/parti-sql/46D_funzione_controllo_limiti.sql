@@ -23,8 +23,8 @@ begin
     raise exception 'Company not found';
   end if;
 
-  if company_row.billing_provider = 'manual' and company_row.billing_status = 'active' then
-    return;
+  if company_row.billing_status <> 'active' then
+    raise exception 'Piano Vygo non attivo. Completa o riattiva abbonamento.';
   end if;
 
   limits := public.get_company_plan_limits(target_company_id);
@@ -80,4 +80,3 @@ begin
   end if;
 end;
 $$;
-

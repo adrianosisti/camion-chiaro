@@ -15275,30 +15275,28 @@ function ChatWorkspace({
     () => new Map([...directTeamThreads, ...groupTeamThreads].map((thread) => [thread.id, thread])),
     [directTeamThreads, groupTeamThreads],
   )
-  const directConversationCount = conversationDrivers.length + directTeamThreads.length
-  const groupConversationCount = groupTeamThreads.length
   const unreadDirectTeamConversationCount = directTeamThreads.reduce((total, thread) => total + getTeamUnreadMessageCount(thread.id), 0)
   const unreadGroupConversationCount = groupTeamThreads.reduce((total, thread) => total + getTeamUnreadMessageCount(thread.id), 0)
   const unreadDirectConversationCount = conversationDrivers.reduce((total, driver) => total + getDriverUnreadMessageCount(driver.id), 0) + unreadDirectTeamConversationCount
   const totalUnreadConversationCount = unreadDirectConversationCount + unreadGroupConversationCount
   const inboxFilters = [
     {
-      count: directConversationCount + groupConversationCount,
+      unreadCount: totalUnreadConversationCount,
       id: 'all',
       label: 'Tutte',
     },
     {
-      count: directConversationCount,
+      unreadCount: unreadDirectConversationCount,
       id: 'direct',
       label: 'Singole',
     },
     {
-      count: groupConversationCount,
+      unreadCount: unreadGroupConversationCount,
       id: 'groups',
       label: 'Gruppi',
     },
     {
-      count: totalUnreadConversationCount,
+      unreadCount: totalUnreadConversationCount,
       id: 'unread',
       label: 'Da leggere',
     },
@@ -15614,7 +15612,7 @@ function ChatWorkspace({
                 type="button"
               >
                 <span>{filter.label}</span>
-                <em>{filter.count}</em>
+                {filter.unreadCount > 0 && <em>{filter.unreadCount}</em>}
               </button>
             )
           })}

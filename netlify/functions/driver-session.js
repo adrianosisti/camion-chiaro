@@ -313,6 +313,51 @@ async function findCompanyPerson(serviceClient, authUser) {
   return { data: null, error: null }
 }
 
+async function fetchTeamUnreadCountsForPerson(serviceClient, companyId, personId, threadIds = []) {
+  if (!companyId || !personId || !threadIds.length) {
+    return { data: {}, error: null }
+  }
+
+  const messagesResult = await serviceClient
+    .from('team_chat_messages')
+    .select('id, thread_id, sender_person_id')
+    .eq('company_id', companyId)
+    .in('thread_id', threadIds)
+    .order('created_at', { ascending: false })
+    .limit(10000)
+
+  if (messagesResult.error) {
+    if (['42P01', '42703'].includes(messagesResult.error.code)) return { data: {}, error: null }
+    return { data: {}, error: messagesResult.error }
+  }
+
+  const unreadCandidates = (messagesResult.data ?? []).filter((message) => message.sender_person_id !== personId)
+  if (!unreadCandidates.length) return { data: {}, error: null }
+
+  const readsResult = await serviceClient
+    .from('team_chat_message_reads')
+    .select('message_id')
+    .eq('company_id', companyId)
+    .eq('person_id', personId)
+    .in('message_id', unreadCandidates.map((message) => message.id))
+
+  if (readsResult.error) {
+    if (['42P01', '42703'].includes(readsResult.error.code)) return { data: {}, error: null }
+    return { data: {}, error: readsResult.error }
+  }
+
+  const readMessageIds = new Set((readsResult.data ?? []).map((read) => read.message_id))
+  const counts = unreadCandidates.reduce((nextCounts, message) => {
+    if (!readMessageIds.has(message.id)) {
+      nextCounts[message.thread_id] = Number(nextCounts[message.thread_id] ?? 0) + 1
+    }
+
+    return nextCounts
+  }, {})
+
+  return { data: counts, error: null }
+}
+
 async function fetchCompanyPersonContext(serviceClient, person) {
   const companyId = person.company_id
   const currentPerson = mapCompanyPerson(person)
@@ -329,6 +374,8 @@ async function fetchCompanyPersonContext(serviceClient, person) {
   }
 
   const teamThreadIds = (participantResult.data ?? []).map((entry) => entry.thread_id).filter(Boolean)
+  const teamUnreadCountsResult = await fetchTeamUnreadCountsForPerson(serviceClient, companyId, person.id, teamThreadIds)
+  if (teamUnreadCountsResult.error) return { data: null, error: teamUnreadCountsResult.error }
 
   const [
     companyResult,
@@ -387,6 +434,8 @@ async function fetchCompanyPersonContext(serviceClient, person) {
       faultReports: [],
       people: peopleResult.data.map(mapCompanyPerson),
       teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),
+      unreadTeamMessages: Object.values(teamUnreadCountsResult.data).reduce((total, count) => total + Number(count || 0), 0),
+      unreadTeamMessagesByThreadId: teamUnreadCountsResult.data,
       vehicleChecks: [],
       vehicles: [],
     },
@@ -431,6 +480,11 @@ async function fetchDriverContext(serviceClient, driver) {
 
     teamThreadIds = (participantResult.data ?? []).map((entry) => entry.thread_id).filter(Boolean)
   }
+  const teamUnreadCountsResult = currentPerson?.id
+    ? await fetchTeamUnreadCountsForPerson(serviceClient, driver.company_id, currentPerson.id, teamThreadIds)
+    : { data: {}, error: null }
+
+  if (teamUnreadCountsResult.error) return { data: null, error: teamUnreadCountsResult.error }
 
   const [
     companyResult,
@@ -521,6 +575,8 @@ async function fetchDriverContext(serviceClient, driver) {
       faultReports: faultsResult.data.map(mapFaultReport),
       people: peopleResult.error ? (currentPerson ? [currentPerson] : []) : peopleResult.data.map(mapCompanyPerson),
       teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),
+      unreadTeamMessages: Object.values(teamUnreadCountsResult.data).reduce((total, count) => total + Number(count || 0), 0),
+      unreadTeamMessagesByThreadId: teamUnreadCountsResult.data,
       vehicleChecks: checksResult.data.map(mapVehicleCheck),
       vehicles: vehiclesResult.data.map(mapVehicle),
     },

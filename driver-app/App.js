@@ -187,6 +187,32 @@ function getDriverName(context) {
   return context?.drivers?.[0]?.name || context?.currentPerson?.name || 'Persona'
 }
 
+function normalizeIdentity(value = '') {
+  return String(value).trim().toLowerCase()
+}
+
+function getContextActorPerson(context = {}, driver = null) {
+  if (context?.currentPerson?.id) return context.currentPerson
+
+  const people = context?.people ?? []
+  if (!driver?.id && !driver?.name) return null
+
+  return people.find((person) => person.linkedDriverId === driver?.id)
+    ?? people.find((person) => (
+      normalizeIdentity(person.username) && normalizeIdentity(person.username) === normalizeIdentity(driver?.username)
+    ))
+    ?? people.find((person) => (
+      normalizeIdentity(person.phone) && normalizeIdentity(person.phone) === normalizeIdentity(driver?.phone)
+    ))
+    ?? people.find((person) => (
+      normalizeIdentity(person.email) && normalizeIdentity(person.email) === normalizeIdentity(driver?.email)
+    ))
+    ?? people.find((person) => (
+      normalizeIdentity(person.name) && normalizeIdentity(person.name) === normalizeIdentity(driver?.name)
+    ))
+    ?? null
+}
+
 function getCompanyName(context) {
   return context?.companyProfile?.name || 'Azienda'
 }
@@ -481,6 +507,8 @@ function CamionChiaroApp() {
 
   const driver = context?.drivers?.[0] ?? null
   const currentPerson = context?.currentPerson ?? null
+  const actorPerson = getContextActorPerson(context, driver)
+  const actorPersonId = actorPerson?.id ?? ''
   const isWorkforcePerson = accountType === 'driver' && currentPerson && !driver
   const visibleTabs = accountType === 'company' ? companyTabs : isWorkforcePerson ? workforceTabs : driverTabs
   const activeCompanyContext = companyContext ?? context
@@ -1093,7 +1121,7 @@ function CamionChiaroApp() {
 
   useEffect(() => {
     const companyId = driver?.companyId ?? currentPerson?.companyId
-    const actorId = currentPerson?.id ?? driver?.id
+    const actorId = actorPersonId || driver?.id
     if (accountType !== 'driver' || !companyId || !actorId) return undefined
 
     let isActive = true
@@ -1114,7 +1142,7 @@ function CamionChiaroApp() {
 
         setContext((currentContext) => incrementTeamUnreadInContext(currentContext, message, actorPersonId))
 
-        if (message?.senderPersonId && message.senderPersonId !== actorId) {
+        if (message?.senderPersonId && message.senderPersonId !== actorPersonId) {
           triggerHaptic('light')
         }
 
@@ -1126,7 +1154,7 @@ function CamionChiaroApp() {
       isActive = false
       unsubscribe?.()
     }
-  }, [accountType, activeTab, currentPerson?.companyId, currentPerson?.id, driver?.companyId, driver?.id, driverChatMode, selectedDriverTeamThread?.id, selectedDriverTeamThreadId])
+  }, [accountType, activeTab, actorPersonId, currentPerson?.companyId, driver?.companyId, driver?.id, driverChatMode, selectedDriverTeamThread?.id, selectedDriverTeamThreadId])
 
   useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
@@ -1715,22 +1743,22 @@ function CamionChiaroApp() {
   }
 
   async function handleSendDriverTeamChatMessage(body, attachment = null) {
-    const actorPerson = context?.currentPerson
-    const companyId = driver?.companyId ?? actorPerson?.companyId
-    if (!companyId || !actorPerson?.id || !selectedDriverTeamThread || (!body.trim() && !attachment?.uri)) return false
+    const messageActorPerson = actorPerson
+    const companyId = driver?.companyId ?? messageActorPerson?.companyId
+    if (!companyId || !messageActorPerson?.id || !selectedDriverTeamThread || (!body.trim() && !attachment?.uri)) return false
 
-    const senderRole = actorPerson?.department === 'warehouse'
+    const senderRole = messageActorPerson?.department === 'warehouse'
       ? 'warehouse'
-      : actorPerson?.department === 'office'
+      : messageActorPerson?.department === 'office'
         ? 'office'
         : 'driver'
-    const actorName = driver?.name ?? actorPerson?.name ?? 'Persona'
+    const actorName = driver?.name ?? messageActorPerson?.name ?? 'Persona'
 
     const result = await sendTeamChatMessage({
       attachment,
       body,
       companyId,
-      senderPersonId: actorPerson.id,
+      senderPersonId: messageActorPerson.id,
       senderRole,
       threadId: selectedDriverTeamThread.id,
     })
@@ -1991,7 +2019,7 @@ function CamionChiaroApp() {
     const previousDriverMessages = driverTeamChatMessages
     const previousCompanyMessages = companyTeamChatMessages
     const nextReactions = { ...(message.reactions ?? {}) }
-    const currentActorPersonId = context?.currentPerson?.id ?? ''
+    const currentActorPersonId = actorPersonId
     const reactionKey = actorRole === 'company' ? 'company' : `person:${currentActorPersonId || message.senderPersonId || 'me'}`
 
     if (reaction) {
@@ -2786,7 +2814,7 @@ function CamionChiaroApp() {
           companyOnline={isCompanyOnline}
           companyTyping={isCompanyTyping}
           companyLogoUrl={logoUrl}
-          currentPerson={context?.currentPerson}
+          currentPerson={actorPerson}
           driverProfileUrl={driverProfileUrl}
           driverPhotoUrls={companyDriverPhotoUrls}
           driverName={driverName}

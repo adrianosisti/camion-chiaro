@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -408,8 +409,11 @@ function CamionChiaroApp() {
   const unreadCompanyMessages = useMemo(() => {
     if (accountType !== 'driver') return 0
     if (activeTab === 'chat' && driverChatMode === 'company') return 0
-    return countUnreadMessagesForRole(chatMessages, 'driver')
-  }, [accountType, activeTab, chatMessages, driverChatMode])
+    return Math.max(
+      Number(context?.unreadCompanyMessages ?? 0),
+      countUnreadMessagesForRole(chatMessages, 'driver'),
+    )
+  }, [accountType, activeTab, chatMessages, context?.unreadCompanyMessages, driverChatMode])
   const unreadDriverMessages = companyContext?.unreadDriverMessages ?? 0
   const unreadTeamMessages = accountType === 'company'
     ? companyContext?.unreadTeamMessages ?? 0
@@ -428,6 +432,10 @@ function CamionChiaroApp() {
     if (driver?.id) {
       void AsyncStorage.setItem(getDriverChatReadStorageKey(driver.id), String(readWatermark))
     }
+
+    setContext((currentContext) => (
+      currentContext ? { ...currentContext, unreadCompanyMessages: 0 } : currentContext
+    ))
   }
 
   function markDriverChatReadLocally(messages = chatMessages) {
@@ -956,6 +964,32 @@ function CamionChiaroApp() {
       unsubscribe?.()
     }
   }, [accountType, activeTab, driver?.companyId, driver?.id, driverChatMode])
+
+  useEffect(() => {
+    if (accountType !== 'driver' || !session) return undefined
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        void loadDriverData({ silent: true })
+      }
+    })
+
+    return () => {
+      subscription.remove()
+    }
+  }, [accountType, session?.user?.id])
+
+  useEffect(() => {
+    if (accountType !== 'driver' || !session || activeTab === 'chat') return undefined
+
+    const refreshInterval = setInterval(() => {
+      void loadDriverData({ silent: true })
+    }, 5000)
+
+    return () => {
+      clearInterval(refreshInterval)
+    }
+  }, [accountType, activeTab, session?.user?.id])
 
   useEffect(() => {
     const companyId = driver?.companyId ?? currentPerson?.companyId

@@ -750,6 +750,7 @@ async function fetchDriverContextDirect() {
     checksResult,
     faultsResult,
     personResult,
+    unreadCompanyMessagesResult,
     peopleResult,
     driversResult,
     teamThreadsResult,
@@ -783,6 +784,7 @@ async function fetchDriverContextDirect() {
     fetchVehicleChecksForDriver(driver.company_id, driver.id, 50),
     fetchFaultReportsForCompany(driver.company_id, 50, driver.id),
     fetchCurrentCompanyPerson(driver.company_id, user.id, driver.id),
+    fetchDriverUnreadCompanyMessages(driver.company_id, driver.id),
     supabase
       .from('company_people')
       .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
@@ -806,6 +808,7 @@ async function fetchDriverContextDirect() {
     checksResult.error,
     faultsResult.error,
     personResult.error,
+    unreadCompanyMessagesResult.error,
     isMissingWorkforceSchemaError(peopleResult.error) ? null : peopleResult.error,
     driversResult.error,
     teamThreadsResult.error,
@@ -832,6 +835,7 @@ async function fetchDriverContextDirect() {
       faultReports: faultsResult.data ?? [],
       people: peopleRows,
       teamChatThreads: teamThreadsResult.data ?? [],
+      unreadCompanyMessages: unreadCompanyMessagesResult.data ?? 0,
       unreadTeamMessages: Object.values(teamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
       unreadTeamMessagesByThreadId: teamUnreadCountsResult.data ?? {},
       vehicleChecks: checksResult.data ?? [],
@@ -911,6 +915,32 @@ async function fetchCompanyPersonContextDirect(user, person) {
     }),
     error: null,
   }
+}
+
+async function fetchDriverUnreadCompanyMessages(companyId, driverId) {
+  if (!companyId || !driverId) return { data: 0, error: null }
+
+  const { data: threadRows, error: threadError } = await supabase
+    .from('chat_threads')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('driver_id', driverId)
+    .eq('context_type', 'general')
+
+  if (threadError) return { data: 0, error: threadError }
+
+  const threadIds = (threadRows ?? []).map((thread) => thread.id).filter(Boolean)
+  if (!threadIds.length) return { data: 0, error: null }
+
+  const { count, error } = await supabase
+    .from('chat_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', companyId)
+    .in('thread_id', threadIds)
+    .eq('sender_role', 'company')
+    .is('read_by_driver_at', null)
+
+  return { data: count ?? 0, error }
 }
 
 async function fetchCompanyCostEntries(companyId) {

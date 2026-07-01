@@ -1380,27 +1380,37 @@ export function ChatScreen({
         </Pressable>
       </Modal>
 
-      <Modal animationType="fade" transparent visible={Boolean(photoPreview)} onRequestClose={() => setPhotoPreview(null)}>
-        <Pressable onPress={() => setPhotoPreview(null)} style={styles.photoModalBackdrop}>
-          <View style={styles.photoModalCard}>
-            {photoPreview?.kind === 'video' ? (
-              <View style={styles.videoModalWrap}>
-                <VideoAttachment expanded path={photoPreview.path} signedUrl={photoPreview.uri} />
-              </View>
-            ) : isPreviewableImageUri(photoPreview?.uri) ? (
-              <Pressable onLongPress={() => saveImageToGallery(photoPreview.uri, photoPreview.path)} style={styles.photoModalImageWrap}>
-                <Image
-                  onError={() => setPhotoPreview(null)}
-                  source={{ uri: photoPreview.uri }}
-                  style={styles.photoModalImage}
-                />
-              </Pressable>
-            ) : null}
-            <Text style={styles.photoModalTitle}>{photoPreview?.name}</Text>
-            <Text style={styles.photoModalHint}>{photoPreview?.kind === 'video' ? 'Usa Salva per scaricarlo' : 'Tieni premuto per salvare'}</Text>
+      {photoPreview?.kind === 'video' ? (
+        <Modal animationType="fade" visible={Boolean(photoPreview)} onRequestClose={() => setPhotoPreview(null)}>
+          <View style={styles.videoModalScreen}>
+            <Pressable onPress={() => setPhotoPreview(null)} style={styles.videoModalClose}>
+              <Ionicons color={colors.white} name="close" size={24} />
+            </Pressable>
+            <View style={styles.videoModalPlayerShell}>
+              <VideoAttachment expanded path={photoPreview.path} signedUrl={photoPreview.uri} />
+            </View>
+            <Text numberOfLines={1} style={styles.videoModalTitle}>{photoPreview?.name}</Text>
           </View>
-        </Pressable>
-      </Modal>
+        </Modal>
+      ) : (
+        <Modal animationType="fade" transparent visible={Boolean(photoPreview)} onRequestClose={() => setPhotoPreview(null)}>
+          <Pressable onPress={() => setPhotoPreview(null)} style={styles.photoModalBackdrop}>
+            <View style={styles.photoModalCard}>
+              {isPreviewableImageUri(photoPreview?.uri) ? (
+                <Pressable onLongPress={() => saveImageToGallery(photoPreview.uri, photoPreview.path)} style={styles.photoModalImageWrap}>
+                  <Image
+                    onError={() => setPhotoPreview(null)}
+                    source={{ uri: photoPreview.uri }}
+                    style={styles.photoModalImage}
+                  />
+                </Pressable>
+              ) : null}
+              <Text style={styles.photoModalTitle}>{photoPreview?.name}</Text>
+              <Text style={styles.photoModalHint}>Tieni premuto per salvare</Text>
+            </View>
+          </Pressable>
+        </Modal>
+      )}
 
       <ChatInfoModal
         companyLogoUrl={chatPartnerAvatarUrl}
@@ -1851,6 +1861,8 @@ const styles = StyleSheet.create({
   },
   videoAttachmentExpanded: {
     borderRadius: 22,
+    flex: 1,
+    height: '100%',
     marginBottom: 0,
     width: '100%',
   },
@@ -1872,8 +1884,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   videoAttachmentPlayerExpanded: {
-    aspectRatio: 16 / 9,
     backgroundColor: '#020617',
+    flex: 1,
     width: '100%',
   },
   input: {
@@ -1934,9 +1946,38 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     width: '90%',
   },
-  videoModalWrap: {
+  videoModalClose: {
     alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.72)',
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 18,
+    top: 18,
+    width: 44,
+    zIndex: 4,
+  },
+  videoModalPlayerShell: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingTop: 74,
+    paddingBottom: 22,
     width: '100%',
+  },
+  videoModalScreen: {
+    backgroundColor: '#020617',
+    flex: 1,
+  },
+  videoModalTitle: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '900',
+    paddingBottom: 16,
+    paddingHorizontal: 18,
+    textAlign: 'center',
   },
   photoModalHint: {
     color: '#cbd5e1',

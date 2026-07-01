@@ -1080,6 +1080,7 @@ export function ChatScreen({
       allowsMultipleSelection: true,
       mediaTypes: ['images', 'videos'],
       orderedSelection: true,
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       quality: 0.35,
       selectionLimit: maxChatAttachments,
     })

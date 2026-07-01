@@ -717,13 +717,13 @@ function CamionChiaroApp() {
 
   async function loadDriverData({ silent = false } = {}) {
     if (!silent) setAppStatus('Aggiorno dati autista...')
-    setIsRefreshing(true)
+    if (!silent) setIsRefreshing(true)
 
     const contextResult = await fetchDriverContext()
 
     if (contextResult.error) {
       setAppStatus(contextResult.error.message)
-      setIsRefreshing(false)
+      if (!silent) setIsRefreshing(false)
       return false
     }
 
@@ -737,7 +737,7 @@ function CamionChiaroApp() {
     }
 
     setAppStatus('')
-    setIsRefreshing(false)
+    if (!silent) setIsRefreshing(false)
     return true
   }
 
@@ -1118,6 +1118,18 @@ function CamionChiaroApp() {
       clearInterval(refreshInterval)
     }
   }, [accountType, activeTab, session?.user?.id])
+
+  useEffect(() => {
+    if (accountType !== 'driver' || !session || activeTab !== 'chat') return undefined
+
+    const refreshInterval = setInterval(() => {
+      void loadDriverData({ silent: true })
+    }, driverChatMode === 'list' ? 1800 : 3000)
+
+    return () => {
+      clearInterval(refreshInterval)
+    }
+  }, [accountType, activeTab, driverChatMode, session?.user?.id])
 
   useEffect(() => {
     const companyId = driver?.companyId ?? currentPerson?.companyId

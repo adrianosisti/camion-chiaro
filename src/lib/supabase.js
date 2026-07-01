@@ -2996,6 +2996,30 @@ export async function subscribeToTeamChatMessages(companyId, onMessage) {
         if (payload.new) onMessage?.(mapTeamChatMessage(payload.new), payload)
       },
     )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'team_chat_threads',
+      },
+      (payload) => {
+        onMessage?.(null, payload)
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'team_chat_message_reads',
+      },
+      (payload) => {
+        onMessage?.(null, payload)
+      },
+    )
     .subscribe()
 
   return () => {

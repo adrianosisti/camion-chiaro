@@ -5886,6 +5886,7 @@ function App() {
     let unsubscribeTeamChat = () => {}
     let unsubscribeOperations = () => {}
     let chatRefreshTimer = 0
+    let chatRefreshDebounceTimer = 0
     let documentsRefreshTimer = 0
     let storageRefreshTimer = 0
 
@@ -5905,6 +5906,14 @@ function App() {
       }
       if (teamThreadsResult.data) setTeamChatThreadRecords(teamThreadsResult.data)
       if (teamMessagesResult.data) setTeamChatMessageRecords(teamMessagesResult.data)
+    }
+
+    function scheduleChatRecordsRefresh(delay = 250) {
+      if (chatRefreshDebounceTimer) window.clearTimeout(chatRefreshDebounceTimer)
+      chatRefreshDebounceTimer = window.setTimeout(() => {
+        chatRefreshDebounceTimer = 0
+        void refreshChatRecords()
+      }, delay)
     }
 
     async function refreshDriverDocuments() {
@@ -5942,9 +5951,7 @@ function App() {
 
       setChatThreadRecords((currentThreads) => {
         if (!currentThreads.some((thread) => thread.id === message.threadId)) {
-          fetchChatThreads(activeCompanyId).then((result) => {
-            if (isMounted && result.data) setChatThreadRecords(result.data)
-          })
+          scheduleChatRecordsRefresh(80)
           return currentThreads
         }
 
@@ -5961,16 +5968,20 @@ function App() {
     subscribeToTeamChatMessages(activeCompanyId, (message, payload) => {
       if (!isMounted) return
 
+      if (!message?.id) {
+        scheduleChatRecordsRefresh()
+        return
+      }
+
       setTeamChatMessageRecords((currentMessages) => upsertChatMessageRecord(currentMessages, message))
       if (payload?.eventType === 'INSERT') {
         setChatSyncStatus('Nuovo messaggio gruppo/reparto.')
+        scheduleChatRecordsRefresh(150)
       }
 
       setTeamChatThreadRecords((currentThreads) => {
         if (!currentThreads.some((thread) => thread.id === message.threadId)) {
-          fetchTeamChatThreads(activeCompanyId).then((result) => {
-            if (isMounted && result.data) setTeamChatThreadRecords(result.data)
-          })
+          scheduleChatRecordsRefresh(80)
           return currentThreads
         }
 
@@ -6024,6 +6035,7 @@ function App() {
     return () => {
       isMounted = false
       window.clearInterval(chatRefreshTimer)
+      window.clearTimeout(chatRefreshDebounceTimer)
       window.clearInterval(documentsRefreshTimer)
       window.clearInterval(storageRefreshTimer)
       unsubscribeChat()
@@ -15438,6 +15450,7 @@ function ChatWorkspace({
   }
 
   function getCompanyMessageSenderLabel(message) {
+    if (message.senderPersonId) return getTeamMessageSenderLabel(message)
     if (message.senderRole === 'company') return t('chat.company')
     if (selectedTeamThread) return getTeamMessageSenderLabel(message)
     if (message.senderRole === 'driver') return selectedDriver?.name ?? t('chat.driver')

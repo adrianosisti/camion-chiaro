@@ -406,16 +406,17 @@ function CamionChiaroApp() {
   const selectedDriverTeamThread = context?.teamChatThreads?.find((thread) => thread.id === selectedDriverTeamThreadId) ?? null
   const selectedCompanyDriverOnline = Boolean(selectedCompanyDriverId && onlineDriverIds.includes(selectedCompanyDriverId))
   const unreadCompanyMessages = useMemo(() => {
-    if (accountType !== 'driver' || activeTab === 'chat') return 0
-    return countUnreadDriverMessages(chatMessages, driverChatReadWatermark)
-  }, [accountType, activeTab, chatMessages, driverChatReadWatermark])
+    if (accountType !== 'driver') return 0
+    if (activeTab === 'chat' && driverChatMode === 'company') return 0
+    return countUnreadMessagesForRole(chatMessages, 'driver')
+  }, [accountType, activeTab, chatMessages, driverChatMode])
   const unreadDriverMessages = companyContext?.unreadDriverMessages ?? 0
   const unreadTeamMessages = accountType === 'company'
     ? companyContext?.unreadTeamMessages ?? 0
     : context?.unreadTeamMessages ?? 0
   const chatBadgeCount = accountType === 'company'
     ? unreadDriverMessages + unreadTeamMessages
-    : activeTab === 'chat' ? 0 : unreadCompanyMessages + unreadTeamMessages
+    : activeTab === 'chat' && driverChatMode !== 'list' ? 0 : unreadCompanyMessages + unreadTeamMessages
   function clearDriverUnreadMessages(messages = chatMessages) {
     const latestCompanyMessageTime = messages
       .filter((message) => message.senderRole === 'company')

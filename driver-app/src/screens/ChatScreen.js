@@ -421,7 +421,7 @@ function AudioAttachment({ signedUrl }) {
   )
 }
 
-function VideoAttachment({ onOpen, path, signedUrl }) {
+function VideoAttachment({ expanded = false, onOpen, path, signedUrl }) {
   const player = useVideoPlayer(signedUrl || null, (videoPlayer) => {
     videoPlayer.loop = false
   })
@@ -429,19 +429,21 @@ function VideoAttachment({ onOpen, path, signedUrl }) {
   if (!signedUrl) return <View style={styles.imageSkeleton} />
 
   return (
-    <View style={styles.videoAttachment}>
+    <View style={[styles.videoAttachment, expanded && styles.videoAttachmentExpanded]}>
       <VideoView
         allowsFullscreen
-        contentFit="cover"
+        contentFit={expanded ? 'contain' : 'cover'}
         nativeControls
         player={player}
-        style={styles.videoAttachmentPlayer}
+        style={[styles.videoAttachmentPlayer, expanded && styles.videoAttachmentPlayerExpanded]}
       />
-      <View style={styles.videoAttachmentActions}>
-        <Pressable onPress={() => onOpen?.(signedUrl, getAttachmentTitle(path), path)} style={styles.videoActionButton}>
-          <Ionicons color={colors.ink} name="expand-outline" size={16} />
-          <Text style={styles.videoActionText}>Apri</Text>
-        </Pressable>
+      <View style={[styles.videoAttachmentActions, expanded && styles.videoAttachmentActionsExpanded]}>
+        {expanded ? null : (
+          <Pressable onPress={() => onOpen?.(signedUrl, getAttachmentTitle(path), path)} style={styles.videoActionButton}>
+            <Ionicons color={colors.ink} name="expand-outline" size={16} />
+            <Text style={styles.videoActionText}>Apri</Text>
+          </Pressable>
+        )}
         <Pressable onPress={() => saveMediaToGallery(signedUrl, path)} style={styles.videoActionButton}>
           <Ionicons color={colors.ink} name="download-outline" size={16} />
           <Text style={styles.videoActionText}>Salva</Text>
@@ -1382,8 +1384,8 @@ export function ChatScreen({
         <Pressable onPress={() => setPhotoPreview(null)} style={styles.photoModalBackdrop}>
           <View style={styles.photoModalCard}>
             {photoPreview?.kind === 'video' ? (
-              <View style={styles.photoModalImageWrap}>
-                <VideoAttachment path={photoPreview.path} signedUrl={photoPreview.uri} />
+              <View style={styles.videoModalWrap}>
+                <VideoAttachment expanded path={photoPreview.path} signedUrl={photoPreview.uri} />
               </View>
             ) : isPreviewableImageUri(photoPreview?.uri) ? (
               <Pressable onLongPress={() => saveImageToGallery(photoPreview.uri, photoPreview.path)} style={styles.photoModalImageWrap}>
@@ -1847,6 +1849,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     width: 236,
   },
+  videoAttachmentExpanded: {
+    borderRadius: 22,
+    marginBottom: 0,
+    width: '100%',
+  },
   videoAttachmentActions: {
     backgroundColor: '#e0faff',
     borderTopColor: '#164e63',
@@ -1855,8 +1862,18 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 8,
   },
+  videoAttachmentActionsExpanded: {
+    backgroundColor: '#061623',
+    borderTopColor: '#123142',
+    padding: 10,
+  },
   videoAttachmentPlayer: {
     aspectRatio: 16 / 10,
+    width: '100%',
+  },
+  videoAttachmentPlayerExpanded: {
+    aspectRatio: 16 / 9,
+    backgroundColor: '#020617',
     width: '100%',
   },
   input: {
@@ -1916,6 +1933,10 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     overflow: 'hidden',
     width: '90%',
+  },
+  videoModalWrap: {
+    alignItems: 'center',
+    width: '100%',
   },
   photoModalHint: {
     color: '#cbd5e1',

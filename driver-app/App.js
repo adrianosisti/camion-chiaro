@@ -42,6 +42,7 @@ import {
   createDriverDocument,
   createFaultReport,
   createVehicleCheck,
+  createVoiceCallSession,
   deleteCompanyCostEntry,
   ensureDirectTeamThread,
   fetchCompanyContext,
@@ -888,16 +889,94 @@ function CamionChiaroApp() {
     return false
   }
 
-  function showNativeVoiceCallNotice(targetName = 'questo contatto') {
+  function buildNativeVoiceCallMessage(callerName = 'Vygo', targetName = 'questo contatto') {
+    return `[Chiamata vocale] ${callerName} ha richiesto una chiamata con ${targetName}. Audio live in preparazione: confermate qui in chat se potete parlare.`
+  }
+
+  async function showNativeVoiceCallNotice(callRequest = {}) {
+    const request = typeof callRequest === 'string' ? { targetName: callRequest } : callRequest
+    const targetName = request.targetName || 'questo contatto'
+
     if (!canUseNativePlanFeature('voiceCalls')) {
       return showNativePlanFeatureLimit('voiceCalls')
     }
 
-    Alert.alert(
-      'Chiamate vocali Vygo',
-      `Modulo pronto per ${targetName}. Per attivare chiamate live serve collegare il provider voce: Vygo non registrera automaticamente l audio e salvera solo storico tecnico della chiamata.`,
-    )
-    return true
+    const companyId = currentCompanyId
+    if (!companyId) {
+      Alert.alert('Chiamata non avviata', 'Azienda non caricata. Riapri l app e riprova.')
+      return false
+    }
+
+    const isCompanyActor = accountType === 'company'
+    const personSenderRole = actorPerson?.department === 'warehouse'
+      ? 'warehouse'
+      : actorPerson?.department === 'office'
+        ? 'office'
+        : 'driver'
+    const callerRole = isCompanyActor ? 'company' : personSenderRole
+    const callerName = isCompanyActor ? companyName : driver?.name ?? actorPerson?.name ?? 'Persona'
+    const callMessage = buildNativeVoiceCallMessage(callerName, targetName)
+    const activeTeamThread = isCompanyActor ? selectedCompanyTeamThread : selectedDriverTeamThread
+    const activeDirectDriver = isCompanyActor ? selectedCompanyDriver : driver
+    const activeDirectThread = isCompanyActor ? companyChatThread : chatThread
+
+    if (activeTeamThread?.id) {
+      const callResult = await createVoiceCallSession({
+        callerDriverId: driver?.id ?? '',
+        callerPersonId: isCompanyActor ? '' : actorPerson?.id ?? '',
+        callerRole,
+        companyId,
+        targetName,
+        teamThreadId: activeTeamThread.id,
+      })
+
+      if (callResult.error) {
+        Alert.alert('Chiamata non registrata', callResult.error.message)
+        return false
+      }
+
+      const sent = isCompanyActor
+        ? await handleSendCompanyTeamChatMessage(callMessage)
+        : await handleSendDriverTeamChatMessage(callMessage)
+
+      if (sent) Alert.alert('Chiamata inviata', 'Richiesta chiamata inviata in chat.')
+      return sent
+    }
+
+    if (!activeDirectDriver?.id) {
+      Alert.alert('Chiamata non avviata', 'Seleziona una chat prima di chiamare.')
+      return false
+    }
+
+    const callResult = await createVoiceCallSession({
+      callerDriverId: isCompanyActor ? '' : activeDirectDriver.id,
+      callerRole: isCompanyActor ? 'company' : 'driver',
+      companyId,
+      driverId: activeDirectDriver.id,
+      receiverDriverId: isCompanyActor ? activeDirectDriver.id : '',
+      targetName,
+      threadId: activeDirectThread?.id ?? '',
+    })
+
+    if (callResult.error) {
+      Alert.alert('Chiamata non registrata', callResult.error.message)
+      return false
+    }
+
+    if (isCompanyActor && callResult.data?.thread && !companyChatThread) {
+      setCompanyChatThread(callResult.data.thread)
+    }
+
+    if (!isCompanyActor && callResult.data?.thread && !chatThread) {
+      setChatThread(callResult.data.thread)
+    }
+
+    const sent = isCompanyActor
+      ? await handleSendCompanyChatMessage(callMessage)
+      : await handleSendChatMessage(callMessage)
+
+    if (sent) Alert.alert('Chiamata inviata', 'Richiesta chiamata inviata in chat.')
+    return sent
   }
 
   function openNativeChatTab() {

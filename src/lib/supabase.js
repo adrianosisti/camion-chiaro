@@ -432,6 +432,33 @@ function mapTeamChatMessage(row) {
   }
 }
 
+function mapVoiceCallSession(row = {}) {
+  return {
+    answeredAt: row.answered_at ?? '',
+    callType: row.call_type ?? 'voice',
+    callerDriverId: row.caller_driver_id ?? '',
+    callerPersonId: row.caller_person_id ?? '',
+    callerRole: row.caller_role ?? '',
+    callerUserId: row.caller_user_id ?? '',
+    companyId: row.company_id ?? '',
+    createdAt: row.created_at ?? '',
+    durationSeconds: Number(row.duration_seconds ?? 0),
+    endedAt: row.ended_at ?? '',
+    id: row.id,
+    notes: row.notes ?? '',
+    provider: row.provider ?? '',
+    providerRoomId: row.provider_room_id ?? '',
+    receiverDriverId: row.receiver_driver_id ?? '',
+    receiverPersonId: row.receiver_person_id ?? '',
+    receiverUserId: row.receiver_user_id ?? '',
+    startedAt: row.started_at ?? '',
+    status: row.status ?? 'ringing',
+    teamThreadId: row.team_thread_id ?? '',
+    threadId: row.thread_id ?? '',
+    updatedAt: row.updated_at ?? '',
+  }
+}
+
 const chatMessageSelectColumns = `
   id,
   thread_id,
@@ -497,6 +524,31 @@ const teamChatMessageSelectColumnsWithoutReactions = `
   attachment_path,
   read_by_company_at,
   created_at
+`
+
+const voiceCallSessionSelectColumns = `
+  id,
+  company_id,
+  thread_id,
+  team_thread_id,
+  caller_role,
+  caller_user_id,
+  caller_driver_id,
+  caller_person_id,
+  receiver_user_id,
+  receiver_driver_id,
+  receiver_person_id,
+  call_type,
+  status,
+  started_at,
+  answered_at,
+  ended_at,
+  duration_seconds,
+  provider,
+  provider_room_id,
+  notes,
+  created_at,
+  updated_at
 `
 
 const faultReportSelectColumns = `
@@ -2581,6 +2633,45 @@ export async function createTeamChatMessageRecord(message, companyId = configure
   }
 
   return { data: data ? mapTeamChatMessage(data) : null, error }
+}
+
+export async function createVoiceCallSessionRecord(call, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const now = new Date().toISOString()
+  const payload = {
+    call_type: 'voice',
+    caller_driver_id: call.callerDriverId || null,
+    caller_person_id: call.callerPersonId || null,
+    caller_role: call.callerRole || 'company',
+    company_id: companyId,
+    notes: call.notes || null,
+    receiver_driver_id: call.receiverDriverId || null,
+    receiver_person_id: call.receiverPersonId || null,
+    started_at: now,
+    status: call.status || 'ringing',
+    team_thread_id: call.teamThreadId || null,
+    thread_id: call.threadId || null,
+  }
+
+  const { data, error } = await supabase
+    .from('voice_call_sessions')
+    .insert(payload)
+    .select(voiceCallSessionSelectColumns)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL chiamate vocali. Esegui il file 49_chiamate_vocali_preparazione.sql in Supabase.' },
+    }
+  }
+
+  return { data: data ? mapVoiceCallSession(data) : null, error }
 }
 
 export async function markChatMessagesRead(threadId, readerRole) {

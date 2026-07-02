@@ -13,6 +13,7 @@ import {
   mapTeamChatThread,
   mapVehicle,
   mapVehicleCheck,
+  mapVoiceCallSession,
 } from './mappers'
 
 const companyAssetsBucket = 'company-assets'
@@ -82,6 +83,8 @@ const teamChatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, reactions, read_by_company_at, created_at'
 const teamChatMessageLegacySelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, created_at'
+const voiceCallSessionSelect =
+  'id, company_id, thread_id, team_thread_id, caller_role, caller_user_id, caller_driver_id, caller_person_id, receiver_user_id, receiver_driver_id, receiver_person_id, call_type, status, started_at, answered_at, ended_at, duration_seconds, provider, provider_room_id, notes, created_at, updated_at'
 const vehicleCheckSelect =
   'id, company_id, driver_id, tractor_id, semitrailer_id, odometer_km, lights_ok, tires_ok, documents_on_board, notes, status, resolved_at, created_at'
 const vehicleCheckLegacySelect =
@@ -1673,6 +1676,78 @@ export async function sendTeamChatMessage({
     data: {
       message: mapTeamChatMessage(data),
       thread: { companyId, id: threadId },
+    },
+    error: null,
+  }
+}
+
+export async function createVoiceCallSession({
+  callerDriverId = '',
+  callerPersonId = '',
+  callerRole = 'company',
+  companyId,
+  driverId = '',
+  receiverDriverId = '',
+  receiverPersonId = '',
+  teamThreadId = '',
+  threadId = '',
+  targetName = '',
+}) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non caricata.' } }
+
+  let targetThread = null
+
+  if (!teamThreadId) {
+    const targetDriverId = receiverDriverId || driverId || callerDriverId
+    const threadResult = await ensureChatThread({
+      companyId,
+      driverId: targetDriverId,
+      threadId,
+    })
+
+    if (threadResult.error || !threadResult.data?.id) {
+      return { data: null, error: threadResult.error ?? { message: 'Chat chiamata non disponibile.' } }
+    }
+
+    targetThread = threadResult.data
+  }
+
+  const now = new Date().toISOString()
+  const payload = {
+    call_type: 'voice',
+    caller_driver_id: callerDriverId || null,
+    caller_person_id: callerPersonId || null,
+    caller_role: callerRole,
+    company_id: companyId,
+    notes: targetName ? `Richiesta chiamata verso ${targetName}` : 'Richiesta chiamata Vygo',
+    receiver_driver_id: receiverDriverId || null,
+    receiver_person_id: receiverPersonId || null,
+    started_at: now,
+    status: 'ringing',
+    team_thread_id: teamThreadId || null,
+    thread_id: teamThreadId ? null : targetThread?.id,
+  }
+
+  const { data, error } = await supabase
+    .from('voice_call_sessions')
+    .insert(payload)
+    .select(voiceCallSessionSelect)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL chiamate vocali. Esegui il file 49_chiamate_vocali_preparazione.sql in Supabase.' },
+    }
+  }
+
+  if (error) return { data: null, error }
+
+  return {
+    data: {
+      call: mapVoiceCallSession(data),
+      thread: targetThread,
     },
     error: null,
   }

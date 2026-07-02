@@ -168,6 +168,31 @@ export function mapTeamChatMessage(row = {}) {
   }
 }
 
+export function mapVoiceCallSession(row = {}) {
+  return {
+    answeredAt: row.answered_at ?? row.answeredAt ?? '',
+    callType: row.call_type ?? row.callType ?? 'voice',
+    callerDriverId: row.caller_driver_id ?? row.callerDriverId ?? '',
+    callerPersonId: row.caller_person_id ?? row.callerPersonId ?? '',
+    callerRole: row.caller_role ?? row.callerRole ?? '',
+    companyId: row.company_id ?? row.companyId ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    durationSeconds: Number(row.duration_seconds ?? row.durationSeconds ?? 0),
+    endedAt: row.ended_at ?? row.endedAt ?? '',
+    id: row.id,
+    notes: row.notes ?? '',
+    provider: row.provider ?? '',
+    providerRoomId: row.provider_room_id ?? row.providerRoomId ?? '',
+    receiverDriverId: row.receiver_driver_id ?? row.receiverDriverId ?? '',
+    receiverPersonId: row.receiver_person_id ?? row.receiverPersonId ?? '',
+    startedAt: row.started_at ?? row.startedAt ?? '',
+    status: row.status ?? 'ringing',
+    teamThreadId: row.team_thread_id ?? row.teamThreadId ?? '',
+    threadId: row.thread_id ?? row.threadId ?? '',
+    updatedAt: row.updated_at ?? row.updatedAt ?? '',
+  }
+}
+
 export function mapCompanyPerson(row = {}) {
   return {
     authEmail: row.auth_email ?? row.authEmail ?? '',

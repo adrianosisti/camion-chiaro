@@ -71,6 +71,7 @@ import {
   createChatMessageRecord as createSupabaseChatMessage,
   createTeamChatMessageRecord as createSupabaseTeamChatMessage,
   createChatThreadRecord as createSupabaseChatThread,
+  createVoiceCallSessionRecord as createSupabaseVoiceCallSession,
   createDriverDocumentSignedUrl,
   ensureDirectTeamThread,
   createDriverAccount as createSupabaseDriverAccount,
@@ -8619,16 +8620,131 @@ function App() {
     setActiveView('chat')
   }
 
-  function showVoiceCallNotice(targetName = 'questo contatto') {
+  function buildVoiceCallMessage({ callerName = 'Vygo', targetName = 'questo contatto' } = {}) {
+    return `[Chiamata vocale] ${callerName} ha richiesto una chiamata con ${targetName}. Audio live in preparazione: confermate qui in chat se potete parlare.`
+  }
+
+  async function ensureVoiceCallDriverThread({ driverId, threadId }) {
+    if (!driverId) return { data: null, error: { message: 'Destinatario chiamata mancante.' } }
+
+    const selectedDriver = driverRecords.find((driverRecord) => driverRecord.id === driverId)
+    const messageCompanyId = activeCompanyId || selectedDriver?.companyId || companyProfile.id || ''
+    const existingThread = chatThreadRecords.find(
+      (thread) => thread.id === threadId || (thread.driverId === driverId && thread.contextType === 'general'),
+    )
+
+    if (existingThread) return { data: existingThread, error: null }
+
+    if (!isSupabaseConfigured || !messageCompanyId) {
+      return { data: null, error: { message: 'Azienda non caricata. Riapri l app e riprova.' } }
+    }
+
+    const threadResult = await createSupabaseChatThread(
+      {
+        contextType: 'general',
+        driverId,
+        title: selectedDriver?.name ? `Chat ${selectedDriver.name}` : 'Chat autista',
+      },
+      messageCompanyId,
+    )
+
+    if (threadResult.data) {
+      setChatThreadRecords((currentThreads) => upsertRecordById(currentThreads, threadResult.data))
+    }
+
+    return threadResult
+  }
+
+  async function showVoiceCallNotice(callRequest = {}) {
+    const request = typeof callRequest === 'string' ? { targetName: callRequest } : callRequest
+    const targetName = request.targetName || 'questo contatto'
+
     if (!canUseCurrentPlanFeature('voiceCalls')) {
       showPlanFeatureLimit('voiceCalls', setChatSyncStatus)
       return false
     }
 
-    window.alert(
-      `Chiamate vocali Vygo pronte per ${targetName}. Per attivarle davvero serve collegare il provider voce: Vygo non registrera automaticamente l audio e salvera solo lo storico tecnico della chiamata.`,
+    if (!isSupabaseConfigured || !activeCompanyId) {
+      window.alert('Chiamate vocali Vygo: azienda non caricata. Riapri l app e riprova.')
+      return false
+    }
+
+    setChatSyncStatus('Registro richiesta chiamata...')
+
+    const callerRole = request.callerRole || (session?.role === 'company' ? 'company' : 'driver')
+    const callerDriverId = request.callerDriverId || (callerRole === 'driver' ? request.driverId : '')
+    const callerName = callerRole === 'company'
+      ? companyName
+      : callerDriverId
+        ? getDriverDisplayName(callerDriverId)
+        : 'Persona'
+    const callMessage = buildVoiceCallMessage({ callerName, targetName })
+
+    if (request.teamThreadId) {
+      const callResult = await createSupabaseVoiceCallSession(
+        {
+          callerDriverId,
+          callerPersonId: request.callerPersonId || '',
+          callerRole,
+          notes: `Richiesta chiamata verso ${targetName}`,
+          status: 'ringing',
+          teamThreadId: request.teamThreadId,
+        },
+        activeCompanyId,
+      )
+
+      if (callResult.error) {
+        setChatSyncStatus(`Chiamata non registrata: ${callResult.error.message}`)
+        window.alert(`Chiamata non registrata: ${callResult.error.message}`)
+        return false
+      }
+
+      const sent = await sendTeamChatMessage({
+        body: callMessage,
+        senderRole: callerRole === 'company' ? 'company' : 'driver',
+        threadId: request.teamThreadId,
+      })
+
+      setChatSyncStatus(sent ? 'Richiesta chiamata inviata nel gruppo.' : 'Chiamata registrata, ma messaggio gruppo non inviato.')
+      return sent
+    }
+
+    const targetDriverId = request.driverId || request.receiverDriverId || callerDriverId
+    const threadResult = await ensureVoiceCallDriverThread({ driverId: targetDriverId, threadId: request.threadId })
+
+    if (threadResult.error || !threadResult.data?.id) {
+      setChatSyncStatus(`Chiamata non avviata: ${threadResult.error?.message ?? 'chat non disponibile'}`)
+      window.alert(`Chiamata non avviata: ${threadResult.error?.message ?? 'chat non disponibile'}`)
+      return false
+    }
+
+    const callResult = await createSupabaseVoiceCallSession(
+      {
+        callerDriverId,
+        callerRole,
+        notes: `Richiesta chiamata verso ${targetName}`,
+        receiverDriverId: callerRole === 'company' ? targetDriverId : '',
+        status: 'ringing',
+        threadId: threadResult.data.id,
+      },
+      activeCompanyId,
     )
-    return true
+
+    if (callResult.error) {
+      setChatSyncStatus(`Chiamata non registrata: ${callResult.error.message}`)
+      window.alert(`Chiamata non registrata: ${callResult.error.message}`)
+      return false
+    }
+
+    const sent = await sendChatMessage({
+      body: callMessage,
+      driverId: targetDriverId,
+      senderRole: callerRole === 'company' ? 'company' : 'driver',
+      threadId: threadResult.data.id,
+    })
+
+    setChatSyncStatus(sent ? 'Richiesta chiamata inviata in chat.' : 'Chiamata registrata, ma messaggio chat non inviato.')
+    return sent
   }
 
   function openComplianceFilter(filter) {
@@ -15675,13 +15791,13 @@ function ChatSoundButton({ enabled, onToggle, t }) {
   )
 }
 
-function ChatVoiceCallButton({ disabled = false, onCall, targetName = 'contatto' }) {
+function ChatVoiceCallButton({ callPayload = {}, disabled = false, onCall, targetName = 'contatto' }) {
   return (
     <button
       aria-label={`Chiama ${targetName}`}
       className={disabled ? 'icon-button chat-voice-call-button is-disabled' : 'icon-button chat-voice-call-button'}
       disabled={disabled}
-      onClick={() => onCall?.(targetName)}
+      onClick={() => onCall?.({ ...callPayload, targetName })}
       title={`Chiama ${targetName}`}
       type="button"
     >
@@ -16519,6 +16635,16 @@ function ChatWorkspace({
   const hasSelectedChatTarget = Boolean(selectedDriver || selectedTeamThread)
   const selectedChatTitle = selectedTeamThread?.title ?? selectedDriver?.name ?? t('chat.selectDriver')
   const selectedChatAvatarUrl = selectedDriver ? assetPreviewUrl(selectedDriver.profileImagePath) : ''
+  const selectedVoiceCallPayload = selectedTeamThread
+    ? { callerRole: 'company', teamThreadId: selectedTeamThread.id }
+    : selectedDriver
+      ? {
+          callerRole: 'company',
+          driverId: selectedDriver.id,
+          receiverDriverId: selectedDriver.id,
+          threadId: selectedThread?.id,
+        }
+      : {}
 
   useLayoutEffect(() => {
     if (!selectedThread?.id) return
@@ -16989,6 +17115,7 @@ function ChatWorkspace({
           </div>
           <div className="chat-thread-header-actions">
             <ChatVoiceCallButton
+              callPayload={selectedVoiceCallPayload}
               disabled={!hasSelectedChatTarget}
               onCall={onStartVoiceCall}
               targetName={selectedChatTitle}
@@ -18833,6 +18960,7 @@ function DriverMobile({
             onReactToMessage={onReactToMessage}
             onRefreshAssetPreviewUrl={onRefreshAssetPreviewUrl}
             onSendChatMessage={onSendChatMessage}
+            onStartVoiceCall={onStartVoiceCall}
             onTyping={onTyping}
             thread={driverChatThread}
           />
@@ -19161,7 +19289,16 @@ function DriverChatScreen({
           <strong>{t('chat.company')}</strong>
           <span className={companyPresenceClassName}>{companyPresenceLabel}</span>
         </div>
-        <ChatVoiceCallButton onCall={onStartVoiceCall} targetName={companyName} />
+        <ChatVoiceCallButton
+          callPayload={{
+            callerDriverId: driver?.id,
+            callerRole: 'driver',
+            driverId: driver?.id,
+            threadId: thread?.id,
+          }}
+          onCall={onStartVoiceCall}
+          targetName={companyName}
+        />
         <button
           aria-label="Apri foto e media"
           className="driver-chat-media-button"

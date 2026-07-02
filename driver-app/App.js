@@ -43,6 +43,7 @@ import {
   createFaultReport,
   createVehicleCheck,
   createVoiceCallSession,
+  deleteNativePushToken,
   deleteCompanyCostEntry,
   ensureDirectTeamThread,
   fetchCompanyContext,
@@ -78,11 +79,12 @@ import {
   uploadDriverDocumentFile,
   uploadDriverProfileImage,
 } from './src/services/driverApi'
-import { registerNativePushDevice } from './src/services/nativePush'
+import { getNativePushDeviceRegistration, registerNativePushDevice } from './src/services/nativePush'
 import { t } from './src/i18n/native'
 import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
+const nativePushTokenStorageKey = 'vygo-native-push-token'
 
 const nativeLegalDocuments = {
   dpa: {
@@ -2067,7 +2069,30 @@ function CamionChiaroApp() {
     return true
   }
 
+  async function disableNativePushForCurrentDevice() {
+    let token = ''
+
+    try {
+      token = await AsyncStorage.getItem(nativePushTokenStorageKey)
+
+      if (!token) {
+        const registration = await getNativePushDeviceRegistration()
+        token = registration.data?.token ?? ''
+      }
+
+      if (token) {
+        await deleteNativePushToken(token)
+      }
+    } catch (error) {
+      console.warn('Native push logout cleanup failed', error)
+    } finally {
+      await AsyncStorage.removeItem(nativePushTokenStorageKey)
+      setNativePushStatus('')
+    }
+  }
+
   async function handleSignOut() {
+    await disableNativePushForCurrentDevice()
     await signOutDriver()
     setAccountType('driver')
     setActiveTab('home')
@@ -2136,6 +2161,7 @@ function CamionChiaroApp() {
       return false
     }
 
+    await AsyncStorage.setItem(nativePushTokenStorageKey, registration.data.token)
     setNativePushStatus('Notifiche app abilitate su questo telefono.')
     triggerHaptic('success')
     Alert.alert('Notifiche attive', 'Questo telefono ricevera le notifiche Vygo.')

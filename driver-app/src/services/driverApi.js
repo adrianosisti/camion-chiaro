@@ -747,6 +747,24 @@ export async function saveNativePushToken({ companyId = '', deviceName = '', pla
   return { data, error }
 }
 
+export async function deleteNativePushToken(token = '') {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!token) return { data: false, error: null }
+
+  const { data, error } = await supabase.rpc('delete_native_push_token', {
+    token_value: token,
+  })
+
+  if (error?.code === '42883' || error?.code === 'PGRST202') {
+    return {
+      data: null,
+      error: { message: 'Manca SQL spegnimento notifiche. Esegui il file 50_native_push_logout_fix.sql in Supabase.' },
+    }
+  }
+
+  return { data, error }
+}
+
 export async function sendPushNotification(payload) {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!apiBaseUrl) return { data: null, error: { message: 'Configura EXPO_PUBLIC_API_BASE_URL con il sito Netlify.' } }

@@ -45,6 +45,19 @@ export async function registerNativePushDevice() {
     return { data: null, error: { message: 'Notifiche non autorizzate su questo telefono.' } }
   }
 
+  return getNativePushDeviceRegistration()
+}
+
+export async function getNativePushDeviceRegistration() {
+  if (!Device.isDevice) {
+    return { data: null, error: { message: 'Le notifiche push si provano su un telefono vero.' } }
+  }
+
+  const currentPermission = await Notifications.getPermissionsAsync()
+  if (currentPermission.status !== 'granted') {
+    return { data: null, error: { message: 'Notifiche non autorizzate su questo telefono.' } }
+  }
+
   const projectId = getProjectId()
   if (!projectId) {
     return { data: null, error: { message: 'Project ID Expo mancante nella build.' } }

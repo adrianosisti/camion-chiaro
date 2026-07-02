@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
+import { useAudioPlayer } from 'expo-audio'
 import * as Haptics from 'expo-haptics'
 import * as Updates from 'expo-updates'
 import { useShareIntent } from 'expo-share-intent'
@@ -85,6 +86,7 @@ import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
 const nativePushTokenStorageKey = 'vygo-native-push-token'
+const incomingCallSound = require('./assets/sounds/chat-receive.wav')
 
 const nativeLegalDocuments = {
   dpa: {
@@ -339,6 +341,31 @@ function NativeLicenseGate({ companyName = 'Azienda', onRefresh, onSignOut, prof
   )
 }
 
+function IncomingVoiceCallOverlay({ notice, onDismiss, onOpen }) {
+  if (!notice) return null
+
+  return (
+    <View style={styles.incomingCallOverlay}>
+      <View style={styles.incomingCallHalo}>
+        <Ionicons color={colors.ink} name="call" size={42} />
+      </View>
+      <Text style={styles.incomingCallEyebrow}>Chiamata Vygo</Text>
+      <Text numberOfLines={2} style={styles.incomingCallTitle}>{notice.title}</Text>
+      {notice.body ? <Text style={styles.incomingCallBody}>{notice.body}</Text> : null}
+      <View style={styles.incomingCallActions}>
+        <Pressable onPress={onDismiss} style={[styles.incomingCallButton, styles.incomingCallButtonMuted]}>
+          <Ionicons color="#e2e8f0" name="close" size={21} />
+          <Text style={styles.incomingCallButtonMutedText}>Ignora</Text>
+        </Pressable>
+        <Pressable onPress={onOpen} style={[styles.incomingCallButton, styles.incomingCallButtonPrimary]}>
+          <Ionicons color={colors.ink} name="chatbubble-ellipses" size={21} />
+          <Text style={styles.incomingCallButtonText}>Apri chat</Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
 function getNativePushPromptStorageKey(accountType, companyId, driverId = '') {
   return `camion-chiaro-native-push-prompt:${accountType}:${companyId}:${driverId || 'company'}`
 }
@@ -533,6 +560,17 @@ function triggerHaptic(kind = 'light') {
   }
 
   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+}
+
+function isVoiceCallChatMessage(message = {}) {
+  return String(message.body ?? '').trim().startsWith('[Chiamata vocale]')
+}
+
+function getVoiceCallPreviewText(message = {}) {
+  return String(message.body ?? '')
+    .replace('[Chiamata vocale]', '')
+    .replace('Audio live in preparazione: confermate qui in chat se potete parlare.', '')
+    .trim()
 }
 
 function mergeChatMessage(messages, message) {
@@ -768,6 +806,7 @@ function CamionChiaroApp() {
   const [isSelectedDriverTyping, setIsSelectedDriverTyping] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [incomingChatShare, setIncomingChatShare] = useState(null)
+  const [incomingVoiceCall, setIncomingVoiceCall] = useState(null)
   const [isAssistantOpen, setIsAssistantOpen] = useState(false)
   const [language, setLanguage] = useState('it')
   const [legalAcceptanceStatus, setLegalAcceptanceStatus] = useState({
@@ -800,6 +839,8 @@ function CamionChiaroApp() {
   const driverChatReadVersionRef = useRef(0)
   const appUpdatePromptRef = useRef(false)
   const nativePushPromptRef = useRef('')
+  const incomingVoiceCallMessageIdsRef = useRef(new Set())
+  const incomingCallSoundPlayer = useAudioPlayer(incomingCallSound, { keepAudioSessionActive: true })
 
   const driver = context?.drivers?.[0] ?? null
   const currentPerson = context?.currentPerson ?? null
@@ -893,6 +934,72 @@ function CamionChiaroApp() {
 
   function buildNativeVoiceCallMessage(callerName = 'Vygo', targetName = 'questo contatto') {
     return `[Chiamata vocale] ${callerName} ha richiesto una chiamata con ${targetName}. Audio live in preparazione: confermate qui in chat se potete parlare.`
+  }
+
+  function playIncomingVoiceCallSignal() {
+    triggerHaptic('critical')
+
+    if (!chatSoundEnabled) return
+
+    ;[0, 850, 1700].forEach((delay) => {
+      setTimeout(() => {
+        try {
+          incomingCallSoundPlayer.seekTo(0)
+          incomingCallSoundPlayer.play()
+        } catch {
+          // La chiamata deve restare visibile anche se il telefono blocca il suono.
+        }
+      }, delay)
+    })
+  }
+
+  function showIncomingVoiceCall(message, options = {}) {
+    if (!isVoiceCallChatMessage(message)) return
+
+    const messageId = message?.id ?? `${message?.threadId ?? 'call'}:${message?.createdAt ?? Date.now()}`
+    if (incomingVoiceCallMessageIdsRef.current.has(messageId)) return
+    incomingVoiceCallMessageIdsRef.current.add(messageId)
+
+    setIncomingVoiceCall({
+      body: getVoiceCallPreviewText(message),
+      driverId: options.driverId ?? message?.driverId ?? '',
+      mode: options.mode ?? 'team',
+      teamThreadId: options.teamThreadId ?? '',
+      threadId: message?.threadId ?? '',
+      title: options.title || 'Chiamata in arrivo',
+    })
+    playIncomingVoiceCallSignal()
+  }
+
+  async function openIncomingVoiceCall() {
+    const notice = incomingVoiceCall
+    setIncomingVoiceCall(null)
+    if (!notice) return
+
+    if (accountType === 'company') {
+      if (notice.mode === 'team' && notice.teamThreadId) {
+        const targetThread = (companyContext?.teamChatThreads ?? []).find((thread) => thread.id === notice.teamThreadId) ?? { id: notice.teamThreadId }
+        await handleSelectCompanyTeamThread(targetThread)
+        return
+      }
+
+      const targetDriver = (companyContext?.drivers ?? []).find((entry) => entry.id === notice.driverId)
+      if (targetDriver) {
+        await handleSelectCompanyDriver(targetDriver)
+        return
+      }
+
+      openNativeChatTab()
+      return
+    }
+
+    if (notice.mode === 'team' && notice.teamThreadId) {
+      const targetThread = (context?.teamChatThreads ?? []).find((thread) => thread.id === notice.teamThreadId) ?? { id: notice.teamThreadId }
+      await handleSelectDriverTeamThread(targetThread)
+      return
+    }
+
+    openDriverChat('company')
   }
 
   async function showNativeVoiceCallNotice(callRequest = {}) {
@@ -1585,6 +1692,12 @@ function CamionChiaroApp() {
       onMessage: async (message) => {
         if (!isActive) return
         const shouldMarkAsRead = activeTab === 'chat' && driverChatMode === 'company'
+        if (message?.senderRole !== 'driver') {
+          showIncomingVoiceCall(message, {
+            mode: 'company',
+            title: `${companyName} ti sta chiamando`,
+          })
+        }
         if (!chatThread?.id || message?.threadId === chatThread.id) {
           setChatMessages((currentMessages) => mergeChatMessage(currentMessages, message))
         }
@@ -1648,8 +1761,18 @@ function CamionChiaroApp() {
         if (!isActive) return
 
         const isOpenSelectedThread = activeTab === 'chat' && driverChatMode === 'team' && selectedDriverTeamThreadId && message?.threadId === selectedDriverTeamThreadId
+        const isIncomingTeamMessage = message?.senderRole === 'company' || Boolean(message?.senderPersonId && message.senderPersonId !== actorPersonId)
+        const incomingTeamCallerName = message?.senderRole === 'company' ? companyName : message?.senderName || 'Persona'
 
         if (isOpenSelectedThread) {
+          if (isIncomingTeamMessage) {
+            showIncomingVoiceCall(message, {
+              mode: 'team',
+              teamThreadId: message?.threadId ?? '',
+              title: `${incomingTeamCallerName} ti sta chiamando`,
+            })
+          }
+
           setDriverTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, message))
           clearTeamUnreadLocally(setContext, selectedDriverTeamThreadId)
           void markTeamThreadRead(selectedDriverTeamThreadId)
@@ -1659,7 +1782,12 @@ function CamionChiaroApp() {
 
         setContext((currentContext) => incrementTeamUnreadInContext(currentContext, message, actorPersonId))
 
-        if (message?.senderPersonId && message.senderPersonId !== actorPersonId) {
+        if (isIncomingTeamMessage) {
+          showIncomingVoiceCall(message, {
+            mode: 'team',
+            teamThreadId: message?.threadId ?? '',
+            title: `${incomingTeamCallerName} ti sta chiamando`,
+          })
           triggerHaptic('light')
         }
 
@@ -1713,6 +1841,14 @@ function CamionChiaroApp() {
         )
 
         if (hasOpenSelectedChat) {
+          if (message.senderRole === 'driver') {
+            const currentDriver = companyContext?.drivers?.find((entry) => entry.id === message.driverId || entry.id === selectedCompanyDriverId)
+            showIncomingVoiceCall(message, {
+              driverId: message.driverId || selectedCompanyDriverId,
+              mode: 'driver',
+              title: `${currentDriver?.name || 'Autista'} ti sta chiamando`,
+            })
+          }
           setCompanyContext((currentContext) => (
             currentContext
               ? { ...currentContext, chatMessages: mergeChatMessage(currentContext.chatMessages ?? [], message) }
@@ -1724,6 +1860,12 @@ function CamionChiaroApp() {
         }
 
         if (message.senderRole === 'driver') {
+          const currentDriver = companyContext?.drivers?.find((entry) => entry.id === message.driverId)
+          showIncomingVoiceCall(message, {
+            driverId: message.driverId,
+            mode: 'driver',
+            title: `${currentDriver?.name || 'Autista'} ti sta chiamando`,
+          })
           setCompanyContext((currentContext) => incrementCompanyDriverUnreadInContext(currentContext, message))
           triggerHaptic('light')
           await loadCompanyData({ silent: true })
@@ -1755,6 +1897,14 @@ function CamionChiaroApp() {
         if (!isActive) return
 
         if (activeTab === 'chat' && selectedCompanyTeamThreadId && message?.threadId === selectedCompanyTeamThreadId) {
+          if (isIncomingTeamMessageForCompany(message)) {
+            showIncomingVoiceCall(message, {
+              mode: 'team',
+              teamThreadId: message?.threadId ?? '',
+              title: `${message?.senderName || 'Persona'} ti sta chiamando`,
+            })
+          }
+
           setCompanyContext((currentContext) => (
             currentContext
               ? { ...currentContext, teamChatMessages: mergeChatMessage(currentContext.teamChatMessages ?? [], message) }
@@ -1768,6 +1918,11 @@ function CamionChiaroApp() {
         }
 
         if (isIncomingTeamMessageForCompany(message)) {
+          showIncomingVoiceCall(message, {
+            mode: 'team',
+            teamThreadId: message?.threadId ?? '',
+            title: `${message?.senderName || 'Persona'} ti sta chiamando`,
+          })
           setCompanyContext((currentContext) => incrementCompanyTeamUnreadInContext(currentContext, message))
           triggerHaptic('light')
         } else {
@@ -3761,11 +3916,101 @@ function CamionChiaroApp() {
         onClose={() => setIsAssistantOpen(false)}
         visible={isAssistantOpen}
       />
+      <IncomingVoiceCallOverlay
+        notice={incomingVoiceCall}
+        onDismiss={() => setIncomingVoiceCall(null)}
+        onOpen={openIncomingVoiceCall}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  incomingCallActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 26,
+    width: '100%',
+  },
+  incomingCallBody: {
+    color: '#cbd5e1',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 21,
+    marginTop: 12,
+    maxWidth: 330,
+    textAlign: 'center',
+  },
+  incomingCallButton: {
+    alignItems: 'center',
+    borderRadius: 24,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 54,
+    paddingHorizontal: 14,
+  },
+  incomingCallButtonMuted: {
+    backgroundColor: 'rgba(15, 23, 42, 0.82)',
+    borderColor: 'rgba(148, 163, 184, 0.28)',
+    borderWidth: 1,
+  },
+  incomingCallButtonMutedText: {
+    color: '#e2e8f0',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  incomingCallButtonPrimary: {
+    backgroundColor: colors.cyan,
+  },
+  incomingCallButtonText: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  incomingCallEyebrow: {
+    color: colors.cyan,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0,
+    marginTop: 20,
+    textTransform: 'uppercase',
+  },
+  incomingCallHalo: {
+    alignItems: 'center',
+    backgroundColor: colors.cyan,
+    borderRadius: 44,
+    height: 88,
+    justifyContent: 'center',
+    shadowColor: colors.cyan,
+    shadowOffset: { height: 12, width: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    width: 88,
+  },
+  incomingCallOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 6, 23, 0.96)',
+    bottom: 0,
+    justifyContent: 'center',
+    left: 0,
+    padding: 26,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 80,
+  },
+  incomingCallTitle: {
+    color: '#ffffff',
+    fontSize: 30,
+    fontWeight: '900',
+    letterSpacing: 0,
+    lineHeight: 36,
+    marginTop: 8,
+    maxWidth: 340,
+    textAlign: 'center',
+  },
   authShell: {
     backgroundColor: colors.background,
     flex: 1,

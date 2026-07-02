@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Conferma email Vygo</title>
+  </head>
+  <body style="margin:0;background:#eef7ff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef7ff;padding:28px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #dbeafe;border-radius:14px;overflow:hidden;">
+            <tr>
+              <td style="padding:26px 28px 18px;background:#020617;color:#ffffff;">
+                <div style="font-size:28px;font-weight:900;letter-spacing:.02em;">Vygo</div>
+                <div style="margin-top:6px;color:#67e8f9;font-size:13px;font-weight:700;">Attivazione account</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px;">
+                <h1 style="margin:0 0 12px;font-size:24px;line-height:1.2;color:#020617;">Conferma la tua email</h1>
+                <p style="margin:0 0 18px;color:#475569;font-size:15px;line-height:1.55;">
+                  Benvenuto in Vygo. Conferma questo indirizzo email per completare la registrazione e accedere alla piattaforma.
+                </p>
+                <p style="margin:0 0 24px;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:13px 18px;border-radius:9px;background:#04bfe8;color:#020617;text-decoration:none;font-size:15px;font-weight:900;">
+                    Conferma email
+                  </a>
+                </p>
+                <p style="margin:0 0 10px;color:#64748b;font-size:13px;line-height:1.5;">
+                  Se il pulsante non funziona, copia e apri questo link nel browser:
+                </p>
+                <p style="margin:0 0 22px;word-break:break-all;color:#0369a1;font-size:12px;line-height:1.5;">
+                  {{ .ConfirmationURL }}
+                </p>
+                <div style="padding:13px 14px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;font-size:13px;line-height:1.5;">
+                  Se non hai creato tu questo account, puoi ignorare questa email.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;line-height:1.45;">
+                Vygo - piattaforma operativa per aziende di trasporto.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

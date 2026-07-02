@@ -3409,6 +3409,102 @@ export async function getCurrentAuthSession() {
   }
 }
 
+export function hasPasswordRecoveryUrlParams() {
+  if (typeof window === 'undefined') return false
+
+  const searchParams = new URLSearchParams(window.location.search)
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+
+  return (
+    searchParams.get('type') === 'recovery' ||
+    hashParams.get('type') === 'recovery' ||
+    searchParams.get('recovery') === '1'
+  )
+}
+
+function cleanPasswordRecoveryUrl() {
+  if (typeof window === 'undefined') return
+
+  const url = new URL(window.location.href)
+  url.searchParams.delete('code')
+  url.searchParams.delete('type')
+  url.searchParams.delete('recovery')
+  window.history.replaceState({}, '', `${url.pathname}${url.search}`)
+}
+
+export async function sendPasswordRecoveryEmail(email) {
+  const supabase = await getSupabaseClient()
+  const cleanEmail = String(email ?? '').trim().toLowerCase()
+
+  if (!supabase) {
+    return { data: null, error: null, demo: true }
+  }
+
+  if (!cleanEmail) {
+    return { data: null, error: { message: 'Inserisci prima la email aziendale.' } }
+  }
+
+  const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/?type=recovery` : undefined
+
+  return supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo })
+}
+
+export async function updatePasswordFromRecovery(password) {
+  const supabase = await getSupabaseClient()
+  const cleanPassword = String(password ?? '').trim()
+
+  if (!supabase) {
+    return { data: null, error: null, demo: true }
+  }
+
+  if (cleanPassword.length < 8) {
+    return { data: null, error: { message: 'La nuova password deve avere almeno 8 caratteri.' } }
+  }
+
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
+  const hashParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.replace(/^#/, '')) : new URLSearchParams()
+  const code = searchParams.get('code')
+  const accessToken = hashParams.get('access_token')
+  const refreshToken = hashParams.get('refresh_token')
+
+  let sessionResult = await supabase.auth.getSession()
+
+  if (!sessionResult.data?.session && code) {
+    const exchangeResult = await supabase.auth.exchangeCodeForSession(code)
+    if (exchangeResult.error) return exchangeResult
+    sessionResult = await supabase.auth.getSession()
+  }
+
+  if (!sessionResult.data?.session && accessToken && refreshToken) {
+    const setSessionResult = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    })
+    if (setSessionResult.error) return setSessionResult
+    sessionResult = await supabase.auth.getSession()
+  }
+
+  if (!sessionResult.data?.session) {
+    return {
+      data: null,
+      error: { message: 'Link di recupero scaduto o non valido. Richiedi una nuova email di reset.' },
+    }
+  }
+
+  const updateResult = await supabase.auth.updateUser({ password: cleanPassword })
+
+  if (updateResult.error) return updateResult
+
+  cleanPasswordRecoveryUrl()
+
+  return {
+    data: {
+      user: updateResult.data?.user ?? sessionResult.data.session.user,
+    },
+    error: null,
+  }
+}
+
 export async function savePushSubscription(subscription, companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 

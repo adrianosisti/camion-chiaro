@@ -105,12 +105,14 @@ import {
   fetchVehicleChecks,
   fetchVehicles,
   getCurrentAuthSession,
+  hasPasswordRecoveryUrlParams,
   isSupabaseConfigured,
   logDriverDocumentEvent as logSupabaseDriverDocumentEvent,
   markCompanyAssetStorageFileDeleted,
   markDriverDocumentStorageFileDeleted,
   savePushSubscription,
   sendPushNotification,
+  sendPasswordRecoveryEmail,
   recordLegalAcceptances,
   markChatMessagesRead as markSupabaseChatMessagesRead,
   markTeamThreadRead as markSupabaseTeamThreadRead,
@@ -134,6 +136,7 @@ import {
   updateCompanyProfile as updateSupabaseCompanyProfile,
   updateCostEntryRecord as updateSupabaseCostEntry,
   updateFaultReportStatus as updateSupabaseFaultReportStatus,
+  updatePasswordFromRecovery,
   updateVehicleCheckStatus as updateSupabaseVehicleCheckStatus,
   updateVehicleRecord as updateSupabaseVehicle,
 } from './lib/supabase'
@@ -1848,6 +1851,85 @@ const publicLandingCopy = {
 const publicProblemIcons = [AlertTriangle, Clock3, FileText, Banknote]
 const publicValueIcons = [CalendarClock, Mail, ClipboardCheck, Gauge]
 const publicSetupIcons = [BadgeCheck, Users, Smartphone]
+const passwordRecoveryCopy = {
+  de: {
+    back: 'Zur Anmeldung',
+    body: 'Geben Sie ein neues Passwort fur Ihr Vygo-Konto ein. Danach offnet sich das Dashboard.',
+    confirm: 'Passwort bestatigen',
+    forgot: 'Passwort vergessen?',
+    invalid: 'Die Passwörter stimmen nicht uberein.',
+    password: 'Neues Passwort',
+    sent: 'E-Mail gesendet. Offnen Sie den Link und legen Sie das neue Passwort fest.',
+    submit: 'Passwort speichern',
+    title: 'Neues Passwort festlegen',
+  },
+  en: {
+    back: 'Back to sign in',
+    body: 'Enter a new password for your Vygo account. After saving, the dashboard will open.',
+    confirm: 'Confirm password',
+    forgot: 'Forgot password?',
+    invalid: 'The passwords do not match.',
+    password: 'New password',
+    sent: 'Email sent. Open the link and set the new password.',
+    submit: 'Save password',
+    title: 'Set a new password',
+  },
+  es: {
+    back: 'Volver al acceso',
+    body: 'Introduce una nueva contraseña para tu cuenta Vygo. Despues de guardar, se abrira el panel.',
+    confirm: 'Confirmar contraseña',
+    forgot: 'Olvidaste la contraseña?',
+    invalid: 'Las contraseñas no coinciden.',
+    password: 'Nueva contraseña',
+    sent: 'Email enviado. Abre el enlace y crea la nueva contraseña.',
+    submit: 'Guardar contraseña',
+    title: 'Crear nueva contraseña',
+  },
+  fr: {
+    back: 'Retour connexion',
+    body: 'Saisissez un nouveau mot de passe pour votre compte Vygo. Apres validation, le tableau s ouvrira.',
+    confirm: 'Confirmer mot de passe',
+    forgot: 'Mot de passe oublie ?',
+    invalid: 'Les mots de passe ne correspondent pas.',
+    password: 'Nouveau mot de passe',
+    sent: 'Email envoye. Ouvrez le lien et choisissez le nouveau mot de passe.',
+    submit: 'Enregistrer mot de passe',
+    title: 'Choisir un nouveau mot de passe',
+  },
+  it: {
+    back: 'Torna al login',
+    body: 'Inserisci una nuova password per il tuo account Vygo. Dopo il salvataggio si aprira la dashboard.',
+    confirm: 'Conferma password',
+    forgot: 'Password dimenticata?',
+    invalid: 'Le password non coincidono.',
+    password: 'Nuova password',
+    sent: 'Email inviata. Apri il link e imposta la nuova password.',
+    submit: 'Salva nuova password',
+    title: 'Imposta nuova password',
+  },
+  pl: {
+    back: 'Wroc do logowania',
+    body: 'Wpisz nowe haslo do konta Vygo. Po zapisaniu otworzy sie dashboard.',
+    confirm: 'Potwierdz haslo',
+    forgot: 'Nie pamietasz hasla?',
+    invalid: 'Hasla nie sa takie same.',
+    password: 'Nowe haslo',
+    sent: 'Email wyslany. Otworz link i ustaw nowe haslo.',
+    submit: 'Zapisz haslo',
+    title: 'Ustaw nowe haslo',
+  },
+  ro: {
+    back: 'Inapoi la login',
+    body: 'Introdu o parola noua pentru contul Vygo. Dupa salvare se va deschide dashboard-ul.',
+    confirm: 'Confirma parola',
+    forgot: 'Ai uitat parola?',
+    invalid: 'Parolele nu coincid.',
+    password: 'Parola noua',
+    sent: 'Email trimis. Deschide linkul si seteaza parola noua.',
+    submit: 'Salveaza parola',
+    title: 'Seteaza parola noua',
+  },
+}
 
 const workflowTranslations = {
   it: {
@@ -5757,6 +5839,7 @@ function App() {
   const [adminOverview, setAdminOverview] = useState(null)
   const [adminOverviewStatus, setAdminOverviewStatus] = useState('')
   const [isAdminOverviewLoading, setIsAdminOverviewLoading] = useState(false)
+  const [isPasswordRecoveryMode, setIsPasswordRecoveryMode] = useState(hasPasswordRecoveryUrlParams)
   const [activeCompanyId, setActiveCompanyId] = useState('')
 	  const [companyProfile, setCompanyProfile] = useState({
 	    billingActivatedAt: '',
@@ -8880,6 +8963,13 @@ function App() {
     return result
   }, [isAdminSession, refreshAdminOverview])
 
+  function handlePasswordRecoveryComplete(authUser) {
+    setIsPasswordRecoveryMode(false)
+    if (authUser) {
+      handleAuthenticated(buildAppSessionFromAuthUser(authUser))
+    }
+  }
+
   useEffect(() => {
     if (activeView !== 'admin') return
     const timerId = window.setTimeout(() => {
@@ -8889,6 +8979,21 @@ function App() {
     return () => window.clearTimeout(timerId)
   }, [activeView, refreshAdminOverview])
 
+  if (isPasswordRecoveryMode) {
+    return (
+      <I18nContext.Provider value={i18nValue}>
+        <AuthScreen
+          isPasswordRecoveryMode
+          language={language}
+          onAuthenticated={handleAuthenticated}
+          onLanguageChange={setLanguage}
+          onPasswordRecoveryComplete={handlePasswordRecoveryComplete}
+          t={t}
+        />
+      </I18nContext.Provider>
+    )
+  }
+
   if (!session) {
     return (
       <I18nContext.Provider value={i18nValue}>
@@ -8896,6 +9001,7 @@ function App() {
           language={language}
           onAuthenticated={handleAuthenticated}
           onLanguageChange={setLanguage}
+          onPasswordRecoveryComplete={handlePasswordRecoveryComplete}
           t={t}
         />
       </I18nContext.Provider>
@@ -10174,7 +10280,7 @@ function DriverLicenseBlockedScreen({ companyName, onSignOut }) {
   )
 }
 
-function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
+function AuthScreen({ isPasswordRecoveryMode = false, language, onAuthenticated, onLanguageChange, onPasswordRecoveryComplete, t }) {
   const [mode, setMode] = useState('company')
   const [companyMode, setCompanyMode] = useState('signin')
   const [companyForm, setCompanyForm] = useState({
@@ -10189,9 +10295,63 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
     username: '',
     password: '',
   })
+  const [recoveryForm, setRecoveryForm] = useState({
+    confirmPassword: '',
+    password: '',
+  })
   const [openLegalDocument, setOpenLegalDocument] = useState('')
   const [status, setStatus] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function sendCompanyRecoveryEmail() {
+    const cleanEmail = companyForm.email.trim()
+
+    if (!cleanEmail) {
+      setStatus('Inserisci prima la email aziendale.')
+      return
+    }
+
+    setIsSubmitting(true)
+    setStatus('Invio email di recupero...')
+    const result = await sendPasswordRecoveryEmail(cleanEmail)
+    setIsSubmitting(false)
+
+    if (result.error) {
+      setStatus(result.error.message)
+      return
+    }
+
+    setStatus((passwordRecoveryCopy[language] ?? passwordRecoveryCopy.it).sent)
+  }
+
+  async function handlePasswordRecoverySubmit(event) {
+    event.preventDefault()
+    const recoveryCopy = passwordRecoveryCopy[language] ?? passwordRecoveryCopy.it
+    const cleanPassword = recoveryForm.password.trim()
+
+    if (cleanPassword.length < 8) {
+      setStatus('La nuova password deve avere almeno 8 caratteri.')
+      return
+    }
+
+    if (cleanPassword !== recoveryForm.confirmPassword.trim()) {
+      setStatus(recoveryCopy.invalid)
+      return
+    }
+
+    setIsSubmitting(true)
+    setStatus('Salvataggio nuova password...')
+    const result = await updatePasswordFromRecovery(cleanPassword)
+    setIsSubmitting(false)
+
+    if (result.error) {
+      setStatus(result.error.message)
+      return
+    }
+
+    setStatus('Password aggiornata.')
+    onPasswordRecoveryComplete?.(result.data?.user)
+  }
 
   async function handleCompanySubmit(event) {
     event.preventDefault()
@@ -10321,6 +10481,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
   }
 
   const publicCopy = publicLandingCopy[language] ?? publicLandingCopy.it
+  const recoveryCopy = passwordRecoveryCopy[language] ?? passwordRecoveryCopy.it
 
   return (
     <main className="public-site">
@@ -10374,163 +10535,222 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         </div>
 
         <section className="auth-card public-access-card" id="accesso" aria-label="Accesso Vygo">
-        <div className="auth-tabs">
-          <button className={mode === 'company' ? 'is-active' : ''} onClick={() => setMode('company')} type="button">
-            <Building2 size={17} />
-            {t('auth.companyTab')}
-          </button>
-          <button className={mode === 'driver' ? 'is-active' : ''} onClick={() => setMode('driver')} type="button">
-            <UserRound size={17} />
-            {t('auth.driverTab')}
-          </button>
-        </div>
-
-        {mode === 'company' ? (
-          <form className="auth-form" onSubmit={handleCompanySubmit}>
+        {isPasswordRecoveryMode ? (
+          <form className="auth-form password-recovery-form" onSubmit={handlePasswordRecoverySubmit}>
             <div>
-              <p className="overline">{companyMode === 'signup' ? t('auth.companySignupOverline') : t('auth.companySigninOverline')}</p>
-              <h2>{companyMode === 'signup' ? t('auth.companySignupTitle') : t('auth.companySigninTitle')}</h2>
+              <p className="overline">Vygo</p>
+              <h2>{recoveryCopy.title}</h2>
+              <p className="auth-helper-text">{recoveryCopy.body}</p>
             </div>
-            {companyMode === 'signup' && (
-              <label>
-                {t('auth.companyNameLabel')}
-                <span>
-                  <Building2 size={17} />
-                  <input
-                    autoComplete="organization"
-                    placeholder={t('auth.companyNamePlaceholder')}
-                    required
-                    value={companyForm.companyName}
-                    onChange={(event) => setCompanyForm({ ...companyForm, companyName: event.target.value })}
-                  />
-                </span>
-              </label>
-            )}
             <label>
-              {t('auth.companyEmailLabel')}
-              <span>
-                <Mail size={17} />
-                <input
-                  autoComplete="email"
-                  name="email"
-                  placeholder={t('auth.companyEmailPlaceholder')}
-                  required
-                  value={companyForm.email}
-                  onChange={(event) => setCompanyForm({ ...companyForm, email: event.target.value })}
-                  type="email"
-                />
-              </span>
-            </label>
-            <label>
-              {t('auth.passwordLabel')}
+              {recoveryCopy.password}
               <span>
                 <LockKeyhole size={17} />
                 <input
-                  autoComplete={companyMode === 'signup' ? 'new-password' : 'current-password'}
-                  name="password"
-                  placeholder={t('auth.passwordPlaceholder')}
+                  autoComplete="new-password"
+                  minLength={8}
+                  name="new-password"
                   required
-                  value={companyForm.password}
-                  onChange={(event) => setCompanyForm({ ...companyForm, password: event.target.value })}
+                  value={recoveryForm.password}
+                  onChange={(event) => setRecoveryForm({ ...recoveryForm, password: event.target.value })}
                   type="password"
                 />
               </span>
             </label>
-            {companyMode === 'signup' && (
-              <div className="legal-checkbox-stack">
-                <label className="legal-check">
-                  <input
-                    checked={companyForm.termsAccepted}
-                    onChange={(event) => setCompanyForm({ ...companyForm, termsAccepted: event.target.checked })}
-                    required
-                    type="checkbox"
-                  />
-                  <span>
-                    Accetto Termini e Condizioni SaaS Vygo.
-                    <span className="legal-link-row">
-                      <LegalReadButton documentId="terms" onOpen={setOpenLegalDocument} />
-                    </span>
-                  </span>
-                </label>
-                <label className="legal-check">
-                  <input
-                    checked={companyForm.privacyAccepted}
-                    onChange={(event) => setCompanyForm({ ...companyForm, privacyAccepted: event.target.checked })}
-                    required
-                    type="checkbox"
-                  />
-                  <span>
-                    Ho letto l Informativa Privacy.
-                    <span className="legal-link-row">
-                      <LegalReadButton documentId="privacy" onOpen={setOpenLegalDocument} />
-                    </span>
-                  </span>
-                </label>
-                <label className="legal-check">
-                  <input
-                    checked={companyForm.marketingAccepted}
-                    onChange={(event) => setCompanyForm({ ...companyForm, marketingAccepted: event.target.checked })}
-                    type="checkbox"
-                  />
-                  <span>Voglio ricevere comunicazioni commerciali. Facoltativo.</span>
-                </label>
-              </div>
-            )}
+            <label>
+              {recoveryCopy.confirm}
+              <span>
+                <LockKeyhole size={17} />
+                <input
+                  autoComplete="new-password"
+                  minLength={8}
+                  name="confirm-password"
+                  required
+                  value={recoveryForm.confirmPassword}
+                  onChange={(event) => setRecoveryForm({ ...recoveryForm, confirmPassword: event.target.value })}
+                  type="password"
+                />
+              </span>
+            </label>
             <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
-              <KeyRound size={17} />
-              {companyMode === 'signup' ? t('auth.signupButton') : t('auth.signinButton')}
+              <Save size={17} />
+              {recoveryCopy.submit}
             </button>
-            <button
-              className="link-button"
-              onClick={switchCompanyMode}
-              type="button"
-            >
-              {companyMode === 'signup' ? t('auth.companyToggleSignin') : t('auth.companyToggleSignup')}
+            <button className="link-button" onClick={() => window.location.assign('/')} type="button">
+              {recoveryCopy.back}
             </button>
           </form>
         ) : (
-          <form className="auth-form" onSubmit={handleDriverSubmit}>
-            <div>
-              <p className="overline">{t('auth.driverOverline')}</p>
-              <h2>{t('auth.driverTitle')}</h2>
-            </div>
-            <label>
-              {t('auth.driverUsernameLabel')}
-              <span>
+          <>
+            <div className="auth-tabs">
+              <button className={mode === 'company' ? 'is-active' : ''} onClick={() => setMode('company')} type="button">
+                <Building2 size={17} />
+                {t('auth.companyTab')}
+              </button>
+              <button className={mode === 'driver' ? 'is-active' : ''} onClick={() => setMode('driver')} type="button">
                 <UserRound size={17} />
-                <input
-                  autoCapitalize="none"
-                  autoComplete="username"
-                  autoCorrect="off"
-                  name="username"
-                  placeholder={t('auth.driverUsernamePlaceholder')}
-                  required
-                  spellCheck={false}
-                  value={driverForm.username}
-                  onChange={(event) => setDriverForm({ ...driverForm, username: event.target.value })}
-                />
-              </span>
-            </label>
-            <label>
-              {t('auth.passwordLabel')}
-              <span>
-                <LockKeyhole size={17} />
-                <input
-                  autoComplete="current-password"
-                  name="password"
-                  placeholder={t('auth.passwordPlaceholder')}
-                  required
-                  value={driverForm.password}
-                  onChange={(event) => setDriverForm({ ...driverForm, password: event.target.value })}
-                  type="password"
-                />
-              </span>
-            </label>
-            <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
-              <Smartphone size={17} />
-              {t('auth.driverButton')}
-            </button>
-          </form>
+                {t('auth.driverTab')}
+              </button>
+            </div>
+
+            {mode === 'company' ? (
+              <form className="auth-form" onSubmit={handleCompanySubmit}>
+                <div>
+                  <p className="overline">{companyMode === 'signup' ? t('auth.companySignupOverline') : t('auth.companySigninOverline')}</p>
+                  <h2>{companyMode === 'signup' ? t('auth.companySignupTitle') : t('auth.companySigninTitle')}</h2>
+                </div>
+                {companyMode === 'signup' && (
+                  <label>
+                    {t('auth.companyNameLabel')}
+                    <span>
+                      <Building2 size={17} />
+                      <input
+                        autoComplete="organization"
+                        placeholder={t('auth.companyNamePlaceholder')}
+                        required
+                        value={companyForm.companyName}
+                        onChange={(event) => setCompanyForm({ ...companyForm, companyName: event.target.value })}
+                      />
+                    </span>
+                  </label>
+                )}
+                <label>
+                  {t('auth.companyEmailLabel')}
+                  <span>
+                    <Mail size={17} />
+                    <input
+                      autoComplete="email"
+                      name="email"
+                      placeholder={t('auth.companyEmailPlaceholder')}
+                      required
+                      value={companyForm.email}
+                      onChange={(event) => setCompanyForm({ ...companyForm, email: event.target.value })}
+                      type="email"
+                    />
+                  </span>
+                </label>
+                <label>
+                  {t('auth.passwordLabel')}
+                  <span>
+                    <LockKeyhole size={17} />
+                    <input
+                      autoComplete={companyMode === 'signup' ? 'new-password' : 'current-password'}
+                      name="password"
+                      placeholder={t('auth.passwordPlaceholder')}
+                      required
+                      value={companyForm.password}
+                      onChange={(event) => setCompanyForm({ ...companyForm, password: event.target.value })}
+                      type="password"
+                    />
+                  </span>
+                </label>
+                {companyMode === 'signup' && (
+                  <div className="legal-checkbox-stack">
+                    <label className="legal-check">
+                      <input
+                        checked={companyForm.termsAccepted}
+                        onChange={(event) => setCompanyForm({ ...companyForm, termsAccepted: event.target.checked })}
+                        required
+                        type="checkbox"
+                      />
+                      <span>
+                        Accetto Termini e Condizioni SaaS Vygo.
+                        <span className="legal-link-row">
+                          <LegalReadButton documentId="terms" onOpen={setOpenLegalDocument} />
+                        </span>
+                      </span>
+                    </label>
+                    <label className="legal-check">
+                      <input
+                        checked={companyForm.privacyAccepted}
+                        onChange={(event) => setCompanyForm({ ...companyForm, privacyAccepted: event.target.checked })}
+                        required
+                        type="checkbox"
+                      />
+                      <span>
+                        Ho letto l Informativa Privacy.
+                        <span className="legal-link-row">
+                          <LegalReadButton documentId="privacy" onOpen={setOpenLegalDocument} />
+                        </span>
+                      </span>
+                    </label>
+                    <label className="legal-check">
+                      <input
+                        checked={companyForm.marketingAccepted}
+                        onChange={(event) => setCompanyForm({ ...companyForm, marketingAccepted: event.target.checked })}
+                        type="checkbox"
+                      />
+                      <span>Voglio ricevere comunicazioni commerciali. Facoltativo.</span>
+                    </label>
+                  </div>
+                )}
+                <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
+                  <KeyRound size={17} />
+                  {companyMode === 'signup' ? t('auth.signupButton') : t('auth.signinButton')}
+                </button>
+                {companyMode === 'signin' && (
+                  <button
+                    className="link-button"
+                    disabled={isSubmitting}
+                    onClick={sendCompanyRecoveryEmail}
+                    type="button"
+                  >
+                    {recoveryCopy.forgot}
+                  </button>
+                )}
+                <button
+                  className="link-button"
+                  onClick={switchCompanyMode}
+                  type="button"
+                >
+                  {companyMode === 'signup' ? t('auth.companyToggleSignin') : t('auth.companyToggleSignup')}
+                </button>
+              </form>
+            ) : (
+              <form className="auth-form" onSubmit={handleDriverSubmit}>
+                <div>
+                  <p className="overline">{t('auth.driverOverline')}</p>
+                  <h2>{t('auth.driverTitle')}</h2>
+                </div>
+                <label>
+                  {t('auth.driverUsernameLabel')}
+                  <span>
+                    <UserRound size={17} />
+                    <input
+                      autoCapitalize="none"
+                      autoComplete="username"
+                      autoCorrect="off"
+                      name="username"
+                      placeholder={t('auth.driverUsernamePlaceholder')}
+                      required
+                      spellCheck={false}
+                      value={driverForm.username}
+                      onChange={(event) => setDriverForm({ ...driverForm, username: event.target.value })}
+                    />
+                  </span>
+                </label>
+                <label>
+                  {t('auth.passwordLabel')}
+                  <span>
+                    <LockKeyhole size={17} />
+                    <input
+                      autoComplete="current-password"
+                      name="password"
+                      placeholder={t('auth.passwordPlaceholder')}
+                      required
+                      value={driverForm.password}
+                      onChange={(event) => setDriverForm({ ...driverForm, password: event.target.value })}
+                      type="password"
+                    />
+                  </span>
+                </label>
+                <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
+                  <Smartphone size={17} />
+                  {t('auth.driverButton')}
+                </button>
+              </form>
+            )}
+          </>
         )}
 
         {status && <p className="auth-status">{status}</p>}

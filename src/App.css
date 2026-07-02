@@ -603,6 +603,18 @@
   line-height: 1.2;
 }
 
+.auth-helper-text {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.password-recovery-form {
+  gap: 15px;
+}
+
 .auth-form label {
   display: grid;
   gap: 7px;

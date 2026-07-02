@@ -64,7 +64,7 @@
             "NSExtensionActivationSupportsMovieWithMaxCount": 5,
             "NSExtensionActivationSupportsFileWithMaxCount": 10
           },
-          "iosShareExtensionName": "CamionChiaroShareExtension",
+          "iosShareExtensionName": "VygoShareExtension",
           "androidIntentFilters": [
             "text/*",
             "image/*",

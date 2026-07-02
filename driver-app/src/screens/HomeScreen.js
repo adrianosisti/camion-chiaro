@@ -8,6 +8,8 @@ import { getWheelOptionLabel, SelectionWheelModal, WheelPickerField } from '../c
 import { getLocale, t } from '../i18n/native'
 import { colors, layout } from '../theme'
 
+const vygoLogo = require('../../assets/brand/logo-horizontal.png')
+
 function formatDate(value, language) {
   if (!value) return t(language, 'noDeadline')
   return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
@@ -186,6 +188,9 @@ export function HomeScreen({
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
+        <View style={styles.vygoBrandStrip}>
+          <Image resizeMode="contain" source={vygoLogo} style={styles.vygoBrandLogo} />
+        </View>
         <View style={styles.heroTop}>
           <View style={styles.identityBlock}>
             <Pressable onPress={updateProfilePhoto} style={styles.profileImageWrap}>
@@ -551,6 +556,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 12,
     padding: 14,
+  },
+  vygoBrandLogo: {
+    height: 24,
+    width: 112,
+  },
+  vygoBrandStrip: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    justifyContent: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
   heroCopy: {
     flex: 1,

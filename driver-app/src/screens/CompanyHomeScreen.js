@@ -6,6 +6,8 @@ import { getDaysUntilDate, isComplianceActionRequired, sortByDueDate } from '../
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
+const vygoLogo = require('../../assets/brand/logo-horizontal.png')
+
 function formatDateTime(value, language = 'it') {
   if (!value) return ''
   return new Intl.DateTimeFormat(getLocale(language), {
@@ -535,6 +537,9 @@ export function CompanyHomeScreen({
   return (
     <View style={styles.content}>
       <View style={styles.hero}>
+        <View style={styles.vygoBrandStrip}>
+          <Image resizeMode="contain" source={vygoLogo} style={styles.vygoBrandLogo} />
+        </View>
         <View style={styles.heroTop}>
           <View style={styles.companyMark}>
             {logoUrl ? <Image source={{ uri: logoUrl }} style={styles.companyLogoImage} /> : <Text style={styles.companyLogoText}>CC</Text>}
@@ -1108,6 +1113,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     borderRadius: 17,
     padding: 9,
+  },
+  vygoBrandLogo: {
+    height: 24,
+    width: 112,
+  },
+  vygoBrandStrip: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    justifyContent: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
   heroCopy: {
     flex: 1,

@@ -738,10 +738,10 @@ const translations = {
     'homeAssistant.question': 'Come posso aiutarti oggi?',
     'homeAssistant.mobileApp': 'App',
     'homeAssistant.reports': 'Report',
-    'homeAssistant.status': 'Supporto guidato',
+    'homeAssistant.status': 'Guida rapida',
     'homeAssistant.title': 'Assistente Vygo',
     'hero.aria': 'Controllo scadenze',
-    'hero.description': 'Una schermata pulita per vedere subito scadenze, check mattutini e guasti da gestire.',
+    'hero.description': 'Priorita operative, scadenze, check e guasti sempre visibili appena entri.',
     'hero.factDrivers': 'autisti attivi',
     'hero.factNotifications': 'notifiche aperte',
     'hero.factVehicles': 'mezzi in flotta',
@@ -4061,7 +4061,7 @@ const homeDashboardTranslations = {
     'homeAssistant.quickTitle': 'Puoi scrivere liberamente oppure scegliere un argomento:',
     'homeAssistant.quickHelp': 'Aiutami con',
     'homeAssistant.send': 'Invia',
-    'homeAssistant.status': 'Supporto guidato',
+    'homeAssistant.status': 'Guida rapida',
     'homeAssistant.ticketBody': 'Se la risposta non ti ha aiutato, scrivi all assistenza Vygo. Prepariamo una email con azienda e ultima domanda, cosi il supporto capisce subito il caso.',
     'homeAssistant.ticketMessage': 'Mi dispiace, allora apriamo un ticket. Usa il pulsante qui sotto: prepara una email a {email} con azienda, ultima domanda e spazio per descrivere cosa non funziona.',
     'homeAssistant.ticketTitle': 'Apri una richiesta assistenza',
@@ -9921,7 +9921,7 @@ function CompanyLicenseGate({
             <VygoMark />
           </div>
           <div>
-            <p className="overline">Vygo</p>
+            <img className="license-wordmark" src="/brand/vygo-logo-horizontal.png" alt="Vygo" />
             <h1>{companyName}</h1>
           </div>
           <span className={`billing-status-pill is-${companyProfile.billingStatus || 'pending'}`}>
@@ -10129,8 +10129,8 @@ function LegalAcceptanceGate({
         </div>
 
         <p>
-          Prima di usare Vygo dobbiamo salvare le accettazioni corrette. La bozza legale sara poi validata da un
-          consulente privacy prima del rilascio commerciale.
+          Prima di continuare dobbiamo registrare le accettazioni richieste per usare app, dashboard, chat, documenti,
+          notifiche e archivio aziendale.
         </p>
 
         {isLoading ? (
@@ -10486,14 +10486,8 @@ function AuthScreen({ isPasswordRecoveryMode = false, language, onAuthenticated,
   return (
     <main className="public-site">
       <header className="public-header">
-        <button className="brand brand-button public-brand" onClick={() => openAccess('company', 'signin')} type="button">
-          <div className="brand-mark">
-            <VygoMark />
-          </div>
-          <div>
-            <strong>Vygo</strong>
-            <span>{t('brand.tagline')}</span>
-          </div>
+        <button className="brand brand-button public-brand is-wordmark" onClick={() => openAccess('company', 'signin')} type="button">
+          <img className="brand-wordmark" src="/brand/vygo-logo-horizontal.png" alt="Vygo - Move. Manage. Succeed." />
         </button>
         <nav className="public-nav" aria-label="Navigazione sito">
           <a href="#prodotto">{publicCopy.nav.product}</a>
@@ -10538,7 +10532,7 @@ function AuthScreen({ isPasswordRecoveryMode = false, language, onAuthenticated,
         {isPasswordRecoveryMode ? (
           <form className="auth-form password-recovery-form" onSubmit={handlePasswordRecoverySubmit}>
             <div>
-              <p className="overline">Vygo</p>
+              <img className="auth-wordmark" src="/brand/vygo-logo-horizontal.png" alt="Vygo" />
               <h2>{recoveryCopy.title}</h2>
               <p className="auth-helper-text">{recoveryCopy.body}</p>
             </div>
@@ -10882,11 +10876,11 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
   return (
     <aside className="sidebar" aria-label="Navigazione principale">
       <button className="brand brand-button" onClick={onHome} type="button">
-        <div className="brand-mark">
+        <div className="brand-mark sidebar-brand-mark">
           <VygoMark />
         </div>
-        <div>
-          <strong>Vygo</strong>
+        <div className="sidebar-brand-copy">
+          <img className="sidebar-brand-wordmark" src="/brand/vygo-logo-horizontal.png" alt="Vygo" />
           <span>{t('session.companyArea')}</span>
         </div>
       </button>

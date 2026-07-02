@@ -59,8 +59,8 @@ Chat: dirette e gruppi/reparti. I messaggi mostrano nome, ruolo e foto di chi sc
 Chiamate vocali: modulo preparato per tutti i piani attivi, incluso Start 5. Per le chiamate live serve collegare un provider voce; Vygo non deve registrare automaticamente l audio e conserva solo metadati tecnici come partecipanti, orari, durata e stato.
 Notifiche: si attivano dalle impostazioni sul dispositivo. Devono avvisare per messaggi, guasti, check critici, scadenze e solleciti.
 Magazzino: puo avere check muletti/strumenti, documenti e visite mediche. Ufficio puo usare chat, documenti e scadenze persona.
-Piani commerciali: Start 5 299 euro/mese + IVA; Fleet 10 449 euro/mese + IVA; Fleet 20 699 euro/mese + IVA; Fleet 30 899 euro/mese + IVA; Fleet 50 1199 euro/mese + IVA; Enterprise su preventivo. Start 5 include gia chat, chiamate vocali live quando attivate, scadenze, check, guasti, documenti, centro costi e report per piccola flotta. Fleet 10 e superiori aggiungono reparti/gruppi e aumentano mezzi, account, strumenti e storage. Extra veri: start-up kit 1500 euro una tantum + IVA, storage extra 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese, assistenza premium/import dati su preventivo.
-Progetti premium futuri: chiamate vocali live in chat, report mensile automatico via email, indice salute flotta, budget costi per targa, alert recidive guasti, classifica multe/autisti, osservatorio strada e normative, QR mezzo, check magazzino, profilo formazione autista, esportazioni PDF/CSV avanzate.
+Piani commerciali: Start 5 299 euro/mese + IVA; Fleet 10 449 euro/mese + IVA; Fleet 20 699 euro/mese + IVA; Fleet 30 899 euro/mese + IVA; Fleet 50 1199 euro/mese + IVA; Enterprise su preventivo. Tutti i piani includono Vygo completo: chat, gruppi, reparti, chiamate vocali live quando attivate, scadenze, check, guasti, documenti, centro costi e report. Cambiano solo limiti di mezzi, strumenti, account e storage. L unico extra ricorrente e lo storage aggiuntivo; lo start-up kit e un servizio una tantum di avviamento.
+Idee future ad alto valore: report mensile automatico via email, indice salute flotta, budget costi per targa, alert recidive guasti, classifica multe/autisti, osservatorio strada e normative, QR mezzo, check magazzino, profilo formazione autista, esportazioni PDF/CSV avanzate.
 Regola supporto: dare sempre passi pratici. Se serve assistenza umana, raccogliere azienda, utente, sezione, cosa stava facendo, messaggio errore, dispositivo e priorita.
 `.trim()
 
@@ -216,11 +216,11 @@ const supportPlaybooks = [
     title: 'piani, prezzi e fatturazione',
     response: [
       'I piani Vygo sono pensati per dimensione azienda:',
-      '1. Start 5: 299 euro/mese, fino a 5 mezzi, 3 strumenti/muletti, 10 account e 10 GB. Include gia chat, chiamate vocali live quando attivate, scadenze, check, guasti, documenti, centro costi e report.',
-      '2. Fleet 10: 449 euro/mese, fino a 10 mezzi, 5 strumenti/muletti, 20 account e 20 GB. Da qui si sbloccano anche gruppi e reparti, mantenendo tutte le altre funzioni Vygo.',
-      '3. Fleet 20: 699 euro/mese, Fleet 30: 899 euro/mese, Fleet 50: 1199 euro/mese. Cambiano soprattutto mezzi, account e storage.',
-      '4. Non vendiamo chat, centro costi e report come pezzetti separati: sono funzioni del prodotto. Gli extra veri sono storage, onboarding, import dati e assistenza premium.',
-      '5. Start-up kit: 1500 euro una tantum. Storage extra: 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.',
+      '1. Tutti i piani includono Vygo completo: chat, gruppi, reparti, chiamate vocali live quando attivate, scadenze, check, guasti, documenti, centro costi e report.',
+      '2. Start 5: 299 euro/mese, fino a 5 mezzi, 3 strumenti/muletti, 10 account e 10 GB.',
+      '3. Fleet 10: 449 euro/mese, fino a 10 mezzi, 5 strumenti/muletti, 20 account e 20 GB. Fleet 20/30/50 aumentano capienza e storage.',
+      '4. Non vendiamo chat, centro costi, reparti o report come pezzetti separati: il piano cresce con dimensione azienda.',
+      '5. Extra ricorrente: solo storage. Start-up kit: 1500 euro una tantum per avviamento, anagrafiche e formazione.',
     ],
   },
   {
@@ -240,7 +240,7 @@ const supportPlaybooks = [
   {
     id: 'future_value',
     keywords: ['idea', 'idee', 'premium', 'valore', 'futuro', 'sviluppo', 'must', 'straordin', 'migliorare', 'funzione nuova'],
-    title: 'idee premium e valore prodotto',
+    title: 'idee future e valore prodotto',
     response: [
       'Le funzioni piu forti per far percepire Vygo come indispensabile sono:',
       '1. Report mensile automatico: spese, multe, guasti, scadenze chiuse e pratiche aperte via email al titolare.',

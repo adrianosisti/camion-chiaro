@@ -249,15 +249,15 @@ const billingStatusLabels = {
 }
 const billingCheckoutPlans = [
   {
-    bestFor: 'Per piccole flotte che vogliono gia scadenze, chat, guasti e costi sotto controllo.',
-    features: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', 'Chat diretta inclusa', 'Chiamate vocali live', 'Centro costi e report inclusi', '10 GB file inclusi'],
+    bestFor: 'Per piccole flotte che vogliono Vygo completo senza rinunciare a reparti, chat, report e costi.',
+    features: ['Tutte le funzioni Vygo', 'Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', '10 GB file inclusi'],
     id: 'starter',
     price: '299 euro/mese + IVA',
     title: 'Start 5',
   },
   {
-    bestFor: 'Il pacchetto consigliato: tutte le funzioni Vygo sbloccate per un azienda in crescita.',
-    features: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', 'Gruppi, reparti e chat completa', 'Chiamate vocali live', '20 GB file inclusi'],
+    bestFor: 'Il pacchetto consigliato per chi cresce: stesso Vygo completo, piu capienza operativa.',
+    features: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', '20 GB file inclusi'],
     id: 'fleet10',
     isRecommended: true,
     price: '449 euro/mese + IVA',
@@ -271,15 +271,15 @@ const billingCheckoutPlans = [
     title: 'Fleet 20',
   },
   {
-    bestFor: 'Per aziende con piu reparti, magazzino e gestione manutenzioni frequente.',
-    features: ['Tutte le funzioni Vygo', 'Fino a 30 mezzi', 'Fino a 15 strumenti o muletti', 'Fino a 60 account', 'Chiamate vocali live', '50 GB file inclusi'],
+    bestFor: 'Per aziende con piu sedi, magazzino e gestione manutenzioni frequente.',
+    features: ['Tutte le funzioni Vygo', 'Fino a 30 mezzi', 'Fino a 15 strumenti o muletti', 'Fino a 60 account', '50 GB file inclusi'],
     id: 'fleet30',
     price: '899 euro/mese + IVA',
     title: 'Fleet 30',
   },
   {
     bestFor: 'Per flotte grandi con piu utenti e alto volume documentale.',
-    features: ['Tutte le funzioni Vygo', 'Fino a 50 mezzi', 'Fino a 25 strumenti o muletti', 'Fino a 100 account', 'Chiamate vocali live', '75 GB file inclusi'],
+    features: ['Tutte le funzioni Vygo', 'Fino a 50 mezzi', 'Fino a 25 strumenti o muletti', 'Fino a 100 account', '75 GB file inclusi'],
     id: 'fleet50',
     price: '1.199 euro/mese + IVA',
     title: 'Fleet 50',
@@ -366,7 +366,7 @@ const billingPlanCapabilities = {
   starter: {
     chat: true,
     costCenter: true,
-    departments: false,
+    departments: true,
     maxAssets: 3,
     maxUsers: 10,
     maxVehicles: 5,
@@ -486,11 +486,11 @@ const legalDocumentLibrary = {
     intro: 'Bozza Termini e Condizioni SaaS Vygo. Da validare legalmente prima del lancio commerciale.',
     sections: [
       {
-        body: 'Vygo e un servizio software per aziende di trasporto e logistica. Include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, notifiche, chiamate vocali dove previste, centro costi e report secondo il piano acquistato.',
+        body: 'Vygo e un servizio software per aziende di trasporto e logistica. Include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, notifiche, chiamate vocali quando tecnicamente attivate, centro costi e report secondo il piano acquistato.',
         title: 'Oggetto del servizio',
       },
       {
-        body: 'Ogni piano puo prevedere limiti su mezzi, strumenti, account utenti, storage, chat, chiamate vocali, centro costi, report e funzioni avanzate. Se il limite viene raggiunto, l azienda potra aggiornare piano o acquistare extra.',
+        body: 'Ogni piano include le funzioni principali Vygo. I limiti commerciali riguardano soprattutto mezzi, strumenti, account utenti e storage. Se un limite viene raggiunto, l azienda potra aggiornare piano o acquistare extra storage.',
         title: 'Piani e limiti',
       },
       {
@@ -502,7 +502,7 @@ const legalDocumentLibrary = {
         title: 'Disponibilita',
       },
       {
-        body: 'Gli abbonamenti vengono gestiti tramite il sistema di pagamento configurato. Mancato pagamento, pagamento fallito o piano scaduto possono limitare o sospendere funzioni non incluse o non pagate.',
+        body: 'Gli abbonamenti vengono gestiti tramite il sistema di pagamento configurato. Mancato pagamento, pagamento fallito o piano scaduto possono limitare o sospendere il servizio fino alla regolarizzazione.',
         title: 'Pagamenti',
       },
       {
@@ -3853,8 +3853,8 @@ const supportSections = [
         title: 'Perche vale il canone mensile?',
       },
       {
-        body: 'Dal Fleet 10 in poi non vendiamo pezzi di programma: tutte le funzioni principali sono sbloccate. Il prezzo cresce per mezzi, persone, storage e livello operativo dell azienda.',
-        title: 'Perche conviene il pacchetto Fleet?',
+        body: 'Non vendiamo pezzi di programma: anche Start 5 ha Vygo completo. Il prezzo cresce per mezzi, persone, strumenti e storage, cosi una piccola flotta non deve comprare un piano piu grande solo per avere reparti, chat o report.',
+        title: 'Perche tutti i piani sono completi?',
       },
     ],
   },
@@ -5714,7 +5714,7 @@ function App() {
 
   function getPlanFeatureLimitMessage(feature) {
     const featureName = planFeatureLabels[feature] ?? 'questa funzione'
-    return `${getBillingPlanLabel(companyProfile.billingPlan)} non include ${featureName}. Aggiorna piano per usarla.`
+    return `${featureName} e inclusa nei piani attivi. Se risulta bloccata, controlla attivazione azienda, pagamento o configurazione piano.`
   }
 
   function showPlanFeatureLimit(feature, setStatus = setCompanySettingsStatus) {
@@ -5736,7 +5736,7 @@ function App() {
     setStatus(
       `Spazio del piano ${getBillingPlanLabel(companyProfile.billingPlan)} esaurito: ${formatBytes(
         latestSummary?.totalBytes ?? 0,
-      )} usati su ${formatBytes(limitBytes)}. Elimina file vecchi o passa a un piano superiore.`,
+      )} usati su ${formatBytes(limitBytes)}. Elimina file vecchi, acquista storage extra o passa a un pacchetto piu capiente.`,
     )
     return false
   }
@@ -7088,7 +7088,7 @@ function App() {
 
   async function addCostEntryRecord(entry, receiptFile = null) {
     if (!canUseCurrentPlanFeature('costCenter')) {
-      setOperationsSyncStatus('Centro costi non incluso nel piano attuale. Aggiorna piano per registrare spese, multe e manutenzioni.')
+      setOperationsSyncStatus('Centro costi non disponibile con lo stato attuale dell azienda. Controlla attivazione o pagamento per registrare spese, multe e manutenzioni.')
       return false
     }
 
@@ -7130,7 +7130,7 @@ function App() {
 
   async function editCostEntryRecord(entryId, updates, receiptFile = null, previousEntry = null) {
     if (!canUseCurrentPlanFeature('costCenter')) {
-      setOperationsSyncStatus('Centro costi non incluso nel piano attuale. Aggiorna piano per modificare spese, multe e manutenzioni.')
+      setOperationsSyncStatus('Centro costi non disponibile con lo stato attuale dell azienda. Controlla attivazione o pagamento per modificare spese, multe e manutenzioni.')
       return false
     }
 
@@ -8946,7 +8946,7 @@ function App() {
             />
           ) : (
             <FeatureUpgradeGate
-              description="Chat singole, gruppi, reparti, foto, video, audio, allegati e notifiche non sono inclusi nel piano attuale."
+              description="La chat completa e inclusa nei piani attivi. Se la vedi bloccata, controlla lo stato pagamento o l attivazione azienda."
               featureName="Chat aziendale"
               icon={Mail}
               onUpgrade={openBillingSettings}
@@ -8973,7 +8973,7 @@ function App() {
             />
           ) : (
             <FeatureUpgradeGate
-              description="Centro costi, multe, manutenzioni, CSV, stampa e report filtrati sono disponibili dai piani con report economici."
+              description="Centro costi, multe, manutenzioni, CSV, stampa e report filtrati sono inclusi nei piani attivi. Se li vedi bloccati, controlla lo stato pagamento o l attivazione azienda."
               featureName="Centro costi e report"
               icon={Banknote}
               onUpgrade={openBillingSettings}
@@ -9543,11 +9543,11 @@ function FeatureUpgradeGate({
         <span className="feature-upgrade-icon">
           <Icon size={26} />
         </span>
-        <p className="overline">Funzione premium</p>
+        <p className="overline">Funzione da verificare</p>
         <h2>{featureName}</h2>
         <p>{description}</p>
         <div className="feature-limit-grid">
-          {billingCheckoutPlans.slice(1).map((plan) => (
+          {billingCheckoutPlans.map((plan) => (
             <article key={plan.id}>
               <strong>{plan.title}</strong>
               <span>{plan.price}</span>
@@ -9971,12 +9971,12 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           <article>
             <span>Start 5</span>
             <strong>299 euro/mese + IVA</strong>
-            <p>Per piccole flotte che vogliono smettere subito di lavorare con scadenze, chat, documenti e costi sparsi.</p>
+            <p>Vygo completo per piccole flotte: nessuna funzione tagliata, solo limiti piu piccoli su mezzi, account e spazio file.</p>
             <ul>
               <li>Fino a 5 mezzi</li>
               <li>Fino a 3 strumenti o muletti</li>
               <li>Fino a 10 account utenti</li>
-              <li>Chat, centro costi e report inclusi</li>
+              <li>Tutte le funzioni Vygo incluse</li>
               <li>10 GB file inclusi</li>
             </ul>
             <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Start 5</button>
@@ -9984,7 +9984,7 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           <article className="is-featured">
             <span>Fleet 10</span>
             <strong>449 euro/mese + IVA</strong>
-            <p>Il pacchetto consigliato: tutte le funzioni Vygo sbloccate, con reparti, gruppi e piu capacita operativa.</p>
+            <p>Stesso Vygo completo, piu capacita operativa per aziende che crescono con mezzi, persone e documenti.</p>
             <ul>
               <li>Tutte le funzioni Vygo</li>
               <li>Fino a 10 mezzi</li>
@@ -10009,10 +10009,10 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </article>
         </div>
         <div className="public-extra-pricing">
-          <div><strong>Funzioni incluse</strong><span>Chat, guasti, check, documenti, scadenze, centro costi e report sono parte del prodotto: il piano cresce soprattutto con la dimensione della flotta.</span></div>
-          <div><strong>Start-up kit</strong><span>1.500 euro + IVA una tantum per configurazione, anagrafiche iniziali, scadenze e formazione.</span></div>
-          <div><strong>Storage extra</strong><span>20 GB: 49 euro/mese + IVA · 50 GB: 99 euro/mese + IVA · 100 GB: 179 euro/mese + IVA.</span></div>
-          <div><strong>Assistenza premium</strong><span>Canale prioritario, import dati e affiancamento operativo su preventivo per aziende piu strutturate.</span></div>
+          <div><strong>Funzioni incluse</strong><span>Tutti i piani hanno Vygo completo: chat, gruppi, guasti, check, documenti, scadenze, centro costi e report. Il piano cresce con dimensione flotta e spazio file.</span></div>
+          <div><strong>Avviamento</strong><span>Start-up kit una tantum per configurazione, anagrafiche iniziali, scadenze e formazione.</span></div>
+          <div><strong>Unico extra ricorrente</strong><span>Storage aggiuntivo: 20 GB 49 euro/mese + IVA · 50 GB 99 euro/mese + IVA · 100 GB 179 euro/mese + IVA.</span></div>
+          <div><strong>Nessun modulo nascosto</strong><span>Niente upgrade per chat, reparti, report o centro costi: li hanno tutti. La chicca extra la inventeremo piu avanti.</span></div>
         </div>
       </section>
 
@@ -10664,7 +10664,7 @@ function AdminWorkspace({
     if (company.health === 'billing') return 'Verifica pagamento, piano e periodo: questo cliente non deve restare bloccato per errore.'
     if (company.health === 'attention') return 'Apri un contatto operativo: ci sono guasti, check, scadenze o documenti da far sistemare.'
     if (company.health === 'storage') return 'Proponi upgrade spazio o pulizia allegati prima che arrivi al limite.'
-    return 'Cliente regolare: controlla ultimo utilizzo e valuta upsell su report/chat premium.'
+    return 'Cliente regolare: controlla ultimo utilizzo e valuta storage extra, avviamento guidato o supporto dedicato.'
   }
 
   function updateAdminForm(field, value) {
@@ -14587,7 +14587,7 @@ function FaultCostReport({
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `vygo-report-mensile-premium-${monthlyRange.label.replace(/\s+/g, '-').toLowerCase()}.csv`
+    link.download = `vygo-report-mensile-${monthlyRange.label.replace(/\s+/g, '-').toLowerCase()}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -15049,10 +15049,10 @@ function FaultCostReport({
         </form>
       ) : null}
       {showReportMonthly ? (
-        <section className="monthly-premium-report" aria-label="Report mensile premium">
+        <section className="monthly-premium-report" aria-label="Report mensile">
           <div className="monthly-report-head">
             <div>
-              <p className="overline">Premium mensile</p>
+              <p className="overline">Report mensile</p>
               <h3>Report automatico {monthlyRange.label}</h3>
               <span>Riepilogo pronto per titolare: costi, multe, guasti, check, scadenze e priorita operative.</span>
             </div>
@@ -15232,7 +15232,7 @@ function FaultCostReport({
       </div>
       ) : null}
       {(showReportOverview || showReportDetails) ? (
-      <div className="cost-insight-grid" aria-label="Analisi premium centro costi">
+      <div className="cost-insight-grid" aria-label="Analisi avanzata centro costi">
         <article>
           <span>Soggetto più costoso</span>
           <strong>{topTargetCost?.name ?? 'Nessun dato'}</strong>

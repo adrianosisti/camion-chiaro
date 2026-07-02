@@ -122,10 +122,10 @@ const nativeLegalDocuments = {
   terms: {
     intro: 'Termini e Condizioni SaaS Vygo per aziende di trasporto e logistica.',
     sections: [
-      ['Oggetto del servizio', 'Vygo include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, chiamate vocali dove previste, notifiche, centro costi e report secondo il piano acquistato.'],
-      ['Piani e limiti', 'Ogni piano puo prevedere limiti su mezzi, strumenti, account utenti, storage, chat, chiamate vocali, centro costi, report e funzioni avanzate.'],
+      ['Oggetto del servizio', 'Vygo include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, chiamate vocali quando tecnicamente attivate, notifiche, centro costi e report secondo il piano acquistato.'],
+      ['Piani e limiti', 'Ogni piano include le funzioni principali Vygo. I limiti commerciali riguardano soprattutto mezzi, strumenti, account utenti e storage. Se un limite viene raggiunto, l azienda potra aggiornare piano o acquistare extra storage.'],
       ['Responsabilita azienda', 'L azienda e responsabile della correttezza dei dati inseriti, della gestione degli utenti e dell uso conforme alle proprie regole interne.'],
-      ['Pagamenti', 'Gli abbonamenti sono gestiti dal sistema di pagamento configurato. Mancato pagamento o piano scaduto possono limitare funzioni non incluse o non pagate.'],
+      ['Pagamenti', 'Gli abbonamenti sono gestiti dal sistema di pagamento configurato. Mancato pagamento o piano scaduto possono limitare o sospendere il servizio fino alla regolarizzazione.'],
       ['Cessazione', 'Alla fine del rapporto l azienda potra richiedere esportazione o cancellazione dei dati disponibili secondo le procedure concordate.'],
     ],
     title: 'Termini e Condizioni SaaS',
@@ -388,7 +388,7 @@ const nativeBillingPlanCapabilities = {
   fleet30: { chat: true, costCenter: true, departments: true, maxAssets: 15, maxUsers: 60, maxVehicles: 30, reports: true, voiceCalls: true },
   fleet50: { chat: true, costCenter: true, departments: true, maxAssets: 25, maxUsers: 100, maxVehicles: 50, reports: true, voiceCalls: true },
   pro: { chat: true, costCenter: true, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: true, voiceCalls: true },
-  starter: { chat: true, costCenter: true, departments: false, maxAssets: 3, maxUsers: 10, maxVehicles: 5, reports: true, voiceCalls: true },
+  starter: { chat: true, costCenter: true, departments: true, maxAssets: 3, maxUsers: 10, maxVehicles: 5, reports: true, voiceCalls: true },
 }
 
 const nativePlanFeatureLabels = {
@@ -882,8 +882,8 @@ function CamionChiaroApp() {
 
   function showNativePlanFeatureLimit(feature) {
     Alert.alert(
-      'Funzione non inclusa',
-      `${getNativeBillingPlanLabel(currentCompanyProfile.billingPlan)} non include ${nativePlanFeatureLabels[feature] ?? 'questa funzione'}. Aggiorna piano per usarla.`,
+      'Funzione da verificare',
+      `${nativePlanFeatureLabels[feature] ?? 'Questa funzione'} e inclusa nei piani attivi. Se risulta bloccata, controlla attivazione azienda, pagamento o configurazione piano.`,
     )
     return false
   }

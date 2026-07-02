@@ -88,6 +88,7 @@ import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
 const nativePushTokenStorageKey = 'vygo-native-push-token'
+const voiceCallsLaunchReady = false
 const incomingCallSound = require('./assets/sounds/chat-receive.wav')
 
 const nativeLegalDocuments = {
@@ -1033,6 +1034,7 @@ function CamionChiaroApp() {
   }, [])
 
   function showIncomingVoiceCall(message, options = {}) {
+    if (!voiceCallsLaunchReady) return
     if (!isVoiceCallChatMessage(message)) return
 
     const messageId = message?.id ?? `${message?.threadId ?? 'call'}:${message?.createdAt ?? Date.now()}`
@@ -1215,6 +1217,11 @@ function CamionChiaroApp() {
   }
 
   async function showNativeVoiceCallNotice(callRequest = {}) {
+    if (!voiceCallsLaunchReady) {
+      Alert.alert('Chiamate in arrivo', 'Le chiamate vocali Vygo sono pronte nel codice ma saranno attivate in una prossima versione.')
+      return false
+    }
+
     const request = typeof callRequest === 'string' ? { targetName: callRequest } : callRequest
     const targetName = request.targetName || 'questo contatto'
 
@@ -3812,7 +3819,7 @@ function CamionChiaroApp() {
             onSelectTeamThread={handleSelectCompanyTeamThread}
             onSend={handleSendCompanyChatMessage}
             onSendTeamMessage={handleSendCompanyTeamChatMessage}
-            onStartVoiceCall={showNativeVoiceCallNotice}
+            onStartVoiceCall={voiceCallsLaunchReady ? showNativeVoiceCallNotice : undefined}
             onReactToTeamMessage={handleReactToTeamMessage}
             onTyping={handleCompanyTyping}
             onlinePersonIds={onlinePersonIds}
@@ -3923,7 +3930,7 @@ function CamionChiaroApp() {
           onRefreshTeamChat={() => loadDriverTeamChatData()}
           onSendCompanyMessage={handleSendChatMessage}
           onSendTeamMessage={handleSendDriverTeamChatMessage}
-          onStartVoiceCall={showNativeVoiceCallNotice}
+          onStartVoiceCall={voiceCallsLaunchReady ? showNativeVoiceCallNotice : undefined}
           onTyping={handleTyping}
           onlinePersonIds={onlinePersonIds}
           selectedMode={driverChatMode}

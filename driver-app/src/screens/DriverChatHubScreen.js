@@ -214,7 +214,7 @@ export function DriverChatHubScreen({
           onReactToMessage={onReactToMessage}
           onRefresh={onRefreshCompanyChat}
           onSend={onSendCompanyMessage}
-          onStartVoiceCall={() => onStartVoiceCall?.(companyName)}
+          onStartVoiceCall={onStartVoiceCall ? () => onStartVoiceCall(companyName) : undefined}
           onTyping={onTyping}
           soundEnabled={soundEnabled}
         />
@@ -266,7 +266,7 @@ export function DriverChatHubScreen({
           onReactToMessage={onReactToTeamMessage}
           onRefresh={onRefreshTeamChat}
           onSend={onSendTeamMessage}
-          onStartVoiceCall={() => onStartVoiceCall?.(selectedTitle)}
+          onStartVoiceCall={onStartVoiceCall ? () => onStartVoiceCall(selectedTitle) : undefined}
           onTyping={onTyping}
           ownAvatarUrl={driverProfileUrl}
           participantAvatarUrl={isDirectChat ? directPartnerAvatarUrl : companyLogoUrl}

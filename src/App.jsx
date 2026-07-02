@@ -565,6 +565,7 @@ const deepLinkViews = new Set(['admin', 'chat', 'deadlines', 'documents', 'drive
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
+const voiceCallsLaunchReady = false
 const chatMediaAccept = 'image/*,video/*,audio/*'
 const chatGalleryMediaAccept = 'image/*,video/*'
 const chatReplyPrefix = '[[cc-reply:'
@@ -8485,7 +8486,7 @@ function App() {
           onMarkChatRead={markChatThreadRead}
           onReactToMessage={updateChatMessageReaction}
           onSendChatMessage={sendChatMessage}
-          onStartVoiceCall={showVoiceCallNotice}
+          onStartVoiceCall={voiceCallsLaunchReady ? showVoiceCallNotice : undefined}
           onTyping={sendChatTyping}
           onMorningCheck={submitMorningCheck}
           onOpenDriverDocument={openDriverDocumentFile}
@@ -9054,7 +9055,7 @@ function App() {
               onRefreshAssetPreviewUrl={refreshAssetPreviewUrl}
               onSendMessage={sendChatMessage}
               onSendTeamMessage={sendTeamChatMessage}
-              onStartVoiceCall={showVoiceCallNotice}
+              onStartVoiceCall={voiceCallsLaunchReady ? showVoiceCallNotice : undefined}
               onTyping={sendChatTyping}
               personRecords={personRecords}
               teamChatMessages={teamChatMessageRecords}
@@ -15792,6 +15793,8 @@ function ChatSoundButton({ enabled, onToggle, t }) {
 }
 
 function ChatVoiceCallButton({ callPayload = {}, disabled = false, onCall, targetName = 'contatto' }) {
+  if (!onCall) return null
+
   return (
     <button
       aria-label={`Chiama ${targetName}`}

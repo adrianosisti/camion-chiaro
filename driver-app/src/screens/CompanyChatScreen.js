@@ -256,7 +256,7 @@ export function CompanyChatScreen({
           onReactToMessage={onReactToTeamMessage}
           onRefresh={onRefresh}
           onSend={onSendTeamMessage}
-          onStartVoiceCall={() => onStartVoiceCall?.(selectedTitle)}
+          onStartVoiceCall={onStartVoiceCall ? () => onStartVoiceCall(selectedTitle) : undefined}
           onTyping={onTyping}
           ownAvatarUrl={companyLogoUrl}
           participantAvatarUrl={isDirect ? directPersonPhotoUrl : companyLogoUrl}
@@ -302,7 +302,7 @@ export function CompanyChatScreen({
           onReactToMessage={onReactToMessage}
           onRefresh={onRefresh}
           onSend={onSend}
-          onStartVoiceCall={() => onStartVoiceCall?.(selectedDriver.name)}
+          onStartVoiceCall={onStartVoiceCall ? () => onStartVoiceCall(selectedDriver.name) : undefined}
           onTyping={onTyping}
           ownAvatarUrl={companyLogoUrl}
           participantAvatarUrl={driverPhotoUrl}

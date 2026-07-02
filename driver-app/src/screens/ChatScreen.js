@@ -60,7 +60,7 @@ const maxChatAttachmentSizeByKind = {
 }
 
 function getMessageText(message) {
-  return String(message.body ?? '').trim()
+  return String(message.body ?? '').replace(/\[call:[^\]]+\]/gi, '').trim()
 }
 
 function triggerChatHaptic() {
@@ -183,7 +183,11 @@ function truncateChatText(value, maxLength = 120) {
 }
 
 function getMessageDisplay(message) {
-  return parseChatMessageBody(message?.body ?? '')
+  const display = parseChatMessageBody(message?.body ?? '')
+  return {
+    ...display,
+    text: String(display.text ?? '').replace(/\[call:[^\]]+\]/gi, '').trim(),
+  }
 }
 
 function getMessagePreviewText(message) {

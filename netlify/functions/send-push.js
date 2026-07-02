@@ -225,15 +225,20 @@ async function fetchNativePushTokens(serviceClient, companyId, recipientUserIds)
 async function sendExpoPushNotifications(tokens, notificationPayload) {
   if (!tokens.length) return { failed: 0, invalidTokenIds: [], sent: 0 }
 
+  const isVoiceCall = notificationPayload.notificationType === 'voice_call'
   const messages = tokens.map((token) => ({
     body: notificationPayload.body,
+    channelId: 'default',
     data: {
+      callId: notificationPayload.callId,
       notificationType: notificationPayload.notificationType,
       tag: notificationPayload.tag,
       threadId: notificationPayload.threadId,
       url: notificationPayload.url,
     },
+    priority: isVoiceCall ? 'high' : 'default',
     sound: 'default',
+    subtitle: isVoiceCall ? 'Chiamata Vygo' : undefined,
     title: notificationPayload.title,
     to: token.expo_push_token,
   }))
@@ -321,6 +326,7 @@ export async function handler(event) {
   const tag = String(body.tag ?? `vygo-${Date.now()}`)
   const notificationType = String(body.notificationType ?? '').slice(0, 40)
   const threadId = String(body.threadId ?? '').slice(0, 120)
+  const callId = String(body.callId ?? '').slice(0, 120)
 
   if (!companyId || !['company', 'driver', 'team'].includes(targetRole)) {
     return jsonResponse(400, { error: 'Azienda o destinatario non valido.' })
@@ -415,6 +421,7 @@ export async function handler(event) {
   const payload = JSON.stringify({
     body: messageBody,
     notificationType,
+    callId,
     tag,
     threadId,
     title,
@@ -443,6 +450,7 @@ export async function handler(event) {
 
   const nativeResult = await sendExpoPushNotifications(nativeTokens, {
     body: messageBody,
+    callId,
     notificationType,
     tag,
     threadId,

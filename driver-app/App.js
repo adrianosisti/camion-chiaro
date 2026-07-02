@@ -71,11 +71,13 @@ import {
   subscribeToTeamChatMessages,
   subscribeToOperationalUpdates,
   subscribeToDriverPresence,
+  subscribeToVoiceCallSessions,
   updateChatMessageReaction,
   updateTeamChatMessageReaction,
   updateCompanyComplianceItemStatus,
   updateCompanyCostEntry,
   updateFaultReportStatus,
+  updateVoiceCallSession,
   updateVehicleCheckStatus,
   uploadDriverDocumentFile,
   uploadDriverProfileImage,
@@ -341,25 +343,59 @@ function NativeLicenseGate({ companyName = 'Azienda', onRefresh, onSignOut, prof
   )
 }
 
-function IncomingVoiceCallOverlay({ notice, onDismiss, onOpen }) {
+function IncomingVoiceCallOverlay({ notice, onAnswer, onDecline, onDismiss, onEnd }) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  useEffect(() => {
+    if (!notice) {
+      setElapsedSeconds(0)
+      return undefined
+    }
+
+    const startedAt = notice.phase === 'active'
+      ? notice.answeredAt || notice.startedAt || new Date().toISOString()
+      : notice.startedAt || new Date().toISOString()
+
+    function updateElapsed() {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)))
+    }
+
+    updateElapsed()
+    const interval = setInterval(updateElapsed, 1000)
+    return () => clearInterval(interval)
+  }, [notice?.answeredAt, notice?.id, notice?.phase, notice?.startedAt])
+
   if (!notice) return null
+
+  const isIncoming = notice.phase === 'incoming'
+  const isActive = notice.phase === 'active'
+  const isOutgoing = notice.phase === 'outgoing'
+  const actionLabel = isIncoming ? 'Chiamata in arrivo' : isOutgoing ? 'Sto chiamando' : 'Chiamata attiva'
 
   return (
     <View style={styles.incomingCallOverlay}>
       <View style={styles.incomingCallHalo}>
         <Ionicons color={colors.ink} name="call" size={42} />
       </View>
-      <Text style={styles.incomingCallEyebrow}>Chiamata Vygo</Text>
+      <Text style={styles.incomingCallEyebrow}>{actionLabel}</Text>
       <Text numberOfLines={2} style={styles.incomingCallTitle}>{notice.title}</Text>
+      {isActive ? <Text style={styles.incomingCallTimer}>{formatNativeCallDuration(elapsedSeconds)}</Text> : null}
       {notice.body ? <Text style={styles.incomingCallBody}>{notice.body}</Text> : null}
-      <View style={styles.incomingCallActions}>
-        <Pressable onPress={onDismiss} style={[styles.incomingCallButton, styles.incomingCallButtonMuted]}>
-          <Ionicons color="#e2e8f0" name="close" size={21} />
-          <Text style={styles.incomingCallButtonMutedText}>Ignora</Text>
-        </Pressable>
-        <Pressable onPress={onOpen} style={[styles.incomingCallButton, styles.incomingCallButtonPrimary]}>
-          <Ionicons color={colors.ink} name="chatbubble-ellipses" size={21} />
-          <Text style={styles.incomingCallButtonText}>Apri chat</Text>
+      <View style={[styles.incomingCallActions, !isIncoming && styles.incomingCallSingleAction]}>
+        {isIncoming ? (
+          <Pressable onPress={onDecline || onDismiss} style={[styles.incomingCallButton, styles.incomingCallButtonMuted]}>
+            <Ionicons color="#e2e8f0" name="close" size={21} />
+            <Text style={styles.incomingCallButtonMutedText}>Rifiuta</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={isIncoming ? onAnswer : onEnd}
+          style={[styles.incomingCallButton, isIncoming ? styles.incomingCallButtonPrimary : styles.incomingCallButtonDanger]}
+        >
+          <Ionicons color={isIncoming ? colors.ink : '#ffffff'} name={isIncoming ? 'call' : 'close'} size={21} />
+          <Text style={[styles.incomingCallButtonText, !isIncoming && styles.incomingCallButtonDangerText]}>
+            {isIncoming ? 'Rispondi' : isOutgoing ? 'Annulla' : 'Termina'}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -566,11 +602,35 @@ function isVoiceCallChatMessage(message = {}) {
   return String(message.body ?? '').trim().startsWith('[Chiamata vocale]')
 }
 
+function getVoiceCallIdFromMessage(message = {}) {
+  const match = String(message.body ?? '').match(/\[call:([0-9a-f-]{20,})\]/i)
+  return match?.[1] ?? ''
+}
+
 function getVoiceCallPreviewText(message = {}) {
   return String(message.body ?? '')
     .replace('[Chiamata vocale]', '')
+    .replace(/\[call:[^\]]+\]/gi, '')
     .replace('Audio live in preparazione: confermate qui in chat se potete parlare.', '')
     .trim()
+}
+
+function getNativeChatNotificationFields(body = '', fallbackType = 'chat') {
+  const message = { body }
+  const isVoiceCall = isVoiceCallChatMessage(message)
+
+  return {
+    body: isVoiceCall ? 'Chiamata in arrivo.' : String(body ?? '').trim(),
+    callId: isVoiceCall ? getVoiceCallIdFromMessage(message) : '',
+    notificationType: isVoiceCall ? 'voice_call' : fallbackType,
+  }
+}
+
+function formatNativeCallDuration(totalSeconds = 0) {
+  const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0))
+  const minutes = Math.floor(safeSeconds / 60)
+  const seconds = String(safeSeconds % 60).padStart(2, '0')
+  return `${minutes}:${seconds}`
 }
 
 function mergeChatMessage(messages, message) {
@@ -840,6 +900,7 @@ function CamionChiaroApp() {
   const appUpdatePromptRef = useRef(false)
   const nativePushPromptRef = useRef('')
   const incomingVoiceCallMessageIdsRef = useRef(new Set())
+  const incomingCallRingTimerRef = useRef(null)
   const incomingCallSoundPlayer = useAudioPlayer(incomingCallSound, { keepAudioSessionActive: true })
 
   const driver = context?.drivers?.[0] ?? null
@@ -933,25 +994,43 @@ function CamionChiaroApp() {
   }
 
   function buildNativeVoiceCallMessage(callerName = 'Vygo', targetName = 'questo contatto') {
-    return `[Chiamata vocale] ${callerName} ha richiesto una chiamata con ${targetName}. Audio live in preparazione: confermate qui in chat se potete parlare.`
+    return `[Chiamata vocale] ${callerName} sta chiamando ${targetName}.`
+  }
+
+  function buildNativeVoiceCallMessageWithId(callerName = 'Vygo', targetName = 'questo contatto', callId = '') {
+    return `${buildNativeVoiceCallMessage(callerName, targetName)}${callId ? ` [call:${callId}]` : ''}`
+  }
+
+  function stopIncomingVoiceCallSignal() {
+    if (incomingCallRingTimerRef.current) {
+      clearInterval(incomingCallRingTimerRef.current)
+      incomingCallRingTimerRef.current = null
+    }
   }
 
   function playIncomingVoiceCallSignal() {
+    stopIncomingVoiceCallSignal()
     triggerHaptic('critical')
 
-    if (!chatSoundEnabled) return
-
-    ;[0, 850, 1700].forEach((delay) => {
-      setTimeout(() => {
+    function ringOnce() {
+      if (chatSoundEnabled) {
         try {
           incomingCallSoundPlayer.seekTo(0)
           incomingCallSoundPlayer.play()
         } catch {
           // La chiamata deve restare visibile anche se il telefono blocca il suono.
         }
-      }, delay)
-    })
+      }
+      triggerHaptic('critical')
+    }
+
+    ringOnce()
+    incomingCallRingTimerRef.current = setInterval(ringOnce, 1800)
   }
+
+  useEffect(() => () => {
+    stopIncomingVoiceCallSignal()
+  }, [])
 
   function showIncomingVoiceCall(message, options = {}) {
     if (!isVoiceCallChatMessage(message)) return
@@ -960,24 +1039,46 @@ function CamionChiaroApp() {
     if (incomingVoiceCallMessageIdsRef.current.has(messageId)) return
     incomingVoiceCallMessageIdsRef.current.add(messageId)
 
-    setIncomingVoiceCall({
+    const callId = options.callId ?? getVoiceCallIdFromMessage(message)
+    const nextNotice = {
       body: getVoiceCallPreviewText(message),
+      callId,
       driverId: options.driverId ?? message?.driverId ?? '',
+      id: messageId,
       mode: options.mode ?? 'team',
+      phase: options.phase ?? 'incoming',
+      startedAt: message?.createdAt ?? new Date().toISOString(),
       teamThreadId: options.teamThreadId ?? '',
       threadId: message?.threadId ?? '',
       title: options.title || 'Chiamata in arrivo',
-    })
+    }
+
+    if (incomingVoiceCall && ['incoming', 'outgoing', 'active'].includes(incomingVoiceCall.phase)) {
+      const endedAt = new Date().toISOString()
+      if (callId) {
+        void updateVoiceCallSession(callId, {
+          durationSeconds: 0,
+          endedAt,
+          notes: 'Occupato in altra chiamata Vygo.',
+          status: 'failed',
+        })
+      }
+      void writeNativeVoiceCallLogMessage(nextNotice, `${getNativeVoiceCallActorName()} risulta occupato in un altra chiamata.`)
+      return
+    }
+
+    setIncomingVoiceCall(nextNotice)
     playIncomingVoiceCallSignal()
   }
 
   async function openIncomingVoiceCall() {
     const notice = incomingVoiceCall
-    setIncomingVoiceCall(null)
+    stopIncomingVoiceCallSignal()
     if (!notice) return
 
     if (accountType === 'company') {
       if (notice.mode === 'team' && notice.teamThreadId) {
+        setIncomingVoiceCall(null)
         const targetThread = (companyContext?.teamChatThreads ?? []).find((thread) => thread.id === notice.teamThreadId) ?? { id: notice.teamThreadId }
         await handleSelectCompanyTeamThread(targetThread)
         return
@@ -985,21 +1086,132 @@ function CamionChiaroApp() {
 
       const targetDriver = (companyContext?.drivers ?? []).find((entry) => entry.id === notice.driverId)
       if (targetDriver) {
+        setIncomingVoiceCall(null)
         await handleSelectCompanyDriver(targetDriver)
         return
       }
 
+      setIncomingVoiceCall(null)
       openNativeChatTab()
       return
     }
 
     if (notice.mode === 'team' && notice.teamThreadId) {
+      setIncomingVoiceCall(null)
       const targetThread = (context?.teamChatThreads ?? []).find((thread) => thread.id === notice.teamThreadId) ?? { id: notice.teamThreadId }
       await handleSelectDriverTeamThread(targetThread)
       return
     }
 
+    setIncomingVoiceCall(null)
     openDriverChat('company')
+  }
+
+  function getNativeVoiceCallActorName() {
+    if (accountType === 'company') return companyName || 'Azienda'
+    return driver?.name || actorPerson?.name || 'Persona'
+  }
+
+  function getNativeVoiceCallSenderRole() {
+    if (accountType === 'company') return 'company'
+    if (actorPerson?.department === 'warehouse') return 'warehouse'
+    if (actorPerson?.department === 'office') return 'office'
+    return 'driver'
+  }
+
+  async function writeNativeVoiceCallLogMessage(notice, body) {
+    const companyId = currentCompanyId
+    if (!companyId || !notice?.mode || !body) return
+
+    if (notice.mode === 'team' && notice.teamThreadId) {
+      await sendTeamChatMessage({
+        body,
+        companyId,
+        senderPersonId: accountType === 'company' ? '' : actorPerson?.id ?? '',
+        senderRole: getNativeVoiceCallSenderRole(),
+        threadId: notice.teamThreadId,
+      })
+      return
+    }
+
+    if (accountType === 'company') {
+      await sendCompanyChatMessage({
+        body,
+        companyId,
+        driverId: notice.driverId,
+        threadId: notice.threadId,
+      })
+      return
+    }
+
+    await sendChatMessage({
+      body,
+      companyId,
+      driverId: driver?.id || notice.driverId,
+      threadId: notice.threadId,
+    })
+  }
+
+  async function answerIncomingVoiceCall() {
+    const notice = incomingVoiceCall
+    if (!notice) return
+
+    const answeredAt = new Date().toISOString()
+    stopIncomingVoiceCallSignal()
+    if (notice.callId) {
+      await updateVoiceCallSession(notice.callId, {
+        answeredAt,
+        status: 'accepted',
+      })
+    }
+    await writeNativeVoiceCallLogMessage(notice, `Chiamata risposta da ${getNativeVoiceCallActorName()}.`)
+    setIncomingVoiceCall({
+      ...notice,
+      answeredAt,
+      body: 'Chiamata live attiva. Vygo non registra audio.',
+      phase: 'active',
+      title: notice.title.replace(' ti sta chiamando', ''),
+    })
+  }
+
+  async function declineIncomingVoiceCall() {
+    const notice = incomingVoiceCall
+    if (!notice) return
+
+    stopIncomingVoiceCallSignal()
+    const endedAt = new Date().toISOString()
+    if (notice.callId) {
+      await updateVoiceCallSession(notice.callId, {
+        durationSeconds: 0,
+        endedAt,
+        status: 'declined',
+      })
+    }
+    await writeNativeVoiceCallLogMessage(notice, `Chiamata rifiutata da ${getNativeVoiceCallActorName()}.`)
+    setIncomingVoiceCall(null)
+  }
+
+  async function endNativeVoiceCall() {
+    const notice = incomingVoiceCall
+    if (!notice) return
+
+    stopIncomingVoiceCallSignal()
+    const endedAt = new Date().toISOString()
+    const startedAt = notice.answeredAt || notice.startedAt || endedAt
+    const durationSeconds = Math.max(0, Math.floor((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 1000))
+
+    if (notice.callId) {
+      await updateVoiceCallSession(notice.callId, {
+        durationSeconds,
+        endedAt,
+        status: 'ended',
+      })
+    }
+    await writeNativeVoiceCallLogMessage(
+      notice,
+      `Chiamata terminata da ${getNativeVoiceCallActorName()}. Durata ${formatNativeCallDuration(durationSeconds)}.`,
+    )
+    setIncomingVoiceCall(null)
   }
 
   async function showNativeVoiceCallNotice(callRequest = {}) {
@@ -1024,7 +1236,6 @@ function CamionChiaroApp() {
         : 'driver'
     const callerRole = isCompanyActor ? 'company' : personSenderRole
     const callerName = isCompanyActor ? companyName : driver?.name ?? actorPerson?.name ?? 'Persona'
-    const callMessage = buildNativeVoiceCallMessage(callerName, targetName)
     const activeTeamThread = isCompanyActor ? selectedCompanyTeamThread : selectedDriverTeamThread
     const activeDirectDriver = isCompanyActor ? selectedCompanyDriver : driver
     const activeDirectThread = isCompanyActor ? companyChatThread : chatThread
@@ -1044,11 +1255,24 @@ function CamionChiaroApp() {
         return false
       }
 
+      const callId = callResult.data?.call?.id ?? ''
+      const callMessage = buildNativeVoiceCallMessageWithId(callerName, targetName, callId)
       const sent = isCompanyActor
         ? await handleSendCompanyTeamChatMessage(callMessage)
         : await handleSendDriverTeamChatMessage(callMessage)
 
-      if (sent) Alert.alert('Chiamata inviata', 'Richiesta chiamata inviata in chat.')
+      if (sent) {
+        setIncomingVoiceCall({
+          body: 'In attesa di risposta. Vygo non registra audio.',
+          callId,
+          id: `outgoing-${callId || Date.now()}`,
+          mode: 'team',
+          phase: 'outgoing',
+          startedAt: callResult.data?.call?.startedAt ?? new Date().toISOString(),
+          teamThreadId: activeTeamThread.id,
+          title: targetName,
+        })
+      }
       return sent
     }
 
@@ -1080,11 +1304,25 @@ function CamionChiaroApp() {
       setChatThread(callResult.data.thread)
     }
 
+    const callId = callResult.data?.call?.id ?? ''
+    const callMessage = buildNativeVoiceCallMessageWithId(callerName, targetName, callId)
     const sent = isCompanyActor
       ? await handleSendCompanyChatMessage(callMessage)
       : await handleSendChatMessage(callMessage)
 
-    if (sent) Alert.alert('Chiamata inviata', 'Richiesta chiamata inviata in chat.')
+    if (sent) {
+      setIncomingVoiceCall({
+        body: 'In attesa di risposta. Vygo non registra audio.',
+        callId,
+        driverId: activeDirectDriver.id,
+        id: `outgoing-${callId || Date.now()}`,
+        mode: isCompanyActor ? 'driver' : 'company',
+        phase: 'outgoing',
+        startedAt: callResult.data?.call?.startedAt ?? new Date().toISOString(),
+        threadId: callResult.data?.thread?.id ?? activeDirectThread?.id ?? '',
+        title: targetName,
+      })
+    }
     return sent
   }
 
@@ -1802,6 +2040,42 @@ function CamionChiaroApp() {
   }, [accountType, activeTab, actorPersonId, currentPerson?.companyId, driver?.companyId, driver?.id, driverChatMode, selectedDriverTeamThread?.id, selectedDriverTeamThreadId])
 
   useEffect(() => {
+    if (!currentCompanyId) return undefined
+
+    const unsubscribe = subscribeToVoiceCallSessions({
+      companyId: currentCompanyId,
+      onCall: (call) => {
+        if (!call?.id) return
+
+        setIncomingVoiceCall((currentCall) => {
+          if (!currentCall?.callId || currentCall.callId !== call.id) return currentCall
+
+          if (call.status === 'accepted') {
+            stopIncomingVoiceCallSignal()
+            return {
+              ...currentCall,
+              answeredAt: call.answeredAt || new Date().toISOString(),
+              body: 'Chiamata live attiva. Vygo non registra audio.',
+              phase: 'active',
+            }
+          }
+
+          if (['declined', 'ended', 'failed', 'missed'].includes(call.status)) {
+            stopIncomingVoiceCallSignal()
+            return null
+          }
+
+          return currentCall
+        })
+      },
+    })
+
+    return () => {
+      unsubscribe?.()
+    }
+  }, [currentCompanyId])
+
+  useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
 
     let refreshTimer = null
@@ -2418,12 +2692,14 @@ function CamionChiaroApp() {
 
     if (result.data?.thread && !chatThread) setChatThread(result.data.thread)
     if (result.data?.message) {
+      const notificationFields = getNativeChatNotificationFields(body, 'chat')
       setChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
       clearDriverUnreadMessages()
       triggerHaptic('light')
       void notifyPhone({
-        body: body.trim() || (attachment?.uri ? 'Allegato in chat.' : 'Nuovo messaggio.'),
-        notificationType: 'chat',
+        body: notificationFields.body || (attachment?.uri ? 'Allegato in chat.' : 'Nuovo messaggio.'),
+        callId: notificationFields.callId,
+        notificationType: notificationFields.notificationType,
         tag: `chat-company-${result.data.thread?.id ?? chatThread?.id ?? driver.id}`,
         targetRole: 'company',
         threadId: result.data.thread?.id ?? chatThread?.id ?? '',
@@ -2517,11 +2793,13 @@ function CamionChiaroApp() {
     }
 
     if (result.data?.message) {
+      const notificationFields = getNativeChatNotificationFields(body, 'team_chat')
       setDriverTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
       triggerHaptic('light')
       void notifyPhone({
-        body: body.trim() || (attachment?.uri ? 'Allegato nel gruppo.' : 'Nuovo messaggio.'),
-        notificationType: 'team_chat',
+        body: notificationFields.body || (attachment?.uri ? 'Allegato nel gruppo.' : 'Nuovo messaggio.'),
+        callId: notificationFields.callId,
+        notificationType: notificationFields.notificationType,
         tag: `team-chat-${selectedDriverTeamThread.id}`,
         targetRole: 'team',
         threadId: selectedDriverTeamThread.id,
@@ -2625,12 +2903,14 @@ function CamionChiaroApp() {
 
     if (result.data?.thread && !companyChatThread) setCompanyChatThread(result.data.thread)
     if (result.data?.message) {
+      const notificationFields = getNativeChatNotificationFields(body, 'chat')
       setCompanyChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
       triggerHaptic('light')
       void notifyPhone({
-        body: body.trim() || (attachment?.uri ? 'Allegato in chat.' : 'Nuovo messaggio.'),
+        body: notificationFields.body || (attachment?.uri ? 'Allegato in chat.' : 'Nuovo messaggio.'),
+        callId: notificationFields.callId,
         driverId: selectedCompanyDriver.id,
-        notificationType: 'chat',
+        notificationType: notificationFields.notificationType,
         tag: `chat-${result.data.thread?.id ?? companyChatThread?.id ?? selectedCompanyDriver.id}`,
         targetRole: 'driver',
         threadId: result.data.thread?.id ?? companyChatThread?.id ?? '',
@@ -2680,11 +2960,13 @@ function CamionChiaroApp() {
     }
 
     if (result.data?.message) {
+      const notificationFields = getNativeChatNotificationFields(body, 'team_chat')
       setCompanyTeamChatMessages((currentMessages) => mergeChatMessage(currentMessages, result.data.message))
       triggerHaptic('light')
       void notifyPhone({
-        body: body.trim() || (attachment?.uri ? 'Allegato nel gruppo.' : 'Nuovo messaggio.'),
-        notificationType: 'team_chat',
+        body: notificationFields.body || (attachment?.uri ? 'Allegato nel gruppo.' : 'Nuovo messaggio.'),
+        callId: notificationFields.callId,
+        notificationType: notificationFields.notificationType,
         tag: `team-chat-${selectedCompanyTeamThread.id}`,
         targetRole: 'team',
         threadId: selectedCompanyTeamThread.id,
@@ -3918,8 +4200,10 @@ function CamionChiaroApp() {
       />
       <IncomingVoiceCallOverlay
         notice={incomingVoiceCall}
+        onAnswer={answerIncomingVoiceCall}
+        onDecline={declineIncomingVoiceCall}
         onDismiss={() => setIncomingVoiceCall(null)}
-        onOpen={openIncomingVoiceCall}
+        onEnd={endNativeVoiceCall}
       />
     </View>
   )
@@ -3964,9 +4248,24 @@ const styles = StyleSheet.create({
   incomingCallButtonPrimary: {
     backgroundColor: colors.cyan,
   },
+  incomingCallButtonDanger: {
+    backgroundColor: '#dc2626',
+  },
+  incomingCallButtonDangerText: {
+    color: '#ffffff',
+  },
   incomingCallButtonText: {
     color: colors.ink,
     fontSize: 14,
+    fontWeight: '900',
+  },
+  incomingCallChatLink: {
+    marginTop: 18,
+    padding: 8,
+  },
+  incomingCallChatLinkText: {
+    color: '#93c5fd',
+    fontSize: 13,
     fontWeight: '900',
   },
   incomingCallEyebrow: {
@@ -4001,6 +4300,9 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 80,
   },
+  incomingCallSingleAction: {
+    maxWidth: 250,
+  },
   incomingCallTitle: {
     color: '#ffffff',
     fontSize: 30,
@@ -4010,6 +4312,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     maxWidth: 340,
     textAlign: 'center',
+  },
+  incomingCallTimer: {
+    color: colors.cyan,
+    fontSize: 38,
+    fontWeight: '900',
+    letterSpacing: 0,
+    marginTop: 14,
   },
   authShell: {
     backgroundColor: colors.background,

@@ -1771,6 +1771,61 @@ export async function createVoiceCallSession({
   }
 }
 
+export async function updateVoiceCallSession(callId, patch = {}) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!callId) return { data: null, error: { message: 'Chiamata mancante.' } }
+
+  const nextPatch = {}
+  if (patch.status) nextPatch.status = patch.status
+  if (Object.prototype.hasOwnProperty.call(patch, 'answeredAt')) nextPatch.answered_at = patch.answeredAt || null
+  if (Object.prototype.hasOwnProperty.call(patch, 'endedAt')) nextPatch.ended_at = patch.endedAt || null
+  if (Object.prototype.hasOwnProperty.call(patch, 'durationSeconds')) nextPatch.duration_seconds = Math.max(0, Number(patch.durationSeconds) || 0)
+  if (Object.prototype.hasOwnProperty.call(patch, 'notes')) nextPatch.notes = patch.notes || null
+
+  const { data, error } = await supabase
+    .from('voice_call_sessions')
+    .update(nextPatch)
+    .eq('id', callId)
+    .select(voiceCallSessionSelect)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Manca SQL chiamate vocali. Esegui il file 49_chiamate_vocali_preparazione.sql in Supabase.' },
+    }
+  }
+
+  if (error) return { data: null, error }
+  return { data: mapVoiceCallSession(data), error: null }
+}
+
+export function subscribeToVoiceCallSessions({ companyId, onCall }) {
+  if (!isSupabaseConfigured || !companyId) return () => {}
+
+  const channel = supabase
+    .channel(`voice-call-sessions-${companyId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'voice_call_sessions',
+      },
+      (payload) => {
+        const row = payload.new ?? payload.old
+        if (!row) return
+        onCall?.(mapVoiceCallSession(row), payload)
+      },
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
 export async function updateChatMessageReaction(message, actorRole, reaction) {
   if (!isSupabaseConfigured || !message?.id || !['company', 'driver'].includes(actorRole)) {
     return { data: null, error: null }

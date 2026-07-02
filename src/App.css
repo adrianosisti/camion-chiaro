@@ -431,6 +431,17 @@
   border-block: 1px solid #dff3f8;
 }
 
+.public-problem-section {
+  padding-top: clamp(24px, 4vw, 42px);
+}
+
+.public-value-section {
+  border-block: 1px solid #dff3f8;
+  background:
+    linear-gradient(135deg, rgba(19, 197, 223, 0.14), rgba(255, 255, 255, 0) 46%),
+    #f8fdff;
+}
+
 .public-steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -4514,6 +4525,155 @@
   font-size: 0.76rem;
   font-weight: 760;
   line-height: 1.25;
+}
+
+.admin-economy-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(19, 197, 223, 0.18), rgba(255, 255, 255, 0) 58%),
+    #ffffff;
+  padding: 12px;
+  box-shadow: 0 18px 44px rgba(2, 132, 199, 0.08);
+}
+
+.admin-economy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-economy-head h3,
+.admin-economy-head p {
+  margin: 0;
+}
+
+.admin-economy-head h3 {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.admin-economy-head > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 8px;
+  background: #022c22;
+  color: #ccfbf1;
+  font-size: 0.72rem;
+  font-weight: 850;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.admin-economy-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-economy-metrics article {
+  display: grid;
+  gap: 4px;
+  min-height: 66px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.92);
+  padding: 9px;
+}
+
+.admin-economy-metrics span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 820;
+  line-height: 1.2;
+}
+
+.admin-economy-metrics strong {
+  color: var(--ink);
+  font-size: 0.98rem;
+  line-height: 1.1;
+}
+
+.admin-economy-metrics .is-positive {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.admin-economy-metrics .is-negative {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.admin-economy-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 10px;
+}
+
+.admin-cost-list,
+.admin-scenario-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-cost-list > strong,
+.admin-scenario-list > strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.admin-cost-list span,
+.admin-scenario-list span {
+  display: grid;
+  grid-template-columns: minmax(74px, 0.6fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid #e0f2fe;
+  border-radius: 8px;
+  background: #f8fdff;
+  padding: 6px 8px;
+}
+
+.admin-scenario-list span {
+  grid-template-columns: minmax(76px, 0.8fr) minmax(0, 1fr) auto;
+}
+
+.admin-cost-list small,
+.admin-scenario-list small {
+  color: #0369a1;
+  font-size: 0.67rem;
+  font-weight: 850;
+}
+
+.admin-cost-list b,
+.admin-scenario-list b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-cost-list em,
+.admin-scenario-list em {
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.admin-economy-note {
+  margin: 0;
+  color: #475569;
+  font-size: 0.72rem;
+  line-height: 1.4;
 }
 
 .admin-layout {
@@ -9919,6 +10079,8 @@
   .public-steps,
   .public-extra-pricing,
   .admin-company-metrics,
+  .admin-economy-grid,
+  .admin-economy-metrics,
   .admin-kpi-grid,
   .cost-insight-grid,
   .monthly-archive-strip,
@@ -10315,6 +10477,8 @@
   .fault-cost-grid,
   .fault-cost-controls,
   .admin-company-metrics,
+  .admin-economy-grid,
+  .admin-economy-metrics,
   .admin-kpi-grid,
   .admin-toolbar,
   .monthly-archive-strip,
@@ -10325,6 +10489,7 @@
   }
 
   .reports-hero-panel,
+  .admin-economy-head,
   .admin-hero-panel,
   .admin-locked-panel,
   .fault-cost-report-header,
@@ -10335,6 +10500,15 @@
 
   .monthly-archive-heading span {
     text-align: left;
+  }
+
+  .admin-economy-head {
+    align-items: start;
+  }
+
+  .admin-cost-list span,
+  .admin-scenario-list span {
+    grid-template-columns: 1fr;
   }
 
   .fault-cost-report-actions,

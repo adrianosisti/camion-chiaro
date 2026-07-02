@@ -286,6 +286,23 @@ const billingCheckoutPlans = [
     title: 'Fleet 50',
   },
 ]
+const vygoBaseMonthlyCostItems = [
+  { cents: 18000, category: 'Societa', label: 'Commercialista stimato' },
+  { cents: 3000, category: 'Cloud', label: 'Supabase' },
+  { cents: 2000, category: 'Cloud', label: 'Netlify Pro' },
+  { cents: 2400, category: 'Sviluppo', label: 'Codex / ChatGPT' },
+  { cents: 700, category: 'Operativo', label: 'Email dominio' },
+  { cents: 2500, category: 'Societa', label: 'Banca, PEC, dominio' },
+  { cents: 400, category: 'Operativo', label: 'Dominio vy-go.com' },
+  { cents: 825, category: 'Store', label: 'Apple Developer' },
+  { cents: 200, category: 'Store', label: 'Google Play' },
+  { cents: 7500, category: 'Riserva', label: 'Buffer cloud e imprevisti' },
+]
+const vygoBaseMonthlyCostCents = vygoBaseMonthlyCostItems.reduce((total, item) => total + item.cents, 0)
+const vygoSupportCostPerCompanyCents = 1200
+const vygoFleet10MonthlyPriceCents = 44900
+const vygoEstimatedTaxReserveRate = 0.35
+const vygoEconomyScenarios = [1, 2, 5, 10]
 const billingPlanCapabilities = {
   business: {
     chat: true,
@@ -623,7 +640,7 @@ const translations = {
     'auth.driverUsernameLabel': 'Nome utente autista',
     'auth.driverUsernamePlaceholder': 'Es. mario.rossi',
     'auth.emailPasswordMissing': 'Inserisci email aziendale e password.',
-    'auth.heroText': 'Accedi o registra l azienda. Vygo collega persone, mezzi, documenti, notifiche, chat e costi in un unico spazio ordinato.',
+    'auth.heroText': 'Il sistema operativo per aziende di trasporto: persone, mezzi, documenti, chat, scadenze e costi in un unico posto, senza rincorrere WhatsApp, Excel e telefonate.',
     'auth.heroTitle': 'Login azienda e autista, tutto nello stesso posto.',
     'auth.passwordLabel': 'Password',
     'auth.passwordPlaceholder': 'Password',
@@ -634,7 +651,7 @@ const translations = {
     'auth.proofCosts': 'Costi mezzi piu chiari',
     'auth.proofDriver': 'Area autista',
     'auth.proofOperations': 'Attivita tracciate',
-    'auth.proofSecurity': 'RLS Supabase',
+    'auth.proofSecurity': 'Dati separati per azienda',
     'auth.registrationSent': 'Registrazione inviata. Controlla la mail per confermare l account.',
     'auth.signinButton': 'Accedi',
     'auth.signupButton': 'Registrati',
@@ -644,7 +661,7 @@ const translations = {
     'driver.emptyTitle': 'Area autista non disponibile',
     'driver.loadingDetail': 'Sto recuperando i dati del profilo.',
     'driver.loadingTitle': 'Caricamento area autista',
-    'driver.noteBody': 'Quando Supabase sara collegato, questa vista leggera solo le scadenze dell autista loggato e mostrera avvisi personali, documenti caricati, check mattutini e segnalazioni guasto.',
+    'driver.noteBody': 'Qui vedrai avvisi personali, documenti caricati, check mattutini e segnalazioni guasto collegati al tuo profilo.',
     'driver.noteOverline': 'Notifiche',
     'driver.noteTitle': 'Qui arrivano gli avvisi in app',
     'homeCommand.aria': 'Comandi rapidi azienda',
@@ -665,7 +682,7 @@ const translations = {
     'homeCommand.quickAddLabel': 'Aggiungi',
     'homeCommand.settingsDetail': 'Logo, lingua, notifiche e fatture',
     'homeCommand.settingsLabel': 'Impostazioni',
-    'homeCommand.subtitle': 'Ogni pulsante apre una sezione precisa: la home resta pulita, le pratiche restano lavorabili.',
+    'homeCommand.subtitle': 'Le aree operative principali sempre a portata di mano.',
     'homeCommand.title': 'Comandi azienda',
     'homeInsight.deadlineCleanDetail': 'Apri scadenze per pianificare i prossimi rinnovi.',
     'homeInsight.deadlineCleanValue': 'Nessuna urgente',
@@ -690,7 +707,7 @@ const translations = {
     'homeStatus.ready': 'Attive',
     'homeStatus.storageDetail': '{files} file',
     'homeStatus.sync': 'Sistema',
-    'homeStatus.syncDemo': 'Demo locale',
+    'homeStatus.syncDemo': 'Ambiente locale',
     'homeStatus.syncReady': 'Collegato',
     'homeStatus.waiting': 'Da attivare',
     'homeFlow.archive': 'Archivio',
@@ -779,13 +796,13 @@ const translations = {
     'support.launch': 'Presentazione',
     'support.manual': 'Manuale rapido',
     'support.overline': 'Centro supporto',
-    'support.subtitle': 'FAQ, manuale, script video e idee commerciali sempre a portata di mano.',
+    'support.subtitle': 'FAQ, manuale e assistenza guidata per usare Vygo senza confusione.',
     'support.title': 'Guida e materiali',
     'support.videos': 'Video',
     'support.vision': 'Visione prodotto',
-    'sync.addKeys': 'Aggiungi le chiavi .env',
+    'sync.addKeys': 'Configurazione in corso',
     'sync.connected': 'Server connesso',
-    'sync.demo': 'Demo locale',
+    'sync.demo': 'Ambiente locale',
     'topbar.searchPlaceholder': 'Cerca patente, targa, autista...',
     'topbar.searchSr': 'Cerca scadenze',
   },
@@ -811,7 +828,7 @@ const translations = {
     'auth.driverUsernameLabel': 'Driver username',
     'auth.driverUsernamePlaceholder': 'Example: mario.rossi',
     'auth.emailPasswordMissing': 'Enter company email and password.',
-    'auth.heroText': 'Sign in or register the company. Vygo connects people, vehicles, documents, notifications, chat and costs in one organized workspace.',
+    'auth.heroText': 'The operating system for transport companies: people, vehicles, documents, chat, deadlines and costs in one place, without chasing WhatsApp, spreadsheets and phone calls.',
     'auth.heroTitle': 'Company and driver login, all in one place.',
     'auth.passwordLabel': 'Password',
     'auth.passwordPlaceholder': 'Password',
@@ -822,7 +839,7 @@ const translations = {
     'auth.proofCosts': 'Clearer vehicle costs',
     'auth.proofDriver': 'Driver area',
     'auth.proofOperations': 'Tracked operations',
-    'auth.proofSecurity': 'Supabase RLS',
+    'auth.proofSecurity': 'Company data separated',
     'auth.registrationSent': 'Registration sent. Check your email to confirm the account.',
     'auth.signinButton': 'Sign in',
     'auth.signupButton': 'Register',
@@ -832,7 +849,7 @@ const translations = {
     'driver.emptyTitle': 'Driver area unavailable',
     'driver.loadingDetail': 'Retrieving profile data.',
     'driver.loadingTitle': 'Loading driver area',
-    'driver.noteBody': 'When Supabase is connected, this view will read only the signed-in driver data and show personal alerts, uploaded documents, morning checks and fault reports.',
+    'driver.noteBody': 'Here you will see personal alerts, uploaded documents, morning checks and fault reports linked to your profile.',
     'driver.noteOverline': 'Notifications',
     'driver.noteTitle': 'In-app alerts arrive here',
     'homeCommand.aria': 'Company quick commands',
@@ -853,7 +870,7 @@ const translations = {
     'homeCommand.quickAddLabel': 'Add',
     'homeCommand.settingsDetail': 'Logo, language, notifications and invoices',
     'homeCommand.settingsLabel': 'Settings',
-    'homeCommand.subtitle': 'Each button opens a precise area: the home stays clean, every case stays workable.',
+    'homeCommand.subtitle': 'The main operating areas always within reach.',
     'homeCommand.title': 'Company commands',
     'homeInsight.deadlineCleanDetail': 'Open deadlines to plan the next renewals.',
     'homeInsight.deadlineCleanValue': 'Nothing urgent',
@@ -878,7 +895,7 @@ const translations = {
     'homeStatus.ready': 'Active',
     'homeStatus.storageDetail': '{files} files',
     'homeStatus.sync': 'System',
-    'homeStatus.syncDemo': 'Local demo',
+    'homeStatus.syncDemo': 'Local environment',
     'homeStatus.syncReady': 'Connected',
     'homeStatus.waiting': 'To enable',
     'homeFlow.archive': 'Archive',
@@ -967,13 +984,13 @@ const translations = {
     'support.launch': 'Presentation',
     'support.manual': 'Quick manual',
     'support.overline': 'Support center',
-    'support.subtitle': 'FAQ, manual, video scripts and sales ideas always at hand.',
+    'support.subtitle': 'FAQ, manual and guided help to use Vygo without confusion.',
     'support.title': 'Guide and materials',
     'support.videos': 'Videos',
     'support.vision': 'Product vision',
-    'sync.addKeys': 'Add .env keys',
+    'sync.addKeys': 'Configuration in progress',
     'sync.connected': 'Server online',
-    'sync.demo': 'Local demo',
+    'sync.demo': 'Local environment',
     'topbar.searchPlaceholder': 'Search licence, plate, driver...',
     'topbar.searchSr': 'Search deadlines',
   },
@@ -999,7 +1016,7 @@ const translations = {
     'auth.driverUsernameLabel': 'Usuario conductor',
     'auth.driverUsernamePlaceholder': 'Ej. mario.rossi',
     'auth.emailPasswordMissing': 'Introduce email de empresa y contraseña.',
-    'auth.heroText': 'Accede o registra la empresa. Vygo conecta personas, vehiculos, documentos, avisos, chat y costes en un unico espacio ordenado.',
+    'auth.heroText': 'El sistema operativo para empresas de transporte: personas, vehiculos, documentos, chat, vencimientos y costes en un solo lugar.',
     'auth.heroTitle': 'Login de empresa y conductor, todo en el mismo sitio.',
     'auth.passwordLabel': 'Contraseña',
     'auth.passwordPlaceholder': 'Contraseña',
@@ -1010,7 +1027,7 @@ const translations = {
     'auth.proofCosts': 'Costes de vehiculos mas claros',
     'auth.proofDriver': 'Area conductor',
     'auth.proofOperations': 'Operaciones trazadas',
-    'auth.proofSecurity': 'RLS Supabase',
+    'auth.proofSecurity': 'Datos separados por empresa',
     'auth.registrationSent': 'Registro enviado. Revisa el email para confirmar la cuenta.',
     'auth.signinButton': 'Acceder',
     'auth.signupButton': 'Registrarse',
@@ -1020,7 +1037,7 @@ const translations = {
     'driver.emptyTitle': 'Area conductor no disponible',
     'driver.loadingDetail': 'Recuperando datos del perfil.',
     'driver.loadingTitle': 'Cargando area conductor',
-    'driver.noteBody': 'Cuando Supabase este conectado, esta vista leera solo los datos del conductor conectado y mostrara avisos personales, documentos, checks matinales y averias.',
+    'driver.noteBody': 'Aqui veras avisos personales, documentos cargados, checks matinales y averias vinculados a tu perfil.',
     'driver.noteOverline': 'Notificaciones',
     'driver.noteTitle': 'Aqui llegan los avisos en app',
     'homeCommand.aria': 'Comandos rapidos empresa',
@@ -1041,7 +1058,7 @@ const translations = {
     'homeCommand.quickAddLabel': 'Añadir',
     'homeCommand.settingsDetail': 'Logo, idioma, avisos y facturas',
     'homeCommand.settingsLabel': 'Ajustes',
-    'homeCommand.subtitle': 'Cada boton abre un area precisa: la home queda limpia y las tareas siguen listas.',
+    'homeCommand.subtitle': 'Las principales areas operativas siempre a mano.',
     'homeCommand.title': 'Comandos empresa',
     'hero.aria': 'Control de vencimientos',
     'hero.description': 'Una pantalla limpia para ver vencimientos, checks matinales y averias pendientes.',
@@ -1102,13 +1119,13 @@ const translations = {
     'support.launch': 'Presentacion',
     'support.manual': 'Manual rapido',
     'support.overline': 'Centro ayuda',
-    'support.subtitle': 'FAQ, manual, guiones video e ideas comerciales siempre disponibles.',
+    'support.subtitle': 'FAQ, manual y ayuda guiada para usar Vygo sin confusion.',
     'support.title': 'Guia y materiales',
     'support.videos': 'Videos',
     'support.vision': 'Vision producto',
-    'sync.addKeys': 'Añade claves .env',
+    'sync.addKeys': 'Configuracion en curso',
     'sync.connected': 'Servidor conectado',
-    'sync.demo': 'Demo local',
+    'sync.demo': 'Entorno local',
     'topbar.searchPlaceholder': 'Buscar permiso, matricula, conductor...',
     'topbar.searchSr': 'Buscar vencimientos',
   },
@@ -1134,7 +1151,7 @@ const translations = {
     'auth.driverUsernameLabel': 'Utilisateur chauffeur',
     'auth.driverUsernamePlaceholder': 'Ex. mario.rossi',
     'auth.emailPasswordMissing': 'Saisis email entreprise et mot de passe.',
-    'auth.heroText': 'Connectez-vous ou enregistrez l entreprise. Vygo relie personnes, vehicules, documents, alertes, chat et couts dans un seul espace ordonne.',
+    'auth.heroText': 'Le systeme operationnel des entreprises de transport: personnes, vehicules, documents, chat, echeances et couts dans un seul espace.',
     'auth.heroTitle': 'Connexion entreprise et chauffeur, tout au meme endroit.',
     'auth.passwordLabel': 'Mot de passe',
     'auth.passwordPlaceholder': 'Mot de passe',
@@ -1145,7 +1162,7 @@ const translations = {
     'auth.proofCosts': 'Couts vehicules plus clairs',
     'auth.proofDriver': 'Espace chauffeur',
     'auth.proofOperations': 'Operations tracees',
-    'auth.proofSecurity': 'RLS Supabase',
+    'auth.proofSecurity': 'Donnees separees par entreprise',
     'auth.registrationSent': 'Inscription envoyee. Controle ton email pour confirmer le compte.',
     'auth.signinButton': 'Se connecter',
     'auth.signupButton': 'S inscrire',
@@ -1155,7 +1172,7 @@ const translations = {
     'driver.emptyTitle': 'Espace chauffeur indisponible',
     'driver.loadingDetail': 'Recuperation des donnees du profil.',
     'driver.loadingTitle': 'Chargement espace chauffeur',
-    'driver.noteBody': 'Quand Supabase sera connecte, cette vue lira seulement les donnees du chauffeur connecte et affichera alertes personnelles, documents, checks du matin et pannes.',
+    'driver.noteBody': 'Vous verrez ici vos alertes personnelles, documents charges, checks du matin et signalements de panne lies a votre profil.',
     'driver.noteOverline': 'Notifications',
     'driver.noteTitle': 'Les alertes app arrivent ici',
     'homeCommand.aria': 'Commandes rapides entreprise',
@@ -1176,7 +1193,7 @@ const translations = {
     'homeCommand.quickAddLabel': 'Ajouter',
     'homeCommand.settingsDetail': 'Logo, langue, alertes et factures',
     'homeCommand.settingsLabel': 'Reglages',
-    'homeCommand.subtitle': 'Chaque bouton ouvre une zone precise : l accueil reste clair et les dossiers restent traitables.',
+    'homeCommand.subtitle': 'Les principales zones operationnelles toujours a portee de main.',
     'homeCommand.title': 'Commandes entreprise',
     'hero.aria': 'Controle des echeances',
     'hero.description': 'Un ecran clair pour voir tout de suite echeances, checks du matin et pannes a gerer.',
@@ -1237,13 +1254,13 @@ const translations = {
     'support.launch': 'Presentation',
     'support.manual': 'Manuel rapide',
     'support.overline': 'Centre support',
-    'support.subtitle': 'FAQ, manuel, scripts video et idees commerciales toujours disponibles.',
+    'support.subtitle': 'FAQ, manuel et assistance guidee pour utiliser Vygo sans confusion.',
     'support.title': 'Guide et materiels',
     'support.videos': 'Videos',
     'support.vision': 'Vision produit',
-    'sync.addKeys': 'Ajoute les cles .env',
+    'sync.addKeys': 'Configuration en cours',
     'sync.connected': 'Serveur connecte',
-    'sync.demo': 'Demo locale',
+    'sync.demo': 'Environnement local',
     'topbar.searchPlaceholder': 'Chercher permis, plaque, chauffeur...',
     'topbar.searchSr': 'Chercher echeances',
   },
@@ -1269,7 +1286,7 @@ const translations = {
     'auth.driverUsernameLabel': 'Fahrer-Benutzername',
     'auth.driverUsernamePlaceholder': 'z. B. mario.rossi',
     'auth.emailPasswordMissing': 'Firmen-E-Mail und Passwort eingeben.',
-    'auth.heroText': 'Einloggen oder Firma registrieren. Vygo verbindet Personen, Fahrzeuge, Dokumente, Hinweise, Chat und Kosten in einem geordneten Arbeitsbereich.',
+    'auth.heroText': 'Das Betriebssystem fur Transportunternehmen: Personen, Fahrzeuge, Dokumente, Chat, Fristen und Kosten an einem Ort.',
     'auth.heroTitle': 'Login fur Firma und Fahrer, alles an einem Ort.',
     'auth.passwordLabel': 'Passwort',
     'auth.passwordPlaceholder': 'Passwort',
@@ -1280,7 +1297,7 @@ const translations = {
     'auth.proofCosts': 'Klarere Fahrzeugkosten',
     'auth.proofDriver': 'Fahrerbereich',
     'auth.proofOperations': 'Vorgange verfolgt',
-    'auth.proofSecurity': 'Supabase RLS',
+    'auth.proofSecurity': 'Firmendaten getrennt',
     'auth.registrationSent': 'Registrierung gesendet. E-Mail bestatigen, um das Konto zu aktivieren.',
     'auth.signinButton': 'Einloggen',
     'auth.signupButton': 'Registrieren',
@@ -1290,7 +1307,7 @@ const translations = {
     'driver.emptyTitle': 'Fahrerbereich nicht verfugbar',
     'driver.loadingDetail': 'Profildaten werden geladen.',
     'driver.loadingTitle': 'Fahrerbereich wird geladen',
-    'driver.noteBody': 'Wenn Supabase verbunden ist, liest diese Ansicht nur die Daten des angemeldeten Fahrers und zeigt personliche Hinweise, Dokumente, Morgenchecks und Schadenmeldungen.',
+    'driver.noteBody': 'Hier sehen Sie personliche Hinweise, hochgeladene Dokumente, Morgenchecks und Schadenmeldungen zu Ihrem Profil.',
     'driver.noteOverline': 'Benachrichtigungen',
     'driver.noteTitle': 'App-Hinweise kommen hier an',
     'homeCommand.aria': 'Schnellbefehle Firma',
@@ -1311,7 +1328,7 @@ const translations = {
     'homeCommand.quickAddLabel': 'Hinzufugen',
     'homeCommand.settingsDetail': 'Logo, Sprache, Hinweise und Rechnungen',
     'homeCommand.settingsLabel': 'Einstellungen',
-    'homeCommand.subtitle': 'Jeder Button offnet einen klaren Bereich: Startseite sauber, Vorgange weiter bearbeitbar.',
+    'homeCommand.subtitle': 'Die wichtigsten Arbeitsbereiche immer griffbereit.',
     'homeCommand.title': 'Firmenbefehle',
     'hero.aria': 'Fristenkontrolle',
     'hero.description': 'Eine klare Ansicht fur Fristen, Morgenchecks und offene Schaden.',
@@ -1372,17 +1389,465 @@ const translations = {
     'support.launch': 'Prasentation',
     'support.manual': 'Kurzanleitung',
     'support.overline': 'Hilfecenter',
-    'support.subtitle': 'FAQ, Handbuch, Videoskripte und Verkaufsideen immer griffbereit.',
+    'support.subtitle': 'FAQ, Handbuch und gefuhrte Hilfe, damit Vygo klar nutzbar bleibt.',
     'support.title': 'Hilfe und Materialien',
     'support.videos': 'Videos',
     'support.vision': 'Produktvision',
-    'sync.addKeys': '.env-Schlussel hinzufugen',
+    'sync.addKeys': 'Konfiguration lauft',
     'sync.connected': 'Server verbunden',
-    'sync.demo': 'Lokale Demo',
+    'sync.demo': 'Lokale Umgebung',
     'topbar.searchPlaceholder': 'Fuhrerschein, Kennzeichen, Fahrer suchen...',
     'topbar.searchSr': 'Fristen suchen',
   },
 }
+
+const publicLandingCopy = {
+  it: {
+    nav: { product: 'Prodotto', pricing: 'Prezzi', faq: 'FAQ' },
+    problem: {
+      overline: 'Perche nasce Vygo',
+      title: 'Il caos operativo costa piu del canone.',
+      body: 'Molte aziende di trasporto lavorano ancora tra WhatsApp, Excel, telefonate, email e cartelle sparse. Il risultato e tempo perso, documenti dimenticati, scadenze scoperte e poca visibilita sui costi.',
+      cards: [
+        { title: 'Messaggi dispersi', body: 'Le decisioni restano nelle chat personali e diventano difficili da ritrovare.' },
+        { title: 'Scadenze fragili', body: 'Patenti, revisioni, assicurazioni e visite mediche si ricordano spesso troppo tardi.' },
+        { title: 'Documenti sparsi', body: 'Autisti, mezzi e ufficio non hanno sempre lo stesso archivio aggiornato.' },
+        { title: 'Costi invisibili', body: 'Guasti, multe e manutenzioni si vedono davvero solo quando ormai hanno pesato sul bilancio.' },
+      ],
+    },
+    value: {
+      overline: 'Vygo',
+      title: 'Un sistema operativo per tutta l azienda di trasporto.',
+      body: 'Vygo unisce dashboard, app mobile, chat, documenti, check, guasti, scadenze e centro costi. Ogni reparto lavora nello stesso ambiente, con storico e notifiche.',
+      cards: [
+        { title: 'Scadenze e documenti', body: 'Patenti, CQC, visite mediche, libretti, revisioni, assicurazioni e file sempre collegati al soggetto giusto.' },
+        { title: 'Chat aziendale', body: 'Conversazioni singole e gruppi per autisti, ufficio, magazzino e direzione, separate dal caos personale.' },
+        { title: 'Check e guasti', body: 'L autista segnala, l azienda vede, lavora, archivia e mantiene uno storico consultabile.' },
+        { title: 'Centro costi e report', body: 'Spese, multe, manutenzioni e riparazioni filtrabili per periodo, targa, persona o attrezzatura.' },
+      ],
+    },
+    setup: {
+      overline: 'Avviamento',
+      title: 'Non compri solo un accesso: parti ordinato.',
+      body: 'Con lo start-up kit configuriamo azienda, persone, mezzi, prime scadenze e formazione iniziale. L obiettivo e far usare Vygo davvero, non lasciarlo vuoto dopo il login.',
+      steps: [
+        { title: '1. Mappatura', body: 'Inseriamo struttura azienda, reparti, mezzi, strumenti e persone.' },
+        { title: '2. Documenti', body: 'Carichiamo le prime scadenze e impostiamo notifiche operative.' },
+        { title: '3. Prima settimana', body: 'Accompagniamo azienda e utenti fino al primo uso reale.' },
+      ],
+    },
+    pricing: {
+      overline: 'Piani',
+      title: 'Prezzi pensati per il valore reale che portiamo.',
+      body: 'Il piano cresce con mezzi, strumenti e account. Il canone non compra solo una app: compra ordine operativo, notifiche, storico, documenti, report, supporto e meno tempo perso ogni settimana.',
+      plans: [
+        { cta: 'Attiva Start 5', description: 'Vygo completo per piccole flotte: nessuna funzione tagliata, solo limiti piu piccoli su mezzi, account e spazio file.', featured: false, items: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account utenti', 'Tutte le funzioni Vygo incluse', '10 GB file inclusi'], name: 'Start 5', price: '299 euro/mese + IVA' },
+        { cta: 'Attiva Fleet 10', description: 'Stesso Vygo completo, piu capacita operativa per aziende che crescono con mezzi, persone e documenti.', featured: true, items: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account utenti', '20 GB inclusi'], name: 'Fleet 10', price: '449 euro/mese + IVA' },
+        { cta: 'Richiedi attivazione', description: 'Stesse funzioni complete, piu mezzi, piu account e piu spazio per aziende strutturate.', featured: false, items: ['Tutte le funzioni Vygo', '20, 30 o 50 mezzi', 'Strumenti e muletti inclusi', 'Account proporzionati alla flotta', 'Storage da 30 GB in su'], name: 'Fleet 20+', price: 'da 699 euro/mese + IVA' },
+      ],
+      extras: [
+        { title: 'Funzioni incluse', body: 'Tutti i piani hanno chat, gruppi, guasti, check, documenti, scadenze, centro costi e report.' },
+        { title: 'Avviamento', body: 'Start-up kit una tantum per configurazione, anagrafiche iniziali, scadenze e formazione.' },
+        { title: 'Storage extra', body: '20 GB 49 euro/mese + IVA, 50 GB 99 euro/mese + IVA, 100 GB 179 euro/mese + IVA.' },
+        { title: 'Nessun modulo nascosto', body: 'Il prezzo cresce con dimensione flotta, persone e spazio, non con funzioni tagliate.' },
+      ],
+    },
+    faq: {
+      overline: 'FAQ',
+      title: 'Domande veloci prima di mettere ordine.',
+      items: [
+        { title: 'Cosa cambia davvero rispetto a oggi?', body: 'Invece di cercare informazioni tra WhatsApp, fogli, telefono e cartelle, apri Vygo e vedi cosa scade, cosa manca, chi deve agire e quali mezzi hanno problemi.' },
+        { title: 'L autista deve scaricare un app?', body: 'Si. Vygo e previsto come app iOS/Android per autisti, magazzino e azienda. L azienda puo lavorare anche da browser desktop.' },
+        { title: 'Arrivano notifiche sul telefono?', body: 'Si, dopo l attivazione sul dispositivo. Chat, guasti e check critici possono avvisare anche con app chiusa.' },
+        { title: 'Posso usarlo dall ufficio e dal telefono?', body: 'Si. L ufficio lavora da PC, mentre titolare, autisti e personale possono usare l app su telefono.' },
+        { title: 'I costi vengono tracciati?', body: 'Si. Puoi registrare guasti, manutenzioni, multe e spese libere, poi filtrare per periodo, mezzo, persona o attrezzatura.' },
+        { title: 'Perche non basta WhatsApp?', body: 'WhatsApp serve per parlare, non per gestire. Vygo collega messaggi, documenti, guasti, scadenze, notifiche e storico operativo.' },
+      ],
+    },
+  },
+  en: {
+    nav: { product: 'Product', pricing: 'Pricing', faq: 'FAQ' },
+    problem: {
+      overline: 'Why Vygo',
+      title: 'Operational chaos costs more than the subscription.',
+      body: 'Many transport companies still run work through WhatsApp, spreadsheets, calls, emails and scattered folders. That means wasted time, missing documents, forgotten deadlines and poor cost visibility.',
+      cards: [
+        { title: 'Scattered messages', body: 'Decisions stay inside personal chats and become hard to find later.' },
+        { title: 'Fragile deadlines', body: 'Licences, inspections, insurance and medical checks are often remembered too late.' },
+        { title: 'Fragmented documents', body: 'Drivers, vehicles and office teams do not always share the same updated archive.' },
+        { title: 'Hidden costs', body: 'Faults, fines and maintenance become visible only after they hit the accounts.' },
+      ],
+    },
+    value: {
+      overline: 'Vygo',
+      title: 'An operating system for the whole transport company.',
+      body: 'Vygo brings together dashboard, mobile app, chat, documents, checks, faults, deadlines and cost center. Every team works in one shared environment with history and alerts.',
+      cards: [
+        { title: 'Deadlines and documents', body: 'Licences, medical checks, vehicle documents, inspections, insurance and files connected to the right record.' },
+        { title: 'Company chat', body: 'Direct and group chats for drivers, office, warehouse and management, away from personal noise.' },
+        { title: 'Checks and faults', body: 'The worker reports, the company sees, handles, archives and keeps a searchable history.' },
+        { title: 'Costs and reports', body: 'Expenses, fines, maintenance and repairs filtered by period, plate, person or equipment.' },
+      ],
+    },
+    setup: {
+      overline: 'Onboarding',
+      title: 'You do not just buy access: you start organized.',
+      body: 'With the start-up kit we configure company, people, vehicles, first deadlines and initial training. The goal is real adoption, not an empty login.',
+      steps: [
+        { title: '1. Mapping', body: 'We enter company structure, departments, vehicles, equipment and people.' },
+        { title: '2. Documents', body: 'We load first deadlines and set operational alerts.' },
+        { title: '3. First week', body: 'We support company and users until the first real workflows run.' },
+      ],
+    },
+    pricing: {
+      overline: 'Plans',
+      title: 'Pricing built around the real value delivered.',
+      body: 'The plan grows with vehicles, equipment and accounts. The subscription buys operational order, alerts, history, documents, reports, support and fewer wasted hours.',
+      plans: [
+        { cta: 'Activate Start 5', description: 'Full Vygo for small fleets: all functions included, smaller limits on vehicles, users and storage.', featured: false, items: ['Up to 5 vehicles', 'Up to 3 tools or forklifts', 'Up to 10 user accounts', 'All Vygo functions included', '10 GB files included'], name: 'Start 5', price: '299 euro/month + VAT' },
+        { cta: 'Activate Fleet 10', description: 'Full Vygo with more operating capacity for growing companies.', featured: true, items: ['All Vygo functions', 'Up to 10 vehicles', 'Up to 5 tools or forklifts', 'Up to 20 user accounts', '20 GB included'], name: 'Fleet 10', price: '449 euro/month + VAT' },
+        { cta: 'Request activation', description: 'Full functions, more vehicles, more accounts and more storage for structured companies.', featured: false, items: ['All Vygo functions', '20, 30 or 50 vehicles', 'Tools and forklifts included', 'Accounts sized to fleet', 'Storage from 30 GB'], name: 'Fleet 20+', price: 'from 699 euro/month + VAT' },
+      ],
+      extras: [
+        { title: 'Functions included', body: 'Every plan includes chat, groups, faults, checks, documents, deadlines, cost center and reports.' },
+        { title: 'Start-up kit', body: 'One-time setup for company records, first deadlines and training.' },
+        { title: 'Extra storage', body: '20 GB 49 euro/month + VAT, 50 GB 99 euro/month + VAT, 100 GB 179 euro/month + VAT.' },
+        { title: 'No hidden modules', body: 'Price grows with company size and storage, not by cutting core features.' },
+      ],
+    },
+    faq: {
+      overline: 'FAQ',
+      title: 'Quick questions before putting order in place.',
+      items: [
+        { title: 'What really changes?', body: 'Instead of searching across WhatsApp, sheets, calls and folders, you open Vygo and see deadlines, missing items, actions and vehicle issues.' },
+        { title: 'Do workers install an app?', body: 'Yes. Vygo is built as an iOS/Android app for drivers, warehouse and company. The office can also work from desktop browser.' },
+        { title: 'Do phone notifications work?', body: 'Yes, after enabling them on the device. Chat, faults and critical checks can alert even when the app is closed.' },
+        { title: 'Can I use it from office and phone?', body: 'Yes. Office works from PC, owners and staff can use the phone app.' },
+        { title: 'Are costs tracked?', body: 'Yes. Faults, maintenance, fines and free expenses can be tracked and filtered by period, vehicle, person or equipment.' },
+        { title: 'Why not just WhatsApp?', body: 'WhatsApp is for talking, not for managing. Vygo connects messages, documents, faults, deadlines, alerts and operational history.' },
+      ],
+    },
+  },
+  es: {
+    nav: { product: 'Producto', pricing: 'Precios', faq: 'FAQ' },
+    problem: {
+      overline: 'Por que Vygo',
+      title: 'El caos operativo cuesta mas que la suscripcion.',
+      body: 'Muchas empresas de transporte trabajan entre WhatsApp, Excel, llamadas, emails y carpetas sueltas. Eso provoca tiempo perdido, documentos olvidados, vencimientos y poca visibilidad de costes.',
+      cards: [
+        { title: 'Mensajes dispersos', body: 'Las decisiones quedan en chats personales y luego son dificiles de encontrar.' },
+        { title: 'Vencimientos fragiles', body: 'Permisos, revisiones, seguros y visitas medicas se recuerdan demasiado tarde.' },
+        { title: 'Documentos sueltos', body: 'Conductores, vehiculos y oficina no siempre comparten el mismo archivo actualizado.' },
+        { title: 'Costes ocultos', body: 'Averias, multas y mantenimiento se ven tarde, cuando ya pesan en la cuenta.' },
+      ],
+    },
+    value: {
+      overline: 'Vygo',
+      title: 'Un sistema operativo para toda la empresa de transporte.',
+      body: 'Vygo une panel, app movil, chat, documentos, checks, averias, vencimientos y centro de costes en un solo entorno.',
+      cards: [
+        { title: 'Vencimientos y documentos', body: 'Permisos, visitas medicas, documentos de vehiculo, revisiones, seguros y archivos conectados al registro correcto.' },
+        { title: 'Chat empresarial', body: 'Chats individuales y grupos para conductores, oficina, almacen y direccion.' },
+        { title: 'Checks y averias', body: 'El usuario informa, la empresa ve, gestiona, archiva y conserva el historico.' },
+        { title: 'Costes e informes', body: 'Gastos, multas, mantenimiento y reparaciones filtrables por periodo, matricula, persona o equipo.' },
+      ],
+    },
+    setup: {
+      overline: 'Puesta en marcha',
+      title: 'No compras solo acceso: empiezas ordenado.',
+      body: 'Con el start-up kit configuramos empresa, personas, vehiculos, primeros vencimientos y formacion inicial.',
+      steps: [
+        { title: '1. Mapeo', body: 'Cargamos estructura, departamentos, vehiculos, equipos y personas.' },
+        { title: '2. Documentos', body: 'Cargamos primeros vencimientos y avisos operativos.' },
+        { title: '3. Primera semana', body: 'Acompanamos al equipo hasta el primer uso real.' },
+      ],
+    },
+    pricing: {
+      overline: 'Planes',
+      title: 'Precios pensados para el valor real que aportamos.',
+      body: 'El plan crece con vehiculos, herramientas y usuarios. La suscripcion compra orden operativo, avisos, historico, documentos, informes y soporte.',
+      plans: [
+        { cta: 'Activar Start 5', description: 'Vygo completo para flotas pequenas, con limites mas pequenos.', featured: false, items: ['Hasta 5 vehiculos', 'Hasta 3 herramientas o carretillas', 'Hasta 10 usuarios', 'Todas las funciones incluidas', '10 GB incluidos'], name: 'Start 5', price: '299 euro/mes + IVA' },
+        { cta: 'Activar Fleet 10', description: 'Vygo completo con mas capacidad para empresas en crecimiento.', featured: true, items: ['Todas las funciones', 'Hasta 10 vehiculos', 'Hasta 5 herramientas o carretillas', 'Hasta 20 usuarios', '20 GB incluidos'], name: 'Fleet 10', price: '449 euro/mes + IVA' },
+        { cta: 'Solicitar activacion', description: 'Funciones completas, mas vehiculos, mas usuarios y mas espacio.', featured: false, items: ['Todas las funciones', '20, 30 o 50 vehiculos', 'Herramientas incluidas', 'Usuarios segun flota', 'Desde 30 GB'], name: 'Fleet 20+', price: 'desde 699 euro/mes + IVA' },
+      ],
+      extras: [
+        { title: 'Funciones incluidas', body: 'Todos los planes incluyen chat, grupos, averias, checks, documentos, vencimientos, costes e informes.' },
+        { title: 'Start-up kit', body: 'Configuracion inicial, datos, vencimientos y formacion.' },
+        { title: 'Storage extra', body: '20 GB 49 euro/mes + IVA, 50 GB 99 euro/mes + IVA, 100 GB 179 euro/mes + IVA.' },
+        { title: 'Sin modulos ocultos', body: 'El precio crece con tamano y espacio, no recortando funciones.' },
+      ],
+    },
+    faq: {
+      overline: 'FAQ',
+      title: 'Preguntas rapidas antes de ordenar la empresa.',
+      items: [
+        { title: 'Que cambia realmente?', body: 'Abres Vygo y ves vencimientos, faltas, tareas y problemas de vehiculos sin buscar entre chats y carpetas.' },
+        { title: 'Los usuarios instalan una app?', body: 'Si. Vygo esta previsto como app iOS/Android y tambien panel web para oficina.' },
+        { title: 'Llegan avisos al telefono?', body: 'Si, tras activar notificaciones en el dispositivo.' },
+        { title: 'Puedo usarlo en PC y telefono?', body: 'Si, oficina desde PC y personal desde app.' },
+        { title: 'Se controlan los costes?', body: 'Si, averias, mantenimiento, multas y gastos libres se filtran por periodo, vehiculo, persona o equipo.' },
+        { title: 'Por que no basta WhatsApp?', body: 'WhatsApp habla. Vygo gestiona y deja historico operativo.' },
+      ],
+    },
+  },
+  fr: {
+    nav: { product: 'Produit', pricing: 'Prix', faq: 'FAQ' },
+    problem: {
+      overline: 'Pourquoi Vygo',
+      title: 'Le chaos operationnel coute plus que l abonnement.',
+      body: 'Beaucoup de transporteurs travaillent encore entre WhatsApp, Excel, appels, emails et dossiers disperses. Cela cree pertes de temps, documents oublies, echeances ratees et couts peu visibles.',
+      cards: [
+        { title: 'Messages disperses', body: 'Les decisions restent dans les chats personnels et deviennent difficiles a retrouver.' },
+        { title: 'Echeances fragiles', body: 'Permis, controles, assurances et visites medicales sont souvent vus trop tard.' },
+        { title: 'Documents eparpilles', body: 'Chauffeurs, vehicules et bureau n ont pas toujours la meme archive a jour.' },
+        { title: 'Couts invisibles', body: 'Pannes, amendes et entretiens apparaissent quand ils ont deja pese.' },
+      ],
+    },
+    value: {
+      overline: 'Vygo',
+      title: 'Un systeme operationnel pour toute l entreprise de transport.',
+      body: 'Vygo relie tableau de bord, app mobile, chat, documents, checks, pannes, echeances et centre de couts.',
+      cards: [
+        { title: 'Echeances et documents', body: 'Permis, visites, documents vehicule, controles, assurances et fichiers lies au bon dossier.' },
+        { title: 'Chat entreprise', body: 'Chats directs et groupes pour chauffeurs, bureau, entrepot et direction.' },
+        { title: 'Checks et pannes', body: 'Le terrain signale, l entreprise traite, archive et conserve l historique.' },
+        { title: 'Couts et rapports', body: 'Depenses, amendes, entretiens et reparations filtrables par periode, plaque, personne ou equipement.' },
+      ],
+    },
+    setup: {
+      overline: 'Demarrage',
+      title: 'Vous n achetez pas seulement un acces: vous demarrez organise.',
+      body: 'Avec le start-up kit, nous configurons entreprise, personnes, vehicules, premieres echeances et formation.',
+      steps: [
+        { title: '1. Cartographie', body: 'Structure, services, vehicules, equipements et personnes.' },
+        { title: '2. Documents', body: 'Premieres echeances et alertes operationnelles.' },
+        { title: '3. Premiere semaine', body: 'Accompagnement jusqu aux premiers usages reels.' },
+      ],
+    },
+    pricing: {
+      overline: 'Plans',
+      title: 'Des prix alignes sur la valeur operationnelle.',
+      body: 'Le plan grandit avec vehicules, outils et comptes. L abonnement apporte ordre, alertes, historique, documents, rapports et support.',
+      plans: [
+        { cta: 'Activer Start 5', description: 'Vygo complet pour petites flottes, avec limites plus petites.', featured: false, items: ['Jusqu a 5 vehicules', 'Jusqu a 3 outils ou chariots', 'Jusqu a 10 comptes', 'Toutes les fonctions incluses', '10 GB inclus'], name: 'Start 5', price: '299 euro/mois + TVA' },
+        { cta: 'Activer Fleet 10', description: 'Vygo complet avec plus de capacite operationnelle.', featured: true, items: ['Toutes les fonctions', 'Jusqu a 10 vehicules', 'Jusqu a 5 outils ou chariots', 'Jusqu a 20 comptes', '20 GB inclus'], name: 'Fleet 10', price: '449 euro/mois + TVA' },
+        { cta: 'Demander activation', description: 'Fonctions completes, plus de vehicules, comptes et stockage.', featured: false, items: ['Toutes les fonctions', '20, 30 ou 50 vehicules', 'Outils inclus', 'Comptes selon flotte', 'Stockage des 30 GB'], name: 'Fleet 20+', price: 'des 699 euro/mois + TVA' },
+      ],
+      extras: [
+        { title: 'Fonctions incluses', body: 'Tous les plans incluent chat, groupes, pannes, checks, documents, echeances, couts et rapports.' },
+        { title: 'Start-up kit', body: 'Configuration initiale, dossiers, echeances et formation.' },
+        { title: 'Stockage extra', body: '20 GB 49 euro/mois + TVA, 50 GB 99 euro/mois + TVA, 100 GB 179 euro/mois + TVA.' },
+        { title: 'Pas de modules caches', body: 'Le prix augmente avec taille et stockage, pas en retirant les fonctions.' },
+      ],
+    },
+    faq: {
+      overline: 'FAQ',
+      title: 'Questions rapides avant de mettre de l ordre.',
+      items: [
+        { title: 'Qu est-ce qui change vraiment?', body: 'Vous voyez echeances, manques, actions et problemes vehicules sans chercher entre chats et dossiers.' },
+        { title: 'Les utilisateurs installent une app?', body: 'Oui. Vygo est prevu comme app iOS/Android avec tableau web pour le bureau.' },
+        { title: 'Les notifications arrivent?', body: 'Oui, apres activation sur le telephone.' },
+        { title: 'PC et telephone?', body: 'Oui. Le bureau travaille sur PC, les equipes sur app.' },
+        { title: 'Les couts sont suivis?', body: 'Oui, pannes, entretiens, amendes et depenses libres par periode, vehicule, personne ou equipement.' },
+        { title: 'Pourquoi pas WhatsApp?', body: 'WhatsApp sert a parler. Vygo sert a gerer et garder l historique.' },
+      ],
+    },
+  },
+  de: {
+    nav: { product: 'Produkt', pricing: 'Preise', faq: 'FAQ' },
+    problem: {
+      overline: 'Warum Vygo',
+      title: 'Operatives Chaos kostet mehr als das Abo.',
+      body: 'Viele Transportunternehmen arbeiten mit WhatsApp, Excel, Telefonaten, E-Mails und verstreuten Ordnern. Das kostet Zeit, Dokumente gehen unter, Fristen werden verpasst und Kosten bleiben unklar.',
+      cards: [
+        { title: 'Verstreute Nachrichten', body: 'Entscheidungen bleiben in privaten Chats und sind spater schwer zu finden.' },
+        { title: 'Fragile Fristen', body: 'Lizenzen, Prufungen, Versicherungen und Untersuchungen werden oft zu spat gesehen.' },
+        { title: 'Getrennte Dokumente', body: 'Fahrer, Fahrzeuge und Buro haben nicht immer dasselbe aktuelle Archiv.' },
+        { title: 'Unsichtbare Kosten', body: 'Schaden, Strafen und Wartung werden oft erst sichtbar, wenn sie schon teuer waren.' },
+      ],
+    },
+    value: {
+      overline: 'Vygo',
+      title: 'Ein Betriebssystem fur das ganze Transportunternehmen.',
+      body: 'Vygo verbindet Dashboard, App, Chat, Dokumente, Checks, Schaden, Fristen und Kostenstelle in einem Arbeitsbereich.',
+      cards: [
+        { title: 'Fristen und Dokumente', body: 'Lizenzen, Untersuchungen, Fahrzeugdokumente, Prufungen, Versicherungen und Dateien am richtigen Datensatz.' },
+        { title: 'Firmenchat', body: 'Direkte Chats und Gruppen fur Fahrer, Buro, Lager und Leitung.' },
+        { title: 'Checks und Schaden', body: 'Meldung, Bearbeitung, Archiv und durchsuchbare Historie.' },
+        { title: 'Kosten und Berichte', body: 'Ausgaben, Strafen, Wartung und Reparaturen nach Zeitraum, Kennzeichen, Person oder Gerat.' },
+      ],
+    },
+    setup: {
+      overline: 'Start',
+      title: 'Nicht nur Zugang kaufen: organisiert starten.',
+      body: 'Mit dem Start-up Kit richten wir Firma, Personen, Fahrzeuge, erste Fristen und Schulung ein.',
+      steps: [
+        { title: '1. Struktur', body: 'Firma, Abteilungen, Fahrzeuge, Gerate und Personen.' },
+        { title: '2. Dokumente', body: 'Erste Fristen und operative Hinweise.' },
+        { title: '3. Erste Woche', body: 'Begleitung bis zu echten Arbeitsablaufen.' },
+      ],
+    },
+    pricing: {
+      overline: 'Plane',
+      title: 'Preise nach realem operativem Wert.',
+      body: 'Der Plan wachst mit Fahrzeugen, Werkzeugen und Konten. Das Abo bringt Ordnung, Hinweise, Historie, Dokumente, Berichte und Support.',
+      plans: [
+        { cta: 'Start 5 aktivieren', description: 'Vollstandiges Vygo fur kleine Flotten mit kleineren Limits.', featured: false, items: ['Bis 5 Fahrzeuge', 'Bis 3 Gerate oder Stapler', 'Bis 10 Nutzerkonten', 'Alle Funktionen enthalten', '10 GB enthalten'], name: 'Start 5', price: '299 Euro/Monat + MwSt.' },
+        { cta: 'Fleet 10 aktivieren', description: 'Vollstandiges Vygo mit mehr operativer Kapazitat.', featured: true, items: ['Alle Funktionen', 'Bis 10 Fahrzeuge', 'Bis 5 Gerate oder Stapler', 'Bis 20 Nutzerkonten', '20 GB enthalten'], name: 'Fleet 10', price: '449 Euro/Monat + MwSt.' },
+        { cta: 'Aktivierung anfragen', description: 'Alle Funktionen, mehr Fahrzeuge, Konten und Speicher.', featured: false, items: ['Alle Funktionen', '20, 30 oder 50 Fahrzeuge', 'Gerate enthalten', 'Konten passend zur Flotte', 'Speicher ab 30 GB'], name: 'Fleet 20+', price: 'ab 699 Euro/Monat + MwSt.' },
+      ],
+      extras: [
+        { title: 'Funktionen enthalten', body: 'Alle Plane enthalten Chat, Gruppen, Schaden, Checks, Dokumente, Fristen, Kosten und Berichte.' },
+        { title: 'Start-up Kit', body: 'Einrichtung, Stammdaten, Fristen und Schulung.' },
+        { title: 'Extra Speicher', body: '20 GB 49 Euro/Monat + MwSt., 50 GB 99 Euro/Monat + MwSt., 100 GB 179 Euro/Monat + MwSt.' },
+        { title: 'Keine versteckten Module', body: 'Der Preis wachst mit Grosse und Speicher, nicht durch fehlende Kernfunktionen.' },
+      ],
+    },
+    faq: {
+      overline: 'FAQ',
+      title: 'Kurze Fragen, bevor Ordnung entsteht.',
+      items: [
+        { title: 'Was andert sich wirklich?', body: 'Sie sehen Fristen, fehlende Punkte, Aufgaben und Fahrzeugprobleme ohne Suche in Chats und Ordnern.' },
+        { title: 'Installieren Nutzer eine App?', body: 'Ja. Vygo ist als iOS/Android App mit Web-Dashboard fur das Buro gedacht.' },
+        { title: 'Gibt es Telefonhinweise?', body: 'Ja, nach Aktivierung auf dem Gerat.' },
+        { title: 'PC und Telefon?', body: 'Ja. Buro am PC, Teams per App.' },
+        { title: 'Werden Kosten verfolgt?', body: 'Ja, Schaden, Wartung, Strafen und freie Ausgaben nach Zeitraum, Fahrzeug, Person oder Gerat.' },
+        { title: 'Warum nicht WhatsApp?', body: 'WhatsApp spricht. Vygo verwaltet und behalt die Historie.' },
+      ],
+    },
+  },
+  ro: {
+    nav: { product: 'Produs', pricing: 'Preturi', faq: 'FAQ' },
+    problem: {
+      overline: 'De ce Vygo',
+      title: 'Haosul operational costa mai mult decat abonamentul.',
+      body: 'Multe companii de transport lucreaza inca prin WhatsApp, Excel, apeluri, email si dosare separate. Se pierd timp, documente, termene si controlul costurilor.',
+      cards: [
+        { title: 'Mesaje imprastiate', body: 'Deciziile raman in chat-uri personale si se gasesc greu.' },
+        { title: 'Termene fragile', body: 'Permise, revizii, asigurari si vizite medicale sunt vazute prea tarziu.' },
+        { title: 'Documente separate', body: 'Soferii, vehiculele si biroul nu au mereu aceeasi arhiva actualizata.' },
+        { title: 'Costuri ascunse', body: 'Defectiunile, amenzile si mentenanta apar cand deja au costat.' },
+      ],
+    },
+    value: {
+      overline: 'Vygo',
+      title: 'Un sistem operational pentru toata compania de transport.',
+      body: 'Vygo uneste dashboard, aplicatie mobila, chat, documente, verificari, defectiuni, termene si costuri.',
+      cards: [
+        { title: 'Termene si documente', body: 'Permise, vizite, documente vehicul, revizii, asigurari si fisiere legate corect.' },
+        { title: 'Chat companie', body: 'Chat direct si grupuri pentru soferi, birou, depozit si conducere.' },
+        { title: 'Verificari si defectiuni', body: 'Utilizatorul raporteaza, compania gestioneaza si pastreaza istoricul.' },
+        { title: 'Costuri si rapoarte', body: 'Cheltuieli, amenzi, mentenanta si reparatii filtrate pe perioada, vehicul, persoana sau echipament.' },
+      ],
+    },
+    setup: {
+      overline: 'Pornire',
+      title: 'Nu cumperi doar acces: pornesti organizat.',
+      body: 'Cu start-up kit configuram compania, persoanele, vehiculele, primele termene si instruirea.',
+      steps: [
+        { title: '1. Structura', body: 'Companie, departamente, vehicule, echipamente si persoane.' },
+        { title: '2. Documente', body: 'Primele termene si notificari operationale.' },
+        { title: '3. Prima saptamana', body: 'Sprijin pana la folosirea reala.' },
+      ],
+    },
+    pricing: {
+      overline: 'Planuri',
+      title: 'Preturi construite pe valoarea reala.',
+      body: 'Planul creste cu vehicule, echipamente si conturi. Abonamentul cumpara ordine, notificari, istoric, documente, rapoarte si suport.',
+      plans: [
+        { cta: 'Activeaza Start 5', description: 'Vygo complet pentru flote mici, cu limite mai mici.', featured: false, items: ['Pana la 5 vehicule', 'Pana la 3 echipamente', 'Pana la 10 conturi', 'Toate functiile incluse', '10 GB inclusi'], name: 'Start 5', price: '299 euro/luna + TVA' },
+        { cta: 'Activeaza Fleet 10', description: 'Vygo complet cu mai multa capacitate operationala.', featured: true, items: ['Toate functiile', 'Pana la 10 vehicule', 'Pana la 5 echipamente', 'Pana la 20 conturi', '20 GB inclusi'], name: 'Fleet 10', price: '449 euro/luna + TVA' },
+        { cta: 'Cere activarea', description: 'Functii complete, mai multe vehicule, conturi si spatiu.', featured: false, items: ['Toate functiile', '20, 30 sau 50 vehicule', 'Echipamente incluse', 'Conturi dupa flota', 'De la 30 GB'], name: 'Fleet 20+', price: 'de la 699 euro/luna + TVA' },
+      ],
+      extras: [
+        { title: 'Functii incluse', body: 'Toate planurile includ chat, grupuri, defectiuni, verificari, documente, termene, costuri si rapoarte.' },
+        { title: 'Start-up kit', body: 'Configurare initiala, date, termene si instruire.' },
+        { title: 'Stocare extra', body: '20 GB 49 euro/luna + TVA, 50 GB 99 euro/luna + TVA, 100 GB 179 euro/luna + TVA.' },
+        { title: 'Fara module ascunse', body: 'Pretul creste cu marimea si spatiul, nu prin taierea functiilor.' },
+      ],
+    },
+    faq: {
+      overline: 'FAQ',
+      title: 'Intrebari rapide inainte de organizare.',
+      items: [
+        { title: 'Ce se schimba concret?', body: 'Vezi termene, lipsuri, actiuni si probleme fara cautari in chat-uri si dosare.' },
+        { title: 'Utilizatorii instaleaza aplicatia?', body: 'Da. Vygo este aplicatie iOS/Android si dashboard web pentru birou.' },
+        { title: 'Exista notificari pe telefon?', body: 'Da, dupa activarea pe dispozitiv.' },
+        { title: 'Merge pe PC si telefon?', body: 'Da. Biroul pe PC, echipa in aplicatie.' },
+        { title: 'Costurile sunt urmarite?', body: 'Da, defectiuni, mentenanta, amenzi si cheltuieli pe perioada, vehicul, persoana sau echipament.' },
+        { title: 'De ce nu WhatsApp?', body: 'WhatsApp vorbeste. Vygo gestioneaza si pastreaza istoricul.' },
+      ],
+    },
+  },
+  pl: {
+    nav: { product: 'Produkt', pricing: 'Cennik', faq: 'FAQ' },
+    problem: {
+      overline: 'Dlaczego Vygo',
+      title: 'Chaos operacyjny kosztuje wiecej niz abonament.',
+      body: 'Wiele firm transportowych nadal pracuje przez WhatsApp, Excel, telefony, e-maile i rozproszone foldery. To oznacza strate czasu, zgubione dokumenty, terminy i slaba kontrole kosztow.',
+      cards: [
+        { title: 'Rozproszone wiadomosci', body: 'Decyzje zostaja w prywatnych chatach i trudno je pozniej znalezc.' },
+        { title: 'Ryzykowne terminy', body: 'Prawa jazdy, przeglady, ubezpieczenia i badania czesto wracaja za pozno.' },
+        { title: 'Rozproszone dokumenty', body: 'Kierowcy, pojazdy i biuro nie zawsze maja jedno aktualne archiwum.' },
+        { title: 'Ukryte koszty', body: 'Awarie, mandaty i serwis sa widoczne dopiero, gdy juz obciazyly wynik.' },
+      ],
+    },
+    value: {
+      overline: 'Vygo',
+      title: 'System operacyjny dla calej firmy transportowej.',
+      body: 'Vygo laczy dashboard, aplikacje mobilna, chat, dokumenty, kontrole, awarie, terminy i centrum kosztow.',
+      cards: [
+        { title: 'Terminy i dokumenty', body: 'Licencje, badania, dokumenty pojazdu, przeglady, ubezpieczenia i pliki przy wlasciwym rekordzie.' },
+        { title: 'Chat firmowy', body: 'Chaty prywatne i grupowe dla kierowcow, biura, magazynu i zarzadu.' },
+        { title: 'Kontrole i awarie', body: 'Uzytkownik zglasza, firma obsluguje, archiwizuje i zachowuje historie.' },
+        { title: 'Koszty i raporty', body: 'Wydatki, mandaty, serwis i naprawy filtrowane po okresie, pojezdzie, osobie lub sprzecie.' },
+      ],
+    },
+    setup: {
+      overline: 'Start',
+      title: 'Nie kupujesz tylko dostepu: startujesz z porzadkiem.',
+      body: 'W start-up kit konfigurujemy firme, osoby, pojazdy, pierwsze terminy i szkolenie.',
+      steps: [
+        { title: '1. Mapa firmy', body: 'Struktura, dzialy, pojazdy, sprzet i osoby.' },
+        { title: '2. Dokumenty', body: 'Pierwsze terminy i powiadomienia operacyjne.' },
+        { title: '3. Pierwszy tydzien', body: 'Wsparcie do pierwszego realnego uzycia.' },
+      ],
+    },
+    pricing: {
+      overline: 'Plany',
+      title: 'Ceny oparte na realnej wartosci operacyjnej.',
+      body: 'Plan rosnie z liczba pojazdow, sprzetu i kont. Abonament daje porzadek, powiadomienia, historie, dokumenty, raporty i wsparcie.',
+      plans: [
+        { cta: 'Aktywuj Start 5', description: 'Pelne Vygo dla mniejszych flot z mniejszymi limitami.', featured: false, items: ['Do 5 pojazdow', 'Do 3 narzedzi lub wozkow', 'Do 10 kont', 'Wszystkie funkcje', '10 GB w cenie'], name: 'Start 5', price: '299 euro/miesiac + VAT' },
+        { cta: 'Aktywuj Fleet 10', description: 'Pelne Vygo z wieksza pojemnoscia operacyjna.', featured: true, items: ['Wszystkie funkcje', 'Do 10 pojazdow', 'Do 5 narzedzi lub wozkow', 'Do 20 kont', '20 GB w cenie'], name: 'Fleet 10', price: '449 euro/miesiac + VAT' },
+        { cta: 'Popros o aktywacje', description: 'Pelne funkcje, wiecej pojazdow, kont i miejsca.', featured: false, items: ['Wszystkie funkcje', '20, 30 lub 50 pojazdow', 'Sprzet w cenie', 'Konta wedlug floty', 'Od 30 GB'], name: 'Fleet 20+', price: 'od 699 euro/miesiac + VAT' },
+      ],
+      extras: [
+        { title: 'Funkcje w cenie', body: 'Kazdy plan ma chat, grupy, awarie, kontrole, dokumenty, terminy, koszty i raporty.' },
+        { title: 'Start-up kit', body: 'Konfiguracja, dane, terminy i szkolenie.' },
+        { title: 'Dodatkowe miejsce', body: '20 GB 49 euro/miesiac + VAT, 50 GB 99 euro/miesiac + VAT, 100 GB 179 euro/miesiac + VAT.' },
+        { title: 'Brak ukrytych modulow', body: 'Cena rosnie z wielkoscia i miejscem, nie przez wycinanie funkcji.' },
+      ],
+    },
+    faq: {
+      overline: 'FAQ',
+      title: 'Szybkie pytania przed uporzadkowaniem firmy.',
+      items: [
+        { title: 'Co naprawde sie zmienia?', body: 'Widzisz terminy, braki, zadania i problemy pojazdow bez szukania w chatach i folderach.' },
+        { title: 'Czy uzytkownicy instaluja appke?', body: 'Tak. Vygo to aplikacja iOS/Android oraz dashboard web dla biura.' },
+        { title: 'Sa powiadomienia na telefon?', body: 'Tak, po wlaczeniu ich na urzadzeniu.' },
+        { title: 'PC i telefon?', body: 'Tak. Biuro na PC, zespol w aplikacji.' },
+        { title: 'Czy koszty sa sledzone?', body: 'Tak, awarie, serwis, mandaty i wydatki wedlug okresu, pojazdu, osoby lub sprzetu.' },
+        { title: 'Dlaczego nie WhatsApp?', body: 'WhatsApp sluzy do rozmowy. Vygo zarzadza i przechowuje historie.' },
+      ],
+    },
+  },
+}
+
+const publicProblemIcons = [AlertTriangle, Clock3, FileText, Banknote]
+const publicValueIcons = [CalendarClock, Mail, ClipboardCheck, Gauge]
+const publicSetupIcons = [BadgeCheck, Users, Smartphone]
 
 const workflowTranslations = {
   it: {
@@ -3358,7 +3823,7 @@ const regionalTranslations = {
     'auth.buyCompany': 'Cumpara si activeaza compania',
     'auth.companyTab': 'Firma',
     'auth.driverTab': 'Sofer',
-    'auth.heroText': 'Intra sau inregistreaza compania. Vygo conecteaza persoane, vehicule, documente, notificari, chat si costuri intr-un singur spatiu ordonat.',
+    'auth.heroText': 'Sistemul operational pentru companii de transport: persoane, vehicule, documente, chat, termene si costuri intr-un singur loc.',
     'auth.proofCosts': 'Costuri vehicule mai clare',
     'auth.proofDeadlines': 'Scadente sub control',
     'auth.proofDocuments': 'Documente mereu disponibile',
@@ -3407,7 +3872,7 @@ const regionalTranslations = {
     'support.launch': 'Prezentare',
     'support.manual': 'Manual rapid',
     'support.overline': 'Centru suport',
-    'support.subtitle': 'FAQ, manual, scripturi video si idei comerciale la indemana.',
+    'support.subtitle': 'FAQ, manual si asistenta ghidata pentru a folosi Vygo fara confuzie.',
     'support.title': 'Ghid si materiale',
     'support.videos': 'Video',
     'support.vision': 'Viziune produs',
@@ -3416,7 +3881,7 @@ const regionalTranslations = {
     'auth.buyCompany': 'Kup i aktywuj firme',
     'auth.companyTab': 'Firma',
     'auth.driverTab': 'Kierowca',
-    'auth.heroText': 'Zaloguj sie albo zarejestruj firme. Vygo laczy osoby, pojazdy, dokumenty, powiadomienia, chat i koszty w jednym uporzadkowanym miejscu.',
+    'auth.heroText': 'System operacyjny dla firm transportowych: ludzie, pojazdy, dokumenty, chat, terminy i koszty w jednym miejscu.',
     'auth.proofCosts': 'Jasniejsze koszty pojazdow',
     'auth.proofDeadlines': 'Terminy pod kontrola',
     'auth.proofDocuments': 'Dokumenty zawsze dostepne',
@@ -3465,7 +3930,7 @@ const regionalTranslations = {
     'support.launch': 'Prezentacja',
     'support.manual': 'Szybka instrukcja',
     'support.overline': 'Centrum pomocy',
-    'support.subtitle': 'FAQ, instrukcja, scenariusze wideo i pomysly sprzedazowe pod reka.',
+    'support.subtitle': 'FAQ, instrukcja i pomoc krok po kroku, aby korzystac z Vygo bez zamieszania.',
     'support.title': 'Pomoc i materialy',
     'support.videos': 'Wideo',
     'support.vision': 'Wizja produktu',
@@ -9855,6 +10320,8 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
     }, 0)
   }
 
+  const publicCopy = publicLandingCopy[language] ?? publicLandingCopy.it
+
   return (
     <main className="public-site">
       <header className="public-header">
@@ -9868,9 +10335,9 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
           </div>
         </button>
         <nav className="public-nav" aria-label="Navigazione sito">
-          <a href="#prodotto">Prodotto</a>
-          <a href="#prezzi">Prezzi</a>
-          <a href="#faq">FAQ</a>
+          <a href="#prodotto">{publicCopy.nav.product}</a>
+          <a href="#prezzi">{publicCopy.nav.pricing}</a>
+          <a href="#faq">{publicCopy.nav.faq}</a>
         </nav>
         <div className="public-header-actions">
           <LanguageSelector language={language} onLanguageChange={onLanguageChange} t={t} />
@@ -10075,98 +10542,104 @@ function AuthScreen({ language, onAuthenticated, onLanguageChange, t }) {
         </section>
       </section>
 
+      <section className="public-section public-problem-section">
+        <div className="public-section-heading">
+          <p className="overline">{publicCopy.problem.overline}</p>
+          <h2>{publicCopy.problem.title}</h2>
+          <p>{publicCopy.problem.body}</p>
+        </div>
+        <div className="public-feature-grid">
+          {publicCopy.problem.cards.map((card, index) => {
+            const Icon = publicProblemIcons[index] ?? AlertTriangle
+            return (
+              <article key={card.title}>
+                <Icon size={21} />
+                <h3>{card.title}</h3>
+                <p>{card.body}</p>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="public-section public-value-section">
+        <div className="public-section-heading">
+          <p className="overline">{publicCopy.value.overline}</p>
+          <h2>{publicCopy.value.title}</h2>
+          <p>{publicCopy.value.body}</p>
+        </div>
+        <div className="public-feature-grid">
+          {publicCopy.value.cards.map((card, index) => {
+            const Icon = publicValueIcons[index] ?? ShieldCheck
+            return (
+              <article key={card.title}>
+                <Icon size={21} />
+                <h3>{card.title}</h3>
+                <p>{card.body}</p>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="public-section public-workflow">
+        <div className="public-section-heading">
+          <p className="overline">{publicCopy.setup.overline}</p>
+          <h2>{publicCopy.setup.title}</h2>
+          <p>{publicCopy.setup.body}</p>
+        </div>
+        <div className="public-steps">
+          {publicCopy.setup.steps.map((step, index) => {
+            const Icon = publicSetupIcons[index] ?? CheckCircle2
+            return (
+              <div key={step.title}>
+                <Icon size={20} />
+                <strong>{step.title}</strong>
+                <span>{step.body}</span>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
       <section className="public-section" id="prezzi">
         <div className="public-section-heading">
-          <p className="overline">Piani</p>
-          <h2>Prezzi pensati per il valore reale che portiamo.</h2>
-          <p>
-            Il piano cresce con mezzi, strumenti e account. Il canone non compra solo una app: compra ordine operativo,
-            notifiche, storico, documenti, report, supporto e meno tempo perso ogni settimana.
-          </p>
+          <p className="overline">{publicCopy.pricing.overline}</p>
+          <h2>{publicCopy.pricing.title}</h2>
+          <p>{publicCopy.pricing.body}</p>
         </div>
         <div className="public-price-grid">
-          <article>
-            <span>Start 5</span>
-            <strong>299 euro/mese + IVA</strong>
-            <p>Vygo completo per piccole flotte: nessuna funzione tagliata, solo limiti piu piccoli su mezzi, account e spazio file.</p>
-            <ul>
-              <li>Fino a 5 mezzi</li>
-              <li>Fino a 3 strumenti o muletti</li>
-              <li>Fino a 10 account utenti</li>
-              <li>Tutte le funzioni Vygo incluse</li>
-              <li>10 GB file inclusi</li>
-            </ul>
-            <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Start 5</button>
-          </article>
-          <article className="is-featured">
-            <span>Fleet 10</span>
-            <strong>449 euro/mese + IVA</strong>
-            <p>Stesso Vygo completo, piu capacita operativa per aziende che crescono con mezzi, persone e documenti.</p>
-            <ul>
-              <li>Tutte le funzioni Vygo</li>
-              <li>Fino a 10 mezzi</li>
-              <li>Fino a 5 strumenti o muletti</li>
-              <li>Fino a 20 account utenti</li>
-              <li>20 GB inclusi</li>
-            </ul>
-            <button className="primary-button" onClick={() => openAccess('company', 'signup')} type="button">Attiva Fleet 10</button>
-          </article>
-          <article>
-            <span>Fleet 20+</span>
-            <strong>da 699 euro/mese + IVA</strong>
-            <p>Stesse funzioni complete, piu mezzi, piu account e piu spazio per aziende strutturate.</p>
-            <ul>
-              <li>Tutte le funzioni Vygo</li>
-              <li>20, 30 o 50 mezzi</li>
-              <li>Strumenti e muletti inclusi</li>
-              <li>Account proporzionati alla flotta</li>
-              <li>Storage da 30 GB in su</li>
-            </ul>
-            <button className="secondary-button" onClick={() => openAccess('company', 'signup')} type="button">Richiedi attivazione</button>
-          </article>
+          {publicCopy.pricing.plans.map((plan) => (
+            <article className={plan.featured ? 'is-featured' : ''} key={plan.name}>
+              <span>{plan.name}</span>
+              <strong>{plan.price}</strong>
+              <p>{plan.description}</p>
+              <ul>
+                {plan.items.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+              <button className={plan.featured ? 'primary-button' : 'secondary-button'} onClick={() => openAccess('company', 'signup')} type="button">{plan.cta}</button>
+            </article>
+          ))}
         </div>
         <div className="public-extra-pricing">
-          <div><strong>Funzioni incluse</strong><span>Tutti i piani hanno Vygo completo: chat, gruppi, guasti, check, documenti, scadenze, centro costi e report. Il piano cresce con dimensione flotta e spazio file.</span></div>
-          <div><strong>Avviamento</strong><span>Start-up kit una tantum per configurazione, anagrafiche iniziali, scadenze e formazione.</span></div>
-          <div><strong>Unico extra ricorrente</strong><span>Storage aggiuntivo: 20 GB 49 euro/mese + IVA · 50 GB 99 euro/mese + IVA · 100 GB 179 euro/mese + IVA.</span></div>
-          <div><strong>Nessun modulo nascosto</strong><span>Niente upgrade per chat, reparti, report o centro costi: li hanno tutti. La chicca extra la inventeremo piu avanti.</span></div>
+          {publicCopy.pricing.extras.map((item) => (
+            <div key={item.title}><strong>{item.title}</strong><span>{item.body}</span></div>
+          ))}
         </div>
       </section>
 
       <section className="public-section public-faq" id="faq">
         <div className="public-section-heading">
-          <p className="overline">FAQ</p>
-          <h2>Domande veloci prima di mettere ordine.</h2>
+          <p className="overline">{publicCopy.faq.overline}</p>
+          <h2>{publicCopy.faq.title}</h2>
         </div>
         <div className="public-faq-list">
-          <article>
-            <h3>Cosa cambia davvero rispetto a oggi?</h3>
-            <p>Invece di cercare informazioni tra WhatsApp, fogli, telefono e cartelle, apri Vygo e vedi cosa scade, cosa manca, chi deve agire e quali mezzi hanno problemi.</p>
-          </article>
-          <article>
-            <h3>L autista deve scaricare un app dallo store?</h3>
-            <p>Si: Vygo e previsto come app iOS/Android per autisti, magazzino e azienda. L azienda puo continuare a lavorare anche da browser desktop.</p>
-          </article>
-          <article>
-            <h3>Arrivano notifiche sul telefono?</h3>
-            <p>Si, dopo l attivazione sul dispositivo. Chat, guasti e check critici possono avvisare anche con app chiusa.</p>
-          </article>
-          <article>
-            <h3>Posso usarlo dall ufficio e dal telefono?</h3>
-            <p>Si. L ufficio lavora da PC, mentre titolare, autisti e personale possono usare l app su telefono con notifiche.</p>
-          </article>
-          <article>
-            <h3>I costi di guasti e manutenzioni vengono tracciati?</h3>
-            <p>Si. L azienda puo registrare costi su guasti e interventi, filtrare per periodo e mezzo, e preparare report economici operativi.</p>
-          </article>
-          <article>
-            <h3>Perche non basta WhatsApp?</h3>
-            <p>WhatsApp serve per parlare, non per gestire. Vygo collega messaggi, documenti, guasti, scadenze, notifiche e storico operativo.</p>
-          </article>
-          <article>
-            <h3>Quanto tempo serve per partire?</h3>
-            <p>Con lo start-up kit partiamo ordinati: anagrafiche, mezzi, prime scadenze e formazione. Il cliente non compra solo accesso, compra ordine iniziale.</p>
-          </article>
+          {publicCopy.faq.items.map((item) => (
+            <article key={item.title}>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
         </div>
       </section>
       <LegalDocumentModal documentId={openLegalDocument} onClose={() => setOpenLegalDocument('')} />
@@ -10724,6 +11197,39 @@ function AdminWorkspace({
   const storageUsagePercent = storageLimitTotalBytes
     ? Math.min(100, Math.round((Number(summary.storageBytes ?? 0) / storageLimitTotalBytes) * 100))
     : 0
+  const activePayingCompanyCount = companies.filter((company) => (
+    !company.isInternalAdminCompany
+    && company.billingStatus === 'active'
+    && Number(company.monthlyPlanCents ?? 0) > 0
+  )).length
+  const estimatedStripeCostCents = Math.round(Number(summary.mrrCents ?? 0) * 0.018) + activePayingCompanyCount * 25
+  const estimatedSupportCostCents = activePayingCompanyCount * vygoSupportCostPerCompanyCents
+  const estimatedMonthlyCostCents = vygoBaseMonthlyCostCents + estimatedStripeCostCents + estimatedSupportCostCents
+  const estimatedMonthlyMarginCents = Number(summary.mrrCents ?? 0) - estimatedMonthlyCostCents
+  const estimatedTaxReserveCents = Math.max(0, Math.round(estimatedMonthlyMarginCents * vygoEstimatedTaxReserveRate))
+  const estimatedNetAfterTaxCents = estimatedMonthlyMarginCents - estimatedTaxReserveCents
+  const breakEvenFleet10Clients = Math.max(
+    1,
+    Math.ceil(vygoBaseMonthlyCostCents / Math.max(1, vygoFleet10MonthlyPriceCents - vygoSupportCostPerCompanyCents - Math.round(vygoFleet10MonthlyPriceCents * 0.018) - 25)),
+  )
+  const economyScenarios = vygoEconomyScenarios.map((clientCount) => {
+    const revenueCents = clientCount * vygoFleet10MonthlyPriceCents
+    const costsCents =
+      vygoBaseMonthlyCostCents
+      + Math.round(revenueCents * 0.018)
+      + clientCount * 25
+      + clientCount * vygoSupportCostPerCompanyCents
+    const marginCents = revenueCents - costsCents
+    const taxReserveCents = Math.max(0, Math.round(marginCents * vygoEstimatedTaxReserveRate))
+    return {
+      clientCount,
+      costsCents,
+      marginCents,
+      netAfterTaxCents: marginCents - taxReserveCents,
+      revenueCents,
+      taxReserveCents,
+    }
+  })
   const selectedCompany =
     filteredCompanies.find((company) => company.id === selectedCompanyId) ??
     companies.find((company) => company.id === selectedCompanyId) ??
@@ -10866,6 +11372,67 @@ function AdminWorkspace({
       <p className="admin-status-line">
         {statusMessage || 'Pannello aggiornato.'} · Fatture incassate questo mese: {formatMoneyCents(summary.invoiceMonthCents, 'EUR')} · Aziende attive: {summary.activeCompanies}
       </p>
+
+      <section className="admin-economy-panel" aria-label="Andamento economico Vygo">
+        <div className="admin-economy-head">
+          <div>
+            <p className="overline">Vygo azienda</p>
+            <h3>Andamento economico</h3>
+          </div>
+          <span>{estimatedMonthlyMarginCents >= 0 ? 'Sopra pareggio stimato' : 'Sotto pareggio stimato'}</span>
+        </div>
+        <div className="admin-economy-metrics">
+          <article>
+            <span>MRR attuale</span>
+            <strong>{formatMoneyCents(summary.mrrCents, 'EUR')}</strong>
+          </article>
+          <article>
+            <span>Costi stimati mese</span>
+            <strong>{formatMoneyCents(estimatedMonthlyCostCents, 'EUR')}</strong>
+          </article>
+          <article className={estimatedMonthlyMarginCents >= 0 ? 'is-positive' : 'is-negative'}>
+            <span>Margine stimato</span>
+            <strong>{formatMoneyCents(estimatedMonthlyMarginCents, 'EUR')}</strong>
+          </article>
+          <article>
+            <span>Riserva tasse 35%</span>
+            <strong>{formatMoneyCents(estimatedTaxReserveCents, 'EUR')}</strong>
+          </article>
+          <article className={estimatedNetAfterTaxCents >= 0 ? 'is-positive' : 'is-negative'}>
+            <span>Netto prudente</span>
+            <strong>{formatMoneyCents(estimatedNetAfterTaxCents, 'EUR')}</strong>
+          </article>
+          <article>
+            <span>Pareggio Fleet 10</span>
+            <strong>{breakEvenFleet10Clients} clienti</strong>
+          </article>
+        </div>
+        <div className="admin-economy-grid">
+          <div className="admin-cost-list">
+            <strong>Costi fissi inseriti</strong>
+            {vygoBaseMonthlyCostItems.map((item) => (
+              <span key={`${item.category}-${item.label}`}>
+                <small>{item.category}</small>
+                <b>{item.label}</b>
+                <em>{formatMoneyCents(item.cents, 'EUR')}</em>
+              </span>
+            ))}
+          </div>
+          <div className="admin-scenario-list">
+            <strong>Scenari Fleet 10</strong>
+            {economyScenarios.map((scenario) => (
+              <span key={scenario.clientCount}>
+                <b>{scenario.clientCount} clienti</b>
+                <small>{formatMoneyCents(scenario.revenueCents, 'EUR')} MRR</small>
+                <em>{formatMoneyCents(scenario.netAfterTaxCents, 'EUR')} netto stimato</em>
+              </span>
+            ))}
+          </div>
+        </div>
+        <p className="admin-economy-note">
+          Stima interna: IVA esclusa dai ricavi, tasse calcolate come riserva prudente sul margine positivo. Il commercialista dovra confermare regime, IRES, IRAP, eventuali compensi e dividendi.
+        </p>
+      </section>
 
       <div className="admin-layout">
         <section className="admin-client-panel" aria-label="Clienti Vygo">

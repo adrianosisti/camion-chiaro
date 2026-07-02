@@ -317,7 +317,7 @@ export function CompanyChatScreen({
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Messaggi azienda</Text>
-        <Text style={styles.heroText}>Una inbox unica: ultime conversazioni in alto, non letti evidenti, gruppi separabili con un tocco.</Text>
+        <Text style={styles.heroText}>Chat ordinate per persone e gruppi, con messaggi non letti subito in evidenza.</Text>
       </View>
 
       <View style={styles.inboxSummary}>

@@ -822,6 +822,7 @@ export function ChatScreen({
   onRefresh,
   onReactToMessage,
   onSend,
+  onStartVoiceCall,
   onTyping,
   showSenderNames = false,
   soundEnabled = true,
@@ -1327,6 +1328,15 @@ export function ChatScreen({
             <Text style={[styles.chatSubtitle, companyTyping && styles.typingText]}>{statusText}</Text>
           </View>
         </View>
+        {onStartVoiceCall ? (
+          <Pressable
+            accessibilityLabel={`Chiama ${chatPartnerName}`}
+            onPress={() => onStartVoiceCall(chatPartnerName)}
+            style={[styles.mediaHeaderButton, styles.callHeaderButton]}
+          >
+            <Ionicons color={colors.ink} name="call-outline" size={19} />
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityLabel="Apri foto e media della chat"
           onPress={() => setIsChatInfoOpen(true)}
@@ -1838,6 +1848,11 @@ const styles = StyleSheet.create({
     minWidth: 46,
     justifyContent: 'center',
     paddingHorizontal: 10,
+  },
+  callHeaderButton: {
+    backgroundColor: '#ecfeff',
+    minWidth: 38,
+    paddingHorizontal: 0,
   },
   mediaHeaderCount: {
     color: colors.ink,

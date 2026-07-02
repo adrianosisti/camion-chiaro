@@ -63,6 +63,7 @@ export function CompanyChatScreen({
   onSelectTeamThread,
   onSend,
   onSendTeamMessage,
+  onStartVoiceCall,
   onTyping,
   onlinePersonIds = [],
   selectedTeamThread,
@@ -255,6 +256,7 @@ export function CompanyChatScreen({
           onReactToMessage={onReactToTeamMessage}
           onRefresh={onRefresh}
           onSend={onSendTeamMessage}
+          onStartVoiceCall={() => onStartVoiceCall?.(selectedTitle)}
           onTyping={onTyping}
           ownAvatarUrl={companyLogoUrl}
           participantAvatarUrl={isDirect ? directPersonPhotoUrl : companyLogoUrl}
@@ -300,6 +302,7 @@ export function CompanyChatScreen({
           onReactToMessage={onReactToMessage}
           onRefresh={onRefresh}
           onSend={onSend}
+          onStartVoiceCall={() => onStartVoiceCall?.(selectedDriver.name)}
           onTyping={onTyping}
           ownAvatarUrl={companyLogoUrl}
           participantAvatarUrl={driverPhotoUrl}

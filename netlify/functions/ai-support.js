@@ -56,10 +56,11 @@ Centro costi: registra costi di guasti, manutenzioni, assicurazioni, revisioni e
 Report e CSV: sezione dedicata per esportare o stampare dati filtrati. Permette dettaglio costi, solo multe/sanzioni e classifica multe autisti. I filtri principali sono periodo, targa/mezzo, autista, attrezzatura, azienda generale e tipologia.
 Sanzioni: si inseriscono da Nuova sanzione o Centro costi scegliendo categoria Sanzione. Devono avere importo, data, autista responsabile e, quando disponibile, targa collegata. Se in classifica compare Non assegnate, significa che una multa non ha autista: usare Assegna per aprire la modifica e collegarlo.
 Chat: dirette e gruppi/reparti. I messaggi mostrano nome, ruolo e foto di chi scrive. L azienda vede solo chat in cui e partecipante. Sono previsti audio, foto, video, reazioni, risposte e conferme lettura.
+Chiamate vocali: modulo preparato per tutti i piani attivi, incluso Start 5. Per le chiamate live serve collegare un provider voce; Vygo non deve registrare automaticamente l audio e conserva solo metadati tecnici come partecipanti, orari, durata e stato.
 Notifiche: si attivano dalle impostazioni sul dispositivo. Devono avvisare per messaggi, guasti, check critici, scadenze e solleciti.
 Magazzino: puo avere check muletti/strumenti, documenti e visite mediche. Ufficio puo usare chat, documenti e scadenze persona.
-Piani commerciali: Start 5 299 euro/mese + IVA; Fleet 10 449 euro/mese + IVA; Fleet 20 699 euro/mese + IVA; Fleet 30 899 euro/mese + IVA; Fleet 50 1199 euro/mese + IVA; Enterprise su preventivo. Start 5 include gia chat diretta, scadenze, check, guasti, documenti, centro costi e report per piccola flotta. Da Fleet 10 in poi tutte le funzioni principali Vygo sono sbloccate: gruppi, reparti, chat completa, centro costi, report, CSV/stampa e storico. Extra veri: start-up kit 1500 euro una tantum + IVA, storage extra 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese, assistenza premium/import dati su preventivo.
-Progetti premium futuri: report mensile automatico via email, indice salute flotta, budget costi per targa, alert recidive guasti, classifica multe/autisti, osservatorio strada e normative, QR mezzo, check magazzino, profilo formazione autista, esportazioni PDF/CSV avanzate.
+Piani commerciali: Start 5 299 euro/mese + IVA; Fleet 10 449 euro/mese + IVA; Fleet 20 699 euro/mese + IVA; Fleet 30 899 euro/mese + IVA; Fleet 50 1199 euro/mese + IVA; Enterprise su preventivo. Start 5 include gia chat, chiamate vocali live quando attivate, scadenze, check, guasti, documenti, centro costi e report per piccola flotta. Fleet 10 e superiori aggiungono reparti/gruppi e aumentano mezzi, account, strumenti e storage. Extra veri: start-up kit 1500 euro una tantum + IVA, storage extra 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese, assistenza premium/import dati su preventivo.
+Progetti premium futuri: chiamate vocali live in chat, report mensile automatico via email, indice salute flotta, budget costi per targa, alert recidive guasti, classifica multe/autisti, osservatorio strada e normative, QR mezzo, check magazzino, profilo formazione autista, esportazioni PDF/CSV avanzate.
 Regola supporto: dare sempre passi pratici. Se serve assistenza umana, raccogliere azienda, utente, sezione, cosa stava facendo, messaggio errore, dispositivo e priorita.
 `.trim()
 
@@ -145,15 +146,16 @@ const supportPlaybooks = [
   },
   {
     id: 'chat_notifications',
-    keywords: ['chat', 'messagg', 'notific', 'campan', 'grupp', 'repart', 'spunte', 'letto', 'audio', 'foto', 'video'],
+    keywords: ['chat', 'messagg', 'notific', 'campan', 'grupp', 'repart', 'spunte', 'letto', 'audio', 'foto', 'video', 'chiamat', 'telefono', 'voce'],
     title: 'chat, gruppi e notifiche',
     response: [
       'Per chat e notifiche:',
       '1. Apri Chat: trovi chat singole e gruppi/reparti separati.',
       '2. Le chat con messaggi non letti mostrano un numeretto rosso sulla lista e sull icona in basso.',
       '3. Dentro un gruppo ogni fumetto deve mostrare nome, ruolo e foto della persona che scrive.',
-      '4. Se non arrivano notifiche, apri Impostazioni sul telefono e premi attiva notifiche.',
-      '5. Per foto, audio, video o reazioni usa i comandi dentro la chat; le spunte indicano consegna e lettura.',
+      '4. Per foto, audio, video o reazioni usa i comandi dentro la chat; le spunte indicano consegna e lettura.',
+      '5. Le chiamate vocali live sono un modulo in preparazione per tutti i piani attivi, incluso Start 5: non registrano automaticamente audio e richiedono attivazione tecnica.',
+      '6. Se non arrivano notifiche, apri Impostazioni sul telefono e premi attiva notifiche.',
     ],
   },
   {
@@ -214,8 +216,8 @@ const supportPlaybooks = [
     title: 'piani, prezzi e fatturazione',
     response: [
       'I piani Vygo sono pensati per dimensione azienda:',
-      '1. Start 5: 299 euro/mese, fino a 5 mezzi, 3 strumenti/muletti, 10 account e 10 GB. Include gia chat diretta, scadenze, check, guasti, documenti, centro costi e report.',
-      '2. Fleet 10: 449 euro/mese, fino a 10 mezzi, 5 strumenti/muletti, 20 account e 20 GB. Da qui tutte le funzioni Vygo sono sbloccate, inclusi gruppi, reparti, chat completa e report.',
+      '1. Start 5: 299 euro/mese, fino a 5 mezzi, 3 strumenti/muletti, 10 account e 10 GB. Include gia chat, chiamate vocali live quando attivate, scadenze, check, guasti, documenti, centro costi e report.',
+      '2. Fleet 10: 449 euro/mese, fino a 10 mezzi, 5 strumenti/muletti, 20 account e 20 GB. Da qui si sbloccano anche gruppi e reparti, mantenendo tutte le altre funzioni Vygo.',
       '3. Fleet 20: 699 euro/mese, Fleet 30: 899 euro/mese, Fleet 50: 1199 euro/mese. Cambiano soprattutto mezzi, account e storage.',
       '4. Non vendiamo chat, centro costi e report come pezzetti separati: sono funzioni del prodotto. Gli extra veri sono storage, onboarding, import dati e assistenza premium.',
       '5. Start-up kit: 1500 euro una tantum. Storage extra: 20GB +49 euro/mese, 50GB +99 euro/mese, 100GB +179 euro/mese.',
@@ -228,10 +230,11 @@ const supportPlaybooks = [
     response: [
       'Per privacy e uso chat/documenti:',
       '1. Prima del rilascio servono Termini d uso e Privacy Policy approvati dal cliente.',
-      '2. Ogni utente deve accettare condizioni chiare su chat, documenti, notifiche e trattamento dati aziendali.',
+      '2. Ogni utente deve accettare condizioni chiare su chat, documenti, notifiche, chiamate vocali e trattamento dati aziendali.',
       '3. L azienda deve informare il personale su quali dati vengono gestiti e per quale finalita operativa.',
-      '4. Vygo deve evitare promesse legali automatiche: per GDPR, lavoro e conservazione dati va validato con consulente.',
-      '5. In caso di dubbio apri ticket assistenza e indica paese, ruolo utenti e tipo di dato trattato.',
+      '4. Per le chiamate vocali evitare registrazione automatica: conservare solo metadati tecnici salvo accordi specifici.',
+      '5. Vygo deve evitare promesse legali automatiche: per GDPR, lavoro e conservazione dati va validato con consulente.',
+      '6. In caso di dubbio apri ticket assistenza e indica paese, ruolo utenti e tipo di dato trattato.',
     ],
   },
   {

@@ -31,6 +31,7 @@ import Mail from 'lucide-react/dist/esm/icons/mail.mjs'
 import Mic from 'lucide-react/dist/esm/icons/mic.mjs'
 import Paperclip from 'lucide-react/dist/esm/icons/paperclip.mjs'
 import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
+import PhoneCall from 'lucide-react/dist/esm/icons/phone-call.mjs'
 import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
 import RadioTower from 'lucide-react/dist/esm/icons/radio-tower.mjs'
 import Reply from 'lucide-react/dist/esm/icons/reply.mjs'
@@ -249,14 +250,14 @@ const billingStatusLabels = {
 const billingCheckoutPlans = [
   {
     bestFor: 'Per piccole flotte che vogliono gia scadenze, chat, guasti e costi sotto controllo.',
-    features: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', 'Chat diretta inclusa', 'Centro costi e report inclusi', '10 GB file inclusi'],
+    features: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', 'Chat diretta inclusa', 'Chiamate vocali live', 'Centro costi e report inclusi', '10 GB file inclusi'],
     id: 'starter',
     price: '299 euro/mese + IVA',
     title: 'Start 5',
   },
   {
     bestFor: 'Il pacchetto consigliato: tutte le funzioni Vygo sbloccate per un azienda in crescita.',
-    features: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', 'Gruppi, reparti e chat completa', '20 GB file inclusi'],
+    features: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', 'Gruppi, reparti e chat completa', 'Chiamate vocali live', '20 GB file inclusi'],
     id: 'fleet10',
     isRecommended: true,
     price: '449 euro/mese + IVA',
@@ -264,21 +265,21 @@ const billingCheckoutPlans = [
   },
   {
     bestFor: 'Stesse funzioni complete, piu spazio operativo per flotte e personale piu ampi.',
-    features: ['Tutte le funzioni Vygo', 'Fino a 20 mezzi', 'Fino a 10 strumenti o muletti', 'Fino a 40 account', '30 GB file inclusi'],
+    features: ['Tutte le funzioni Vygo', 'Fino a 20 mezzi', 'Fino a 10 strumenti o muletti', 'Fino a 40 account', 'Chiamate vocali live', '30 GB file inclusi'],
     id: 'fleet20',
     price: '699 euro/mese + IVA',
     title: 'Fleet 20',
   },
   {
     bestFor: 'Per aziende con piu reparti, magazzino e gestione manutenzioni frequente.',
-    features: ['Tutte le funzioni Vygo', 'Fino a 30 mezzi', 'Fino a 15 strumenti o muletti', 'Fino a 60 account', '50 GB file inclusi'],
+    features: ['Tutte le funzioni Vygo', 'Fino a 30 mezzi', 'Fino a 15 strumenti o muletti', 'Fino a 60 account', 'Chiamate vocali live', '50 GB file inclusi'],
     id: 'fleet30',
     price: '899 euro/mese + IVA',
     title: 'Fleet 30',
   },
   {
     bestFor: 'Per flotte grandi con piu utenti e alto volume documentale.',
-    features: ['Tutte le funzioni Vygo', 'Fino a 50 mezzi', 'Fino a 25 strumenti o muletti', 'Fino a 100 account', '75 GB file inclusi'],
+    features: ['Tutte le funzioni Vygo', 'Fino a 50 mezzi', 'Fino a 25 strumenti o muletti', 'Fino a 100 account', 'Chiamate vocali live', '75 GB file inclusi'],
     id: 'fleet50',
     price: '1.199 euro/mese + IVA',
     title: 'Fleet 50',
@@ -294,6 +295,7 @@ const billingPlanCapabilities = {
     maxVehicles: 20,
     reports: true,
     storageGb: 30,
+    voiceCalls: true,
   },
   enterprise: {
     chat: true,
@@ -304,6 +306,7 @@ const billingPlanCapabilities = {
     maxVehicles: Infinity,
     reports: true,
     storageGb: 100,
+    voiceCalls: true,
   },
   fleet10: {
     chat: true,
@@ -314,6 +317,7 @@ const billingPlanCapabilities = {
     maxVehicles: 10,
     reports: true,
     storageGb: 20,
+    voiceCalls: true,
   },
   fleet20: {
     chat: true,
@@ -324,6 +328,7 @@ const billingPlanCapabilities = {
     maxVehicles: 20,
     reports: true,
     storageGb: 30,
+    voiceCalls: true,
   },
   fleet30: {
     chat: true,
@@ -334,6 +339,7 @@ const billingPlanCapabilities = {
     maxVehicles: 30,
     reports: true,
     storageGb: 50,
+    voiceCalls: true,
   },
   fleet50: {
     chat: true,
@@ -344,6 +350,7 @@ const billingPlanCapabilities = {
     maxVehicles: 50,
     reports: true,
     storageGb: 75,
+    voiceCalls: true,
   },
   pro: {
     chat: true,
@@ -354,6 +361,7 @@ const billingPlanCapabilities = {
     maxVehicles: 10,
     reports: true,
     storageGb: 20,
+    voiceCalls: true,
   },
   starter: {
     chat: true,
@@ -364,6 +372,7 @@ const billingPlanCapabilities = {
     maxVehicles: 5,
     reports: true,
     storageGb: 10,
+    voiceCalls: true,
   },
 }
 const planResourceLabels = {
@@ -376,6 +385,7 @@ const planFeatureLabels = {
   costCenter: 'centro costi',
   departments: 'reparti e gruppi',
   reports: 'report avanzati',
+  voiceCalls: 'chiamate vocali live',
 }
 const planResourceLimitFields = {
   assets: 'maxAssets',
@@ -391,7 +401,7 @@ const legalDocumentLibrary = {
         title: 'Ruoli privacy',
       },
       {
-        body: 'Vygo puo trattare dati di utenti aziendali, autisti, personale, mezzi, documenti, chat, file, foto, video, audio, scadenze, guasti, check, costi, log operativi e dati necessari alla sicurezza del servizio.',
+        body: 'Vygo puo trattare dati di utenti aziendali, autisti, personale, mezzi, documenti, chat, file, foto, video, audio, chiamate vocali, scadenze, guasti, check, costi, log operativi e dati necessari alla sicurezza del servizio.',
         title: 'Dati trattati',
       },
       {
@@ -408,13 +418,13 @@ const legalDocumentLibrary = {
       },
     ],
     title: 'Nomina responsabile trattamento',
-    version: 'vygo-dpa-2026-07-01',
+    version: 'vygo-dpa-2026-07-02',
   },
   privacy: {
     intro: 'Bozza informativa privacy Vygo. Serve per rendere chiaro cosa viene trattato dentro app e dashboard.',
     sections: [
       {
-        body: 'Vygo tratta i dati necessari a gestire aziende logistiche, utenti, autisti, personale, mezzi, documenti, scadenze, guasti, chat, notifiche, costi, report e assistenza.',
+        body: 'Vygo tratta i dati necessari a gestire aziende logistiche, utenti, autisti, personale, mezzi, documenti, scadenze, guasti, chat, notifiche, chiamate vocali, costi, report e assistenza.',
         title: 'Quali dati trattiamo',
       },
       {
@@ -434,12 +444,12 @@ const legalDocumentLibrary = {
         title: 'Diritti',
       },
       {
-        body: 'Chat, foto, audio, video e documenti sono strumenti di lavoro aziendale. Ogni azienda deve informare correttamente il proprio personale sulle modalita d uso e sulle regole interne.',
+        body: 'Chat, foto, audio, video e documenti sono strumenti di lavoro aziendale. Le chiamate vocali, quando attive, usano il microfono solo durante la conversazione: Vygo non registra automaticamente l audio e conserva solo metadati operativi come partecipanti, orari, durata e stato chiamata. Ogni azienda deve informare correttamente il proprio personale sulle modalita d uso e sulle regole interne.',
         title: 'Chat e documenti',
       },
     ],
     title: 'Informativa Privacy Vygo',
-    version: 'vygo-privacy-2026-07-01',
+    version: 'vygo-privacy-2026-07-02',
   },
   staffTerms: {
     intro: 'Regole base per autisti, magazzino, ufficio e personale che usa l app Vygo.',
@@ -464,19 +474,23 @@ const legalDocumentLibrary = {
         body: 'Le notifiche servono a ricevere messaggi e avvisi operativi. L utente puo gestire le impostazioni del telefono, ma alcune informazioni possono restare disponibili in app.',
         title: 'Notifiche',
       },
+      {
+        body: 'Le chiamate vocali live, quando disponibili nel piano aziendale, sono strumenti di lavoro. Non vanno usate per emergenze sanitarie o sicurezza stradale, non vengono registrate automaticamente e possono lasciare storico tecnico di chiamata per tutela operativa.',
+        title: 'Chiamate vocali',
+      },
     ],
     title: 'Regole uso app personale',
-    version: 'vygo-staff-terms-2026-07-01',
+    version: 'vygo-staff-terms-2026-07-02',
   },
   terms: {
     intro: 'Bozza Termini e Condizioni SaaS Vygo. Da validare legalmente prima del lancio commerciale.',
     sections: [
       {
-        body: 'Vygo e un servizio software per aziende di trasporto e logistica. Include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, notifiche, centro costi e report secondo il piano acquistato.',
+        body: 'Vygo e un servizio software per aziende di trasporto e logistica. Include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, notifiche, chiamate vocali dove previste, centro costi e report secondo il piano acquistato.',
         title: 'Oggetto del servizio',
       },
       {
-        body: 'Ogni piano puo prevedere limiti su mezzi, strumenti, account utenti, storage, chat, centro costi, report e funzioni avanzate. Se il limite viene raggiunto, l azienda potra aggiornare piano o acquistare extra.',
+        body: 'Ogni piano puo prevedere limiti su mezzi, strumenti, account utenti, storage, chat, chiamate vocali, centro costi, report e funzioni avanzate. Se il limite viene raggiunto, l azienda potra aggiornare piano o acquistare extra.',
         title: 'Piani e limiti',
       },
       {
@@ -484,7 +498,7 @@ const legalDocumentLibrary = {
         title: 'Responsabilita azienda',
       },
       {
-        body: 'Vygo si impegna a mantenere il servizio disponibile e sicuro secondo mezzi ragionevoli. Possono esserci manutenzioni, aggiornamenti, interruzioni tecniche o limiti dovuti a fornitori esterni.',
+        body: 'Vygo si impegna a mantenere il servizio disponibile e sicuro secondo mezzi ragionevoli. Possono esserci manutenzioni, aggiornamenti, interruzioni tecniche o limiti dovuti a fornitori esterni. Le chiamate vocali richiedono permessi dispositivo e un fornitore tecnico di comunicazione.',
         title: 'Disponibilita',
       },
       {
@@ -497,7 +511,7 @@ const legalDocumentLibrary = {
       },
     ],
     title: 'Termini e Condizioni SaaS',
-    version: 'vygo-terms-2026-07-01',
+    version: 'vygo-terms-2026-07-02',
   },
 }
 const adminBillingPlanOptions = [
@@ -8350,6 +8364,7 @@ function App() {
     costCenter: isAdminSession || hasPlanFeature(companyProfile, 'costCenter'),
     departments: isAdminSession || hasPlanFeature(companyProfile, 'departments'),
     reports: isAdminSession || hasPlanFeature(companyProfile, 'reports'),
+    voiceCalls: isAdminSession || hasPlanFeature(companyProfile, 'voiceCalls'),
   }
 
   const refreshAdminOverview = useCallback(async () => {
@@ -8469,6 +8484,7 @@ function App() {
           onMarkChatRead={markChatThreadRead}
           onReactToMessage={updateChatMessageReaction}
           onSendChatMessage={sendChatMessage}
+          onStartVoiceCall={showVoiceCallNotice}
           onTyping={sendChatTyping}
           onMorningCheck={submitMorningCheck}
           onOpenDriverDocument={openDriverDocumentFile}
@@ -8601,6 +8617,18 @@ function App() {
     }
 
     setActiveView('chat')
+  }
+
+  function showVoiceCallNotice(targetName = 'questo contatto') {
+    if (!canUseCurrentPlanFeature('voiceCalls')) {
+      showPlanFeatureLimit('voiceCalls', setChatSyncStatus)
+      return false
+    }
+
+    window.alert(
+      `Chiamate vocali Vygo pronte per ${targetName}. Per attivarle davvero serve collegare il provider voce: Vygo non registrera automaticamente l audio e salvera solo lo storico tecnico della chiamata.`,
+    )
+    return true
   }
 
   function openComplianceFilter(filter) {
@@ -8910,6 +8938,7 @@ function App() {
               onRefreshAssetPreviewUrl={refreshAssetPreviewUrl}
               onSendMessage={sendChatMessage}
               onSendTeamMessage={sendTeamChatMessage}
+              onStartVoiceCall={showVoiceCallNotice}
               onTyping={sendChatTyping}
               personRecords={personRecords}
               teamChatMessages={teamChatMessageRecords}
@@ -15646,6 +15675,21 @@ function ChatSoundButton({ enabled, onToggle, t }) {
   )
 }
 
+function ChatVoiceCallButton({ disabled = false, onCall, targetName = 'contatto' }) {
+  return (
+    <button
+      aria-label={`Chiama ${targetName}`}
+      className={disabled ? 'icon-button chat-voice-call-button is-disabled' : 'icon-button chat-voice-call-button'}
+      disabled={disabled}
+      onClick={() => onCall?.(targetName)}
+      title={`Chiama ${targetName}`}
+      type="button"
+    >
+      <PhoneCall size={18} />
+    </button>
+  )
+}
+
 function ChatReplyPreview({ onCancel, reply, t }) {
   if (!reply) return null
 
@@ -16249,6 +16293,7 @@ function ChatWorkspace({
   onRefreshAssetPreviewUrl,
   onSendMessage,
   onSendTeamMessage,
+  onStartVoiceCall,
   onTyping,
   personRecords = [],
   teamChatMessages = [],
@@ -16943,6 +16988,11 @@ function ChatWorkspace({
             </span>
           </div>
           <div className="chat-thread-header-actions">
+            <ChatVoiceCallButton
+              disabled={!hasSelectedChatTarget}
+              onCall={onStartVoiceCall}
+              targetName={selectedChatTitle}
+            />
             <ChatSoundButton enabled={chatSound.isEnabled} onToggle={chatSound.toggleSound} t={t} />
             {selectedDriver && (
               <ChatAvatarButton
@@ -18064,6 +18114,7 @@ function DriverAppView({
   onReactToMessage,
   onRefreshAssetPreviewUrl,
   onSendChatMessage,
+  onStartVoiceCall,
   onTyping,
   onSignOut,
   onUpload,
@@ -18125,6 +18176,7 @@ function DriverAppView({
             onReactToMessage={onReactToMessage}
             onRefreshAssetPreviewUrl={onRefreshAssetPreviewUrl}
             onSendChatMessage={onSendChatMessage}
+            onStartVoiceCall={onStartVoiceCall}
             onTyping={onTyping}
             onMorningCheck={onMorningCheck}
             onOpenDriverDocument={onOpenDriverDocument}
@@ -18239,6 +18291,7 @@ function DriverMobile({
   onReactToMessage,
   onRefreshAssetPreviewUrl,
   onSendChatMessage,
+  onStartVoiceCall,
   onTyping,
   onUpload,
   operationsStatus,
@@ -18927,6 +18980,7 @@ function DriverChatScreen({
   onReactToMessage,
   onRefreshAssetPreviewUrl,
   onSendChatMessage,
+  onStartVoiceCall,
   onTyping,
   thread,
 }) {
@@ -19107,6 +19161,7 @@ function DriverChatScreen({
           <strong>{t('chat.company')}</strong>
           <span className={companyPresenceClassName}>{companyPresenceLabel}</span>
         </div>
+        <ChatVoiceCallButton onCall={onStartVoiceCall} targetName={companyName} />
         <button
           aria-label="Apri foto e media"
           className="driver-chat-media-button"

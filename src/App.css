@@ -3477,6 +3477,7 @@
 }
 
 .chat-sound-button,
+.chat-voice-call-button,
 .chat-compose-icon-button {
   width: 38px;
   min-height: 38px;
@@ -3489,6 +3490,16 @@
 .chat-sound-button.is-enabled {
   color: #020617;
   background: #ecfeff;
+}
+
+.chat-voice-call-button {
+  color: #020617;
+  background: #ecfeff;
+}
+
+.chat-voice-call-button.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .chat-avatar-button {
@@ -8998,7 +9009,7 @@
   top: 0;
   z-index: 3;
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
   gap: 9px;
   align-items: center;
   padding: 12px;

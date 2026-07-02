@@ -88,24 +88,24 @@ const nativeLegalDocuments = {
     intro: 'Nomina Vygo a responsabile del trattamento per i dati gestiti per conto dell azienda.',
     sections: [
       ['Ruoli privacy', 'L azienda cliente resta titolare dei dati. Vygo opera come fornitore tecnico per app, dashboard, notifiche, documenti, chat, report e assistenza.'],
-      ['Dati trattati', 'Vygo puo trattare dati di utenti, autisti, personale, mezzi, documenti, chat, file, foto, video, audio, scadenze, guasti, check, costi e log operativi.'],
+      ['Dati trattati', 'Vygo puo trattare dati di utenti, autisti, personale, mezzi, documenti, chat, file, foto, video, audio, chiamate vocali, scadenze, guasti, check, costi e log operativi.'],
       ['Sicurezza', 'Il servizio usa autenticazione, permessi per azienda, regole database, archiviazione file, log e separazione dei dati tra aziende.'],
       ['Fine servizio', 'Alla cessazione l azienda potra richiedere esportazione o cancellazione dei dati secondo contratto e procedure operative.'],
     ],
     title: 'Nomina responsabile trattamento',
-    version: 'vygo-dpa-2026-07-01',
+    version: 'vygo-dpa-2026-07-02',
   },
   privacy: {
     intro: 'Informativa Privacy Vygo per app, dashboard, utenti, chat, documenti, notifiche e file.',
     sections: [
-      ['Quali dati trattiamo', 'Vygo tratta i dati necessari a gestire aziende logistiche, personale, mezzi, documenti, scadenze, guasti, chat, notifiche, costi, report e assistenza.'],
+      ['Quali dati trattiamo', 'Vygo tratta i dati necessari a gestire aziende logistiche, personale, mezzi, documenti, scadenze, guasti, chat, chiamate vocali, notifiche, costi, report e assistenza.'],
       ['Perche li usiamo', 'I dati servono a far funzionare il servizio, mostrare documenti e avvisi, inviare notifiche, gestire comunicazioni aziendali, creare report e garantire sicurezza.'],
       ['Chi puo vederli', 'I dati aziendali sono visibili solo agli utenti autorizzati dalla rispettiva azienda. Vygo non vende dati personali.'],
       ['Conservazione e diritti', 'I dati restano per il tempo necessario al servizio e agli obblighi amministrativi. Gli utenti possono chiedere informazioni, rettifica o cancellazione ove applicabile.'],
-      ['Chat e documenti', 'Chat, foto, audio, video e documenti sono strumenti di lavoro aziendale e vanno usati secondo le regole interne dell azienda.'],
+      ['Chat, chiamate e documenti', 'Chat, foto, audio, video e documenti sono strumenti di lavoro aziendale. Le chiamate vocali, quando attive, usano il microfono solo durante la conversazione: Vygo non registra automaticamente l audio e conserva solo metadati come partecipanti, orari, durata e stato chiamata.'],
     ],
     title: 'Informativa Privacy Vygo',
-    version: 'vygo-privacy-2026-07-01',
+    version: 'vygo-privacy-2026-07-02',
   },
   staffTerms: {
     intro: 'Regole base per autisti, magazzino, ufficio e personale che usa l app Vygo.',
@@ -114,21 +114,22 @@ const nativeLegalDocuments = {
       ['Uso corretto', 'L app va usata per finalita lavorative: chat aziendale, check, guasti, documenti, notifiche, scadenze, foto, video, audio e informazioni operative.'],
       ['Allegati', 'Documenti, foto e file caricati devono essere pertinenti, leggibili e collegati al lavoro.'],
       ['Check e guasti', 'Segnalazioni di guasto, check e anomalie devono essere veritiere e complete.'],
+      ['Chiamate vocali', 'Le chiamate vocali live, quando disponibili nel piano aziendale, sono strumenti di lavoro. Non vengono registrate automaticamente e possono lasciare storico tecnico di chiamata per tutela operativa.'],
     ],
     title: 'Regole uso app personale',
-    version: 'vygo-staff-terms-2026-07-01',
+    version: 'vygo-staff-terms-2026-07-02',
   },
   terms: {
     intro: 'Termini e Condizioni SaaS Vygo per aziende di trasporto e logistica.',
     sections: [
-      ['Oggetto del servizio', 'Vygo include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, notifiche, centro costi e report secondo il piano acquistato.'],
-      ['Piani e limiti', 'Ogni piano puo prevedere limiti su mezzi, strumenti, account utenti, storage, chat, centro costi, report e funzioni avanzate.'],
+      ['Oggetto del servizio', 'Vygo include dashboard aziendale, app personale, scadenze, documenti, check, guasti, chat, chiamate vocali dove previste, notifiche, centro costi e report secondo il piano acquistato.'],
+      ['Piani e limiti', 'Ogni piano puo prevedere limiti su mezzi, strumenti, account utenti, storage, chat, chiamate vocali, centro costi, report e funzioni avanzate.'],
       ['Responsabilita azienda', 'L azienda e responsabile della correttezza dei dati inseriti, della gestione degli utenti e dell uso conforme alle proprie regole interne.'],
       ['Pagamenti', 'Gli abbonamenti sono gestiti dal sistema di pagamento configurato. Mancato pagamento o piano scaduto possono limitare funzioni non incluse o non pagate.'],
       ['Cessazione', 'Alla fine del rapporto l azienda potra richiedere esportazione o cancellazione dei dati disponibili secondo le procedure concordate.'],
     ],
     title: 'Termini e Condizioni SaaS',
-    version: 'vygo-terms-2026-07-01',
+    version: 'vygo-terms-2026-07-02',
   },
 }
 
@@ -380,14 +381,14 @@ const nativeBillingPlanLabels = {
 }
 
 const nativeBillingPlanCapabilities = {
-  business: { chat: true, costCenter: true, departments: true, maxAssets: 10, maxUsers: 40, maxVehicles: 20, reports: true },
-  enterprise: { chat: true, costCenter: true, departments: true, maxAssets: Infinity, maxUsers: Infinity, maxVehicles: Infinity, reports: true },
-  fleet10: { chat: true, costCenter: true, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: true },
-  fleet20: { chat: true, costCenter: true, departments: true, maxAssets: 10, maxUsers: 40, maxVehicles: 20, reports: true },
-  fleet30: { chat: true, costCenter: true, departments: true, maxAssets: 15, maxUsers: 60, maxVehicles: 30, reports: true },
-  fleet50: { chat: true, costCenter: true, departments: true, maxAssets: 25, maxUsers: 100, maxVehicles: 50, reports: true },
-  pro: { chat: true, costCenter: true, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: true },
-  starter: { chat: true, costCenter: true, departments: false, maxAssets: 3, maxUsers: 10, maxVehicles: 5, reports: true },
+  business: { chat: true, costCenter: true, departments: true, maxAssets: 10, maxUsers: 40, maxVehicles: 20, reports: true, voiceCalls: true },
+  enterprise: { chat: true, costCenter: true, departments: true, maxAssets: Infinity, maxUsers: Infinity, maxVehicles: Infinity, reports: true, voiceCalls: true },
+  fleet10: { chat: true, costCenter: true, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: true, voiceCalls: true },
+  fleet20: { chat: true, costCenter: true, departments: true, maxAssets: 10, maxUsers: 40, maxVehicles: 20, reports: true, voiceCalls: true },
+  fleet30: { chat: true, costCenter: true, departments: true, maxAssets: 15, maxUsers: 60, maxVehicles: 30, reports: true, voiceCalls: true },
+  fleet50: { chat: true, costCenter: true, departments: true, maxAssets: 25, maxUsers: 100, maxVehicles: 50, reports: true, voiceCalls: true },
+  pro: { chat: true, costCenter: true, departments: true, maxAssets: 5, maxUsers: 20, maxVehicles: 10, reports: true, voiceCalls: true },
+  starter: { chat: true, costCenter: true, departments: false, maxAssets: 3, maxUsers: 10, maxVehicles: 5, reports: true, voiceCalls: true },
 }
 
 const nativePlanFeatureLabels = {
@@ -395,6 +396,7 @@ const nativePlanFeatureLabels = {
   costCenter: 'centro costi',
   departments: 'reparti e gruppi',
   reports: 'report avanzati',
+  voiceCalls: 'chiamate vocali live',
 }
 
 const nativePlanResourceLabels = {
@@ -884,6 +886,18 @@ function CamionChiaroApp() {
       `${getNativeBillingPlanLabel(currentCompanyProfile.billingPlan)} non include ${nativePlanFeatureLabels[feature] ?? 'questa funzione'}. Aggiorna piano per usarla.`,
     )
     return false
+  }
+
+  function showNativeVoiceCallNotice(targetName = 'questo contatto') {
+    if (!canUseNativePlanFeature('voiceCalls')) {
+      return showNativePlanFeatureLimit('voiceCalls')
+    }
+
+    Alert.alert(
+      'Chiamate vocali Vygo',
+      `Modulo pronto per ${targetName}. Per attivare chiamate live serve collegare il provider voce: Vygo non registrera automaticamente l audio e salvera solo storico tecnico della chiamata.`,
+    )
+    return true
   }
 
   function openNativeChatTab() {
@@ -3256,6 +3270,7 @@ function CamionChiaroApp() {
             onSelectTeamThread={handleSelectCompanyTeamThread}
             onSend={handleSendCompanyChatMessage}
             onSendTeamMessage={handleSendCompanyTeamChatMessage}
+            onStartVoiceCall={showNativeVoiceCallNotice}
             onReactToTeamMessage={handleReactToTeamMessage}
             onTyping={handleCompanyTyping}
             onlinePersonIds={onlinePersonIds}
@@ -3366,6 +3381,7 @@ function CamionChiaroApp() {
           onRefreshTeamChat={() => loadDriverTeamChatData()}
           onSendCompanyMessage={handleSendChatMessage}
           onSendTeamMessage={handleSendDriverTeamChatMessage}
+          onStartVoiceCall={showNativeVoiceCallNotice}
           onTyping={handleTyping}
           onlinePersonIds={onlinePersonIds}
           selectedMode={driverChatMode}

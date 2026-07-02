@@ -256,7 +256,7 @@ const billingCheckoutPlans = [
     bestFor: 'Per piccole flotte che vogliono Vygo completo senza rinunciare a reparti, chat, report e costi.',
     features: ['Tutte le funzioni Vygo', 'Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account', '10 GB file inclusi'],
     id: 'starter',
-    price: '299 euro/mese + IVA',
+    price: '300 euro/mese + IVA',
     title: 'Start 5',
   },
   {
@@ -264,12 +264,12 @@ const billingCheckoutPlans = [
     features: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account', '20 GB file inclusi'],
     id: 'fleet10',
     isRecommended: true,
-    price: '449 euro/mese + IVA',
+    price: '450 euro/mese + IVA',
     title: 'Fleet 10',
   },
   {
     bestFor: 'Stesse funzioni complete, piu spazio operativo per flotte e personale piu ampi.',
-    features: ['Tutte le funzioni Vygo', 'Fino a 20 mezzi', 'Fino a 10 strumenti o muletti', 'Fino a 40 account', 'Chiamate vocali live', '30 GB file inclusi'],
+    features: ['Tutte le funzioni Vygo', 'Fino a 20 mezzi', 'Fino a 10 strumenti o muletti', 'Fino a 40 account', '30 GB file inclusi'],
     id: 'fleet20',
     price: '699 euro/mese + IVA',
     title: 'Fleet 20',
@@ -303,7 +303,7 @@ const vygoBaseMonthlyCostItems = [
 ]
 const vygoBaseMonthlyCostCents = vygoBaseMonthlyCostItems.reduce((total, item) => total + item.cents, 0)
 const vygoSupportCostPerCompanyCents = 1200
-const vygoFleet10MonthlyPriceCents = 44900
+const vygoFleet10MonthlyPriceCents = 45000
 const vygoEstimatedTaxReserveRate = 0.35
 const vygoEconomyScenarios = [1, 2, 5, 10]
 const billingPlanCapabilities = {
@@ -710,7 +710,7 @@ const translations = {
     'homeStatus.ready': 'Attive',
     'homeStatus.storageDetail': '{files} file',
     'homeStatus.sync': 'Sistema',
-    'homeStatus.syncDemo': 'Ambiente locale',
+    'homeStatus.syncDemo': 'Modalita offline',
     'homeStatus.syncReady': 'Collegato',
     'homeStatus.waiting': 'Da attivare',
     'homeFlow.archive': 'Archivio',
@@ -805,7 +805,7 @@ const translations = {
     'support.vision': 'Visione prodotto',
     'sync.addKeys': 'Configurazione in corso',
     'sync.connected': 'Server connesso',
-    'sync.demo': 'Ambiente locale',
+    'sync.demo': 'Modalita offline',
     'topbar.searchPlaceholder': 'Cerca patente, targa, autista...',
     'topbar.searchSr': 'Cerca scadenze',
   },
@@ -1444,8 +1444,8 @@ const publicLandingCopy = {
       title: 'Prezzi pensati per il valore reale che portiamo.',
       body: 'Il piano cresce con mezzi, strumenti e account. Il canone non compra solo una app: compra ordine operativo, notifiche, storico, documenti, report, supporto e meno tempo perso ogni settimana.',
       plans: [
-        { cta: 'Attiva Start 5', description: 'Vygo completo per piccole flotte: nessuna funzione tagliata, solo limiti piu piccoli su mezzi, account e spazio file.', featured: false, items: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account utenti', 'Tutte le funzioni Vygo incluse', '10 GB file inclusi'], name: 'Start 5', price: '299 euro/mese + IVA' },
-        { cta: 'Attiva Fleet 10', description: 'Stesso Vygo completo, piu capacita operativa per aziende che crescono con mezzi, persone e documenti.', featured: true, items: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account utenti', '20 GB inclusi'], name: 'Fleet 10', price: '449 euro/mese + IVA' },
+        { cta: 'Attiva Start 5', description: 'Vygo completo per piccole flotte: nessuna funzione tagliata, solo limiti piu piccoli su mezzi, account e spazio file.', featured: false, items: ['Fino a 5 mezzi', 'Fino a 3 strumenti o muletti', 'Fino a 10 account utenti', 'Tutte le funzioni Vygo incluse', '10 GB file inclusi'], name: 'Start 5', price: '300 euro/mese + IVA' },
+        { cta: 'Attiva Fleet 10', description: 'Stesso Vygo completo, piu capacita operativa per aziende che crescono con mezzi, persone e documenti.', featured: true, items: ['Tutte le funzioni Vygo', 'Fino a 10 mezzi', 'Fino a 5 strumenti o muletti', 'Fino a 20 account utenti', '20 GB inclusi'], name: 'Fleet 10', price: '450 euro/mese + IVA' },
         { cta: 'Richiedi attivazione', description: 'Stesse funzioni complete, piu mezzi, piu account e piu spazio per aziende strutturate.', featured: false, items: ['Tutte le funzioni Vygo', '20, 30 o 50 mezzi', 'Strumenti e muletti inclusi', 'Account proporzionati alla flotta', 'Storage da 30 GB in su'], name: 'Fleet 20+', price: 'da 699 euro/mese + IVA' },
       ],
       extras: [
@@ -1507,8 +1507,8 @@ const publicLandingCopy = {
       title: 'Pricing built around the real value delivered.',
       body: 'The plan grows with vehicles, equipment and accounts. The subscription buys operational order, alerts, history, documents, reports, support and fewer wasted hours.',
       plans: [
-        { cta: 'Activate Start 5', description: 'Full Vygo for small fleets: all functions included, smaller limits on vehicles, users and storage.', featured: false, items: ['Up to 5 vehicles', 'Up to 3 tools or forklifts', 'Up to 10 user accounts', 'All Vygo functions included', '10 GB files included'], name: 'Start 5', price: '299 euro/month + VAT' },
-        { cta: 'Activate Fleet 10', description: 'Full Vygo with more operating capacity for growing companies.', featured: true, items: ['All Vygo functions', 'Up to 10 vehicles', 'Up to 5 tools or forklifts', 'Up to 20 user accounts', '20 GB included'], name: 'Fleet 10', price: '449 euro/month + VAT' },
+        { cta: 'Activate Start 5', description: 'Full Vygo for small fleets: all functions included, smaller limits on vehicles, users and storage.', featured: false, items: ['Up to 5 vehicles', 'Up to 3 tools or forklifts', 'Up to 10 user accounts', 'All Vygo functions included', '10 GB files included'], name: 'Start 5', price: '300 euro/month + VAT' },
+        { cta: 'Activate Fleet 10', description: 'Full Vygo with more operating capacity for growing companies.', featured: true, items: ['All Vygo functions', 'Up to 10 vehicles', 'Up to 5 tools or forklifts', 'Up to 20 user accounts', '20 GB included'], name: 'Fleet 10', price: '450 euro/month + VAT' },
         { cta: 'Request activation', description: 'Full functions, more vehicles, more accounts and more storage for structured companies.', featured: false, items: ['All Vygo functions', '20, 30 or 50 vehicles', 'Tools and forklifts included', 'Accounts sized to fleet', 'Storage from 30 GB'], name: 'Fleet 20+', price: 'from 699 euro/month + VAT' },
       ],
       extras: [
@@ -1570,8 +1570,8 @@ const publicLandingCopy = {
       title: 'Precios pensados para el valor real que aportamos.',
       body: 'El plan crece con vehiculos, herramientas y usuarios. La suscripcion compra orden operativo, avisos, historico, documentos, informes y soporte.',
       plans: [
-        { cta: 'Activar Start 5', description: 'Vygo completo para flotas pequenas, con limites mas pequenos.', featured: false, items: ['Hasta 5 vehiculos', 'Hasta 3 herramientas o carretillas', 'Hasta 10 usuarios', 'Todas las funciones incluidas', '10 GB incluidos'], name: 'Start 5', price: '299 euro/mes + IVA' },
-        { cta: 'Activar Fleet 10', description: 'Vygo completo con mas capacidad para empresas en crecimiento.', featured: true, items: ['Todas las funciones', 'Hasta 10 vehiculos', 'Hasta 5 herramientas o carretillas', 'Hasta 20 usuarios', '20 GB incluidos'], name: 'Fleet 10', price: '449 euro/mes + IVA' },
+        { cta: 'Activar Start 5', description: 'Vygo completo para flotas pequenas, con limites mas pequenos.', featured: false, items: ['Hasta 5 vehiculos', 'Hasta 3 herramientas o carretillas', 'Hasta 10 usuarios', 'Todas las funciones incluidas', '10 GB incluidos'], name: 'Start 5', price: '300 euro/mes + IVA' },
+        { cta: 'Activar Fleet 10', description: 'Vygo completo con mas capacidad para empresas en crecimiento.', featured: true, items: ['Todas las funciones', 'Hasta 10 vehiculos', 'Hasta 5 herramientas o carretillas', 'Hasta 20 usuarios', '20 GB incluidos'], name: 'Fleet 10', price: '450 euro/mes + IVA' },
         { cta: 'Solicitar activacion', description: 'Funciones completas, mas vehiculos, mas usuarios y mas espacio.', featured: false, items: ['Todas las funciones', '20, 30 o 50 vehiculos', 'Herramientas incluidas', 'Usuarios segun flota', 'Desde 30 GB'], name: 'Fleet 20+', price: 'desde 699 euro/mes + IVA' },
       ],
       extras: [
@@ -1633,8 +1633,8 @@ const publicLandingCopy = {
       title: 'Des prix alignes sur la valeur operationnelle.',
       body: 'Le plan grandit avec vehicules, outils et comptes. L abonnement apporte ordre, alertes, historique, documents, rapports et support.',
       plans: [
-        { cta: 'Activer Start 5', description: 'Vygo complet pour petites flottes, avec limites plus petites.', featured: false, items: ['Jusqu a 5 vehicules', 'Jusqu a 3 outils ou chariots', 'Jusqu a 10 comptes', 'Toutes les fonctions incluses', '10 GB inclus'], name: 'Start 5', price: '299 euro/mois + TVA' },
-        { cta: 'Activer Fleet 10', description: 'Vygo complet avec plus de capacite operationnelle.', featured: true, items: ['Toutes les fonctions', 'Jusqu a 10 vehicules', 'Jusqu a 5 outils ou chariots', 'Jusqu a 20 comptes', '20 GB inclus'], name: 'Fleet 10', price: '449 euro/mois + TVA' },
+        { cta: 'Activer Start 5', description: 'Vygo complet pour petites flottes, avec limites plus petites.', featured: false, items: ['Jusqu a 5 vehicules', 'Jusqu a 3 outils ou chariots', 'Jusqu a 10 comptes', 'Toutes les fonctions incluses', '10 GB inclus'], name: 'Start 5', price: '300 euro/mois + TVA' },
+        { cta: 'Activer Fleet 10', description: 'Vygo complet avec plus de capacite operationnelle.', featured: true, items: ['Toutes les fonctions', 'Jusqu a 10 vehicules', 'Jusqu a 5 outils ou chariots', 'Jusqu a 20 comptes', '20 GB inclus'], name: 'Fleet 10', price: '450 euro/mois + TVA' },
         { cta: 'Demander activation', description: 'Fonctions completes, plus de vehicules, comptes et stockage.', featured: false, items: ['Toutes les fonctions', '20, 30 ou 50 vehicules', 'Outils inclus', 'Comptes selon flotte', 'Stockage des 30 GB'], name: 'Fleet 20+', price: 'des 699 euro/mois + TVA' },
       ],
       extras: [
@@ -1696,8 +1696,8 @@ const publicLandingCopy = {
       title: 'Preise nach realem operativem Wert.',
       body: 'Der Plan wachst mit Fahrzeugen, Werkzeugen und Konten. Das Abo bringt Ordnung, Hinweise, Historie, Dokumente, Berichte und Support.',
       plans: [
-        { cta: 'Start 5 aktivieren', description: 'Vollstandiges Vygo fur kleine Flotten mit kleineren Limits.', featured: false, items: ['Bis 5 Fahrzeuge', 'Bis 3 Gerate oder Stapler', 'Bis 10 Nutzerkonten', 'Alle Funktionen enthalten', '10 GB enthalten'], name: 'Start 5', price: '299 Euro/Monat + MwSt.' },
-        { cta: 'Fleet 10 aktivieren', description: 'Vollstandiges Vygo mit mehr operativer Kapazitat.', featured: true, items: ['Alle Funktionen', 'Bis 10 Fahrzeuge', 'Bis 5 Gerate oder Stapler', 'Bis 20 Nutzerkonten', '20 GB enthalten'], name: 'Fleet 10', price: '449 Euro/Monat + MwSt.' },
+        { cta: 'Start 5 aktivieren', description: 'Vollstandiges Vygo fur kleine Flotten mit kleineren Limits.', featured: false, items: ['Bis 5 Fahrzeuge', 'Bis 3 Gerate oder Stapler', 'Bis 10 Nutzerkonten', 'Alle Funktionen enthalten', '10 GB enthalten'], name: 'Start 5', price: '300 Euro/Monat + MwSt.' },
+        { cta: 'Fleet 10 aktivieren', description: 'Vollstandiges Vygo mit mehr operativer Kapazitat.', featured: true, items: ['Alle Funktionen', 'Bis 10 Fahrzeuge', 'Bis 5 Gerate oder Stapler', 'Bis 20 Nutzerkonten', '20 GB enthalten'], name: 'Fleet 10', price: '450 Euro/Monat + MwSt.' },
         { cta: 'Aktivierung anfragen', description: 'Alle Funktionen, mehr Fahrzeuge, Konten und Speicher.', featured: false, items: ['Alle Funktionen', '20, 30 oder 50 Fahrzeuge', 'Gerate enthalten', 'Konten passend zur Flotte', 'Speicher ab 30 GB'], name: 'Fleet 20+', price: 'ab 699 Euro/Monat + MwSt.' },
       ],
       extras: [
@@ -1759,8 +1759,8 @@ const publicLandingCopy = {
       title: 'Preturi construite pe valoarea reala.',
       body: 'Planul creste cu vehicule, echipamente si conturi. Abonamentul cumpara ordine, notificari, istoric, documente, rapoarte si suport.',
       plans: [
-        { cta: 'Activeaza Start 5', description: 'Vygo complet pentru flote mici, cu limite mai mici.', featured: false, items: ['Pana la 5 vehicule', 'Pana la 3 echipamente', 'Pana la 10 conturi', 'Toate functiile incluse', '10 GB inclusi'], name: 'Start 5', price: '299 euro/luna + TVA' },
-        { cta: 'Activeaza Fleet 10', description: 'Vygo complet cu mai multa capacitate operationala.', featured: true, items: ['Toate functiile', 'Pana la 10 vehicule', 'Pana la 5 echipamente', 'Pana la 20 conturi', '20 GB inclusi'], name: 'Fleet 10', price: '449 euro/luna + TVA' },
+        { cta: 'Activeaza Start 5', description: 'Vygo complet pentru flote mici, cu limite mai mici.', featured: false, items: ['Pana la 5 vehicule', 'Pana la 3 echipamente', 'Pana la 10 conturi', 'Toate functiile incluse', '10 GB inclusi'], name: 'Start 5', price: '300 euro/luna + TVA' },
+        { cta: 'Activeaza Fleet 10', description: 'Vygo complet cu mai multa capacitate operationala.', featured: true, items: ['Toate functiile', 'Pana la 10 vehicule', 'Pana la 5 echipamente', 'Pana la 20 conturi', '20 GB inclusi'], name: 'Fleet 10', price: '450 euro/luna + TVA' },
         { cta: 'Cere activarea', description: 'Functii complete, mai multe vehicule, conturi si spatiu.', featured: false, items: ['Toate functiile', '20, 30 sau 50 vehicule', 'Echipamente incluse', 'Conturi dupa flota', 'De la 30 GB'], name: 'Fleet 20+', price: 'de la 699 euro/luna + TVA' },
       ],
       extras: [
@@ -1822,8 +1822,8 @@ const publicLandingCopy = {
       title: 'Ceny oparte na realnej wartosci operacyjnej.',
       body: 'Plan rosnie z liczba pojazdow, sprzetu i kont. Abonament daje porzadek, powiadomienia, historie, dokumenty, raporty i wsparcie.',
       plans: [
-        { cta: 'Aktywuj Start 5', description: 'Pelne Vygo dla mniejszych flot z mniejszymi limitami.', featured: false, items: ['Do 5 pojazdow', 'Do 3 narzedzi lub wozkow', 'Do 10 kont', 'Wszystkie funkcje', '10 GB w cenie'], name: 'Start 5', price: '299 euro/miesiac + VAT' },
-        { cta: 'Aktywuj Fleet 10', description: 'Pelne Vygo z wieksza pojemnoscia operacyjna.', featured: true, items: ['Wszystkie funkcje', 'Do 10 pojazdow', 'Do 5 narzedzi lub wozkow', 'Do 20 kont', '20 GB w cenie'], name: 'Fleet 10', price: '449 euro/miesiac + VAT' },
+        { cta: 'Aktywuj Start 5', description: 'Pelne Vygo dla mniejszych flot z mniejszymi limitami.', featured: false, items: ['Do 5 pojazdow', 'Do 3 narzedzi lub wozkow', 'Do 10 kont', 'Wszystkie funkcje', '10 GB w cenie'], name: 'Start 5', price: '300 euro/miesiac + VAT' },
+        { cta: 'Aktywuj Fleet 10', description: 'Pelne Vygo z wieksza pojemnoscia operacyjna.', featured: true, items: ['Wszystkie funkcje', 'Do 10 pojazdow', 'Do 5 narzedzi lub wozkow', 'Do 20 kont', '20 GB w cenie'], name: 'Fleet 10', price: '450 euro/miesiac + VAT' },
         { cta: 'Popros o aktywacje', description: 'Pelne funkcje, wiecej pojazdow, kont i miejsca.', featured: false, items: ['Wszystkie funkcje', '20, 30 lub 50 pojazdow', 'Sprzet w cenie', 'Konta wedlug floty', 'Od 30 GB'], name: 'Fleet 20+', price: 'od 699 euro/miesiac + VAT' },
       ],
       extras: [
@@ -3503,7 +3503,7 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Genera',
     'drivers.createTitle': 'Crea autista',
     'drivers.noVehicle': 'Nessun mezzo',
-    'drivers.supabaseEmail': 'Email tecnica Supabase',
+    'drivers.supabaseEmail': 'Email accesso app',
     'drivers.usernameHelp': 'Compila username per generarla',
     'drivers.vehicleAssigned': 'Mezzo assegnato',
     'drivers.statusAvailable': 'Disponibile',
@@ -3561,7 +3561,7 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Generate',
     'drivers.createTitle': 'Create driver',
     'drivers.noVehicle': 'No vehicle',
-    'drivers.supabaseEmail': 'Technical Supabase email',
+    'drivers.supabaseEmail': 'App login email',
     'drivers.usernameHelp': 'Enter username to generate it',
     'drivers.vehicleAssigned': 'Assigned vehicle',
     'drivers.statusAvailable': 'Available',
@@ -3619,7 +3619,7 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Generar',
     'drivers.createTitle': 'Crear conductor',
     'drivers.noVehicle': 'Sin vehiculo',
-    'drivers.supabaseEmail': 'Email tecnico Supabase',
+    'drivers.supabaseEmail': 'Email acceso app',
     'drivers.usernameHelp': 'Introduce usuario para generarlo',
     'drivers.vehicleAssigned': 'Vehiculo asignado',
     'drivers.statusAvailable': 'Disponible',
@@ -3677,7 +3677,7 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Generer',
     'drivers.createTitle': 'Creer chauffeur',
     'drivers.noVehicle': 'Aucun vehicule',
-    'drivers.supabaseEmail': 'Email technique Supabase',
+    'drivers.supabaseEmail': 'Email acces app',
     'drivers.usernameHelp': 'Saisis le nom utilisateur pour le generer',
     'drivers.vehicleAssigned': 'Vehicule assigne',
     'drivers.statusAvailable': 'Disponible',
@@ -3735,7 +3735,7 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Generieren',
     'drivers.createTitle': 'Fahrer erstellen',
     'drivers.noVehicle': 'Kein Fahrzeug',
-    'drivers.supabaseEmail': 'Technische Supabase-E-Mail',
+    'drivers.supabaseEmail': 'App-Zugangs-E-Mail',
     'drivers.usernameHelp': 'Benutzername eingeben, um sie zu erzeugen',
     'drivers.vehicleAssigned': 'Zugewiesenes Fahrzeug',
     'drivers.statusAvailable': 'Verfugbar',
@@ -4398,7 +4398,7 @@ const supportSections = [
         title: 'Posso controllare multe e sanzioni?',
       },
       {
-        body: 'Il prezzo parte da 299 euro/mese + IVA perche Vygo non e una semplice agenda: include app, notifiche, documenti, storico, chat, costi, report, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
+        body: 'Il prezzo parte da 300 euro/mese + IVA perche Vygo non e una semplice agenda: include app, notifiche, documenti, storico, chat, costi, report, supporto operativo e una struttura pensata per ridurre il disordine quotidiano.',
         title: 'Perche vale il canone mensile?',
       },
       {
@@ -6425,7 +6425,7 @@ function App() {
     )
 
     if (saveResult.error) {
-      setPhoneNotificationStatus(`Supabase: ${saveResult.error.message}`)
+      setPhoneNotificationStatus('Notifiche non attivate. Riprova tra poco o contatta assistenza.')
       return false
     }
 
@@ -6442,7 +6442,7 @@ function App() {
     if (!hasCompanyDataConnection || !payload?.targetRole) {
       return {
         data: null,
-        error: { message: 'Notifiche telefono disponibili solo con Supabase collegato.' },
+        error: { message: 'Servizio notifiche non disponibile in questo momento.' },
       }
     }
 
@@ -6514,7 +6514,7 @@ function App() {
       const result = await uploadSupabaseCompanyLogoFile(uploadFile, activeCompanyId, companyProfile.logoPath)
 
       if (result.error) {
-        setCompanySettingsStatus(`Errore Supabase: ${result.error.message}`)
+        setCompanySettingsStatus(`Logo non aggiornato: ${result.error.message}`)
         return false
       }
 
@@ -6538,7 +6538,7 @@ function App() {
 
     const previewUrl = URL.createObjectURL(uploadFile)
     setCompanyProfile((currentProfile) => ({ ...currentProfile, logoPath: previewUrl }))
-    setCompanySettingsStatus('Logo azienda aggiornato in modalità locale.')
+    setCompanySettingsStatus('Logo azienda aggiornato su questo dispositivo.')
     return true
   }
 
@@ -6567,7 +6567,7 @@ function App() {
       )
 
       if (result.error) {
-        setStatus(`Errore Supabase: ${result.error.message}`)
+        setStatus(`Foto profilo non aggiornata: ${result.error.message}`)
         return false
       }
 
@@ -6595,7 +6595,7 @@ function App() {
     setDriverRecords((currentDrivers) =>
       currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, profileImagePath: previewUrl } : driver)),
     )
-    setStatus('Foto profilo aggiornata in modalità locale.')
+    setStatus('Foto profilo aggiornata su questo dispositivo.')
     return true
   }
 
@@ -6609,7 +6609,7 @@ function App() {
       const result = await clearSupabaseDriverProfileImageFile(driverId)
 
       if (result.error) {
-        setStatus(`Errore Supabase: ${result.error.message}`)
+        setStatus(`Foto profilo non rimossa: ${result.error.message}`)
         return false
       }
 
@@ -6628,7 +6628,7 @@ function App() {
     setDriverRecords((currentDrivers) =>
       currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, profileImagePath: '' } : driver)),
     )
-    setStatus('Foto profilo rimossa in modalità locale.')
+    setStatus('Foto profilo rimossa su questo dispositivo.')
     return true
   }
 
@@ -6679,17 +6679,17 @@ function App() {
 
     async function loadCompanyData() {
       const companyName = session.name?.trim() && !session.name.includes('@') ? session.name.trim() : 'Nuova azienda'
-      setDriversSyncStatus('Caricamento dati Supabase...')
-      setDocumentsSyncStatus('Caricamento documenti Supabase...')
+      setDriversSyncStatus('Caricamento dati...')
+      setDocumentsSyncStatus('Caricamento documenti...')
       setOperationsSyncStatus('Caricamento check e guasti...')
-      setFleetSyncStatus('Caricamento flotta Supabase...')
+      setFleetSyncStatus('Caricamento flotta...')
       setChatSyncStatus('Caricamento chat...')
       const companyResult = await ensureCompanyForCurrentUser(companyName)
 
       if (!isMounted) return
 
       if (companyResult.error || !companyResult.data?.id) {
-        setDriversSyncStatus(`Azienda non collegata. Supabase: ${companyResult.error?.message ?? 'profilo mancante'}`)
+        setDriversSyncStatus('Azienda non collegata. Aggiorna la pagina o contatta assistenza.')
         setDocumentsSyncStatus('Documenti non caricati.')
         setFleetSyncStatus('Flotta non caricata.')
         setOperationsSyncStatus('Check e guasti non caricati.')
@@ -6740,9 +6740,9 @@ function App() {
       if (!isMounted) return
 
       if (driversResult.error || peopleResult.error || assetsResult.error || vehiclesResult.error || complianceResult.error || documentsResult.error) {
-        setDriversSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
-        setDocumentsSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i documenti locali.')
-        setFleetSyncStatus('Supabase non ha risposto correttamente. Sto mostrando i dati locali.')
+        setDriversSyncStatus('Servizio dati non disponibile. Sto mostrando gli ultimi dati caricati.')
+        setDocumentsSyncStatus('Documenti non aggiornati. Riprova tra poco.')
+        setFleetSyncStatus('Flotta non aggiornata. Riprova tra poco.')
         setOperationsSyncStatus('Check e guasti non caricati.')
         return
       }
@@ -6765,15 +6765,15 @@ function App() {
       if (teamChatThreadsResult.data) setTeamChatThreadRecords(teamChatThreadsResult.data)
       if (teamChatMessagesResult.data) setTeamChatMessageRecords(teamChatMessagesResult.data)
       if (storageSummaryResult.data) setCompanyStorageSummary(storageSummaryResult.data)
-      setDriversSyncStatus('Dati Supabase caricati.')
-      setDocumentsSyncStatus('Documenti Supabase caricati.')
-      setFleetSyncStatus('Dati Supabase caricati.')
+      setDriversSyncStatus('Dati caricati.')
+      setDocumentsSyncStatus('Documenti caricati.')
+      setFleetSyncStatus('Dati caricati.')
       setOperationsSyncStatus(
         checksResult.error || faultsResult.error ? 'Check e guasti non caricati.' : 'Check e guasti caricati.',
       )
       setChatSyncStatus(
         chatThreadsResult.error || chatMessagesResult.error
-          ? 'Chat non attiva. Esegui SQL parte 14 e poi riprova.'
+          ? 'Chat non ancora disponibile. Contatta assistenza se il problema continua.'
           : 'Chat caricata.',
       )
     }
@@ -6824,7 +6824,7 @@ function App() {
           if (storageSummaryResult.data) setCompanyStorageSummary(storageSummaryResult.data)
           setChatSyncStatus(
             chatThreadsResult.error || chatMessagesResult.error
-              ? 'Chat non attiva. L azienda deve eseguire SQL parte 14.'
+              ? 'Chat non ancora disponibile. Contatta assistenza se il problema continua.'
               : 'Chat caricata.',
           )
         }
@@ -7147,7 +7147,7 @@ function App() {
       const result = await updateSupabaseCompanyProfile(cleanUpdates, activeCompanyId)
 
       if (result.error) {
-        setCompanySettingsStatus(`Dati aggiornati localmente. Supabase: ${result.error.message}`)
+        setCompanySettingsStatus('Dati aggiornati su questo dispositivo. Salvataggio online da verificare.')
         return false
       }
 
@@ -7156,7 +7156,7 @@ function App() {
       return true
     }
 
-    setCompanySettingsStatus('Impostazioni azienda salvate in modalità locale.')
+    setCompanySettingsStatus('Impostazioni azienda salvate su questo dispositivo.')
     return true
   }
 
@@ -7180,7 +7180,7 @@ function App() {
       const result = await updateSupabaseComplianceItem(id, { lastReminderAt: reminderAt }, activeCompanyId)
 
       if (result.error) {
-        setDocumentsSyncStatus(`Sollecito locale, Supabase: ${result.error.message}`)
+        setDocumentsSyncStatus('Sollecito registrato, sincronizzazione online da verificare.')
       } else if (result.data) {
         setItems((currentItems) => currentItems.map((item) => (item.id === id ? result.data : item)))
       }
@@ -7242,7 +7242,7 @@ function App() {
       const result = await updateSupabaseComplianceItem(id, { status: 'done' }, activeCompanyId)
 
       if (result.error) {
-        setDocumentsSyncStatus(`Pratica chiusa in locale. Supabase: ${result.error.message}`)
+        setDocumentsSyncStatus('Pratica chiusa su questo dispositivo. Sincronizzazione online da verificare.')
         return false
       }
 
@@ -7328,7 +7328,7 @@ function App() {
       )
     }
 
-    setDocumentsSyncStatus('Rinnovo salvato in modalità locale.')
+    setDocumentsSyncStatus('Rinnovo salvato su questo dispositivo.')
     return true
   }
 
@@ -7382,7 +7382,7 @@ function App() {
         : await createSupabaseDriver(cleanDriver, activeCompanyId)
 
       if (result.error) {
-        const errorMessage = `Errore Supabase: ${result.error.message}`
+        const errorMessage = `Autista non salvato: ${result.error.message}`
         setDriversSyncStatus(errorMessage)
         if (String(result.error.message ?? '').includes('Piano Vygo')) window.alert(result.error.message)
         return false
@@ -7392,13 +7392,13 @@ function App() {
       setDriversSyncStatus(
         temporaryPassword
           ? `Autista creato. Username: ${cleanDriver.username}. Password temporanea: ${temporaryPassword}`
-          : 'Autista salvato su Supabase.',
+          : 'Autista salvato.',
       )
       return true
     }
 
     setDriverRecords((currentDrivers) => [cleanDriver, ...currentDrivers])
-    setDriversSyncStatus('Autista aggiunto in modalità locale.')
+    setDriversSyncStatus('Autista aggiunto su questo dispositivo.')
     return true
   }
 
@@ -7485,7 +7485,7 @@ function App() {
       const result = await createSupabaseCompanyPerson({ ...cleanPerson, password: temporaryPassword }, activeCompanyId)
 
       if (result.error) {
-        const errorMessage = `Errore Supabase: ${result.error.message}`
+        const errorMessage = `Persona non salvata: ${result.error.message}`
         setPeopleSyncStatus(errorMessage)
         if (String(result.error.message ?? '').includes('Piano Vygo')) window.alert(result.error.message)
         return false
@@ -7513,17 +7513,17 @@ function App() {
 
     setPersonRecords((currentPeople) => [localPerson, ...currentPeople])
     const savedDeadlineCount = await saveInitialDeadlines(localPerson)
-    setPeopleSyncStatus(`Persona aggiunta in modalità locale${savedDeadlineCount ? ` con ${savedDeadlineCount} scadenze.` : '.'}`)
+    setPeopleSyncStatus(`Persona aggiunta su questo dispositivo${savedDeadlineCount ? ` con ${savedDeadlineCount} scadenze.` : '.'}`)
     return localPerson
   }
 
   async function updateDriverRecord(driverId, updates) {
     if (hasCompanyDataConnection && session?.role === 'company') {
-      setDriversSyncStatus('Aggiornamento autista su Supabase...')
+      setDriversSyncStatus('Aggiornamento autista...')
       const result = await updateSupabaseDriver(driverId, updates)
 
       if (result.error) {
-        setDriversSyncStatus(`Errore Supabase: ${result.error.message}`)
+        setDriversSyncStatus('Autista non aggiornato. Riprova tra poco.')
         return false
       }
 
@@ -7537,7 +7537,7 @@ function App() {
     setDriverRecords((currentDrivers) =>
       currentDrivers.map((driver) => (driver.id === driverId ? { ...driver, ...updates } : driver)),
     )
-    setDriversSyncStatus('Autista aggiornato in modalità locale.')
+    setDriversSyncStatus('Autista aggiornato su questo dispositivo.')
     return true
   }
 
@@ -7586,11 +7586,11 @@ function App() {
 
   async function archiveDriverRecord(driverId) {
     if (hasCompanyDataConnection && session?.role === 'company') {
-      setDriversSyncStatus('Archiviazione autista su Supabase...')
+      setDriversSyncStatus('Archiviazione autista...')
       const result = await archiveSupabaseDriver(driverId)
 
       if (result.error) {
-        setDriversSyncStatus(`Errore Supabase: ${result.error.message}`)
+        setDriversSyncStatus('Autista non archiviato. Riprova tra poco.')
         return false
       }
     }
@@ -7600,7 +7600,7 @@ function App() {
         driver.id === driverId ? { ...driver, status: 'Archiviato', vehicleId: '' } : driver,
       ),
     )
-    setDriversSyncStatus(hasCompanyDataConnection ? 'Autista archiviato.' : 'Autista archiviato in modalità locale.')
+    setDriversSyncStatus(hasCompanyDataConnection ? 'Autista archiviato.' : 'Autista archiviato su questo dispositivo.')
     return true
   }
 
@@ -7616,23 +7616,23 @@ function App() {
     }
 
     if (hasCompanyDataConnection && session?.role === 'company') {
-      setFleetSyncStatus('Salvataggio mezzo su Supabase...')
+      setFleetSyncStatus('Salvataggio mezzo...')
       const result = await createSupabaseVehicle(cleanVehicle, activeCompanyId)
 
       if (result.error) {
-        const errorMessage = `Errore Supabase: ${result.error.message}`
+        const errorMessage = `Mezzo non salvato: ${result.error.message}`
         setFleetSyncStatus(errorMessage)
         if (String(result.error.message ?? '').includes('Piano Vygo')) window.alert(result.error.message)
         return false
       }
 
       setVehicleRecords((currentVehicles) => [result.data, ...currentVehicles])
-      setFleetSyncStatus('Mezzo salvato su Supabase.')
+      setFleetSyncStatus('Mezzo salvato.')
       return true
     }
 
     setVehicleRecords((currentVehicles) => [cleanVehicle, ...currentVehicles])
-    setFleetSyncStatus('Mezzo aggiunto in modalità locale.')
+    setFleetSyncStatus('Mezzo aggiunto su questo dispositivo.')
     return true
   }
 
@@ -7674,7 +7674,7 @@ function App() {
     }
 
     setCostEntryRecords((currentEntries) => [localEntry, ...currentEntries])
-    setOperationsSyncStatus('Spesa aggiunta in modalità locale.')
+    setOperationsSyncStatus('Spesa aggiunta su questo dispositivo.')
     return localEntry
   }
 
@@ -7722,7 +7722,7 @@ function App() {
     }
 
     setCostEntryRecords((currentEntries) => currentEntries.map((entry) => (entry.id === entryId ? localEntry : entry)))
-    setOperationsSyncStatus('Spesa aggiornata in modalità locale.')
+    setOperationsSyncStatus('Spesa aggiornata su questo dispositivo.')
     return localEntry
   }
 
@@ -7745,7 +7745,7 @@ function App() {
     }
 
     setCostEntryRecords((currentEntries) => currentEntries.filter((currentEntry) => currentEntry.id !== entry.id))
-    setOperationsSyncStatus('Spesa eliminata in modalità locale.')
+    setOperationsSyncStatus('Spesa eliminata su questo dispositivo.')
     return true
   }
 
@@ -7757,11 +7757,11 @@ function App() {
     }
 
     if (hasCompanyDataConnection && session?.role === 'company') {
-      setFleetSyncStatus('Aggiornamento mezzo su Supabase...')
+      setFleetSyncStatus('Aggiornamento mezzo...')
       const result = await updateSupabaseVehicle(vehicleId, cleanUpdates)
 
       if (result.error) {
-        setFleetSyncStatus(`Errore Supabase: ${result.error.message}`)
+        setFleetSyncStatus('Mezzo non aggiornato. Riprova tra poco.')
         return false
       }
 
@@ -7775,17 +7775,17 @@ function App() {
     setVehicleRecords((currentVehicles) =>
       currentVehicles.map((vehicle) => (vehicle.id === vehicleId ? { ...vehicle, ...cleanUpdates } : vehicle)),
     )
-    setFleetSyncStatus('Mezzo aggiornato in modalità locale.')
+    setFleetSyncStatus('Mezzo aggiornato su questo dispositivo.')
     return true
   }
 
   async function archiveVehicleRecord(vehicleId) {
     if (hasCompanyDataConnection && session?.role === 'company') {
-      setFleetSyncStatus('Archiviazione mezzo su Supabase...')
+      setFleetSyncStatus('Archiviazione mezzo...')
       const result = await archiveSupabaseVehicle(vehicleId)
 
       if (result.error) {
-        setFleetSyncStatus(`Errore Supabase: ${result.error.message}`)
+        setFleetSyncStatus('Mezzo non archiviato. Riprova tra poco.')
         return false
       }
     }
@@ -7798,7 +7798,7 @@ function App() {
     setDriverRecords((currentDrivers) =>
       currentDrivers.map((driver) => (driver.vehicleId === vehicleId ? { ...driver, vehicleId: '' } : driver)),
     )
-    setFleetSyncStatus(hasCompanyDataConnection ? 'Mezzo archiviato.' : 'Mezzo archiviato in modalità locale.')
+    setFleetSyncStatus(hasCompanyDataConnection ? 'Mezzo archiviato.' : 'Mezzo archiviato su questo dispositivo.')
     return true
   }
 
@@ -7810,16 +7810,16 @@ function App() {
     }
 
     if (hasCompanyDataConnection && session?.role === 'company') {
-      setDocumentsSyncStatus('Salvataggio documento su Supabase...')
+      setDocumentsSyncStatus('Salvataggio documento...')
       const result = await createSupabaseDriverDocument(cleanDocument, activeCompanyId)
 
       if (result.error) {
-        setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
+        setDocumentsSyncStatus('Documento non salvato. Riprova tra poco.')
         return false
       }
 
       setDocumentRecords((currentDocuments) => [result.data, ...currentDocuments])
-      setDocumentsSyncStatus('Documento salvato su Supabase.')
+      setDocumentsSyncStatus('Documento salvato.')
       void recordDocumentEvent(result.data, 'created')
       void notifyPhone({
         body: `${result.data.type} disponibile in app.`,
@@ -7833,11 +7833,11 @@ function App() {
     }
 
     if (hasCompanyDataConnection && session?.role === 'driver') {
-      setDocumentsSyncStatus('Creazione documento autista su Supabase...')
+      setDocumentsSyncStatus('Creazione documento autista...')
       const result = await createSupabaseOwnDriverDocument(cleanDocument)
 
       if (result.error) {
-        setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
+        setDocumentsSyncStatus('Documento autista non creato. Riprova tra poco.')
         return false
       }
 
@@ -7848,7 +7848,7 @@ function App() {
     }
 
     setDocumentRecords((currentDocuments) => [cleanDocument, ...currentDocuments])
-    setDocumentsSyncStatus('Documento aggiunto in modalità locale.')
+    setDocumentsSyncStatus('Documento aggiunto su questo dispositivo.')
     void recordDocumentEvent(cleanDocument, 'created')
     return cleanDocument
   }
@@ -7861,11 +7861,11 @@ function App() {
     }
 
     if (hasCompanyDataConnection && ['company', 'driver'].includes(session?.role)) {
-      setDocumentsSyncStatus('Aggiornamento documento su Supabase...')
+      setDocumentsSyncStatus('Aggiornamento documento...')
       const result = await updateSupabaseDriverDocument(documentId, cleanUpdates)
 
       if (result.error) {
-        setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
+        setDocumentsSyncStatus('Documento non aggiornato. Riprova tra poco.')
         return false
       }
 
@@ -7879,7 +7879,7 @@ function App() {
     setDocumentRecords((currentDocuments) =>
       currentDocuments.map((document) => (document.id === documentId ? { ...document, ...cleanUpdates } : document)),
     )
-    setDocumentsSyncStatus('Documento aggiornato in modalità locale.')
+    setDocumentsSyncStatus('Documento aggiornato su questo dispositivo.')
     return true
   }
 
@@ -7909,11 +7909,11 @@ function App() {
 
     if (hasCompanyDataConnection && session?.role === 'company') {
       if (document) await recordDocumentEvent(document, 'deleted')
-      setDocumentsSyncStatus('Rimozione documento da Supabase...')
+      setDocumentsSyncStatus('Rimozione documento...')
       const result = await deleteSupabaseDriverDocument(documentId)
 
       if (result.error) {
-        setDocumentsSyncStatus(`Errore Supabase: ${result.error.message}`)
+        setDocumentsSyncStatus(`Documento non rimosso: ${result.error.message}`)
         return false
       }
 
@@ -7925,7 +7925,7 @@ function App() {
 
     if (!hasCompanyDataConnection && document) void recordDocumentEvent(document, 'deleted')
     setDocumentRecords((currentDocuments) => currentDocuments.filter((document) => document.id !== documentId))
-    setDocumentsSyncStatus(hasCompanyDataConnection ? 'Documento rimosso.' : 'Documento rimosso in modalità locale.')
+    setDocumentsSyncStatus(hasCompanyDataConnection ? 'Documento rimosso.' : 'Documento rimosso su questo dispositivo.')
     return true
   }
 
@@ -7983,7 +7983,7 @@ function App() {
     )
     setUploadingDriverDocumentId('')
     setDriverUploadSent(true)
-    setDriverDocumentUploadStatus('Documento selezionato in modalità locale.')
+    setDriverDocumentUploadStatus('Documento selezionato su questo dispositivo.')
     void recordDocumentEvent({ ...document, filePath: uploadFile.name, status: 'Caricato' }, 'file_uploaded', {
       filePath: uploadFile.name,
       previousFilePath: document.filePath,
@@ -8003,7 +8003,7 @@ function App() {
     }
 
     if (!isSupabaseConfigured) {
-      setDriverDocumentUploadStatus('File presente solo in demo locale. Con Supabase Storage si aprira qui.')
+      setDriverDocumentUploadStatus('File disponibile solo su questo dispositivo.')
       return false
     }
 
@@ -8032,7 +8032,7 @@ function App() {
     }
 
     if (!isSupabaseConfigured) {
-      setCompanySettingsStatus('PDF disponibile quando Supabase Storage e collegato.')
+      setCompanySettingsStatus('PDF non ancora disponibile online.')
       return false
     }
 
@@ -8080,7 +8080,7 @@ function App() {
     }
 
     if (companyProfile.billingProvider !== 'stripe' || !companyProfile.billingCustomerId) {
-      const message = 'Portale pagamento non ancora collegato a Stripe per questa azienda. In questa fase test puoi cambiare piano da Admin o da Supabase; quando Stripe sara attivo, qui si aprira il portale cliente per upgrade, carte e fatture.'
+      const message = 'Portale pagamento non ancora attivo per questa azienda. Contatta l assistenza Vygo per aggiornare piano, carte e fatture.'
       setCompanySettingsStatus(message)
       window.alert(message)
       return false
@@ -8099,7 +8099,7 @@ function App() {
   }
 
   function openBillingSettings() {
-    setCompanySettingsStatus('Da qui puoi vedere il piano. In questa fase test gli upgrade si impostano da Admin/Supabase finche Stripe non e collegato.')
+    setCompanySettingsStatus('Da qui puoi vedere il piano e richiedere modifiche di abbonamento.')
     setActiveView('settings')
     window.setTimeout(() => {
       document.querySelector('.billing-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -8172,7 +8172,7 @@ function App() {
     setOperationsSyncStatus(
       session?.role === 'company'
         ? 'Anteprima azienda: check simulato. Dall accesso autista viene salvato.'
-        : 'Check registrato in modalità locale.',
+        : 'Check registrato su questo dispositivo.',
     )
     return true
   }
@@ -8232,7 +8232,7 @@ function App() {
     setOperationsSyncStatus(
       session?.role === 'company'
         ? 'Anteprima azienda: guasto simulato. Dall accesso autista viene salvato.'
-        : 'Guasto registrato in modalità locale.',
+        : 'Guasto registrato su questo dispositivo.',
     )
     return true
   }
@@ -8390,7 +8390,7 @@ function App() {
       upsertRecordById(currentThreads, { ...localThread, lastMessageAt: now, updatedAt: now }),
     )
     setChatMessageRecords((currentMessages) => [...currentMessages, localMessage])
-    setChatSyncStatus('Messaggio aggiunto in modalità locale.')
+    setChatSyncStatus('Messaggio aggiunto su questo dispositivo.')
     return true
   }
 
@@ -8467,7 +8467,7 @@ function App() {
       const result = await markSupabaseChatMessagesRead(threadId, readerRole)
 
       if (result.error) {
-        setChatSyncStatus(`Lettura messaggi aggiornata localmente. Supabase: ${result.error.message}`)
+        setChatSyncStatus('Lettura aggiornata su questo dispositivo. Sincronizzazione online da verificare.')
         return true
       }
 
@@ -8498,7 +8498,7 @@ function App() {
       const result = await markSupabaseTeamThreadRead(threadId)
 
       if (result.error) {
-        setChatSyncStatus(`Lettura gruppo aggiornata localmente. Supabase: ${result.error.message}`)
+        setChatSyncStatus('Lettura gruppo aggiornata su questo dispositivo. Sincronizzazione online da verificare.')
         return true
       }
     }
@@ -8532,7 +8532,7 @@ function App() {
       )
 
       if (result.error) {
-        setChatSyncStatus(`Reazione salvata localmente. Supabase: ${result.error.message}`)
+        setChatSyncStatus('Reazione salvata su questo dispositivo. Sincronizzazione online da verificare.')
         return true
       }
 
@@ -8618,7 +8618,7 @@ function App() {
       const result = await updateSupabaseFaultReportStatus(reportId, status, repair)
 
       if (result.error) {
-        setOperationsSyncStatus(`Guasto spostato localmente. Supabase: ${result.error.message}`)
+        setOperationsSyncStatus('Guasto aggiornato su questo dispositivo. Sincronizzazione online da verificare.')
         return true
       }
 
@@ -8640,9 +8640,9 @@ function App() {
     }
     setOperationsSyncStatus(
       hasRepairUpdate
-        ? 'Costo riparazione salvato in modalità locale.'
+        ? 'Costo riparazione salvato su questo dispositivo.'
         : status === 'closed'
-          ? 'Guasto archiviato in modalità locale.'
+          ? 'Guasto archiviato su questo dispositivo.'
           : 'Guasto rimesso da leggere.',
     )
     return true
@@ -8656,7 +8656,7 @@ function App() {
       const result = await updateSupabaseVehicleCheckStatus(checkId, 'resolved')
 
       if (result.error) {
-        setOperationsSyncStatus(`Check archiviato solo su questo dispositivo. Supabase: ${result.error.message}`)
+        setOperationsSyncStatus('Check archiviato su questo dispositivo. Sincronizzazione online da verificare.')
         return false
       }
 
@@ -8678,7 +8678,7 @@ function App() {
       const result = await updateSupabaseVehicleCheckStatus(checkId, 'open')
 
       if (result.error) {
-        setOperationsSyncStatus(`Check rimesso da leggere solo su questo dispositivo. Supabase: ${result.error.message}`)
+        setOperationsSyncStatus('Check rimesso da leggere su questo dispositivo. Sincronizzazione online da verificare.')
         return false
       }
 
@@ -8842,7 +8842,7 @@ function App() {
         accepted: Boolean(result.data?.accepted),
         isSaving: false,
         loading: false,
-        message: result.data?.missingTable ? 'Registro privacy non ancora installato. Esegui SQL 46 per attivarlo.' : '',
+        message: result.data?.missingTable ? 'Registro privacy non ancora attivo. Contatta assistenza Vygo.' : '',
         missingDocuments: result.data?.missingDocuments ?? [],
         requiredDocuments: result.data?.requiredDocuments ?? [],
       })

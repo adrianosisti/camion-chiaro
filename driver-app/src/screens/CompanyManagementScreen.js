@@ -1416,7 +1416,7 @@ export function CompanyManagementScreen({
 
   async function submitPerson() {
     if (!workforceSchemaReady) {
-      Alert.alert('Da attivare', 'Per creare ufficio e magazzino devi prima eseguire il file SQL 31 in Supabase.')
+      Alert.alert('Funzione non disponibile', 'Questa sezione non e ancora attiva per l azienda. Contatta l assistenza Vygo.')
       return
     }
 
@@ -1488,7 +1488,7 @@ export function CompanyManagementScreen({
 
   async function submitWarehouseAsset() {
     if (!workforceSchemaReady) {
-      Alert.alert('Da attivare', 'Per creare muletti e attrezzature devi prima eseguire il file SQL 31 in Supabase.')
+      Alert.alert('Funzione non disponibile', 'Questa sezione non e ancora attiva per l azienda. Contatta l assistenza Vygo.')
       return
     }
 
@@ -1684,7 +1684,7 @@ export function CompanyManagementScreen({
         <View style={styles.schemaNotice}>
           <Ionicons color={colors.warning} name="alert-circle-outline" size={18} />
           <Text style={styles.schemaNoticeText}>
-            Reparti, ufficio, magazzino e attrezzature si attivano eseguendo in Supabase il file SQL 31.
+            Reparti, ufficio, magazzino e attrezzature non sono ancora attivi per questa azienda.
           </Text>
         </View>
       ) : null}

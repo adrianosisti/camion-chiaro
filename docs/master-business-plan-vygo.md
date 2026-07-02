@@ -109,8 +109,8 @@ SaaS con canone mensile.
 
 Tutti i piani includono le funzioni principali. Cambiano limiti di mezzi, strumenti, utenti e storage.
 
-- Start 5: 299 euro/mese + IVA;
-- Fleet 10: 449 euro/mese + IVA;
+- Start 5: 300 euro/mese + IVA;
+- Fleet 10: 450 euro/mese + IVA;
 - Fleet 20: 699 euro/mese + IVA;
 - Fleet 30: 899 euro/mese + IVA;
 - Fleet 50: 1.199 euro/mese + IVA;

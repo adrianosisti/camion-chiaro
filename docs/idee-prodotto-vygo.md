@@ -71,10 +71,10 @@ Incluso nel pacchetto:
 - riepilogo costi mese/anno;
 - classifica mezzi piu costosi.
 
-Prezzo consigliato:
-- Report Base incluso nei piani da Fleet 20 in su;
-- Centro costi Premium: +150 euro/mese;
-- Report automatico email + PDF/CSV mensile: +250 euro/mese;
+Prezzo consigliato V1:
+- centro costi, report web, CSV e stampa inclusi in tutti i piani;
+- il prezzo cambia per numero mezzi, strumenti, account e storage;
+- report automatico email + PDF/CSV mensile da valutare piu avanti come extra;
 - pacchetto amministrazione completo con import storico iniziale: +500/1.000 euro una tantum, in base ai dati da caricare.
 
 ## Idee forti per trasportatori
@@ -103,10 +103,9 @@ Prezzo consigliato:
 
 - Start 5: 300 euro/mese, fino a 5 mezzi, 3 strumenti o muletti, 10 account e 10 GB file.
 - Fleet 10: 450 euro/mese, fino a 10 mezzi, 5 strumenti o muletti, 20 account e 20 GB file.
-- Fleet 20: 650 euro/mese, fino a 20 mezzi, 10 strumenti o muletti, 40 account e 30 GB file.
-- Fleet 30/50: 850-1.200 euro/mese, flotte strutturate, reparti, report e storage maggiore.
+- Fleet 20: 699 euro/mese, fino a 20 mezzi, 10 strumenti o muletti, 40 account e 30 GB file.
+- Fleet 30/50: 899-1.199 euro/mese, flotte strutturate, reparti, report e storage maggiore.
 - Enterprise: prezzo su richiesta, API, supporto dedicato, storage personalizzato e migrazione dati.
-- Chat aziendale completa: +100 euro/mese.
 - Start-up kit: 1.500 euro una tantum.
 - Storage extra: pacchetti 20 GB, 50 GB e 100 GB.
 

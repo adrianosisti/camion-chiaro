@@ -79,7 +79,7 @@ export function getPushSupportStatus() {
     return {
       requiresInstall: false,
       supported: false,
-      reason: 'Manca la chiave pubblica push nelle variabili Netlify.',
+      reason: 'Notifiche telefono non ancora attive per questa azienda.',
     }
   }
 
@@ -144,7 +144,7 @@ export async function subscribeCurrentBrowserToPush() {
 
   const registration = await registerAppServiceWorker()
   if (!registration) {
-    return { error: { message: 'Notifiche disponibili dopo la pubblicazione Netlify.' }, subscription: null }
+    return { error: { message: 'Notifiche disponibili dopo la pubblicazione online.' }, subscription: null }
   }
 
   const existingSubscription = await registration.pushManager.getSubscription()

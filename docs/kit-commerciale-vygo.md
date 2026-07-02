@@ -164,6 +164,10 @@ Dire:
 
 ## Pacchetti consigliati
 
+Regola semplice da dire al cliente:
+
+**Tutti i piani hanno Vygo completo. Cambia solo quanto grande e la tua azienda: mezzi, strumenti, account e spazio file.**
+
 ### Start 5
 
 Da 300 euro/mese + IVA.
@@ -181,7 +185,10 @@ Include:
 - check;
 - guasti;
 - dashboard azienda;
-- app personale.
+- app personale;
+- chat singole e gruppi;
+- centro costi;
+- report web, CSV e stampa.
 
 ### Fleet 10
 
@@ -195,13 +202,11 @@ Include:
 - fino a 5 strumenti/muletti;
 - fino a 20 account;
 - 20 GB file;
-- storico piu ampio;
-- gestione reparti;
-- report operativi.
+- tutte le funzioni Vygo, con limiti piu alti.
 
 ### Fleet 20+
 
-Da 650 euro/mese + IVA.
+Da 699 euro/mese + IVA.
 
 Per aziende strutturate.
 
@@ -212,27 +217,24 @@ Include:
 - piu reparti;
 - piu strumenti;
 - piu storage;
-- configurazione personalizzata.
+- tutte le funzioni Vygo, con limiti piu alti.
 
-## Moduli opzionali
+## Extra opzionali
 
-### Chat aziendale completa
+### Storage extra
 
-+100 euro/mese + IVA.
+Da proporre solo quando il cliente usa molti video, foto e allegati.
 
-Chat singole, gruppi, reparti, allegati, audio, foto, notifiche e storico.
+- 20 GB extra;
+- 50 GB extra;
+- 100 GB extra;
+- pacchetto su misura per flotte grandi.
 
-### Centro costi Premium
+### Report automatici direzionali
 
-+150 euro/mese + IVA.
+Da vendere piu avanti, quando email professionale e PDF automatici saranno collegati.
 
-Costi per targa, autista, attrezzatura, periodo, sanzioni, manutenzioni, guasti, modifiche, eliminazioni e report.
-
-### Report direzionali avanzati
-
-+250 euro/mese + IVA quando attiviamo email/report automatici.
-
-Report mensili pronti per titolare, CSV, stampa A4, riepiloghi costi, multe, scadenze, guasti e check.
+Non e un blocco della V1: centro costi, report web, CSV e stampa restano inclusi nei piani.
 
 ### Start-up kit
 

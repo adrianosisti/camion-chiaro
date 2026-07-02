@@ -1085,7 +1085,7 @@ export async function recordLegalAcceptances({
   if (isMissingLegalSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca il registro privacy. Esegui il file SQL 46_licenze_privacy_limiti.sql in Supabase.' },
+      error: { message: 'Registro privacy non ancora attivo. Contatta assistenza Vygo.' },
     }
   }
 
@@ -1096,7 +1096,7 @@ export async function fetchAdminOverview() {
   const supabase = await getSupabaseClient()
 
   if (!supabase) {
-    return { data: null, error: { message: 'Supabase non configurato.' } }
+    return { data: null, error: { message: 'Servizio dati non configurato.' } }
   }
 
   const sessionResult = await supabase.auth.getSession()
@@ -1125,7 +1125,7 @@ export async function fetchAdminOverview() {
     return {
       data: null,
       error: {
-        message: 'Funzione Netlify admin non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+        message: 'Pannello admin non raggiungibile. Riprova dal sito online.',
       },
     }
   }
@@ -1135,7 +1135,7 @@ export async function updateAdminCompanyControl(companyId, updates = {}) {
   const supabase = await getSupabaseClient()
 
   if (!supabase || !companyId) {
-    return { data: null, error: { message: 'Supabase non configurato.' } }
+    return { data: null, error: { message: 'Servizio dati non configurato.' } }
   }
 
   const sessionResult = await supabase.auth.getSession()
@@ -1165,7 +1165,7 @@ export async function updateAdminCompanyControl(companyId, updates = {}) {
     return {
       data: null,
       error: {
-        message: 'Funzione Netlify admin non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+        message: 'Pannello admin non raggiungibile. Riprova dal sito online.',
       },
     }
   }
@@ -1704,7 +1704,7 @@ export async function updateVehicleCheckStatus(checkId, status) {
   if (error?.code === '42703') {
     return {
       data: null,
-      error: { message: 'Manca SQL stato check. Esegui il file 29_stato_check_risolti.sql in Supabase.' },
+      error: { message: 'Gestione stato check non ancora attiva. Contatta assistenza Vygo.' },
     }
   }
 
@@ -1910,7 +1910,7 @@ export async function ensureDirectTeamThread(companyId = configuredCompanyId, pe
   if (error?.code === '42883' || error?.code === 'PGRST202') {
     return {
       data: null,
-      error: { message: 'Manca SQL chat dirette personale. Esegui il file 32_chat_dirette_personale.sql in Supabase.' },
+      error: { message: 'Chat diretta personale non ancora attiva. Contatta assistenza Vygo.' },
     }
   }
 
@@ -1954,7 +1954,7 @@ export async function fetchDriverSessionData() {
     return {
       data: null,
       error: {
-        message: 'Funzione Netlify autista non raggiungibile. Controlla che l ultimo deploy sia pubblicato.',
+        message: 'Area autista non raggiungibile. Riprova dal sito online.',
       },
     }
   }
@@ -2010,7 +2010,7 @@ export async function createDriverAccount(driver, password, companyId = configur
     return {
       data: null,
       error: {
-        message: 'Funzione Netlify non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+        message: 'Servizio online non raggiungibile. Riprova tra poco.',
       },
     }
   }
@@ -2056,7 +2056,7 @@ export async function createCompanyPerson(person, companyId = configuredCompanyI
       return {
         data: null,
         error: {
-          message: 'Funzione Netlify non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+          message: 'Servizio online non raggiungibile. Riprova tra poco.',
         },
       }
     }
@@ -2069,7 +2069,7 @@ export async function createCompanyPerson(person, companyId = configuredCompanyI
     .single()
 
   if (isMissingWorkforceSchemaError(error)) {
-    return { data: null, error: { message: 'Manca SQL persone/reparti. Esegui i file SQL 31 in Supabase.' } }
+    return { data: null, error: { message: 'Persone e reparti non ancora attivi. Contatta assistenza Vygo.' } }
   }
 
   return { data: data ? mapCompanyPerson(data) : null, error }
@@ -2109,7 +2109,7 @@ export async function resetCompanyAccessPassword({ password = '', targetId, targ
     return {
       data: null,
       error: {
-        message: 'Funzione Netlify non raggiungibile. Dopo il deploy su Netlify riprova dal sito online.',
+        message: 'Servizio online non raggiungibile. Riprova tra poco.',
       },
     }
   }
@@ -2129,7 +2129,7 @@ export async function createComplianceItemRecord(item, companyId = configuredCom
     .single()
 
   if (isMissingWorkforceSchemaError(result.error) && ['person', 'asset'].includes(item.scope)) {
-    return { data: null, error: { message: 'Manca SQL persone/reparti per scadenze persona e attrezzatura.' } }
+    return { data: null, error: { message: 'Scadenze persone e attrezzature non ancora attive. Contatta assistenza Vygo.' } }
   }
 
   if (result.error?.code === 'PGRST204' || result.error?.code === '42703') {
@@ -2376,7 +2376,7 @@ export async function createCostEntryRecord(entry, companyId = configuredCompany
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
+      error: { message: 'Centro costi non ancora attivo. Contatta assistenza Vygo.' },
     }
   }
 
@@ -2449,7 +2449,7 @@ export async function updateCostEntryRecord(entryId, updates = {}, companyId = c
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
+      error: { message: 'Centro costi non ancora attivo. Contatta assistenza Vygo.' },
     }
   }
 
@@ -2470,7 +2470,7 @@ export async function deleteCostEntryRecord(entry) {
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
+      error: { message: 'Centro costi non ancora attivo. Contatta assistenza Vygo.' },
     }
   }
 
@@ -2629,7 +2629,7 @@ export async function createTeamChatMessageRecord(message, companyId = configure
   }
 
   if (isMissingWorkforceSchemaError(error)) {
-    return { data: null, error: { message: 'Per usare chat gruppi/reparti esegui il file SQL 31 in Supabase.' } }
+    return { data: null, error: { message: 'Chat gruppi e reparti non ancora attiva. Contatta assistenza Vygo.' } }
   }
 
   return { data: data ? mapTeamChatMessage(data) : null, error }
@@ -2667,7 +2667,7 @@ export async function createVoiceCallSessionRecord(call, companyId = configuredC
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL chiamate vocali. Esegui il file 49_chiamate_vocali_preparazione.sql in Supabase.' },
+      error: { message: 'Chiamate vocali non ancora attive per questa azienda.' },
     }
   }
 
@@ -2778,7 +2778,7 @@ export async function updateChatMessageReaction(message, actorRole, reaction) {
     return {
       data: null,
       error: {
-        message: 'Manca SQL reazioni chat. Esegui il file 19_chat_reazioni.sql in Supabase.',
+        message: 'Reazioni chat non ancora attive. Contatta assistenza Vygo.',
       },
     }
   }
@@ -2803,7 +2803,7 @@ export async function updateTeamChatMessageReaction(message, actorRole, reaction
     return {
       data: null,
       error: {
-        message: 'Manca SQL reazioni chat gruppi. Esegui il file 44_team_chat_reazioni.sql in Supabase.',
+        message: 'Reazioni gruppi non ancora attive. Contatta assistenza Vygo.',
       },
     }
   }
@@ -2868,7 +2868,7 @@ export async function updateFaultReportStatus(reportId, status, repair = {}) {
   if (error?.code === '42703' && hasRepairUpdate) {
     return {
       data: null,
-      error: { message: 'Manca SQL costi guasti. Esegui il file 39_costi_riparazione_guasti.sql in Supabase.' },
+      error: { message: 'Costi guasti non ancora attivi. Contatta assistenza Vygo.' },
     }
   }
 
@@ -3137,7 +3137,7 @@ export async function createBillingCheckoutSession({ billingProfile, companyId =
 
     return { data: responsePayload, error: null }
   } catch {
-    return { data: null, error: { message: 'Checkout non raggiungibile. Dopo il deploy Netlify riprova.' } }
+    return { data: null, error: { message: 'Checkout non raggiungibile. Riprova dal sito online.' } }
   }
 }
 
@@ -3172,7 +3172,7 @@ export async function createBillingPortalSession(companyId = configuredCompanyId
 
     return { data: responsePayload, error: null }
   } catch {
-    return { data: null, error: { message: 'Portale fatturazione non raggiungibile. Dopo il deploy Netlify riprova.' } }
+    return { data: null, error: { message: 'Portale fatturazione non raggiungibile. Riprova dal sito online.' } }
   }
 }
 
@@ -3578,7 +3578,7 @@ export async function sendPushNotification(payload) {
     return {
       data: null,
       error: {
-        message: 'Funzione notifiche non raggiungibile. Dopo il deploy Netlify riprova dal sito online.',
+        message: 'Servizio notifiche non raggiungibile. Riprova dal sito online.',
       },
     }
   }

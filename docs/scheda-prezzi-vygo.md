@@ -20,6 +20,25 @@ Tutti i prezzi sono da intendersi **+ IVA**.
 
 ## Piani principali
 
+Regola commerciale V1: **tutte le funzioni principali sono incluse in ogni piano**.
+
+Il cliente non deve scegliere tra "programma povero" e "programma completo". Sceglie il piano in base alla dimensione reale della flotta: mezzi, strumenti, account e spazio file.
+
+Funzioni incluse in tutti i piani:
+
+- dashboard azienda;
+- app iOS/Android per personale;
+- anagrafiche persone, flotta, strumenti e reparti;
+- documenti e scadenze;
+- check operativi;
+- guasti con foto;
+- chat singole e gruppi;
+- notifiche push;
+- centro costi;
+- sanzioni e multe;
+- report web, CSV e stampa;
+- archivio operativo.
+
 ### Start 5 - 300 euro/mese
 
 Per piccole flotte che vogliono iniziare subito con ordine.
@@ -30,14 +49,7 @@ Include:
 - fino a 3 strumenti, muletti o attrezzature;
 - fino a 10 account utenti;
 - 10 GB file inclusi;
-- dashboard azienda;
-- app iOS/Android per personale;
-- scadenze documentali;
-- documenti persone e mezzi;
-- check operativi;
-- segnalazioni guasti;
-- notifiche;
-- archivio operativo.
+- tutte le funzioni operative Vygo.
 
 ### Fleet 10 - 450 euro/mese
 
@@ -49,12 +61,9 @@ Include:
 - fino a 5 strumenti, muletti o attrezzature;
 - fino a 20 account utenti;
 - 20 GB file inclusi;
-- gestione reparti;
-- storico operativo piu ampio;
-- report base;
-- tutto quanto previsto nel piano Start 5.
+- tutte le funzioni operative Vygo.
 
-### Fleet 20 - 650 euro/mese
+### Fleet 20 - 699 euro/mese
 
 Per flotte strutturate che vogliono piu controllo su costi, documenti e reparti.
 
@@ -64,10 +73,9 @@ Include:
 - fino a 10 strumenti, muletti o attrezzature;
 - fino a 40 account utenti;
 - 30 GB file inclusi;
-- report operativi avanzati;
-- gestione estesa di persone, mezzi, reparti e strumenti.
+- tutte le funzioni operative Vygo.
 
-### Fleet 30 - 850 euro/mese
+### Fleet 30 - 899 euro/mese
 
 Per aziende con piu sedi operative, magazzino o flotta in crescita.
 
@@ -77,10 +85,9 @@ Include:
 - fino a 15 strumenti, muletti o attrezzature;
 - fino a 60 account utenti;
 - 50 GB file inclusi;
-- controllo piu ampio su costi, sanzioni e manutenzioni;
-- priorita superiore nell avvio.
+- tutte le funzioni operative Vygo.
 
-### Fleet 50 - 1.200 euro/mese
+### Fleet 50 - 1.199 euro/mese
 
 Per flotte grandi con molti utenti e alto volume documentale.
 
@@ -90,7 +97,7 @@ Include:
 - fino a 25 strumenti, muletti o attrezzature;
 - fino a 100 account utenti;
 - 75 GB file inclusi;
-- dashboard, app, report, storico e controllo avanzato.
+- tutte le funzioni operative Vygo.
 
 ### Enterprise - su preventivo
 
@@ -104,51 +111,19 @@ Per aziende con esigenze particolari:
 - storage aggiuntivo importante;
 - formazione piu estesa.
 
-## Moduli opzionali
+## Extra opzionali
 
-### Chat aziendale completa - 100 euro/mese
+### Report automatici assistiti - prezzo da definire
 
-Per aziende che vogliono sostituire o affiancare le chat sparse con comunicazioni operative ordinate.
+Da vendere piu avanti, non nella prima V1, quando email professionale e generazione PDF automatica saranno stabili.
 
-Include:
+Idea:
 
-- chat singole;
-- gruppi e reparti;
-- foto, video, audio e allegati;
-- reazioni e risposte;
-- notifiche push;
-- storico consultabile;
-- separazione tra comunicazioni operative e dati aziendali.
-
-### Centro costi Premium - 150 euro/mese
-
-Per aziende che vogliono capire dove vanno i soldi.
-
-Include:
-
-- costi guasti;
-- manutenzioni libere;
-- assicurazioni, revisioni e spese documentali;
-- sanzioni e multe;
-- costi per targa;
-- costi per autista;
-- costi per muletto o attrezzatura;
-- modifica ed eliminazione spese;
-- filtri per periodo, categoria, mezzo, persona e asset.
-
-### Report direzionali avanzati - 250 euro/mese
-
-Da vendere quando il cliente vuole report pronti, periodici e piu strutturati.
-
-Include:
-
-- report costi mensile;
-- report sanzioni;
-- report manutenzioni;
-- report scadenze;
-- CSV per Excel;
-- stampa A4;
-- preparazione per invio automatico quando il servizio email professionale sara collegato.
+- invio mensile automatico al titolare;
+- PDF riepilogo costi, sanzioni, scadenze, guasti e check;
+- CSV allegati;
+- commento direzionale gia pronto;
+- report per targa, persona, reparto o periodo.
 
 ### Storage extra
 

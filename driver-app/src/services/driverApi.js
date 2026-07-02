@@ -18,6 +18,8 @@ import {
 
 const companyAssetsBucket = 'company-assets'
 const driverDocumentsBucket = 'driver-documents'
+const featureNotReadyMessage = 'Funzione non ancora attiva per questa azienda. Contatta l assistenza Vygo.'
+const serviceUnavailableMessage = 'Servizio Vygo non disponibile. Riprova tra poco o contatta l assistenza.'
 
 function normalizeUsername(username = '') {
   return String(username).trim().toLowerCase().replace(/\s+/g, '')
@@ -54,7 +56,7 @@ async function getAccessToken() {
 }
 
 function notConfiguredError() {
-  return { data: null, error: { message: 'Configura le chiavi Supabase in driver-app/.env.' } }
+  return { data: null, error: { message: serviceUnavailableMessage } }
 }
 
 function isMissingWorkforceSchemaError(error) {
@@ -62,7 +64,7 @@ function isMissingWorkforceSchemaError(error) {
 }
 
 function workforceSchemaError() {
-  return { message: 'Per usare reparti, ufficio e magazzino esegui prima il file 31_personale_reparti_gruppi.sql in Supabase.' }
+  return { message: featureNotReadyMessage }
 }
 
 function putCurrentDriverFirst(driver, drivers = []) {
@@ -682,7 +684,7 @@ export async function recordLegalAcceptances({
   if (isMissingLegalSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca il registro privacy. Esegui il file SQL 46 in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -740,7 +742,7 @@ export async function saveNativePushToken({ companyId = '', deviceName = '', pla
   if (error?.code === '42883' || error?.code === 'PGRST202') {
     return {
       data: null,
-      error: { message: 'Manca SQL notifiche app native. Esegui il file 30_native_push_tokens.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -758,7 +760,7 @@ export async function deleteNativePushToken(token = '') {
   if (error?.code === '42883' || error?.code === 'PGRST202') {
     return {
       data: null,
-      error: { message: 'Manca SQL spegnimento notifiche. Esegui il file 50_native_push_logout_fix.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -767,7 +769,7 @@ export async function deleteNativePushToken(token = '') {
 
 export async function sendPushNotification(payload) {
   if (!isSupabaseConfigured) return notConfiguredError()
-  if (!apiBaseUrl) return { data: null, error: { message: 'Configura EXPO_PUBLIC_API_BASE_URL con il sito Netlify.' } }
+  if (!apiBaseUrl) return { data: null, error: { message: serviceUnavailableMessage } }
 
   const token = await getAccessToken()
   if (!token) return { data: null, error: { message: 'Sessione mancante per inviare notifica telefono.' } }
@@ -1554,7 +1556,7 @@ export async function fetchTeamChat({ companyId, threadId }) {
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Per usare chat gruppi/reparti esegui il file SQL 31 in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
   if (error) return { data: null, error }
@@ -1684,7 +1686,7 @@ export async function sendTeamChatMessage({
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Per usare chat gruppi/reparti esegui il file SQL 31 in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -1756,7 +1758,7 @@ export async function createVoiceCallSession({
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL chiamate vocali. Esegui il file 49_chiamate_vocali_preparazione.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -1792,7 +1794,7 @@ export async function updateVoiceCallSession(callId, patch = {}) {
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL chiamate vocali. Esegui il file 49_chiamate_vocali_preparazione.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -1849,7 +1851,7 @@ export async function updateChatMessageReaction(message, actorRole, reaction) {
   if (error?.code === '42703') {
     return {
       data: null,
-      error: { message: 'Manca SQL reazioni chat. Esegui il file 19_chat_reazioni.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -1870,14 +1872,14 @@ export async function updateTeamChatMessageReaction(message, actorRole, reaction
   if (error?.code === '42883' || error?.code === 'PGRST202') {
     return {
       data: null,
-      error: { message: 'Manca SQL reazioni chat gruppi. Esegui il file 44_team_chat_reazioni.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Per usare reazioni e chat gruppi esegui prima i file SQL team chat in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -2005,7 +2007,7 @@ export async function updateFaultReportStatus(reportId, status, repair = {}) {
   if (error?.code === '42703' && hasRepairUpdate) {
     return {
       data: null,
-      error: { message: 'Manca SQL costi guasti. Esegui il file 39_costi_riparazione_guasti.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -2045,7 +2047,7 @@ export async function updateVehicleCheckStatus(checkId, status) {
   if (error?.code === '42703') {
     return {
       data: null,
-      error: { message: 'Manca SQL stato check. Esegui il file 29_stato_check_risolti.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -2259,7 +2261,7 @@ export async function createCompanyDriverAccount({ companyId, driver, password }
   if (!apiBaseUrl) {
     return {
       data: null,
-      error: { message: 'Configura EXPO_PUBLIC_API_BASE_URL con il sito Netlify.' },
+      error: { message: serviceUnavailableMessage },
     }
   }
 
@@ -2288,7 +2290,7 @@ export async function createCompanyDriverAccount({ companyId, driver, password }
   } catch {
     return {
       data: null,
-      error: { message: 'Server Vygo non raggiungibile. Controlla il deploy Netlify.' },
+      error: { message: serviceUnavailableMessage },
     }
   }
 }
@@ -2336,7 +2338,7 @@ export async function createCompanyPerson({ companyId, person }) {
     } catch {
       return {
         data: null,
-        error: { message: 'Server Vygo non raggiungibile. Controlla il deploy Netlify.' },
+        error: { message: serviceUnavailableMessage },
       }
     }
   }
@@ -2362,7 +2364,7 @@ export async function resetCompanyAccessPassword({ companyId, password = '', tar
   if (!apiBaseUrl) {
     return {
       data: null,
-      error: { message: 'Configura EXPO_PUBLIC_API_BASE_URL con il sito Netlify.' },
+      error: { message: serviceUnavailableMessage },
     }
   }
 
@@ -2391,7 +2393,7 @@ export async function resetCompanyAccessPassword({ companyId, password = '', tar
   } catch {
     return {
       data: null,
-      error: { message: 'Server Vygo non raggiungibile. Controlla il deploy Netlify.' },
+      error: { message: serviceUnavailableMessage },
     }
   }
 }
@@ -2408,7 +2410,7 @@ export async function ensureDirectTeamThread({ companyId, personId }) {
   if (error?.code === '42883' || error?.code === 'PGRST202') {
     return {
       data: null,
-      error: { message: 'Manca SQL chat dirette personale. Esegui il file 32_chat_dirette_personale.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -2488,7 +2490,7 @@ export async function createCompanyComplianceItem({ companyId, file = null, item
       await supabase.storage.from(companyAssetsBucket).remove([filePath])
       return {
         data: null,
-        error: { message: 'Manca SQL allegati scadenze. Esegui il file 27_scadenze_file_allegati.sql in Supabase.' },
+        error: { message: featureNotReadyMessage },
       }
     }
 
@@ -2583,7 +2585,7 @@ export async function createCompanyCostEntry({ companyId, entry, file = null }) 
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -2653,7 +2655,7 @@ export async function updateCompanyCostEntry({ companyId, entryId, entry, file =
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -2669,7 +2671,7 @@ export async function deleteCompanyCostEntry({ entryId }) {
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Manca SQL Centro costi. Esegui i file 40_centro_costi_libero.sql e 41_centro_costi_autisti_sanzioni.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -2727,7 +2729,7 @@ export async function renewCompanyComplianceItem({ companyId, file = null, item,
     await supabase.storage.from(companyAssetsBucket).remove([filePath])
     return {
       data: null,
-      error: { message: 'Manca SQL allegati scadenze. Esegui il file 27_scadenze_file_allegati.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 
@@ -2942,7 +2944,7 @@ export async function renewDriverDocument({ companyId, document, driverId, file 
   if (error?.code === '42883' || error?.code === 'PGRST202') {
     return {
       data: null,
-      error: { message: 'Manca SQL rinnovo documenti. Esegui il file 37_rinnovo_documenti_autista.sql in Supabase.' },
+      error: { message: featureNotReadyMessage },
     }
   }
 

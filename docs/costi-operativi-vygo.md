@@ -55,7 +55,7 @@ Questa parte non sostituisce il commercialista. Per decidere internamente, pero,
 - per una SRL/SRLS entrano in gioco imposte societarie, possibili imposte regionali, compenso amministratore o dividendi;
 - per stare larghi, nel pannello admin usiamo **35% di riserva fiscale prudente** sul margine positivo.
 
-Regola pratica: se Vygo incassa 449 euro + IVA, i 449 euro sono ricavo, l IVA e passaggio. Poi togli costi cloud, strumenti, Stripe, supporto e commercialista. Sul margine che resta accantoni il 35%.
+Regola pratica: se Vygo incassa 450 euro + IVA, i 450 euro sono ricavo, l IVA e passaggio. Poi togli costi cloud, strumenti, Stripe, supporto e commercialista. Sul margine che resta accantoni il 35%.
 
 ## Costi variabili
 
@@ -70,10 +70,10 @@ Regola pratica: se Vygo incassa 449 euro + IVA, i 449 euro sono ricavo, l IVA e 
 
 | Clienti Fleet 10 | MRR netto IVA | Costi stimati | Margine prima tasse | Riserva tasse 35% | Netto prudente |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 449 euro | ~396 euro | ~53 euro | ~19 euro | ~34 euro |
-| 2 | 898 euro | ~417 euro | ~481 euro | ~168 euro | ~313 euro |
-| 5 | 2.245 euro | ~477 euro | ~1.768 euro | ~619 euro | ~1.149 euro |
-| 10 | 4.490 euro | ~580 euro | ~3.910 euro | ~1.369 euro | ~2.541 euro |
+| 1 | 450 euro | ~396 euro | ~54 euro | ~19 euro | ~35 euro |
+| 2 | 900 euro | ~417 euro | ~483 euro | ~169 euro | ~314 euro |
+| 5 | 2.250 euro | ~477 euro | ~1.773 euro | ~621 euro | ~1.152 euro |
+| 10 | 4.500 euro | ~580 euro | ~3.920 euro | ~1.372 euro | ~2.548 euro |
 
 L obiettivo iniziale non e vivere di Vygo: e dimostrare che 5-10 aziende pagano.
 

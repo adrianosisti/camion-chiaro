@@ -82,6 +82,8 @@ Per iPhone serve un account Apple Developer. Senza quello si continua a provare 
 ## Identita app
 
 - Nome app: Vygo
-- iOS bundle id: `it.camionchiaro.app`
-- Android package: `it.camionchiaro.app`
+- iOS bundle id interno attuale: `it.camionchiaro.app`
+- Android package interno attuale: `it.camionchiaro.app`
 - Colori principali: celeste, nero, bianco
+
+Prima della pubblicazione store conviene decidere se registrare identificativi definitivi coerenti con Vygo, per esempio `it.vygo.app` o `com.vygo.app`.

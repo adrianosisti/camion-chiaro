@@ -1,121 +1,113 @@
 # Vygo
 
-App per aziende di logistica: scadenze autisti e flotta, login azienda, accesso autista con nome utente, notifiche in app, check mattutino dei mezzi, segnalazione guasti e documenti digitali dell'autista.
+Vygo e il centro operativo per aziende di trasporto e logistica: dashboard web per l azienda, app iOS/Android per persone operative, documenti, scadenze, check, guasti, chat, notifiche, centro costi e report.
 
-## Cosa c'e' gia'
+Dominio pubblico: `https://www.vy-go.com`
 
-- Login demo azienda.
-- Login demo autista con nome utente.
-- Creazione autista aziendale con username e password temporanea tramite funzione Netlify.
-- Flotta divisa in furgoni, motrici, trattori e semirimorchi.
-- Targhe visibili per ogni mezzo.
-- Check mattutino autista salvato su Supabase, con scelta opzionale del semirimorchio agganciato.
-- Segnalazione guasto salvata su Supabase e visibile all'azienda.
-- Sezione documenti autista da mostrare in caso di controllo.
-- Schema Supabase con RLS per aziende e autisti.
-- Configurazione Netlify.
+## Superfici prodotto
 
-## Prova locale
+- Dashboard web azienda: anagrafiche, flotta, scadenze, registro operativo, chat, report, costi, admin e impostazioni.
+- App mobile Vygo: accesso azienda, autisti, ufficio e magazzino, chat, notifiche, documenti, check e guasti.
+- Backend Netlify: funzioni per creazione utenti, notifiche push, Stripe, admin, password e sessioni.
+- Supabase: database, Auth, Storage, Realtime, policy RLS e funzioni SQL.
 
-Apri il terminale nella cartella del progetto e lancia:
+## Stato attuale
+
+Funzioni gia presenti:
+
+- registrazione azienda e login;
+- accettazione termini/privacy;
+- creazione persone: autisti, ufficio, magazzino;
+- flotta con furgoni, motrici, trattori, semirimorchi, strumenti e muletti;
+- documenti persone e mezzi con scadenze;
+- check operativi e segnalazione guasti;
+- chat singole e gruppi con foto, video, audio, reazioni, letture e notifiche;
+- notifiche push web/native;
+- centro costi, sanzioni, manutenzioni e report;
+- piani, limiti, Stripe preparato e pannello admin;
+- app iOS/Android con EAS Update.
+
+Congelato per la V1:
+
+- chiamate vocali live. Il codice e preparato, ma la funzione resta nascosta finche non decidiamo provider, costi e qualita.
+
+## Sviluppo locale dashboard web
 
 ```bash
 npm install
 npm run dev
 ```
 
-Poi apri:
+Apri `http://127.0.0.1:5173/`.
 
-```text
-http://127.0.0.1:5173/
-```
-
-In demo puoi usare i valori gia' compilati nei form.
-
-## Supabase da zero
-
-1. Vai su `https://supabase.com`.
-2. Crea un account o fai login.
-3. Clicca `New project`.
-4. Scegli un nome, per esempio `camion-chiaro`.
-5. Scegli una password database e conservala.
-6. Attendi che il progetto sia pronto.
-7. Nel menu a sinistra apri `SQL Editor`.
-8. Clicca `New query`.
-9. Apri il file `supabase/schema.sql` di questo progetto.
-10. Copia tutto il contenuto.
-11. Incollalo nel SQL Editor di Supabase.
-12. Clicca `Run`.
-
-Se hai gia' creato il database prima dell'upload documenti, non rifare tutto lo schema: apri solo `supabase/parti-sql/07_storage_documenti.sql`, copia tutto, incolla in Supabase SQL Editor e premi `Run`.
-
-## Prendere le chiavi Supabase
-
-1. In Supabase apri `Project Settings`.
-2. Apri `API`.
-3. Copia `Project URL`.
-4. Copia la chiave pubblica `anon` / `publishable`.
-5. Nel progetto copia `.env.example` e chiamalo `.env`.
-6. Inserisci i valori:
+## Sviluppo app mobile
 
 ```bash
-VITE_SUPABASE_URL=https://tuo-progetto.supabase.co
-VITE_SUPABASE_ANON_KEY=la-tua-chiave-pubblica
-VITE_SUPABASE_COMPANY_ID=lo-mettere-mo-dopo
-VITE_DRIVER_AUTH_DOMAIN=drivers.vygo.app
+cd driver-app
+npm install
+npm run start
 ```
 
-Non mettere mai la chiave `service_role` dentro `.env` del frontend.
-La chiave `SUPABASE_SERVICE_ROLE_KEY` serve solo alla funzione Netlify: non deve iniziare con `VITE_`.
+Per build interne:
 
-## Login autisti con nome utente
-
-Supabase Auth lavora con email/password. Per far vedere all'autista solo un nome utente, useremo una mail tecnica dietro le quinte:
-
-```text
-nomeutente@drivers.vygo.app
+```bash
+npm run build:ios:preview
+npm run build:android:preview
 ```
 
-Esempio:
+Per aggiornamenti rapidi sulle build gia installate:
 
-```text
-marco.bianchi@drivers.vygo.app
+```bash
+npx eas-cli update --branch preview --message "Descrizione aggiornamento"
 ```
 
-Nel prodotto finale l'azienda creera' l'autista da pannello e il sistema generera' questa utenza. Per i primi test si puo' creare manualmente l'utente in Supabase Auth.
+## Variabili ambiente
 
-## Netlify da zero
+Usa `.env.example` come traccia per Netlify e `.env` locale. Le chiavi `VITE_*` sono pubbliche per il frontend. Le chiavi private, come `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `WEB_PUSH_PRIVATE_KEY` e `STRIPE_WEBHOOK_SECRET`, vanno solo in Netlify/EAS quando richieste e mai nel codice frontend.
 
-1. Vai su `https://www.netlify.com`.
-2. Crea un account o fai login.
-3. Carica il progetto su GitHub.
-4. In Netlify clicca `Add new site`.
-5. Scegli `Import an existing project`.
-6. Collega GitHub.
-7. Seleziona il repository.
-8. Imposta:
+Per l app mobile usa `driver-app/.env.example` e replica le variabili pubbliche anche nell ambiente EAS `preview`/`production`.
+
+## Supabase
+
+Gli script SQL incrementali stanno in `supabase/parti-sql/`. Per un database nuovo si applicano in ordine, evitando i file demo se si prepara un ambiente cliente reale.
+
+File demo e test:
+
+- `34*` e `35*`: popolamento demo;
+- `08_reset_test_check_guasti.sql`: solo test;
+- file con nomi di fix specifici vanno usati solo quando servono su un ambiente gia esistente.
+
+Prima di dare accesso a un cliente reale, creare un progetto Supabase pulito o ripulire i dati demo.
+
+## Deploy
+
+Netlify usa:
 
 ```text
 Build command: npm run build
 Publish directory: dist
+Functions directory: netlify/functions
 ```
 
-9. Apri `Environment variables`.
-10. Aggiungi le stesse variabili del file `.env`:
+Il dominio `vy-go.com` punta a Netlify tramite DNS.
 
-```text
-VITE_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY
-VITE_SUPABASE_COMPANY_ID
-VITE_DRIVER_AUTH_DOMAIN
-SUPABASE_SERVICE_ROLE_KEY
-```
+## Documentazione utile
 
-11. Per `SUPABASE_SERVICE_ROLE_KEY`, in Supabase apri `Project Settings > API`, copia la chiave `service_role` e incollala solo in Netlify come variabile ambiente.
-12. Clicca `Deploy`.
+- Checklist vendibile: `docs/checklist-v1-vendibile-vygo.md`
+- Prezzi: `docs/scheda-prezzi-vygo.md`
+- FAQ: `docs/faq-vygo.md`
+- Manuale rapido: `docs/manuale-utente-vygo.md`
+- Piano lancio: `docs/piano-lancio-operativo-vygo.md`
+- Brand kit: `docs/brand-kit-vygo.md`
 
-## Prossimi pezzi da costruire
+## Prima del lancio pubblico
 
-- Anteprima e download documenti caricati dall'autista.
-- Notifiche in-app persistenti lette dalla tabella `in_app_notifications`.
-- Stato avanzamento guasti: visto, in lavorazione, chiuso.
+Da chiudere prima di vendere senza supervisione:
+
+- Stripe live con webhook verificato;
+- email dominio e SMTP/transactional email;
+- privacy, termini, cookie e DPA revisionati da consulente;
+- bundle id/scheme finali dell app coerenti con Vygo;
+- ambiente Supabase pulito per clienti reali;
+- backup, retention file e limiti storage;
+- QA completa su web, iPhone e Android con almeno una azienda pilota.

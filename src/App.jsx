@@ -763,11 +763,14 @@ const translations = {
     'hero.radarCostDetail': '{count} voci costo registrate',
     'hero.radarFleetHealth': 'Salute flotta',
     'hero.radarFleetHealthDetail': '{count} mezzi sotto soglia',
+    'hero.radarFleetDeadlines': 'Scadenze flotta',
+    'hero.radarFleetDeadlinesDetail': '{expired} scadute · {soon} entro 30 giorni',
     'hero.radarIndex': 'Stato operativo',
     'hero.radarIssueCosts': 'costi mese alti',
     'hero.radarIssueCriticalChecks': '{count} check critici',
     'hero.radarIssueCriticalDeadlines': '{count} scadenze critiche',
     'hero.radarIssueFleet': 'salute flotta {score}%',
+    'hero.radarIssueFleetDeadlines': 'scadenze flotta {score}%',
     'hero.radarIssueOpenFaults': '{count} guasti aperti',
     'hero.radarIssueUpcomingDeadlines': '{count} entro 30 giorni',
     'hero.radarOpen': 'Pratiche aperte',
@@ -974,11 +977,14 @@ const translations = {
     'hero.radarCostDetail': '{count} cost entries logged',
     'hero.radarFleetHealth': 'Fleet health',
     'hero.radarFleetHealthDetail': '{count} vehicles below threshold',
+    'hero.radarFleetDeadlines': 'Fleet deadlines',
+    'hero.radarFleetDeadlinesDetail': '{expired} expired · {soon} in 30 days',
     'hero.radarIndex': 'Operating status',
     'hero.radarIssueCosts': 'high month costs',
     'hero.radarIssueCriticalChecks': '{count} critical checks',
     'hero.radarIssueCriticalDeadlines': '{count} critical deadlines',
     'hero.radarIssueFleet': 'fleet health {score}%',
+    'hero.radarIssueFleetDeadlines': 'fleet deadlines {score}%',
     'hero.radarIssueOpenFaults': '{count} open faults',
     'hero.radarIssueUpcomingDeadlines': '{count} in 30 days',
     'hero.radarOpen': 'Open work',
@@ -8951,6 +8957,36 @@ function App() {
     ? Math.round(homeFleetHealthRows.reduce((total, row) => total + row.score, 0) / homeFleetHealthRows.length)
     : 100
   const criticalFleetHealthCount = homeFleetHealthRows.filter((row) => row.score < 62).length
+  const activeVehicleIds = new Set(
+    vehicleRecords
+      .filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
+      .map((vehicle) => vehicle.id),
+  )
+  const openVehicleDeadlineItems = decoratedItems.filter((item) => (
+    item.scope === 'vehicle'
+      && item.vehicleId
+      && activeVehicleIds.has(item.vehicleId)
+      && !isComplianceClosed(item)
+  ))
+  const expiredVehicleDeadlineCount = openVehicleDeadlineItems.filter((item) => {
+    const days = typeof item.urgency?.days === 'number' ? item.urgency.days : daysUntil(item.dueDate)
+    return days < 0
+  }).length
+  const criticalVehicleDeadlineCount = openVehicleDeadlineItems.filter((item) => {
+    const days = typeof item.urgency?.days === 'number' ? item.urgency.days : daysUntil(item.dueDate)
+    return days >= 0 && days <= 7
+  }).length
+  const soonVehicleDeadlineCount = openVehicleDeadlineItems.filter((item) => {
+    const days = typeof item.urgency?.days === 'number' ? item.urgency.days : daysUntil(item.dueDate)
+    return days > 7 && days <= 30
+  }).length
+  const fleetDeadlineScore = Math.max(
+    0,
+    100
+      - expiredVehicleDeadlineCount * 35
+      - criticalVehicleDeadlineCount * 18
+      - soonVehicleDeadlineCount * 7,
+  )
   const defaultCurrency = getDefaultCurrency(language)
   const notificationCount = unreadCheckCount + openFaultCount
   const companyVisibleTeamThreadIds = new Set(
@@ -9797,8 +9833,11 @@ function App() {
                 costMonthValue={formatCompactMoneyCents(faultCostSummary.monthCents, defaultCurrency)}
                 costRepairCount={faultCostSummary.count}
                 criticalCheckCount={criticalCheckCount}
+                fleetDeadlineScore={fleetDeadlineScore}
+                fleetExpiredDeadlineCount={expiredVehicleDeadlineCount}
                 fleetHealthCriticalCount={criticalFleetHealthCount}
                 fleetHealthScore={averageFleetHealthScore}
+                fleetSoonDeadlineCount={criticalVehicleDeadlineCount + soonVehicleDeadlineCount}
                 notificationCount={notificationCount}
                 onOpenCostReport={openCostReport}
                 onOpenCriticalChecks={() => openNotifications('critical_checks')}
@@ -12391,8 +12430,11 @@ function HeroPanel({
   costMonthValue = '0 €',
   costRepairCount = 0,
   criticalCheckCount,
+  fleetDeadlineScore = 100,
+  fleetExpiredDeadlineCount = 0,
   fleetHealthCriticalCount = 0,
   fleetHealthScore = 100,
+  fleetSoonDeadlineCount = 0,
   notificationCount,
   onOpenCostReport,
   onOpenCriticalChecks,
@@ -12456,8 +12498,17 @@ function HeroPanel({
       - Math.min(next30DeadlineCount, 8) * 3
       - costPenalty,
   )
-  const controlScore = Math.max(0, Math.min(operationalControlScore, Number(fleetHealthScore ?? 100)))
+  const controlScore = Math.max(
+    0,
+    Math.min(
+      operationalControlScore,
+      Number(fleetHealthScore ?? 100),
+      Number(fleetDeadlineScore ?? 100),
+    ),
+  )
   const radarTone = controlScore >= 82 ? 'success' : controlScore >= 62 ? 'warning' : 'danger'
+  const fleetDeadlineTone = fleetDeadlineScore >= 82 ? 'success' : fleetDeadlineScore >= 62 ? 'warning' : 'danger'
+  const fleetDeadlinePercentLabel = `${fleetDeadlineScore}%`
   const fleetHealthTone = fleetHealthScore >= 82 ? 'success' : fleetHealthScore >= 62 ? 'warning' : 'danger'
   const fleetHealthPercentLabel = `${fleetHealthScore}%`
   const controlReasonParts = [
@@ -12466,6 +12517,7 @@ function HeroPanel({
     criticalDeadlineCount ? t('hero.radarIssueCriticalDeadlines', { count: criticalDeadlineCount }) : '',
     !criticalDeadlineCount && next30DeadlineCount ? t('hero.radarIssueUpcomingDeadlines', { count: next30DeadlineCount }) : '',
     costPenalty >= 6 ? t('hero.radarIssueCosts') : '',
+    fleetDeadlineScore < 82 ? t('hero.radarIssueFleetDeadlines', { score: fleetDeadlineScore }) : '',
     fleetHealthScore < 82 ? t('hero.radarIssueFleet', { score: fleetHealthScore }) : '',
   ].filter(Boolean)
   const controlReason = controlReasonParts.length ? controlReasonParts.join(' · ') : t('hero.radarStatusClear')
@@ -12500,6 +12552,14 @@ function HeroPanel({
         label: t('hero.radarFleetHealth'),
         onClick: onOpenFleetHealth || onOpenCostReport,
         value: fleetHealthPercentLabel,
+      }
+    }
+    if (fleetDeadlineScore < 82) {
+      return {
+        icon: CalendarClock,
+        label: t('hero.radarFleetDeadlines'),
+        onClick: onOpenDeadlineWindow,
+        value: fleetDeadlinePercentLabel,
       }
     }
     if (costMonthCents > 0) {
@@ -12559,6 +12619,11 @@ function HeroPanel({
               <small>{t('hero.radarOpen')}</small>
               <b>{openWorkCount}</b>
               <em>{t('hero.radarOpenDetail')}</em>
+            </article>
+            <article className={`tone-${fleetDeadlineTone}`}>
+              <small>{t('hero.radarFleetDeadlines')}</small>
+              <b>{fleetDeadlinePercentLabel}</b>
+              <em>{t('hero.radarFleetDeadlinesDetail', { expired: fleetExpiredDeadlineCount, soon: fleetSoonDeadlineCount })}</em>
             </article>
             <article>
               <small>{t('hero.radarCost')}</small>
@@ -14993,7 +15058,6 @@ function getFleetHealthRows({
   vehicleCheckRecords = [],
   vehicleRecords = [],
 } = {}) {
-  const now = new Date()
   const monthStart = getFaultCostPeriodStart('month')
   const activeVehicles = vehicleRecords.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
 
@@ -15005,19 +15069,19 @@ function getFleetHealthRows({
         && !isVehicleCheckArchived(check)
         && hasCheckIssues(check)
     )).length
-    const overdueDeadlines = complianceItems.filter((item) => (
+    const vehicleDeadlineItems = complianceItems.filter((item) => (
       item.vehicleId === vehicleId
-        && item.status !== 'done'
+        && !isComplianceClosed(item)
         && item.dueDate
-        && new Date(item.dueDate) < now
-    )).length
-    const upcomingDeadlines = complianceItems.filter((item) => (
-      item.vehicleId === vehicleId
-        && item.status !== 'done'
-        && item.dueDate
-        && new Date(item.dueDate) >= now
-        && getDaysUntil(item.dueDate) <= 30
-    )).length
+    ))
+    const overdueDeadlines = vehicleDeadlineItems.filter((item) => {
+      const days = typeof item.urgency?.days === 'number' ? item.urgency.days : getDaysUntil(item.dueDate)
+      return days < 0
+    }).length
+    const upcomingDeadlines = vehicleDeadlineItems.filter((item) => {
+      const days = typeof item.urgency?.days === 'number' ? item.urgency.days : getDaysUntil(item.dueDate)
+      return days >= 0 && days <= 30
+    }).length
     const monthCostCents = costRows
       .filter((row) => row.vehicleId === vehicleId && new Date(row.date) >= monthStart)
       .reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
@@ -15028,8 +15092,8 @@ function getFleetHealthRows({
       100
         - openFaults * 14
         - criticalChecks * 18
-        - overdueDeadlines * 16
-        - upcomingDeadlines * 6
+        - overdueDeadlines * 42
+        - upcomingDeadlines * 10
         - costPenalty,
     )
     const tone = score >= 82 ? 'success' : score >= 62 ? 'warning' : 'danger'

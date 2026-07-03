@@ -12576,7 +12576,6 @@ function HeroPanel({
             <Gauge size={16} />
             {t('hero.radarTitle')}
           </span>
-          <strong>{t('hero.radarSubtitle')}</strong>
         </div>
         <div className="executive-radar-grid">
           <button className="executive-radar-card" onClick={onOpenWork || onOpenNotifications} type="button">

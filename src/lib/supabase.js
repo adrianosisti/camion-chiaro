@@ -1910,9 +1910,38 @@ export async function createPilotFeedbackRecord(feedback, companyId = configured
 
   const sessionResult = await supabase.auth.getSession()
   const userId = sessionResult.data?.session?.user?.id
+  const accessToken = sessionResult.data?.session?.access_token
 
-  if (!userId) {
+  if (!userId || !accessToken) {
     return { data: null, error: { message: 'Sessione scaduta. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/create-pilot-feedback', {
+      body: JSON.stringify({
+        actorRole: feedback.actorRole || 'company',
+        category: feedback.category || 'problem',
+        companyId,
+        message: cleanMessage,
+        screen: feedback.screen?.trim() || 'other',
+      }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (response.ok) {
+      return { data: payload.feedback ? mapPilotFeedback(payload.feedback) : null, error: null }
+    }
+
+    if (response.status !== 404) {
+      return { data: null, error: { message: payload.error || 'Invio feedback non riuscito.' } }
+    }
+  } catch {
+    // In sviluppo locale la funzione Netlify potrebbe non essere disponibile: resta il fallback diretto Supabase.
   }
 
   const { data, error } = await supabase

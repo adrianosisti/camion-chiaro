@@ -1195,9 +1195,40 @@ export async function createCompanyPilotFeedback({ category = 'problem', company
 
   const sessionResult = await supabase.auth.getSession()
   const userId = sessionResult.data?.session?.user?.id
+  const accessToken = sessionResult.data?.session?.access_token
 
-  if (!userId) {
+  if (!userId || !accessToken) {
     return { data: null, error: { message: 'Sessione scaduta. Fai login e riprova.' } }
+  }
+
+  if (apiBaseUrl) {
+    try {
+      const response = await fetch(`${apiBaseUrl}/.netlify/functions/create-pilot-feedback`, {
+        body: JSON.stringify({
+          actorRole: 'company',
+          category,
+          companyId,
+          message: message.trim(),
+          screen,
+        }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      })
+      const payload = await response.json().catch(() => ({}))
+
+      if (response.ok) {
+        return { data: payload.feedback ? mapPilotFeedback(payload.feedback) : null, error: null }
+      }
+
+      if (response.status !== 404) {
+        return { data: null, error: { message: payload.error || serviceUnavailableMessage } }
+      }
+    } catch (error) {
+      return { data: null, error: { message: error.message || serviceUnavailableMessage } }
+    }
   }
 
   const { data, error } = await supabase

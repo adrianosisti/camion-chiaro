@@ -6125,9 +6125,21 @@
   gap: 8px;
 }
 
+.admin-pilot-head div {
+  display: grid;
+  gap: 2px;
+}
+
 .admin-pilot-head strong {
   color: var(--ink);
   font-size: 0.82rem;
+}
+
+.admin-pilot-head span {
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 780;
+  line-height: 1.25;
 }
 
 .admin-pilot-head b {
@@ -6206,10 +6218,32 @@
   font-size: 0.68rem;
 }
 
-.admin-pilot-thread span {
+.admin-pilot-thread-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.admin-pilot-thread-tags span,
+.admin-pilot-thread-tags small {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #f8fafc;
   color: #64748b;
   font-size: 0.62rem;
   font-weight: 780;
+  line-height: 1;
+  padding: 0 6px;
+}
+
+.admin-pilot-thread-tags span:first-child {
+  border-color: #99f6e4;
+  background: #ecfeff;
+  color: #0f766e;
 }
 
 .admin-pilot-reply-form {

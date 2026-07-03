@@ -1193,9 +1193,17 @@ async function fetchCompanyPilotFeedback(companyId) {
 export async function createCompanyPilotFeedback({ category = 'problem', companyId, message = '', screen = 'dashboard' }) {
   if (!isSupabaseConfigured || !companyId || !message.trim()) return notConfiguredError()
 
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id
+
+  if (!userId) {
+    return { data: null, error: { message: 'Sessione scaduta. Fai login e riprova.' } }
+  }
+
   const { data, error } = await supabase
     .from('pilot_feedback')
     .insert({
+      actor_user_id: userId,
       actor_role: 'company',
       category,
       company_id: companyId,

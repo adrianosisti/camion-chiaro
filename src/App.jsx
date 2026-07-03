@@ -10057,11 +10057,15 @@ function App() {
 
   useEffect(() => {
     if (activeView !== 'admin') return
-    const timerId = window.setTimeout(() => {
-      void refreshAdminOverview()
-    }, 0)
+    void refreshAdminOverview()
 
-    return () => window.clearTimeout(timerId)
+    const timerId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void refreshAdminOverview()
+      }
+    }, 12000)
+
+    return () => window.clearInterval(timerId)
   }, [activeView, refreshAdminOverview])
 
   if (isPasswordRecoveryMode) {
@@ -12970,7 +12974,10 @@ function AdminWorkspace({
 
               <div className={`admin-pilot-card tone-${getPilotReadinessTone(selectedCompany.pilotScore ?? 0)}`}>
                 <div className="admin-pilot-head">
-                  <strong>Progetto pilota</strong>
+                  <div>
+                    <strong>Leggi i messaggi dell'azienda pilota</strong>
+                    <span>Ogni messaggio mostra tipo richiesta e area scelta dal cliente.</span>
+                  </div>
                   <b>{selectedCompany.pilotScore ?? 0}%</b>
                 </div>
                 <div className="admin-pilot-checks">
@@ -12986,7 +12993,11 @@ function AdminWorkspace({
                     {selectedCompany.pilotFeedbackThread.map((entry) => (
                       <article className={entry.actorRole === 'admin' ? 'is-vygo' : 'is-client'} key={entry.id}>
                         <strong>{entry.actorRole === 'admin' ? 'Vygo' : selectedCompany.name}</strong>
-                        <span>{entry.createdAt ? formatShortDateTime(entry.createdAt) : 'Ora'}</span>
+                        <div className="admin-pilot-thread-tags">
+                          <span>{getOptionLabel(pilotFeedbackCategoryOptions, entry.category, 'Feedback')}</span>
+                          <span>{getOptionLabel(pilotFeedbackScreenOptions, entry.screen, 'Area test')}</span>
+                          <small>{entry.createdAt ? formatShortDateTime(entry.createdAt) : 'Ora'}</small>
+                        </div>
                         <p>{entry.message}</p>
                       </article>
                     ))}
@@ -12997,7 +13008,7 @@ function AdminWorkspace({
                 <form className="admin-pilot-reply-form" onSubmit={handleSendAdminPilotReply}>
                   <textarea
                     onChange={(event) => setAdminPilotReply(event.target.value)}
-                    placeholder="Rispondi nell Area test del cliente..."
+                    placeholder="Rispondi all'azienda pilota..."
                     value={adminPilotReply}
                   />
                   <button className="primary-button compact-button" disabled={isLoading || !adminPilotReply.trim()} type="submit">

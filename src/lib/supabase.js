@@ -1908,9 +1908,17 @@ export async function createPilotFeedbackRecord(feedback, companyId = configured
     return { data: null, error: null }
   }
 
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id
+
+  if (!userId) {
+    return { data: null, error: { message: 'Sessione scaduta. Fai login e riprova.' } }
+  }
+
   const { data, error } = await supabase
     .from('pilot_feedback')
     .insert({
+      actor_user_id: userId,
       actor_role: feedback.actorRole || 'company',
       category: feedback.category || 'problem',
       company_id: companyId,

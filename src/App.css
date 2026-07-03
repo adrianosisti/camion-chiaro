@@ -3496,6 +3496,16 @@
   font-size: 0.82rem;
 }
 
+.bulk-import-status.is-ok {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.bulk-import-status.is-danger {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
 .bulk-import-actions,
 .bulk-import-footer {
   display: flex;

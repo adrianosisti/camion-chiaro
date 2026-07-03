@@ -4527,7 +4527,7 @@ const supportSections = [
         title: 'Anagrafiche',
       },
       {
-        points: ['Apri Anagrafiche.', 'Apri Importa da Excel.', 'Scarica Modello Excel o CSV.', 'Compila le righe esempio.', 'Carica il file e importa solo le righe valide.'],
+        points: ['Apri Anagrafiche.', 'Apri Import Excel.', 'Scarica il Modello Excel.', 'Compila i fogli che ti servono.', 'Carica il file e importa solo le righe valide.'],
         title: 'Import massivo',
       },
       {
@@ -5760,6 +5760,37 @@ function getImportField(row, aliases = []) {
   return fallbackValue
 }
 
+function getDefaultImportRowTypeFromSheetName(sheetName = '') {
+  const token = normalizeImportToken(sheetName)
+  const aliases = {
+    asset: 'asset',
+    assets: 'asset',
+    attrezzatura: 'asset',
+    attrezzature: 'asset',
+    autista: 'driver',
+    autisti: 'driver',
+    conducente: 'driver',
+    conducenti: 'driver',
+    deadline: 'deadline',
+    deadlines: 'deadline',
+    documenti_autisti: 'driver_document',
+    documenti_driver: 'driver_document',
+    documento_autista: 'driver_document',
+    driver_documents: 'driver_document',
+    mezzi: 'vehicle',
+    mezzo: 'vehicle',
+    persone: 'person',
+    scadenza: 'deadline',
+    scadenze: 'deadline',
+    staff: 'person',
+    veicoli: 'vehicle',
+    vehicle: 'vehicle',
+    vehicles: 'vehicle',
+  }
+
+  return aliases[token] ?? ''
+}
+
 function detectCsvDelimiter(firstLine = '') {
   const semicolonCount = (firstLine.match(/;/g) ?? []).length
   const commaCount = (firstLine.match(/,/g) ?? []).length
@@ -5814,7 +5845,10 @@ function parseDelimitedText(text = '') {
   return rows.filter((currentRow) => currentRow.some((value) => normalizeImportValue(value)))
 }
 
-function rowsToImportObjects(rows = []) {
+function rowsToImportObjects(rows = [], options = {}) {
+  const defaultRowType = normalizeImportRowType(options.defaultRowType)
+  if (!defaultRowType && !rows.some((row) => row.some((value) => normalizeImportToken(value) === 'tipo_riga'))) return []
+
   const headerIndex = rows.findIndex((row) => row.some((value) => normalizeImportToken(value) === 'tipo_riga'))
   const headerRow = rows[headerIndex >= 0 ? headerIndex : 0] ?? []
   const headers = headerRow.map(normalizeImportToken)
@@ -5824,7 +5858,7 @@ function rowsToImportObjects(rows = []) {
     row: headers.reduce((record, header, columnIndex) => {
       if (header) record[header] = normalizeImportValue(row[columnIndex])
       return record
-    }, {}),
+    }, defaultRowType ? { tipo_riga: defaultRowType } : {}),
   })).filter((entry) => Object.values(entry.row).some((value) => normalizeImportValue(value)))
 }
 
@@ -5946,19 +5980,28 @@ async function parseImportFile(file) {
       })
     }
 
-    const sheetPaths = workbookXml
+    const sheetEntries = workbookXml
       ? Array.from(parseXml(workbookXml).getElementsByTagName('sheet'))
-          .map((sheetNode) => relationships.get(sheetNode.getAttribute('r:id') ?? sheetNode.getAttribute('id') ?? ''))
-          .filter(Boolean)
-      : ['xl/worksheets/sheet1.xml']
+          .map((sheetNode) => ({
+            name: sheetNode.getAttribute('name') ?? '',
+            path: relationships.get(sheetNode.getAttribute('r:id') ?? sheetNode.getAttribute('id') ?? ''),
+          }))
+          .filter((sheet) => sheet.path)
+      : [{ name: '', path: 'xl/worksheets/sheet1.xml' }]
+    const allObjects = []
 
-    for (const sheetPath of sheetPaths) {
+    for (const { name, path: sheetPath } of sheetEntries) {
       const sheetRows = parseXlsxWorksheet(entries.get(sheetPath) ?? '', sharedStrings)
-      const objects = rowsToImportObjects(sheetRows)
-      if (objects.length > 0) return objects
+      const objects = rowsToImportObjects(sheetRows, {
+        defaultRowType: getDefaultImportRowTypeFromSheetName(name),
+      })
+      allObjects.push(...objects.map((entry) => ({
+        ...entry,
+        sheetName: name,
+      })))
     }
 
-    return []
+    return allObjects
   }
 
   throw new Error('Formato non supportato. Usa il modello CSV o XLSX di Vygo.')
@@ -6044,30 +6087,55 @@ function buildBulkImportPreview(rawEntries = [], context = {}) {
     return false
   }
 
-  return rawEntries.map(({ lineNumber, row }) => {
+  return rawEntries.map(({ lineNumber, row, sheetName }) => {
     const rowType = normalizeImportRowType(getImportField(row, ['tipo_riga', 'tipo']))
     const errors = []
     const common = {
       lineNumber,
       rowType,
+      sheetName,
     }
     let payload = {}
     let label = 'Riga non riconosciuta'
     let detail = ''
 
-    if (!rowType) errors.push('tipo_riga non riconosciuto')
+    if (!rowType) errors.push('foglio o tipo riga non riconosciuto')
 
     if (rowType === 'driver') {
-      const name = normalizeImportValue(getImportField(row, ['nome', 'nome_cognome', 'ragione_sociale']))
+      const name = normalizeImportValue(getImportField(row, ['nome', 'nome_cognome', 'nome_e_cognome', 'ragione_sociale']))
       const username = normalizeDriverUsername(getImportField(row, ['username', 'utente', 'nome_utente']))
       const password = normalizeImportValue(getImportField(row, ['password', 'password_temporanea']))
       const phone = normalizeImportValue(getImportField(row, ['telefono', 'cellulare', 'phone']))
+      const initialDocumentType = normalizeImportValue(getImportField(row, [
+        'documento_iniziale',
+        'tipo_scadenza',
+        'documento',
+        'tipo_documento',
+      ]))
+      const initialDocumentDueDate = normalizeImportDate(getImportField(row, [
+        'scadenza_documento',
+        'data_scadenza',
+        'scadenza',
+      ]))
+      const initialDocumentNumber = normalizeImportValue(getImportField(row, [
+        'numero_documento',
+        'numero_del_documento',
+        'numero',
+      ]))
+      const hasInitialDocument = Boolean(initialDocumentType || initialDocumentDueDate || initialDocumentNumber)
       label = name || username || 'Autista'
-      detail = 'Autista con accesso app'
+      detail = hasInitialDocument ? 'Autista con accesso app e documento iniziale' : 'Autista con accesso app'
       payload = {
         depot: normalizeImportValue(getImportField(row, ['deposito_sede', 'deposito', 'sede'])),
         email: normalizeImportValue(getImportField(row, ['email'])),
         id: `imp-driver-${lineNumber}-${Date.now()}`,
+        initialDocument: hasInitialDocument ? {
+          documentNumber: initialDocumentNumber,
+          dueDate: initialDocumentDueDate,
+          owner: normalizeImportValue(getImportField(row, ['responsabile', 'owner'])) || 'Ufficio personale',
+          type: initialDocumentType,
+          visibleToDriver: parseBooleanImportValue(getImportField(row, ['visibile_app', 'visibile_in_app', 'visibile', 'visible']), true),
+        } : null,
         name,
         password,
         phone,
@@ -6080,12 +6148,14 @@ function buildBulkImportPreview(rawEntries = [], context = {}) {
       if (!username) errors.push('username mancante')
       if (!phone) errors.push('telefono mancante')
       if (!password || password.length < 8) errors.push('password min 8 caratteri')
+      if (hasInitialDocument && !initialDocumentType) errors.push('documento iniziale mancante')
+      if (hasInitialDocument && !initialDocumentDueDate) errors.push('scadenza documento non valida')
       if (existingUsernames.has(username)) errors.push('username già presente in azienda')
       if (duplicatePlannedUsernames.has(username)) errors.push('username duplicato nel file')
     }
 
     if (rowType === 'person') {
-      const name = normalizeImportValue(getImportField(row, ['nome', 'nome_cognome']))
+      const name = normalizeImportValue(getImportField(row, ['nome', 'nome_cognome', 'nome_e_cognome']))
       const username = normalizeDriverUsername(getImportField(row, ['username', 'utente', 'nome_utente']))
       const password = normalizeImportValue(getImportField(row, ['password', 'password_temporanea']))
       const department = normalizeImportDepartment(getImportField(row, ['reparto', 'dipartimento']))
@@ -6155,10 +6225,29 @@ function buildBulkImportPreview(rawEntries = [], context = {}) {
       const scope = rowType === 'driver_document'
         ? 'driver'
         : normalizeImportScope(getImportField(row, ['ambito_scadenza', 'ambito', 'scope']))
-      const targetKey = normalizeImportValue(getImportField(row, ['username', 'targa_o_codice', 'target', 'targa', 'codice']))
-      const dueDate = normalizeImportDate(getImportField(row, ['data_scadenza', 'scadenza', 'due_date']))
-      const type = normalizeImportValue(getImportField(row, ['tipo_scadenza', 'documento', 'tipo_documento', 'type'])) || 'Scadenza'
-      const documentNumber = normalizeImportValue(getImportField(row, ['numero_documento', 'numero', 'matricola']))
+      const targetKey = normalizeImportValue(getImportField(row, [
+        'username',
+        'username_autista',
+        'targa_o_codice',
+        'username_o_targa_o_codice',
+        'target',
+        'targa',
+        'codice',
+      ]))
+      const dueDate = normalizeImportDate(getImportField(row, [
+        'data_scadenza',
+        'scadenza',
+        'scadenza_documento',
+        'due_date',
+      ]))
+      const type = normalizeImportValue(getImportField(row, [
+        'tipo_scadenza',
+        'documento',
+        'documento_iniziale',
+        'tipo_documento',
+        'type',
+      ])) || 'Scadenza'
+      const documentNumber = normalizeImportValue(getImportField(row, ['numero_documento', 'numero_del_documento', 'numero', 'matricola']))
       label = `${type} · ${targetKey || getWorkforceDepartmentLabel(scope)}`
       detail = rowType === 'driver_document' ? 'Documento autista visibile in app' : `Scadenza ${scope || 'non indicata'}`
       payload = {
@@ -6169,7 +6258,7 @@ function buildBulkImportPreview(rawEntries = [], context = {}) {
         status: 'open',
         targetKey,
         type,
-        visibleToDriver: parseBooleanImportValue(getImportField(row, ['visibile_app', 'visibile', 'visible']), true),
+        visibleToDriver: parseBooleanImportValue(getImportField(row, ['visibile_app', 'visibile_in_app', 'visibile', 'visible']), true),
       }
       if (!scope) errors.push('ambito_scadenza mancante')
       if (scope !== 'company' && !targetKey) errors.push('username, targa o codice target mancante')
@@ -8154,6 +8243,7 @@ function App() {
 
     const temporaryPassword = driver.password?.trim() ?? ''
     const driverWithoutPassword = { ...driver }
+    delete driverWithoutPassword.initialDocument
     delete driverWithoutPassword.password
     const cleanDriver = {
       ...driverWithoutPassword,
@@ -13941,10 +14031,14 @@ function BulkImportPanel({
       })
 
       setImportRows(previewRows)
+      const readyCount = previewRows.filter((row) => row.errors.length === 0).length
+      const errorCount = previewRows.length - readyCount
       setStatusMessage(
-        previewRows.length
-          ? `${previewRows.length} righe lette. ${previewRows.filter((row) => row.errors.length === 0).length} pronte da importare.`
-          : 'File letto, ma non ho trovato righe compilate.',
+        !previewRows.length
+          ? 'File letto, ma non ho trovato righe compilate. Compila i fogli Autisti, Persone, Mezzi, Attrezzature, Documenti autisti o Scadenze.'
+          : errorCount
+            ? `${readyCount} righe pronte e ${errorCount} da correggere. Apri l elenco sotto: le righe rosse non verranno importate.`
+            : `Tutto ok: ${readyCount} righe pronte. Premi Importa per aggiornare anagrafiche, documenti e scadenze.`,
       )
     } catch (error) {
       setImportRows([])
@@ -14024,6 +14118,29 @@ function BulkImportPanel({
         if (row.rowType === 'driver') {
           result = await onAddDriver?.(row.payload)
           if (result?.username) maps.driversByUsername.set(normalizeDriverUsername(result.username), result)
+          if (result?.id && row.payload.initialDocument?.type) {
+            await onAddDocument?.({
+              documentNumber: row.payload.initialDocument.documentNumber,
+              driverId: result.id,
+              expiresAt: row.payload.initialDocument.dueDate,
+              filePath: '',
+              id: `doc-import-${row.lineNumber}-${Date.now()}`,
+              status: getDriverDocumentStatusFromExpiry(row.payload.initialDocument.dueDate, ''),
+              type: row.payload.initialDocument.type,
+              visibleToDriver: row.payload.initialDocument.visibleToDriver,
+            })
+            await onAddDeadline?.({
+              assigneeId: result.id,
+              documentNumber: row.payload.initialDocument.documentNumber,
+              driverId: result.id,
+              dueDate: row.payload.initialDocument.dueDate,
+              id: `deadline-import-${row.lineNumber}-${Date.now()}`,
+              owner: row.payload.initialDocument.owner,
+              scope: 'driver',
+              status: 'open',
+              type: row.payload.initialDocument.type,
+            })
+          }
         }
 
         if (row.rowType === 'person') {
@@ -14076,7 +14193,11 @@ function BulkImportPanel({
     }
 
     setIsImporting(false)
-    setStatusMessage(`Import completato: ${savedCount} righe salvate${failedCount ? `, ${failedCount} da controllare` : ''}.`)
+    setStatusMessage(
+      failedCount
+        ? `Import completato: ${savedCount} righe salvate, ${failedCount} non importate. Correggi le righe rosse e ricarica il file.`
+        : `Import completato: ${savedCount} righe salvate. Ora trovi i dati aggiornati nelle schede Anagrafiche, Documenti e Scadenze.`,
+    )
   }
 
   return (
@@ -14100,15 +14221,15 @@ function BulkImportPanel({
           <div className="bulk-import-guide">
             <article>
               <strong>1. Scarica modello</strong>
-              <span>Usa le righe esempio e cambia solo i dati dell azienda.</span>
+              <span>Usa i fogli separati: Autisti, Persone, Mezzi, Attrezzature, Documenti autisti e Scadenze.</span>
             </article>
             <article>
               <strong>2. Compila righe</strong>
-              <span>tipo_riga decide cosa crei: autista, persona, mezzo, attrezzatura, scadenza o documento_autista.</span>
+              <span>Compila una riga per ogni elemento. Le righe esempio possono essere cancellate.</span>
             </article>
             <article>
               <strong>3. Controlla anteprima</strong>
-              <span>Vygo blocca duplicati, date scritte male e scadenze non collegate.</span>
+              <span>Vygo ti dice subito se e tutto ok o quali righe correggere.</span>
             </article>
           </div>
 
@@ -14119,7 +14240,7 @@ function BulkImportPanel({
             </a>
             <a className="secondary-button compact-button" download href={bulkImportTemplateCsvPath}>
               <Download size={16} />
-              Modello CSV
+              CSV tecnico
             </a>
             <label className="primary-button compact-button bulk-file-button">
               <Upload size={16} />
@@ -14134,7 +14255,7 @@ function BulkImportPanel({
             )}
           </div>
 
-          <div className="bulk-import-status">
+          <div className={invalidRows.length ? 'bulk-import-status is-danger' : importRows.length ? 'bulk-import-status is-ok' : 'bulk-import-status'}>
             <strong>{fileName || 'Nessun file selezionato'}</strong>
             <span>{isParsing ? 'Lettura...' : statusMessage || 'Scarica il modello, compilalo e caricalo qui.'}</span>
           </div>
@@ -14171,7 +14292,7 @@ function BulkImportPanel({
               <div className="bulk-import-preview">
                 {importRows.slice(0, 12).map((row) => (
                   <article className={row.errors.length ? 'is-error' : row.importStatus === 'done' ? 'is-done' : ''} key={row.id}>
-                    <span>Riga {row.lineNumber}</span>
+                    <span>{row.sheetName ? `${row.sheetName} · riga ${row.lineNumber}` : `Riga ${row.lineNumber}`}</span>
                     <div>
                       <strong>{row.label}</strong>
                       <small>{row.errors.length ? row.errors.join(' · ') : row.importMessage || row.detail}</small>

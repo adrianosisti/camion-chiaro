@@ -17,22 +17,25 @@ Con un solo file si possono caricare:
 Nel sito, dentro **Anagrafiche**, aprire **Importa da Excel** e scaricare:
 
 - `Modello Excel`, consigliato;
-- `Modello CSV`, alternativa leggera se Excel crea problemi.
+- `CSV tecnico`, alternativa solo se Excel crea problemi.
 
-Il modello contiene righe esempio. Il cliente deve sostituire gli esempi con i propri dati.
+Il modello Excel e diviso in fogli semplici:
 
-## Colonne principali
+- `LEGGIMI`: mini guida;
+- `Autisti`: autisti con username, password, telefono e documento iniziale;
+- `Persone`: ufficio, magazzino, carrellisti e altri dipendenti;
+- `Mezzi`: targhe della flotta;
+- `Attrezzature`: muletti, transpallet e strumenti di magazzino;
+- `Documenti autisti`: altri documenti degli autisti;
+- `Scadenze`: scadenze collegate ad autisti, persone, targhe, attrezzature o azienda.
 
-`tipo_riga` decide cosa crea Vygo:
+Il cliente deve cancellare o sostituire le righe esempio e compilare solo i fogli che servono.
 
-- `autista`
-- `persona`
-- `mezzo`
-- `attrezzatura`
-- `documento_autista`
-- `scadenza`
+## Colonne principali senza complicazioni
 
-`ambito_scadenza` si usa per documenti e scadenze:
+Nel file Excel non serve scrivere `tipo_riga`: Vygo capisce cosa importare dal nome del foglio.
+
+Nel foglio `Scadenze`, la colonna `Ambito scadenza` dice a cosa si riferisce la pratica:
 
 - `autista`
 - `persona`
@@ -42,9 +45,9 @@ Il modello contiene righe esempio. Il cliente deve sostituire gli esempi con i p
 
 `username` collega autisti e persone.
 
-`targa_o_codice` collega mezzi e attrezzature.
+`Username o targa o codice` collega la scadenza alla persona giusta, alla targa giusta o al muletto giusto.
 
-`data_scadenza` va scritta in formato `AAAA-MM-GG`, esempio `2027-05-31`.
+Le date possono essere scritte come `2027-05-31` oppure `31/05/2027`.
 
 ## Regole importanti
 
@@ -65,8 +68,10 @@ Le scadenze devono puntare a un target già esistente o presente nello stesso fi
 3. Inserire sotto le scadenze collegate.
 4. Caricare il file in Vygo.
 5. Controllare l'anteprima.
-6. Importare solo le righe valide.
-7. Correggere eventuali righe segnalate e ricaricare il file.
+6. Se Vygo dice `Tutto ok`, premere importa.
+7. Se Vygo segnala righe rosse, correggere il file e ricaricarlo.
+
+Le righe valide aggiornano subito anagrafiche, documenti e scadenze. Le righe con errori non vengono importate, cosi non sporcano l'archivio.
 
 ## Nota per onboarding clienti
 

@@ -3248,7 +3248,7 @@ function CamionChiaroApp() {
   async function handleSubmitCheck(payload) {
     if (!driver) return false
     if (driver.canSubmitChecks === false) {
-      Alert.alert('Check non richiesto', 'L azienda non ha attivato il check giornaliero per questo account.')
+      Alert.alert('Check non autorizzato', 'La tua azienda non ha abilitato il check giornaliero per il tuo account. Se devi usarlo, contatta l azienda. I guasti restano sempre disponibili.')
       return false
     }
 

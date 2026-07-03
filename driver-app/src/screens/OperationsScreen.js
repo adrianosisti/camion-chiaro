@@ -98,7 +98,7 @@ export function OperationsScreen({
 
   async function submitCheck() {
     if (!canSubmitChecks) {
-      Alert.alert('Check non richiesto', 'L azienda non ha attivato il check giornaliero per questo account.')
+      Alert.alert('Check non autorizzato', 'La tua azienda non ha abilitato il check giornaliero per il tuo account. Se devi usarlo, contatta l azienda. I guasti restano sempre disponibili.')
       return
     }
 
@@ -230,9 +230,9 @@ export function OperationsScreen({
           <PrimaryButton loading={isSendingCheck} onPress={submitCheck} title="Invia check" />
         </Panel>
       ) : (
-        <Panel kicker={t(language, 'checkMorning')} title="Check non richiesto">
+        <Panel kicker={t(language, 'checkMorning')} title="Check non autorizzato">
           <Text style={styles.helper}>
-            L azienda non ha attivato il check giornaliero per questo account. La segnalazione guasti resta sempre disponibile qui sotto.
+            La tua azienda non ha abilitato il check giornaliero per il tuo account. Se devi usarlo, contatta l azienda. La segnalazione guasti resta sempre disponibile qui sotto.
           </Text>
         </Panel>
       )}

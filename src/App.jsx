@@ -21376,8 +21376,8 @@ function DriverMobile({
         {!driverCanSubmitChecks ? (
           <article className="check-card">
             <div>
-              <strong>{t('drivers.checkPermissionDisabled')}</strong>
-              <span>L azienda non richiede il check giornaliero per questo account. Segnala guasto resta sempre disponibile.</span>
+              <strong>Check non autorizzato</strong>
+              <span>La tua azienda non ha abilitato il check giornaliero per il tuo account. Se devi usarlo, contatta l azienda. Segnala guasto resta sempre disponibile.</span>
             </div>
           </article>
         ) : !hasSentMorningCheck && (

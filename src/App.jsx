@@ -763,7 +763,13 @@ const translations = {
     'hero.radarCostDetail': '{count} voci costo registrate',
     'hero.radarFleetHealth': 'Salute flotta',
     'hero.radarFleetHealthDetail': '{count} mezzi sotto soglia',
-    'hero.radarIndex': 'Controllo azienda',
+    'hero.radarIndex': 'Stato operativo',
+    'hero.radarIssueCosts': 'costi mese alti',
+    'hero.radarIssueCriticalChecks': '{count} check critici',
+    'hero.radarIssueCriticalDeadlines': '{count} scadenze critiche',
+    'hero.radarIssueFleet': 'salute flotta {score}%',
+    'hero.radarIssueOpenFaults': '{count} guasti aperti',
+    'hero.radarIssueUpcomingDeadlines': '{count} entro 30 giorni',
     'hero.radarOpen': 'Pratiche aperte',
     'hero.radarOpenDetail': 'guasti, check e scadenze da lavorare',
     'hero.radarOpenCosts': 'Apri costi',
@@ -771,7 +777,8 @@ const translations = {
     'hero.radarOpenFaults': 'Apri guasti',
     'hero.radarOpenNotifications': 'Apri notifiche',
     'hero.radarPerfect': 'Nessuna urgenza reale: continua cosi.',
-    'hero.radarSubtitle': 'Situazione operativa aggiornata in tempo reale.',
+    'hero.radarStatusClear': 'Nessuna urgenza aperta',
+    'hero.radarSubtitle': 'Si aggiorna con check, guasti, scadenze, costi e salute flotta.',
     'hero.radarTitle': 'Radar direzione',
     'language.label': 'Lingua',
     'language.short': 'Lingua',
@@ -967,7 +974,13 @@ const translations = {
     'hero.radarCostDetail': '{count} cost entries logged',
     'hero.radarFleetHealth': 'Fleet health',
     'hero.radarFleetHealthDetail': '{count} vehicles below threshold',
-    'hero.radarIndex': 'Company control',
+    'hero.radarIndex': 'Operating status',
+    'hero.radarIssueCosts': 'high month costs',
+    'hero.radarIssueCriticalChecks': '{count} critical checks',
+    'hero.radarIssueCriticalDeadlines': '{count} critical deadlines',
+    'hero.radarIssueFleet': 'fleet health {score}%',
+    'hero.radarIssueOpenFaults': '{count} open faults',
+    'hero.radarIssueUpcomingDeadlines': '{count} in 30 days',
     'hero.radarOpen': 'Open work',
     'hero.radarOpenCosts': 'Open costs',
     'hero.radarOpenDeadlines': 'Open deadlines',
@@ -975,7 +988,8 @@ const translations = {
     'hero.radarOpenFaults': 'Open faults',
     'hero.radarOpenNotifications': 'Open notifications',
     'hero.radarPerfect': 'No real urgency: keep going.',
-    'hero.radarSubtitle': 'Live operating situation updated in real time.',
+    'hero.radarStatusClear': 'No open urgency',
+    'hero.radarSubtitle': 'Updates from checks, faults, deadlines, costs and fleet health.',
     'hero.radarTitle': 'Management radar',
     'language.label': 'Language',
     'language.short': 'Language',
@@ -12446,6 +12460,15 @@ function HeroPanel({
   const radarTone = controlScore >= 82 ? 'success' : controlScore >= 62 ? 'warning' : 'danger'
   const fleetHealthTone = fleetHealthScore >= 82 ? 'success' : fleetHealthScore >= 62 ? 'warning' : 'danger'
   const fleetHealthPercentLabel = `${fleetHealthScore}%`
+  const controlReasonParts = [
+    criticalCheckCount ? t('hero.radarIssueCriticalChecks', { count: criticalCheckCount }) : '',
+    openFaultCount ? t('hero.radarIssueOpenFaults', { count: openFaultCount }) : '',
+    criticalDeadlineCount ? t('hero.radarIssueCriticalDeadlines', { count: criticalDeadlineCount }) : '',
+    !criticalDeadlineCount && next30DeadlineCount ? t('hero.radarIssueUpcomingDeadlines', { count: next30DeadlineCount }) : '',
+    costPenalty >= 6 ? t('hero.radarIssueCosts') : '',
+    fleetHealthScore < 82 ? t('hero.radarIssueFleet', { score: fleetHealthScore }) : '',
+  ].filter(Boolean)
+  const controlReason = controlReasonParts.length ? controlReasonParts.join(' · ') : t('hero.radarStatusClear')
   const radarAction = (() => {
     if (criticalCheckCount > 0) {
       return {
@@ -12530,6 +12553,7 @@ function HeroPanel({
             <article>
               <small>{t('hero.radarIndex')}</small>
               <b>{controlScore}%</b>
+              <em>{controlReason}</em>
             </article>
             <article>
               <small>{t('hero.radarOpen')}</small>

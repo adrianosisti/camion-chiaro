@@ -6855,7 +6855,7 @@ function App() {
       if (documentsResult.data) setDocumentRecords(documentsResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
-      setChatSyncStatus('Chat locale disponibile dopo il primo messaggio.')
+      setChatSyncStatus('Chat disponibile dopo il primo messaggio.')
       setOperationsSyncStatus(
         vehiclesResult.data?.some((vehicle) => vehicle.fleetType !== 'semirimorchio')
           ? 'Area autista caricata.'

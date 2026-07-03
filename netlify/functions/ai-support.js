@@ -119,6 +119,19 @@ const supportPlaybooks = [
     ],
   },
   {
+    id: 'fleet_health',
+    keywords: ['salute flotta', 'indice', 'punteggio', 'mezzo peggiore', 'targa peggiore', 'flotta sana', 'mezzo critico'],
+    title: 'indice salute flotta',
+    response: [
+      'L indice salute flotta serve a capire subito quali mezzi meritano attenzione:',
+      '1. Apri Report oppure guarda la home azienda da app.',
+      '2. Il punteggio incrocia guasti aperti, check critici, scadenze mezzo e costi del mese.',
+      '3. Punteggio alto significa situazione ordinata; punteggio basso indica mezzo da controllare.',
+      '4. Apri la targa peggiore, guarda guasti, scadenze e costi collegati.',
+      '5. Usa questo dato per decidere fermo programmato, manutenzione preventiva o verifica con officina.',
+    ],
+  },
+  {
     id: 'fines_assignment',
     keywords: ['non assegnate', 'assegna', 'assegnare', 'responsabile', 'sanzione senza autista', 'multa senza autista'],
     title: 'multe non assegnate',
@@ -128,7 +141,7 @@ const supportPlaybooks = [
       '2. Premi Assegna accanto alla voce Non assegnate.',
       '3. Si apre la modifica della sanzione: scegli Autista responsabile e, se serve, Mezzo/targa collegata.',
       '4. Salva. La multa uscira da Non assegnate e rientrera nella classifica dell autista.',
-      '5. Se il salvataggio non passa, verifica di aver eseguito lo SQL 42 sulle sanzioni autista+targa.',
+      '5. Se il salvataggio non passa, apri una richiesta supporto indicando azienda, autista, targa e importo della sanzione.',
     ],
   },
   {

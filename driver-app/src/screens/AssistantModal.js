@@ -31,6 +31,12 @@ const assistantTopics = [
     keywords: ['chat', 'messaggio', 'messaggi', 'gruppo', 'notifica', 'notifiche'],
   },
   {
+    answer: 'Puoi inviare foto, video e audio dalla chat. Per contenere spazio e costi, usa gli allegati per contenuti utili al lavoro: guasti, documenti, prove operative e comunicazioni aziendali.',
+    id: 'attachments',
+    label: 'Allegati',
+    keywords: ['foto', 'video', 'audio', 'allegato', 'allegati', 'galleria', 'microfono'],
+  },
+  {
     answer: 'Il Centro costi raccoglie importi di guasti, riparazioni, manutenzioni e sanzioni. Dal web azienda apri Report per stampare o scaricare CSV filtrati per periodo, targa, autista o attrezzatura.',
     id: 'costs',
     label: 'Costi',
@@ -53,6 +59,30 @@ const assistantTopics = [
     id: 'workforce',
     label: 'Reparti',
     keywords: ['ufficio', 'magazzino', 'magazziniere', 'persona', 'reparto', 'dipendente'],
+  },
+  {
+    answer: 'Le credenziali di autisti e personale vengono create dall azienda. Se una password non funziona, entra in Anagrafiche, apri la persona e usa reset password o imposta una nuova password temporanea.',
+    id: 'access',
+    label: 'Accessi',
+    keywords: ['login', 'accesso', 'password', 'credenziali', 'utente', 'username', 'reset'],
+  },
+  {
+    answer: 'I piani Vygo includono tutte le funzioni principali. Cambiano limiti di mezzi, persone, strumenti e spazio file. Se raggiungi un limite, passa a un piano superiore o aggiungi spazio.',
+    id: 'plans',
+    label: 'Piani',
+    keywords: ['piano', 'abbonamento', 'limite', 'limiti', 'mezzi', 'utenti', 'storage', 'spazio'],
+  },
+  {
+    answer: 'Privacy e condizioni si accettano al primo accesso. Vygo tiene traccia di versione, data e utente. Documenti e chat sono strumenti aziendali: usa sempre contenuti legati al lavoro.',
+    id: 'privacy',
+    label: 'Privacy',
+    keywords: ['privacy', 'termini', 'condizioni', 'contratto', 'gdpr', 'legale'],
+  },
+  {
+    answer: 'L indice salute flotta incrocia guasti aperti, check critici, scadenze e costi. Se il punteggio scende, apri Flotta o Report e controlla la targa peggiore prima che diventi fermo mezzo.',
+    id: 'fleetHealth',
+    label: 'Salute flotta',
+    keywords: ['salute', 'flotta', 'indice', 'punteggio', 'targa', 'mezzo peggiore'],
   },
   {
     answer: 'Le funzioni premium piu forti sono report mensile automatico, indice salute flotta, budget per targa, classifica multe, alert guasti ricorrenti, osservatorio trasporti e profilo formazione autista.',

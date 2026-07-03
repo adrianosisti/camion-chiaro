@@ -199,6 +199,32 @@ const emptyCompanyStorageSummary = {
   profileBytes: 0,
   totalBytes: 0,
 }
+const initialComplianceRecords = isSupabaseConfigured ? [] : complianceItems
+const initialDocumentRecords = isSupabaseConfigured ? [] : driverDocuments
+const initialDriverRecords = isSupabaseConfigured ? [] : drivers
+const initialVehicleRecords = isSupabaseConfigured ? [] : vehicles
+
+function getInitialCompanyProfile() {
+  return {
+    billingActivatedAt: '',
+    billingAddonChat: false,
+    billingAddonCostCenter: false,
+    billingAddonReports: false,
+    billingCustomerId: '',
+    billingCurrentPeriodEnd: '',
+    billingEmail: '',
+    billingPlan: 'starter',
+    billingProvider: 'manual',
+    billingStatus: 'active',
+    billingStorageExtraGb: 0,
+    billingSubscriptionId: '',
+    headquarters: isSupabaseConfigured ? '' : company.location,
+    id: '',
+    logoPath: isSupabaseConfigured ? '' : company.logoPath ?? '',
+    name: isSupabaseConfigured ? '' : company.name,
+    vatNumber: isSupabaseConfigured ? '' : company.vat,
+  }
+}
 
 const driverAuthDomain = import.meta.env.VITE_DRIVER_AUTH_DOMAIN ?? 'drivers.vy-go.com'
 const adminEmails = new Set(
@@ -666,6 +692,8 @@ const translations = {
     'driver.emptyTitle': 'Area autista non disponibile',
     'driver.loadingDetail': 'Sto recuperando i dati del profilo.',
     'driver.loadingTitle': 'Caricamento area autista',
+    'company.loadingDetail': 'Sto sincronizzando dati azienda, scadenze, chat, flotta e centro costi.',
+    'company.loadingTitle': 'Caricamento dashboard azienda',
     'driver.noteBody': 'Qui vedrai avvisi personali, documenti caricati, check mattutini e segnalazioni guasto collegati al tuo profilo.',
     'driver.noteOverline': 'Notifiche',
     'driver.noteTitle': 'Qui arrivano gli avvisi in app',
@@ -882,6 +910,8 @@ const translations = {
     'driver.emptyTitle': 'Driver area unavailable',
     'driver.loadingDetail': 'Retrieving profile data.',
     'driver.loadingTitle': 'Loading driver area',
+    'company.loadingDetail': 'Syncing company data, deadlines, chat, fleet and cost center.',
+    'company.loadingTitle': 'Loading company dashboard',
     'driver.noteBody': 'Here you will see personal alerts, uploaded documents, morning checks and fault reports linked to your profile.',
     'driver.noteOverline': 'Notifications',
     'driver.noteTitle': 'In-app alerts arrive here',
@@ -1098,6 +1128,8 @@ const translations = {
     'driver.emptyTitle': 'Area conductor no disponible',
     'driver.loadingDetail': 'Recuperando datos del perfil.',
     'driver.loadingTitle': 'Cargando area conductor',
+    'company.loadingDetail': 'Sincronizando datos de empresa, vencimientos, chat, flota y costes.',
+    'company.loadingTitle': 'Cargando panel empresa',
     'driver.noteBody': 'Aqui veras avisos personales, documentos cargados, checks matinales y averias vinculados a tu perfil.',
     'driver.noteOverline': 'Notificaciones',
     'driver.noteTitle': 'Aqui llegan los avisos en app',
@@ -1235,6 +1267,8 @@ const translations = {
     'driver.emptyTitle': 'Espace chauffeur indisponible',
     'driver.loadingDetail': 'Recuperation des donnees du profil.',
     'driver.loadingTitle': 'Chargement espace chauffeur',
+    'company.loadingDetail': 'Synchronisation des donnees entreprise, echeances, chat, flotte et couts.',
+    'company.loadingTitle': 'Chargement tableau entreprise',
     'driver.noteBody': 'Vous verrez ici vos alertes personnelles, documents charges, checks du matin et signalements de panne lies a votre profil.',
     'driver.noteOverline': 'Notifications',
     'driver.noteTitle': 'Les alertes app arrivent ici',
@@ -1372,6 +1406,8 @@ const translations = {
     'driver.emptyTitle': 'Fahrerbereich nicht verfugbar',
     'driver.loadingDetail': 'Profildaten werden geladen.',
     'driver.loadingTitle': 'Fahrerbereich wird geladen',
+    'company.loadingDetail': 'Firmendaten, Fristen, Chat, Flotte und Kostenstelle werden synchronisiert.',
+    'company.loadingTitle': 'Unternehmensdashboard wird geladen',
     'driver.noteBody': 'Hier sehen Sie personliche Hinweise, hochgeladene Dokumente, Morgenchecks und Schadenmeldungen zu Ihrem Profil.',
     'driver.noteOverline': 'Benachrichtigungen',
     'driver.noteTitle': 'App-Hinweise kommen hier an',
@@ -5893,12 +5929,12 @@ function startChatBottomScroll(scrollToBottom, listElement) {
 function App() {
   const [session, setSession] = useState(null)
   const [language, setLanguage] = useState(getInitialLanguage)
-  const [items, setItems] = useState(complianceItems)
-  const [documentRecords, setDocumentRecords] = useState(driverDocuments)
-  const [driverRecords, setDriverRecords] = useState(drivers)
+  const [items, setItems] = useState(initialComplianceRecords)
+  const [documentRecords, setDocumentRecords] = useState(initialDocumentRecords)
+  const [driverRecords, setDriverRecords] = useState(initialDriverRecords)
   const [personRecords, setPersonRecords] = useState([])
   const [assetRecords, setAssetRecords] = useState([])
-  const [vehicleRecords, setVehicleRecords] = useState(vehicles)
+  const [vehicleRecords, setVehicleRecords] = useState(initialVehicleRecords)
   const [vehicleCheckRecords, setVehicleCheckRecords] = useState([])
   const [faultReportRecords, setFaultReportRecords] = useState([])
   const [chatThreadRecords, setChatThreadRecords] = useState([])
@@ -5915,25 +5951,8 @@ function App() {
   const [isAdminOverviewLoading, setIsAdminOverviewLoading] = useState(false)
   const [isPasswordRecoveryMode, setIsPasswordRecoveryMode] = useState(hasPasswordRecoveryUrlParams)
   const [activeCompanyId, setActiveCompanyId] = useState('')
-	  const [companyProfile, setCompanyProfile] = useState({
-	    billingActivatedAt: '',
-	    billingAddonChat: false,
-	    billingAddonCostCenter: false,
-	    billingAddonReports: false,
-	    billingCustomerId: '',
-	    billingCurrentPeriodEnd: '',
-	    billingEmail: '',
-	    billingPlan: 'starter',
-	    billingProvider: 'manual',
-	    billingStatus: 'active',
-	    billingStorageExtraGb: 0,
-	    billingSubscriptionId: '',
-    headquarters: company.location,
-    id: '',
-    logoPath: company.logoPath ?? '',
-    name: company.name,
-    vatNumber: company.vat,
-  })
+  const [companyProfile, setCompanyProfile] = useState(getInitialCompanyProfile)
+  const [isCompanyDataLoading, setIsCompanyDataLoading] = useState(false)
   const [assetPreviewUrls, setAssetPreviewUrls] = useState({})
   const [installPromptEvent, setInstallPromptEvent] = useState(null)
   const [isStandaloneMode, setIsStandaloneMode] = useState(isStandaloneApp)
@@ -6190,6 +6209,10 @@ function App() {
   function handleAuthenticated(nextSession) {
     setActiveCompanyId('')
     setAssetPreviewUrls({})
+    if (isSupabaseConfigured) {
+      resetCompanySessionData({ useDemoData: false })
+      setCompanyProfile(getInitialCompanyProfile())
+    }
     setCostEntryRecords([])
     setCompanyInvoiceRecords([])
     setCompanyStorageSummary(emptyCompanyStorageSummary)
@@ -6205,11 +6228,33 @@ function App() {
     if (nextSession.role === 'driver') {
       if (isSupabaseConfigured) resetDriverSessionData()
       setDriverSessionLoading(isSupabaseConfigured)
+      setIsCompanyDataLoading(false)
     } else {
       setDriverSessionLoading(false)
+      setIsCompanyDataLoading(Boolean(isSupabaseConfigured))
     }
 
     setSession(nextSession)
+  }
+
+  function resetCompanySessionData({ useDemoData = !isSupabaseConfigured } = {}) {
+    setItems(useDemoData ? complianceItems : [])
+    setDocumentRecords(useDemoData ? driverDocuments : [])
+    setDriverRecords(useDemoData ? drivers : [])
+    setPersonRecords([])
+    setAssetRecords([])
+    setVehicleRecords(useDemoData ? vehicles : [])
+    setVehicleCheckRecords([])
+    setFaultReportRecords([])
+    setCostEntryRecords([])
+    setChatThreadRecords([])
+    setChatMessageRecords([])
+    setTeamChatThreadRecords([])
+    setTeamChatMessageRecords([])
+    setChatLiveState(emptyChatLiveState)
+    setDocumentEventRecords([])
+    setCompanyInvoiceRecords([])
+    setCompanyStorageSummary(emptyCompanyStorageSummary)
   }
 
   function resetDriverSessionData() {
@@ -6224,6 +6269,8 @@ function App() {
     setCostEntryRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
+    setTeamChatThreadRecords([])
+    setTeamChatMessageRecords([])
     setChatLiveState(emptyChatLiveState)
     setDocumentEventRecords([])
     setCompanyInvoiceRecords([])
@@ -6721,8 +6768,10 @@ function App() {
         if (nextSession.role === 'driver') {
           if (isSupabaseConfigured) resetDriverSessionData()
           setDriverSessionLoading(isSupabaseConfigured)
+          setIsCompanyDataLoading(false)
         } else {
           setDriverSessionLoading(false)
+          setIsCompanyDataLoading(true)
         }
 
         setSession((currentSession) => currentSession ?? nextSession)
@@ -6753,6 +6802,7 @@ function App() {
 
     async function loadCompanyData() {
       const companyName = session.name?.trim() && !session.name.includes('@') ? session.name.trim() : 'Nuova azienda'
+      setIsCompanyDataLoading(true)
       setDriversSyncStatus('Caricamento dati...')
       setDocumentsSyncStatus('Caricamento documenti...')
       setOperationsSyncStatus('Caricamento check e guasti...')
@@ -6768,6 +6818,7 @@ function App() {
         setFleetSyncStatus('Flotta non caricata.')
         setOperationsSyncStatus('Check e guasti non caricati.')
         setChatSyncStatus('Chat non caricata.')
+        setIsCompanyDataLoading(false)
         return
       }
 
@@ -6850,6 +6901,7 @@ function App() {
           ? 'Chat non ancora disponibile. Contatta assistenza se il problema continua.'
           : 'Chat caricata.',
       )
+      setIsCompanyDataLoading(false)
     }
 
     loadCompanyData()
@@ -7159,21 +7211,8 @@ function App() {
     setActiveCompanyId('')
     setAssetPreviewUrls({})
     setDriverSessionLoading(false)
-    setItems(complianceItems)
-    setDocumentRecords(driverDocuments)
-    setDriverRecords(drivers)
-    setPersonRecords([])
-    setAssetRecords([])
-    setVehicleRecords(vehicles)
-    setVehicleCheckRecords([])
-    setFaultReportRecords([])
-    setCostEntryRecords([])
-    setChatThreadRecords([])
-    setChatMessageRecords([])
-    setChatLiveState(emptyChatLiveState)
-    setDocumentEventRecords([])
-    setCompanyInvoiceRecords([])
-    setCompanyStorageSummary(emptyCompanyStorageSummary)
+    setIsCompanyDataLoading(false)
+    resetCompanySessionData({ useDemoData: !isSupabaseConfigured })
     setAdminOverview(null)
     setAdminOverviewStatus('')
     setIsAdminOverviewLoading(false)
@@ -7186,21 +7225,7 @@ function App() {
       missingDocuments: [],
       requiredDocuments: [],
     })
-    setCompanyProfile({
-      billingActivatedAt: '',
-      billingCustomerId: '',
-      billingCurrentPeriodEnd: '',
-      billingEmail: '',
-      billingPlan: 'starter',
-      billingProvider: 'manual',
-      billingStatus: 'active',
-      billingSubscriptionId: '',
-      headquarters: company.location,
-      id: '',
-      logoPath: company.logoPath ?? '',
-      name: company.name,
-      vatNumber: company.vat,
-    })
+    setCompanyProfile(getInitialCompanyProfile())
   }
 
   async function updateCompanyProfile(updates) {
@@ -9195,6 +9220,17 @@ function App() {
           onEnablePhoneNotifications={enablePhoneNotifications}
           onInstallPhoneApp={installPhoneApp}
           onLanguageChange={setLanguage}
+          t={t}
+        />
+      </I18nContext.Provider>
+    )
+  }
+
+  if (session.role === 'company' && isSupabaseConfigured && activeView !== 'admin' && isCompanyDataLoading) {
+    return (
+      <I18nContext.Provider value={i18nValue}>
+        <CompanyDataLoadingScreen
+          companyName={getDisplayCompanyName(companyProfile.name || session.name || 'Vygo')}
           t={t}
         />
       </I18nContext.Provider>
@@ -19685,6 +19721,21 @@ function DriverEmptyPhone({ companyLogoUrl, companyName, message, t }) {
         </div>
       </div>
     </section>
+  )
+}
+
+function CompanyDataLoadingScreen({ companyName, t }) {
+  return (
+    <div className="company-data-loading-screen">
+      <section className="company-data-loading-panel" aria-live="polite">
+        <div className="company-data-loading-mark">
+          <RadioTower size={28} />
+        </div>
+        <p className="overline">{companyName || 'Vygo'}</p>
+        <h1>{t('company.loadingTitle')}</h1>
+        <span>{t('company.loadingDetail')}</span>
+      </section>
+    </div>
   )
 }
 

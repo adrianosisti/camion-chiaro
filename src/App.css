@@ -9618,6 +9618,53 @@
   line-height: 1.4;
 }
 
+.company-data-loading-screen {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(18, 198, 223, 0.14), transparent 34%),
+    #f7fbff;
+}
+
+.company-data-loading-panel {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(440px, 100%);
+  padding: 34px 28px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+  text-align: center;
+}
+
+.company-data-loading-mark {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 14px;
+  color: #082f49;
+  background: #12c6df;
+}
+
+.company-data-loading-panel h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.35rem;
+  letter-spacing: 0;
+}
+
+.company-data-loading-panel span {
+  max-width: 320px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 .driver-card {
   display: flex;
   align-items: center;

@@ -3151,7 +3151,7 @@ function CamionChiaroApp() {
       const renewed = await handleRenewDocument(sameTypeDocument, {
         documentNumber: payload.documentNumber ?? sameTypeDocument.documentNumber,
         expiresAt: payload.expiresAt ?? sameTypeDocument.expiresAt,
-        file: null,
+        file: payload.file ?? null,
         type: payload.type,
       })
       return renewed ? { updatedExisting: true } : false
@@ -3162,6 +3162,19 @@ function CamionChiaroApp() {
     if (result.error) {
       Alert.alert('Documento non creato', result.error.message)
       return false
+    }
+
+    if (payload.file?.uri && result.data?.id) {
+      const uploadResult = await uploadDriverDocumentFile({
+        companyId: driver.companyId,
+        documentId: result.data.id,
+        driverId: driver.id,
+        file: payload.file,
+      })
+
+      if (uploadResult.error) {
+        Alert.alert('Documento creato', `Documento creato, ma il file non e stato caricato: ${uploadResult.error.message}`)
+      }
     }
 
     await loadDriverData({ silent: true })

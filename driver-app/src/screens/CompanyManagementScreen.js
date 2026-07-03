@@ -191,7 +191,7 @@ async function buildScannedDocumentFile(values = [], prefix = 'documento-scansio
   try {
     const pages = await Promise.all(uris.map(async (uri) => {
       const dataUri = await buildScannedImageDataUri(uri)
-      return `<section class="page"><img src="${dataUri}" /></section>`
+      return `<div class="side"><img src="${dataUri}" /></div>`
     }))
     const printed = await Print.printToFileAsync({
       html: `<!doctype html>
@@ -199,18 +199,29 @@ async function buildScannedDocumentFile(values = [], prefix = 'documento-scansio
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <style>
-              @page { margin: 16mm; size: A4; }
+              @page { margin: 14mm; size: A4; }
               * { box-sizing: border-box; }
               body { margin: 0; background: #ffffff; }
               .page {
                 align-items: center;
                 display: flex;
-                height: 265mm;
+                flex-direction: column;
+                gap: 12mm;
+                height: 269mm;
                 justify-content: center;
-                page-break-after: always;
-                width: 178mm;
+                width: 182mm;
               }
-              .page:last-child { page-break-after: auto; }
+              .side {
+                align-items: center;
+                border: 1px solid #d7e1ea;
+                border-radius: 10px;
+                display: flex;
+                height: 122mm;
+                justify-content: center;
+                overflow: hidden;
+                padding: 5mm;
+                width: 100%;
+              }
               img {
                 display: block;
                 max-height: 100%;
@@ -219,7 +230,7 @@ async function buildScannedDocumentFile(values = [], prefix = 'documento-scansio
               }
             </style>
           </head>
-          <body>${pages.join('')}</body>
+          <body><section class="page">${pages.join('')}</section></body>
         </html>`,
     })
 

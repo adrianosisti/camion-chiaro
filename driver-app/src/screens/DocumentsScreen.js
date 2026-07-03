@@ -150,7 +150,7 @@ async function buildScannedDocumentFile(values = [], prefix = 'documento-scansio
   try {
     const pages = await Promise.all(uris.map(async (uri) => {
       const dataUri = await buildScannedImageDataUri(uri)
-      return `<section class="page"><img src="${dataUri}" /></section>`
+      return `<div class="side"><img src="${dataUri}" /></div>`
     }))
     const printed = await Print.printToFileAsync({
       html: `<!doctype html>
@@ -158,18 +158,29 @@ async function buildScannedDocumentFile(values = [], prefix = 'documento-scansio
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <style>
-              @page { margin: 16mm; size: A4; }
+              @page { margin: 14mm; size: A4; }
               * { box-sizing: border-box; }
               body { margin: 0; background: #ffffff; }
               .page {
                 align-items: center;
                 display: flex;
-                height: 265mm;
+                flex-direction: column;
+                gap: 12mm;
+                height: 269mm;
                 justify-content: center;
-                page-break-after: always;
-                width: 178mm;
+                width: 182mm;
               }
-              .page:last-child { page-break-after: auto; }
+              .side {
+                align-items: center;
+                border: 1px solid #d7e1ea;
+                border-radius: 10px;
+                display: flex;
+                height: 122mm;
+                justify-content: center;
+                overflow: hidden;
+                padding: 5mm;
+                width: 100%;
+              }
               img {
                 display: block;
                 max-height: 100%;
@@ -178,7 +189,7 @@ async function buildScannedDocumentFile(values = [], prefix = 'documento-scansio
               }
             </style>
           </head>
-          <body>${pages.join('')}</body>
+          <body><section class="page">${pages.join('')}</section></body>
         </html>`,
     })
 
@@ -194,6 +205,97 @@ async function buildScannedDocumentFile(values = [], prefix = 'documento-scansio
       type: getScannedImageMimeType(extension),
       uri: uris[0],
     }
+  }
+}
+
+async function pickFileAttachment() {
+  const result = await DocumentPicker.getDocumentAsync({
+    copyToCacheDirectory: true,
+    multiple: false,
+    type: ['application/pdf', 'image/heic', 'image/heif', 'image/jpeg', 'image/png', 'image/webp'],
+  })
+
+  if (result.canceled || !result.assets?.[0]) return null
+
+  const file = result.assets[0]
+  return {
+    name: file.name,
+    type: file.mimeType || 'application/octet-stream',
+    uri: file.uri,
+  }
+}
+
+async function pickGalleryAttachment() {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+  if (!permission.granted) {
+    Alert.alert('Galleria bloccata', 'Consenti l accesso alla galleria per scegliere la foto del documento.')
+    return null
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    allowsMultipleSelection: false,
+    mediaTypes: ['images'],
+    quality: 0.82,
+  })
+
+  if (result.canceled || !result.assets?.[0]) return null
+
+  const asset = result.assets[0]
+  return {
+    name: asset.fileName || `foto-documento-${Date.now()}.jpg`,
+    type: asset.mimeType || 'image/jpeg',
+    uri: asset.uri,
+  }
+}
+
+async function takePhotoAttachment() {
+  const permission = await ImagePicker.requestCameraPermissionsAsync()
+  if (!permission.granted) {
+    Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per fotografare il documento.')
+    return null
+  }
+
+  const result = await ImagePicker.launchCameraAsync({
+    allowsEditing: false,
+    mediaTypes: ['images'],
+    quality: 0.78,
+  })
+
+  if (result.canceled || !result.assets?.[0]) return null
+
+  const asset = result.assets[0]
+  return {
+    name: asset.fileName || `foto-documento-${Date.now()}.jpg`,
+    type: asset.mimeType || 'image/jpeg',
+    uri: asset.uri,
+  }
+}
+
+async function scanDocumentAttachment(prefix = 'documento-scansionato') {
+  const permission = await ImagePicker.requestCameraPermissionsAsync()
+  if (!permission.granted) {
+    Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per scansionare il documento.')
+    return null
+  }
+
+  try {
+    const result = await DocumentScanner.scanDocument({
+      croppedImageQuality: 86,
+      maxNumDocuments: 2,
+    })
+
+    if (result?.status === 'cancel') return null
+
+    const scannedFile = await buildScannedDocumentFile(result?.scannedImages, prefix)
+    if (!scannedFile) {
+      Alert.alert('Scansione non completata', 'Non ho ricevuto un file valido dallo scanner. Riprova o usa la fotocamera.')
+      return null
+    }
+
+    return scannedFile
+  } catch {
+    Alert.alert('Scanner non disponibile', 'Su questo telefono lo scanner documento non e disponibile. Usa Fotocamera, Galleria o File/PDF.')
+    return null
   }
 }
 
@@ -299,146 +401,53 @@ function DocumentRow({ autoOpenRenewal = false, document, highlight = false, lan
   }
 
   async function pickDocumentFile() {
-    const result = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      multiple: false,
-      type: ['application/pdf', 'image/heic', 'image/heif', 'image/jpeg', 'image/png', 'image/webp'],
-    })
+    const file = await pickFileAttachment()
+    if (file) await uploadSelectedFile(file)
+  }
 
-    if (result.canceled || !result.assets?.[0]) return
-
-    const file = result.assets[0]
-    await uploadSelectedFile({
-      name: file.name,
-      type: file.mimeType || 'application/octet-stream',
-      uri: file.uri,
-    })
+  async function pickDocumentGallery() {
+    const file = await pickGalleryAttachment()
+    if (file) await uploadSelectedFile(file)
   }
 
   async function takeDocumentPhoto() {
-    const permission = await ImagePicker.requestCameraPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per fotografare il documento.')
-      return
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: false,
-      mediaTypes: ['images'],
-      quality: 0.78,
-    })
-
-    if (result.canceled || !result.assets?.[0]) return
-
-    const asset = result.assets[0]
-    await uploadSelectedFile({
-      name: asset.fileName || `documento-${Date.now()}.jpg`,
-      type: asset.mimeType || 'image/jpeg',
-      uri: asset.uri,
-    })
+    const file = await takePhotoAttachment()
+    if (file) await uploadSelectedFile(file)
   }
 
   async function scanDocumentFile() {
-    const permission = await ImagePicker.requestCameraPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per scansionare il documento.')
-      return
-    }
-
-    try {
-      const result = await DocumentScanner.scanDocument({
-        croppedImageQuality: 86,
-        maxNumDocuments: 2,
-      })
-
-      if (result?.status === 'cancel') return
-
-      const scannedFile = await buildScannedDocumentFile(result?.scannedImages)
-      if (!scannedFile) {
-        Alert.alert('Scansione non completata', 'Non ho ricevuto un file valido dallo scanner. Riprova o usa la fotocamera.')
-        return
-      }
-
-      await uploadSelectedFile(scannedFile)
-    } catch {
-      Alert.alert('Scanner non disponibile', 'Su questo telefono lo scanner documento non e disponibile. Usa Fotocamera o File/Galleria.')
-    }
+    const file = await scanDocumentAttachment()
+    if (file) await uploadSelectedFile(file)
   }
 
   function pickDocument() {
     Alert.alert('Carica documento', 'Scegli come inserire il documento. Con lo scanner puoi fare anche fronte e retro.', [
       { text: 'Scansiona fronte/retro', onPress: scanDocumentFile },
       { text: 'Fotocamera', onPress: takeDocumentPhoto },
-      { text: 'File/Galleria', onPress: pickDocumentFile },
+      { text: 'Galleria foto', onPress: pickDocumentGallery },
+      { text: 'File/PDF', onPress: pickDocumentFile },
       { style: 'cancel', text: 'Annulla' },
     ])
   }
 
   async function pickRenewFile() {
-    const result = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      multiple: false,
-      type: ['application/pdf', 'image/heic', 'image/heif', 'image/jpeg', 'image/png', 'image/webp'],
-    })
+    const file = await pickFileAttachment()
+    if (file) setRenewFile(file)
+  }
 
-    if (result.canceled || !result.assets?.[0]) return
-
-    const file = result.assets[0]
-    setRenewFile({
-      name: file.name,
-      type: file.mimeType || 'application/octet-stream',
-      uri: file.uri,
-    })
+  async function pickRenewGallery() {
+    const file = await pickGalleryAttachment()
+    if (file) setRenewFile(file)
   }
 
   async function takeRenewPhoto() {
-    const permission = await ImagePicker.requestCameraPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per fotografare il documento.')
-      return
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: false,
-      mediaTypes: ['images'],
-      quality: 0.78,
-    })
-
-    if (result.canceled || !result.assets?.[0]) return
-
-    const asset = result.assets[0]
-    setRenewFile({
-      name: asset.fileName || `documento-${Date.now()}.jpg`,
-      type: asset.mimeType || 'image/jpeg',
-      uri: asset.uri,
-    })
+    const file = await takePhotoAttachment()
+    if (file) setRenewFile(file)
   }
 
   async function scanRenewFile() {
-    const permission = await ImagePicker.requestCameraPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per scansionare il documento.')
-      return
-    }
-
-    try {
-      const result = await DocumentScanner.scanDocument({
-        croppedImageQuality: 86,
-        maxNumDocuments: 2,
-      })
-
-      if (result?.status === 'cancel') return
-
-      const scannedFile = await buildScannedDocumentFile(result?.scannedImages, 'rinnovo-scansionato')
-      if (!scannedFile) {
-        Alert.alert('Scansione non completata', 'Non ho ricevuto un file valido dallo scanner. Riprova o usa la fotocamera.')
-        return
-      }
-
-      setRenewFile(scannedFile)
-    } catch {
-      Alert.alert('Scanner non disponibile', 'Su questo telefono lo scanner documento non e disponibile. Usa Fotocamera o File/Galleria.')
-    }
+    const file = await scanDocumentAttachment('rinnovo-scansionato')
+    if (file) setRenewFile(file)
   }
 
   async function saveRenewal() {
@@ -553,8 +562,11 @@ function DocumentRow({ autoOpenRenewal = false, document, highlight = false, lan
               <Pressable disabled={isBusy} onPress={takeRenewPhoto} style={styles.renewActionButton}>
                 <Text style={styles.renewActionText}>Fotocamera</Text>
               </Pressable>
+              <Pressable disabled={isBusy} onPress={pickRenewGallery} style={styles.renewActionButton}>
+                <Text style={styles.renewActionText}>Galleria</Text>
+              </Pressable>
               <Pressable disabled={isBusy} onPress={pickRenewFile} style={styles.renewActionButton}>
-                <Text style={styles.renewActionText}>File/Galleria</Text>
+                <Text style={styles.renewActionText}>File/PDF</Text>
               </Pressable>
             </View>
             <PrimaryButton loading={isBusy} onPress={saveRenewal} title="Salva rinnovo" />
@@ -567,6 +579,7 @@ function DocumentRow({ autoOpenRenewal = false, document, highlight = false, lan
 }
 
 export function DocumentsScreen({ focusDocumentId = '', documents = [], language = 'it', onCreateDocument, onRenewDocument, onUploadDocument }) {
+  const [documentFile, setDocumentFile] = useState(null)
   const [documentNumber, setDocumentNumber] = useState('')
   const [documentType, setDocumentType] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
@@ -584,6 +597,26 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
     if (focusDocumentId) setRenewRequestDocumentId(focusDocumentId)
   }, [focusDocumentId])
 
+  async function pickNewDocumentFile() {
+    const file = await pickFileAttachment()
+    if (file) setDocumentFile(file)
+  }
+
+  async function pickNewDocumentGallery() {
+    const file = await pickGalleryAttachment()
+    if (file) setDocumentFile(file)
+  }
+
+  async function takeNewDocumentPhoto() {
+    const file = await takePhotoAttachment()
+    if (file) setDocumentFile(file)
+  }
+
+  async function scanNewDocumentFile() {
+    const file = await scanDocumentAttachment()
+    if (file) setDocumentFile(file)
+  }
+
   async function createDocument() {
     if (!documentType.trim()) {
       Alert.alert('Nome documento mancante', 'Inserisci il tipo documento, per esempio Patente o CQC.')
@@ -594,17 +627,23 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
     const created = await onCreateDocument?.({
       documentNumber: documentNumber.trim(),
       expiresAt: expiresAt.trim() || null,
+      file: documentFile,
       type: documentType.trim(),
     })
     setIsCreating(false)
 
     if (created) {
+      setDocumentFile(null)
       setDocumentNumber('')
       setDocumentType('')
       setExpiresAt('')
       Alert.alert(
         created.updatedExisting ? 'Documento aggiornato' : 'Documento creato',
-        created.updatedExisting ? 'Ho aggiornato la scadenza del documento esistente.' : 'Ora puoi caricare il file.',
+        documentFile
+          ? 'Documento e file sono stati salvati.'
+          : created.updatedExisting
+            ? 'Ho aggiornato la scadenza del documento esistente.'
+            : 'Documento creato. Puoi caricare il file anche dopo.',
       )
     }
   }
@@ -670,6 +709,33 @@ export function DocumentsScreen({ focusDocumentId = '', documents = [], language
           placeholder="Scadenza opzionale"
           value={expiresAt}
         />
+        <View style={styles.renewFileBox}>
+          <View style={styles.renewFileCopy}>
+            <Text style={styles.renewFileTitle}>File documento</Text>
+            <Text numberOfLines={1} style={styles.renewFileMeta}>
+              {documentFile?.name || 'Puoi allegarlo subito o dopo'}
+            </Text>
+          </View>
+          {documentFile ? (
+            <Pressable disabled={isCreating} onPress={() => setDocumentFile(null)} style={styles.clearFileButton}>
+              <Text style={styles.clearFileText}>Togli</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <View style={styles.renewActions}>
+          <Pressable disabled={isCreating} onPress={scanNewDocumentFile} style={styles.renewActionButton}>
+            <Text style={styles.renewActionText}>Scanner F/R</Text>
+          </Pressable>
+          <Pressable disabled={isCreating} onPress={takeNewDocumentPhoto} style={styles.renewActionButton}>
+            <Text style={styles.renewActionText}>Fotocamera</Text>
+          </Pressable>
+          <Pressable disabled={isCreating} onPress={pickNewDocumentGallery} style={styles.renewActionButton}>
+            <Text style={styles.renewActionText}>Galleria</Text>
+          </Pressable>
+          <Pressable disabled={isCreating} onPress={pickNewDocumentFile} style={styles.renewActionButton}>
+            <Text style={styles.renewActionText}>File/PDF</Text>
+          </Pressable>
+        </View>
         <PrimaryButton loading={isCreating} onPress={createDocument} title={t(language, 'createDocument')} />
       </Panel>
 
@@ -953,6 +1019,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0f2fe',
     borderRadius: 12,
     flex: 1,
+    flexBasis: '48%',
+    flexGrow: 1,
     minHeight: 42,
     justifyContent: 'center',
     paddingHorizontal: 10,
@@ -964,6 +1032,7 @@ const styles = StyleSheet.create({
   },
   renewActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },

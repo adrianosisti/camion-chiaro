@@ -141,6 +141,173 @@ function addNoteBlock(sheet, range, title, body, fill = palette.warning) {
   }
 }
 
+const guideRows = [
+  [
+    'Regola generale',
+    'Non cambiare mai i titoli delle colonne. Vygo li usa per capire cosa importare.',
+    'Compila le righe sotto ai titoli e cancella solo le righe esempio.',
+    'Non rinominare fogli o colonne.',
+  ],
+  [
+    'Date',
+    'Usa sempre AAAA-MM-GG quando puoi.',
+    '2027-05-31, 2026-12-15',
+    'Evita testi come "fine mese" o "tra un anno".',
+  ],
+  [
+    'Username',
+    'Scrivi nomi semplici, minuscoli, senza spazi.',
+    'mario.rossi, paola.ufficio, magazzino1',
+    'Evita accenti, apostrofi, spazi e caratteri strani.',
+  ],
+  [
+    'Password',
+    'Minimo 8 caratteri. Deve essere quella che poi comunichi alla persona.',
+    'Vygo2026!, Spedi2026',
+    'Non lasciare vuota la password per utenti che devono entrare in app.',
+  ],
+  [
+    'Telefono',
+    'Meglio con prefisso internazionale.',
+    '+39 333 111 1111',
+    'Evita numeri senza prefisso se l azienda lavora anche fuori Italia.',
+  ],
+  [
+    'Mezzi - Categoria mezzo',
+    'Usa una di queste parole: furgone, motrice, trattore, semirimorchio.',
+    'trattore per il trattore stradale; semirimorchio per il rimorchio agganciato.',
+    'Non scrivere "bilico" come categoria: se vuoi puoi metterlo nel ruolo o nelle note.',
+  ],
+  [
+    'Mezzi - Allestimento',
+    'Qui puoi descrivere il mezzo liberamente.',
+    'centinato, cassonato, frigo, isotermico, telonato, pianale, ribaltabile, cisterna, portacontainer, sponda idraulica',
+    'Non usare l allestimento al posto della categoria mezzo.',
+  ],
+  [
+    'Attrezzature',
+    'Usa una di queste parole: muletto, transpallet, attrezzatura, altro.',
+    'muletto per carrello elevatore; transpallet per transpallet elettrico/manuale.',
+    'Forche, batterie, caricabatterie o pedane possono stare in modello/note se non sono mezzi autonomi.',
+  ],
+  [
+    'Persone - Reparto',
+    'Usa ufficio o magazzino.',
+    'ufficio per traffico/amministrazione; magazzino per carrellisti e operatori magazzino.',
+    'Non usare "autisti" nel foglio Persone: gli autisti hanno il loro foglio.',
+  ],
+  [
+    'Persone - Ruolo',
+    'Usa ruoli chiari e coerenti.',
+    'Impiegato ufficio, Manager, Magazziniere, Carrellista',
+    'La mansione dettagliata va nella colonna Mansione.',
+  ],
+  [
+    'Documenti autisti',
+    'Scrivi il tipo documento come vuoi vederlo in Vygo.',
+    'Patente B, Patente C, Patente C+E, CQC merci, Carta tachigrafica, Visita medica, ADR base, ADR cisterna',
+    'Non mettere documenti del muletto qui: quelli vanno in Scadenze con ambito attrezzatura.',
+  ],
+  [
+    'Scadenze - Ambito',
+    'Usa autista, persona, mezzo, attrezzatura o azienda.',
+    'mezzo + AB123CD per revisione; persona + luca.neri per visita medica; attrezzatura + MUL-01 per verifica muletto.',
+    'Se ambito e target non combaciano, Vygo segnala errore in anteprima.',
+  ],
+  [
+    'Scadenze - Target',
+    'Per autista/persona usa username. Per mezzo usa targa. Per attrezzatura usa codice.',
+    'mario.rossi, AB123CD, MUL-01',
+    'Per scadenza azienda il target puo restare vuoto.',
+  ],
+  [
+    'Visibile in app',
+    'Scrivi si se l utente deve vedere il documento o la scadenza nella sua app. Scrivi no se resta solo aziendale.',
+    'si, no',
+    'Non usare forse, ok, x o altri valori.',
+  ],
+]
+
+const optionRows = [
+  ['Mezzi', 'Categoria mezzo', 'furgone', 'van', 'Furgoni e veicoli leggeri'],
+  ['Mezzi', 'Categoria mezzo', 'motrice', '', 'Motrice rigida'],
+  ['Mezzi', 'Categoria mezzo', 'trattore', 'bilico', 'Trattore stradale che aggancia semirimorchio'],
+  ['Mezzi', 'Categoria mezzo', 'semirimorchio', 'semi', 'Semirimorchio agganciabile'],
+  ['Mezzi', 'Allestimento', 'centinato', '', 'Descrizione libera del mezzo'],
+  ['Mezzi', 'Allestimento', 'cassonato', '', 'Descrizione libera del mezzo'],
+  ['Mezzi', 'Allestimento', 'frigo / isotermico', '', 'Descrizione libera del mezzo'],
+  ['Mezzi', 'Allestimento', 'telonato / pianale / ribaltabile', '', 'Descrizione libera del mezzo'],
+  ['Attrezzature', 'Tipo attrezzatura', 'muletto', 'forklift', 'Carrello elevatore'],
+  ['Attrezzature', 'Tipo attrezzatura', 'transpallet', 'pallet', 'Transpallet manuale o elettrico'],
+  ['Attrezzature', 'Tipo attrezzatura', 'attrezzatura', '', 'Altra attrezzatura di magazzino'],
+  ['Attrezzature', 'Tipo attrezzatura', 'altro', '', 'Quando non rientra nelle voci precedenti'],
+  ['Persone', 'Reparto', 'ufficio', '', 'Traffico, amministrazione, direzione, operativo'],
+  ['Persone', 'Reparto', 'magazzino', '', 'Magazzino e carrellisti'],
+  ['Persone', 'Ruolo', 'Impiegato ufficio', 'impiegato, office', 'Ufficio traffico/amministrazione'],
+  ['Persone', 'Ruolo', 'Manager', 'responsabile', 'Responsabile o titolare operativo'],
+  ['Persone', 'Ruolo', 'Magazziniere', 'warehouse', 'Operatore magazzino'],
+  ['Persone', 'Ruolo', 'Carrellista', 'forklift', 'Operatore muletto/carrello'],
+  ['Documenti autisti', 'Documento', 'Patente B', '', 'Documento autista'],
+  ['Documenti autisti', 'Documento', 'Patente C', '', 'Documento autista'],
+  ['Documenti autisti', 'Documento', 'Patente C+E', '', 'Documento autista'],
+  ['Documenti autisti', 'Documento', 'CQC merci', 'CQC', 'Documento autista'],
+  ['Documenti autisti', 'Documento', 'Carta tachigrafica', '', 'Documento autista'],
+  ['Documenti autisti', 'Documento', 'Visita medica', '', 'Scadenza sanitaria'],
+  ['Documenti autisti', 'Documento', 'ADR base / ADR cisterna', '', 'Abilitazione merci pericolose'],
+  ['Scadenze', 'Ambito scadenza', 'autista', 'driver', 'Usa username autista come target'],
+  ['Scadenze', 'Ambito scadenza', 'persona', 'dipendente', 'Usa username persona come target'],
+  ['Scadenze', 'Ambito scadenza', 'mezzo', 'targa, flotta', 'Usa targa come target'],
+  ['Scadenze', 'Ambito scadenza', 'attrezzatura', 'muletto', 'Usa codice attrezzatura come target'],
+  ['Scadenze', 'Ambito scadenza', 'azienda', 'company', 'Target vuoto'],
+  ['Scadenze', 'Tipo scadenza mezzo', 'Revisione mezzo', '', 'Scadenza flotta'],
+  ['Scadenze', 'Tipo scadenza mezzo', 'Assicurazione', '', 'Scadenza flotta'],
+  ['Scadenze', 'Tipo scadenza mezzo', 'Bollo', '', 'Scadenza flotta'],
+  ['Scadenze', 'Tipo scadenza mezzo', 'Manutenzione programmata', '', 'Scadenza flotta'],
+  ['Scadenze', 'Tipo scadenza attrezzatura', 'Verifica sicurezza muletto', '', 'Scadenza magazzino'],
+  ['Scadenze', 'Tipo scadenza attrezzatura', 'Manutenzione muletto', '', 'Scadenza magazzino'],
+  ['Scadenze', 'Tipo scadenza persona', 'Visita medica', '', 'Scadenza persona'],
+  ['Valori comuni', 'Visibile in app', 'si', '', 'L utente lo vede nella sua app'],
+  ['Valori comuni', 'Visibile in app', 'no', '', 'Resta solo nella dashboard azienda'],
+]
+
+function addCompilationGuideSheets() {
+  const guide = workbook.worksheets.add('Guida compilazione')
+  styleTitle(
+    guide,
+    'Guida compilazione Excel',
+    'Usa queste regole per scrivere i dati in modo ordinato e importabile in Vygo.',
+  )
+  addTable(
+    guide,
+    3,
+    ['Area / campo', 'Come scriverlo', 'Esempi corretti', 'Da evitare'],
+    guideRows,
+    [26, 46, 56, 44],
+    {
+      reserveRows: guideRows.length + 2,
+      tableName: 'PilotaGuidaCompilazione',
+    },
+  )
+
+  const options = workbook.worksheets.add('Opzioni')
+  styleTitle(
+    options,
+    'Opzioni e valori consigliati',
+    'Valori da usare nei campi a scelta. Gli esempi aiutano l azienda a non sbagliare import.',
+  )
+  addTable(
+    options,
+    3,
+    ['Foglio', 'Campo', 'Scrivi così', 'Altri esempi accettati', 'Quando usarlo'],
+    optionRows,
+    [22, 28, 28, 28, 52],
+    {
+      reserveRows: optionRows.length + 2,
+      tableName: 'PilotaOpzioniImport',
+    },
+  )
+}
+
 const readme = workbook.worksheets.add('LEGGIMI')
 styleTitle(readme, 'Vygo - Kit pilota azienda trasporti', 'Compila i fogli anagrafici, carica il file in Vygo e usa Piano test / Feedback per seguire la prova.')
 readme.getRange('A4:H14').values = [
@@ -165,6 +332,8 @@ readme.getRange('A5:H14').format = {
 readme.getRange('A5:A11').format = { font: { bold: true, color: palette.dark }, horizontalAlignment: 'center' }
 readme.getRange('A13:A14').format = { font: { bold: true, color: palette.required } }
 setColumnWidths(readme, [12, 28, 58, 12, 12, 12, 12, 12])
+
+addCompilationGuideSheets()
 
 const company = workbook.worksheets.add('Dati azienda')
 styleTitle(company, 'Dati azienda pilota', 'Foglio informativo: non viene importato automaticamente, ma serve per preparare bene il test.')
@@ -406,7 +575,7 @@ addNoteBlock(
 )
 setColumnWidths(summary, [28, 16, 18, 54])
 
-for (const sheetName of ['LEGGIMI', 'Dati azienda', 'Autisti', 'Persone', 'Mezzi', 'Attrezzature', 'Documenti autisti', 'Scadenze', 'Piano test', 'Feedback', 'Riepilogo']) {
+for (const sheetName of ['LEGGIMI', 'Guida compilazione', 'Opzioni', 'Dati azienda', 'Autisti', 'Persone', 'Mezzi', 'Attrezzature', 'Documenti autisti', 'Scadenze', 'Piano test', 'Feedback', 'Riepilogo']) {
   const preview = await workbook.render({ sheetName, autoCrop: 'all', scale: 1, format: 'png' })
   await fs.writeFile(`${previewDir}/${sheetName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`, new Uint8Array(await preview.arrayBuffer()))
 }

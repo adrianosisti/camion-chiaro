@@ -12508,10 +12508,32 @@ function HeroPanel({
             </div>
           </div>
         </div>
+      </div>
+      <div className="hero-action-stack">
         <button className="hero-notification-button" onClick={onOpenNotifications} type="button">
           <Bell size={17} />
           {t('hero.openBell')}
         </button>
+        <div className="priority-grid" aria-label={t('hero.priorityAria')}>
+          {priorityCards.map((card) => (
+            <button
+              aria-label={`Apri ${card.label.toLowerCase()}: ${card.value}`}
+              className={`priority-card tone-${card.tone}${card.isActive ? ' is-active' : ''}${card.isMoney ? ' is-money' : ''}`}
+              key={card.label}
+              onClick={card.onClick}
+              type="button"
+            >
+              <div>
+                <span className="priority-icon">
+                  <card.icon size={20} />
+                </span>
+                <span>{card.label}</span>
+              </div>
+              <strong>{card.value}</strong>
+              <small>{card.detail}</small>
+            </button>
+          ))}
+        </div>
       </div>
       <div className={`executive-radar tone-${radarTone}`} aria-label={t('hero.radarTitle')}>
         <div className="executive-radar-head">
@@ -12556,26 +12578,6 @@ function HeroPanel({
           <strong>{radarAction.label}</strong>
           <b>{radarAction.value}</b>
         </button>
-      </div>
-      <div className="priority-grid" aria-label={t('hero.priorityAria')}>
-        {priorityCards.map((card) => (
-          <button
-            aria-label={`Apri ${card.label.toLowerCase()}: ${card.value}`}
-            className={`priority-card tone-${card.tone}${card.isActive ? ' is-active' : ''}${card.isMoney ? ' is-money' : ''}`}
-            key={card.label}
-            onClick={card.onClick}
-            type="button"
-          >
-            <div>
-              <span className="priority-icon">
-                <card.icon size={20} />
-              </span>
-              <span>{card.label}</span>
-            </div>
-            <strong>{card.value}</strong>
-            <small>{card.detail}</small>
-          </button>
-        ))}
       </div>
     </section>
   )

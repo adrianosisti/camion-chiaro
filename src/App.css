@@ -1592,8 +1592,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.62fr);
   grid-template-areas:
-    "head head"
-    "radar priorities";
+    "head actions"
+    "radar radar";
   gap: 22px;
   min-height: 246px;
   padding: 24px;
@@ -1608,10 +1608,10 @@
 }
 
 .workspace.is-dashboard-home .hero-panel {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.54fr);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.58fr);
   grid-template-areas:
-    "head head"
-    "radar priorities";
+    "head actions"
+    "radar radar";
   gap: 12px 16px;
   min-height: 0;
   overflow: hidden;
@@ -1629,8 +1629,17 @@
   display: flex;
   grid-area: head;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
+  min-width: 0;
+}
+
+.hero-action-stack {
+  display: grid;
+  grid-area: actions;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-self: stretch;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -1821,6 +1830,10 @@
   font-weight: 820;
   white-space: nowrap;
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.hero-action-stack .hero-notification-button {
+  justify-self: end;
 }
 
 .hero-notification-button:hover,
@@ -3063,7 +3076,7 @@
 
 .priority-grid {
   display: grid;
-  grid-area: priorities;
+  grid-area: auto;
   gap: 10px;
   align-content: stretch;
   align-self: stretch;
@@ -11554,8 +11567,8 @@
     grid-template-columns: 1fr;
     grid-template-areas:
       "head"
-      "radar"
-      "priorities";
+      "actions"
+      "radar";
     gap: 8px;
     min-height: 0;
     overflow: hidden;
@@ -11567,6 +11580,7 @@
   }
 
   .workspace.is-dashboard-home .hero-notification-button {
+    justify-self: stretch;
     min-height: 32px;
     padding: 0 9px;
     font-size: 0.72rem;

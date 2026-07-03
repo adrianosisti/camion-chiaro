@@ -4391,6 +4391,60 @@
   padding: 0 9px;
 }
 
+.driver-status-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: start;
+}
+
+.driver-check-permission-toggle,
+.driver-check-create-toggle {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-radius: 10px;
+  background: #f0fbff;
+}
+
+.driver-check-permission-toggle input,
+.driver-check-create-toggle input {
+  width: 16px;
+  height: 16px;
+  min-height: auto;
+  margin-top: 2px;
+}
+
+.driver-check-permission-toggle span,
+.driver-check-create-toggle span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: initial;
+  white-space: normal;
+}
+
+.driver-check-permission-toggle strong,
+.driver-check-create-toggle strong {
+  color: #075985;
+  font-size: 0.82rem;
+  overflow: visible;
+  text-overflow: initial;
+  white-space: normal;
+}
+
+.driver-check-permission-toggle small,
+.driver-check-create-toggle small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 690;
+  line-height: 1.35;
+}
+
 .row-actions {
   display: flex;
   flex-wrap: wrap;

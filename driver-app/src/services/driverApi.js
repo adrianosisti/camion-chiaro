@@ -878,7 +878,7 @@ async function fetchDriverContextDirect() {
 
   const driverResult = await supabase
     .from('drivers')
-    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .limit(1)
@@ -964,7 +964,7 @@ async function fetchDriverContextDirect() {
       .order('full_name', { ascending: true }),
     supabase
       .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
       .eq('company_id', driver.company_id)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -1048,7 +1048,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
       .order('full_name', { ascending: true }),
     supabase
       .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -1187,7 +1187,7 @@ export async function fetchCompanyContext() {
       .maybeSingle(),
     supabase
       .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -2293,6 +2293,27 @@ export async function createCompanyDriverAccount({ companyId, driver, password }
       error: { message: serviceUnavailableMessage },
     }
   }
+}
+
+export async function updateCompanyDriverSettings({ driverId, updates = {} }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!driverId) return { data: null, error: { message: 'Autista mancante.' } }
+
+  const payload = {}
+  if ('canSubmitChecks' in updates) payload.can_submit_checks = updates.canSubmitChecks !== false
+
+  if (Object.keys(payload).length === 0) {
+    return { data: null, error: { message: 'Nessuna modifica da salvare.' } }
+  }
+
+  const { data, error } = await supabase
+    .from('drivers')
+    .update(payload)
+    .eq('id', driverId)
+    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+    .single()
+
+  return { data: data ? mapDriver(data) : null, error }
 }
 
 export async function createCompanyVehicle({ companyId, vehicle }) {

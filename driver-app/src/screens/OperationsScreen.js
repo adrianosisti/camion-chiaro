@@ -46,6 +46,7 @@ export function OperationsScreen({
   checks = [],
   faults = [],
   language = 'it',
+  canSubmitChecks = true,
   onOpenHome,
   onSubmitCheck,
   onSubmitFault,
@@ -96,6 +97,11 @@ export function OperationsScreen({
   }, [selectedVehicle?.id])
 
   async function submitCheck() {
+    if (!canSubmitChecks) {
+      Alert.alert('Check non richiesto', 'L azienda non ha attivato il check giornaliero per questo account.')
+      return
+    }
+
     if (!selectedVehicle) {
       Alert.alert('Mezzo del turno mancante', 'Vai in Home e seleziona il mezzo che stai prendendo.')
       return
@@ -173,55 +179,63 @@ export function OperationsScreen({
         </Panel>
       ) : null}
 
-      <Panel kicker={t(language, 'checkMorning')} title={getVehicleLabel(selectedVehicle)}>
-        <Text style={styles.sectionLabel}>Mezzo del turno</Text>
-        <View style={styles.selectedVehicleCard}>
-          <Text style={styles.selectedVehiclePlate}>{selectedVehicle?.plate ?? 'Non selezionato'}</Text>
-          <Text style={styles.selectedVehicleMeta}>{selectedVehicle?.model || selectedVehicle?.fleetType || 'Mezzo flotta'}</Text>
-        </View>
-        <WheelPickerField
-          label="Semirimorchio opzionale"
-          onPress={() => setWheelPicker({
-            onSelect: (semitrailerId) => setCheckForm((currentForm) => ({ ...currentForm, semitrailerId })),
-            options: trailerOptions,
-            title: 'Semirimorchio check',
-            value: checkForm.semitrailerId,
-          })}
-          value={getWheelOptionLabel(trailerOptions, checkForm.semitrailerId)}
-        />
-        <ToggleRow
-          label="Luci ok"
-          onValueChange={(value) => setCheckForm((currentForm) => ({ ...currentForm, lightsOk: value }))}
-          value={checkForm.lightsOk}
-        />
-        <ToggleRow
-          label="Pneumatici ok"
-          onValueChange={(value) => setCheckForm((currentForm) => ({ ...currentForm, tiresOk: value }))}
-          value={checkForm.tiresOk}
-        />
-        <ToggleRow
-          label="Documenti a bordo"
-          onValueChange={(value) => setCheckForm((currentForm) => ({ ...currentForm, documentsOnBoard: value }))}
-          value={checkForm.documentsOnBoard}
-        />
-        <TextInput
-          keyboardType="number-pad"
-          onChangeText={(value) => setCheckForm((currentForm) => ({ ...currentForm, odometerKm: value }))}
-          placeholder="Km mezzo"
-          placeholderTextColor="#94a3b8"
-          style={styles.input}
-          value={checkForm.odometerKm}
-        />
-        <TextInput
-          multiline
-          onChangeText={(value) => setCheckForm((currentForm) => ({ ...currentForm, notes: value }))}
-          placeholder="Note check"
-          placeholderTextColor="#94a3b8"
-          style={[styles.input, styles.textArea]}
-          value={checkForm.notes}
-        />
-        <PrimaryButton loading={isSendingCheck} onPress={submitCheck} title="Invia check" />
-      </Panel>
+      {canSubmitChecks ? (
+        <Panel kicker={t(language, 'checkMorning')} title={getVehicleLabel(selectedVehicle)}>
+          <Text style={styles.sectionLabel}>Mezzo del turno</Text>
+          <View style={styles.selectedVehicleCard}>
+            <Text style={styles.selectedVehiclePlate}>{selectedVehicle?.plate ?? 'Non selezionato'}</Text>
+            <Text style={styles.selectedVehicleMeta}>{selectedVehicle?.model || selectedVehicle?.fleetType || 'Mezzo flotta'}</Text>
+          </View>
+          <WheelPickerField
+            label="Semirimorchio opzionale"
+            onPress={() => setWheelPicker({
+              onSelect: (semitrailerId) => setCheckForm((currentForm) => ({ ...currentForm, semitrailerId })),
+              options: trailerOptions,
+              title: 'Semirimorchio check',
+              value: checkForm.semitrailerId,
+            })}
+            value={getWheelOptionLabel(trailerOptions, checkForm.semitrailerId)}
+          />
+          <ToggleRow
+            label="Luci ok"
+            onValueChange={(value) => setCheckForm((currentForm) => ({ ...currentForm, lightsOk: value }))}
+            value={checkForm.lightsOk}
+          />
+          <ToggleRow
+            label="Pneumatici ok"
+            onValueChange={(value) => setCheckForm((currentForm) => ({ ...currentForm, tiresOk: value }))}
+            value={checkForm.tiresOk}
+          />
+          <ToggleRow
+            label="Documenti a bordo"
+            onValueChange={(value) => setCheckForm((currentForm) => ({ ...currentForm, documentsOnBoard: value }))}
+            value={checkForm.documentsOnBoard}
+          />
+          <TextInput
+            keyboardType="number-pad"
+            onChangeText={(value) => setCheckForm((currentForm) => ({ ...currentForm, odometerKm: value }))}
+            placeholder="Km mezzo"
+            placeholderTextColor="#94a3b8"
+            style={styles.input}
+            value={checkForm.odometerKm}
+          />
+          <TextInput
+            multiline
+            onChangeText={(value) => setCheckForm((currentForm) => ({ ...currentForm, notes: value }))}
+            placeholder="Note check"
+            placeholderTextColor="#94a3b8"
+            style={[styles.input, styles.textArea]}
+            value={checkForm.notes}
+          />
+          <PrimaryButton loading={isSendingCheck} onPress={submitCheck} title="Invia check" />
+        </Panel>
+      ) : (
+        <Panel kicker={t(language, 'checkMorning')} title="Check non richiesto">
+          <Text style={styles.helper}>
+            L azienda non ha attivato il check giornaliero per questo account. La segnalazione guasti resta sempre disponibile qui sotto.
+          </Text>
+        </Panel>
+      )}
 
       <Panel kicker={t(language, 'fault')} title="Segnala all azienda">
         <Text style={styles.sectionLabel}>Mezzo guasto</Text>

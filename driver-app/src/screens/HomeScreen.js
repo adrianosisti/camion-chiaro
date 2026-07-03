@@ -113,6 +113,7 @@ function ActionTile({ icon, label, meta, onPress, tone = 'light' }) {
 }
 
 export function HomeScreen({
+  canSubmitChecks = true,
   companyName,
   context,
   driverProfileUrl,
@@ -264,9 +265,9 @@ export function HomeScreen({
           onPress={() => onOpenDocuments?.('')}
         />
         <ActionTile
-          icon="checkbox-outline"
-          label="Check"
-          meta={selectedDailyVehicle ? selectedDailyVehicle.plate : 'Scegli mezzo'}
+          icon={canSubmitChecks ? 'checkbox-outline' : 'construct-outline'}
+          label={canSubmitChecks ? 'Check' : t(language, 'fault')}
+          meta={canSubmitChecks ? (selectedDailyVehicle ? selectedDailyVehicle.plate : 'Scegli mezzo') : 'Sempre visibile'}
           onPress={onOpenOperations}
         />
       </View>

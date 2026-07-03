@@ -100,6 +100,7 @@ create table public.drivers (
   phone text not null,
   role text,
   depot text,
+  can_submit_checks boolean not null default true,
   status text not null default 'active' check (status in ('active', 'available', 'travelling', 'paused', 'archived')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

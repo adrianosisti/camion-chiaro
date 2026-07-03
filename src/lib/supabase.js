@@ -80,6 +80,7 @@ function mapDriver(row) {
     phone: row.phone,
     profileImagePath: row.profile_image_path ?? '',
     role: row.role ?? 'Autista',
+    canSubmitChecks: row.can_submit_checks ?? row.canSubmitChecks ?? true,
     status: driverStatusLabels[row.status] ?? row.status,
     username: row.username,
     vehicleId: '',
@@ -625,6 +626,7 @@ function toDriverPayload(driver, companyId = configuredCompanyId) {
     phone: driver.phone,
     profile_image_path: driver.profileImagePath || null,
     role: driver.role,
+    can_submit_checks: driver.canSubmitChecks ?? true,
     status: driverStatusValues[driver.status] ?? 'available',
     username: driver.username,
   }
@@ -640,6 +642,7 @@ function toDriverUpdatePayload(updates) {
   if ('phone' in updates) payload.phone = updates.phone
   if ('profileImagePath' in updates) payload.profile_image_path = updates.profileImagePath || null
   if ('role' in updates) payload.role = updates.role
+  if ('canSubmitChecks' in updates) payload.can_submit_checks = updates.canSubmitChecks !== false
   if ('status' in updates) payload.status = driverStatusValues[updates.status] ?? updates.status
   if ('username' in updates) payload.username = updates.username
 
@@ -896,7 +899,7 @@ export async function fetchDrivers(companyId = configuredCompanyId) {
 
   const { data, error } = await supabase
     .from('drivers')
-    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
     .eq('company_id', companyId)
     .order('full_name', { ascending: true })
 
@@ -1982,7 +1985,7 @@ export async function createDriverRecord(driver, companyId = configuredCompanyId
   const { data, error } = await supabase
     .from('drivers')
     .insert(toDriverPayload(driver, companyId))
-    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
     .single()
 
   return { data: data ? mapDriver(data) : null, error }
@@ -2186,7 +2189,7 @@ export async function updateDriverRecord(driverId, updates) {
     .from('drivers')
     .update(toDriverUpdatePayload(updates))
     .eq('id', driverId)
-    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
     .single()
 
   return { data: data ? mapDriver(data) : null, error }

@@ -703,6 +703,7 @@ export function CompanyManagementScreen({
   onResetAccessPassword,
   onSendDeadlineReminder,
   onUpdateCostEntry,
+  onUpdateDriver,
   onUpdateFaultRepair,
 }) {
   const workforceSchemaReady = context?.workforceSchemaReady !== false
@@ -740,6 +741,7 @@ export function CompanyManagementScreen({
   const [mode, setMode] = useState(initialMode)
   const [driverForm, setDriverForm] = useState({
     adrDueDate: '',
+    canSubmitChecks: true,
     depot: '',
     cqcDueDate: '',
     licenseDueDate: '',
@@ -1361,6 +1363,7 @@ export function CompanyManagementScreen({
   async function submitDriver() {
     const payload = {
       depot: driverForm.depot.trim(),
+      canSubmitChecks: driverForm.canSubmitChecks !== false,
       name: driverForm.name.trim(),
       phone: driverForm.phone.trim(),
       role: driverForm.role.trim() || 'Autista',
@@ -1400,6 +1403,7 @@ export function CompanyManagementScreen({
     if (savedDriver) {
       setDriverForm({
         adrDueDate: '',
+        canSubmitChecks: true,
         cqcDueDate: '',
         depot: '',
         licenseDueDate: '',
@@ -1718,6 +1722,18 @@ export function CompanyManagementScreen({
           <TextField label="Password temporanea" onChangeText={(value) => updateDriverForm('password', value)} placeholder="minimo 8 caratteri" secureTextEntry value={driverForm.password} />
           <TextField label="Ruolo" onChangeText={(value) => updateDriverForm('role', value)} placeholder="Autista" value={driverForm.role} />
           <TextField label="Deposito" onChangeText={(value) => updateDriverForm('depot', value)} placeholder="Sede o reparto" value={driverForm.depot} />
+          <Pressable
+            onPress={() => updateDriverForm('canSubmitChecks', driverForm.canSubmitChecks === false)}
+            style={[styles.permissionCard, driverForm.canSubmitChecks !== false && styles.permissionCardActive]}
+          >
+            <Ionicons color={driverForm.canSubmitChecks !== false ? colors.ink : colors.cyanDark} name={driverForm.canSubmitChecks !== false ? 'checkbox-outline' : 'square-outline'} size={20} />
+            <View style={styles.permissionCopy}>
+              <Text style={styles.permissionTitle}>
+                {driverForm.canSubmitChecks === false ? 'Check giornaliero disattivato' : 'Check giornaliero attivo'}
+              </Text>
+              <Text style={styles.permissionMeta}>Se lo spegni, l autista vedra comunque sempre Segnala guasto.</Text>
+            </View>
+          </Pressable>
           <Text style={styles.groupTitle}>Scadenze iniziali</Text>
           <DateField label="Patente" language={language} onChange={(value) => updateDriverForm('licenseDueDate', value)} value={driverForm.licenseDueDate} />
           <DateField label="CQC" language={language} onChange={(value) => updateDriverForm('cqcDueDate', value)} value={driverForm.cqcDueDate} />
@@ -2026,6 +2042,18 @@ export function CompanyManagementScreen({
                 </View>
                 <Pressable onPress={() => resetAccess('driver', driver.id, driver.name)} style={styles.smallButton}>
                   <Text style={styles.smallButtonText}>Reimposta password</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => onUpdateDriver?.(driver.id, { canSubmitChecks: driver.canSubmitChecks === false })}
+                  style={[styles.permissionCard, driver.canSubmitChecks !== false && styles.permissionCardActive]}
+                >
+                  <Ionicons color={driver.canSubmitChecks !== false ? colors.ink : colors.cyanDark} name={driver.canSubmitChecks !== false ? 'checkbox-outline' : 'square-outline'} size={19} />
+                  <View style={styles.permissionCopy}>
+                    <Text style={styles.permissionTitle}>
+                      {driver.canSubmitChecks === false ? 'Check disattivato' : 'Check attivo'}
+                    </Text>
+                    <Text style={styles.permissionMeta}>Tocca per cambiare. I guasti restano sempre visibili.</Text>
+                  </View>
                 </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.driverId === driver.id)} language={language} />
               </View>
@@ -3079,6 +3107,38 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 4,
     textTransform: 'uppercase',
+  },
+  permissionCard: {
+    alignItems: 'center',
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    marginTop: 2,
+    padding: 12,
+  },
+  permissionCardActive: {
+    backgroundColor: '#cffafe',
+    borderColor: colors.cyan,
+  },
+  permissionCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  permissionMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  permissionTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
   },
   hero: {
     backgroundColor: colors.ink,

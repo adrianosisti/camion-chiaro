@@ -16,6 +16,7 @@ export function mapDriver(row = {}) {
     phone: row.phone ?? '',
     profileImagePath: row.profile_image_path ?? row.profileImagePath ?? '',
     role: row.role ?? 'Autista',
+    canSubmitChecks: row.can_submit_checks ?? row.canSubmitChecks ?? true,
     status: driverStatusLabels[row.status] ?? row.status ?? 'In servizio',
     username: row.username ?? '',
   }

@@ -2212,6 +2212,10 @@ const workflowTranslations = {
     'drivers.phone': 'Cellulare',
     'drivers.photo': 'Foto profilo',
     'drivers.role': 'Ruolo',
+    'drivers.checkPermission': 'Check giornaliero',
+    'drivers.checkPermissionActive': 'Check abilitato',
+    'drivers.checkPermissionDisabled': 'Check disattivato',
+    'drivers.checkPermissionHelp': 'Se disattivo, l autista non invia check. I guasti restano sempre visibili.',
     'drivers.username': 'Nome utente',
     'fault.description': 'Descrizione',
     'fault.details': 'Dettagli',
@@ -2516,6 +2520,10 @@ const workflowTranslations = {
     'drivers.phone': 'Mobile phone',
     'drivers.photo': 'Profile photo',
     'drivers.role': 'Role',
+    'drivers.checkPermission': 'Daily check',
+    'drivers.checkPermissionActive': 'Check enabled',
+    'drivers.checkPermissionDisabled': 'Check disabled',
+    'drivers.checkPermissionHelp': 'When disabled, the driver cannot send checks. Fault reports stay available.',
     'drivers.username': 'Username',
     'fault.description': 'Description',
     'fault.details': 'Details',
@@ -2818,6 +2826,10 @@ const workflowTranslations = {
     'drivers.phone': 'Movil',
     'drivers.photo': 'Foto perfil',
     'drivers.role': 'Rol',
+    'drivers.checkPermission': 'Check diario',
+    'drivers.checkPermissionActive': 'Check activado',
+    'drivers.checkPermissionDisabled': 'Check desactivado',
+    'drivers.checkPermissionHelp': 'Si se desactiva, el conductor no envia checks. Las averias siguen visibles.',
     'drivers.username': 'Usuario',
     'fault.description': 'Descripcion',
     'fault.details': 'Detalles',
@@ -3120,6 +3132,10 @@ const workflowTranslations = {
     'drivers.phone': 'Telephone mobile',
     'drivers.photo': 'Photo profil',
     'drivers.role': 'Role',
+    'drivers.checkPermission': 'Check quotidien',
+    'drivers.checkPermissionActive': 'Check active',
+    'drivers.checkPermissionDisabled': 'Check desactive',
+    'drivers.checkPermissionHelp': 'Si desactive, le chauffeur ne peut pas envoyer de check. Les pannes restent disponibles.',
     'drivers.username': 'Nom utilisateur',
     'fault.description': 'Description',
     'fault.details': 'Details',
@@ -3422,6 +3438,10 @@ const workflowTranslations = {
     'drivers.phone': 'Mobiltelefon',
     'drivers.photo': 'Profilfoto',
     'drivers.role': 'Rolle',
+    'drivers.checkPermission': 'Tagescheck',
+    'drivers.checkPermissionActive': 'Check aktiv',
+    'drivers.checkPermissionDisabled': 'Check deaktiviert',
+    'drivers.checkPermissionHelp': 'Wenn deaktiviert, kann der Fahrer keine Checks senden. Schadenmeldungen bleiben sichtbar.',
     'drivers.username': 'Benutzername',
     'fault.description': 'Beschreibung',
     'fault.details': 'Details',
@@ -5545,6 +5565,7 @@ function generateTemporaryPassword(length = 12) {
 
 function getDriverCreateDefaults() {
   return {
+    canSubmitChecks: true,
     depot: 'Verona',
     email: '',
     name: '',
@@ -14934,6 +14955,7 @@ function DriversWorkspace({
         name: driver.name,
         phone: driver.phone,
         role: driver.role,
+        canSubmitChecks: driver.canSubmitChecks !== false,
         status: driver.status,
         vehicleId: driver.vehicleId,
       },
@@ -15074,6 +15096,17 @@ function DriverManagementRow({
           <option value="In viaggio">{t('drivers.statusTravelling')}</option>
           <option value="Sospeso">{t('drivers.statusPaused')}</option>
         </select>
+        <label className="driver-check-permission-toggle">
+          <input
+            checked={draft.canSubmitChecks !== false}
+            onChange={(event) => onUpdateDraft('canSubmitChecks', event.target.checked)}
+            type="checkbox"
+          />
+          <span>
+            <strong>{draft.canSubmitChecks === false ? t('drivers.checkPermissionDisabled') : t('drivers.checkPermissionActive')}</strong>
+            <small>{t('drivers.checkPermissionHelp')}</small>
+          </span>
+        </label>
         <div className="row-actions">
           <button className="small-button" disabled={saving} onClick={onSave} type="button">
             <Save size={15} />
@@ -15113,7 +15146,12 @@ function DriverManagementRow({
         <strong>{assignedVehicle?.plate ?? t('drivers.assignedNone')}</strong>
         <span>{assignedVehicle ? `${assignedVehicle.model} · ${assignedVehicle.type}` : t('drivers.assignVehicle')}</span>
       </div>
-      <span className="status-pill tone-info">{getDriverStatusLabel(driver.status, t)}</span>
+      <div className="driver-status-stack">
+        <span className="status-pill tone-info">{getDriverStatusLabel(driver.status, t)}</span>
+        <span className={driver.canSubmitChecks === false ? 'status-pill tone-warning' : 'status-pill tone-success'}>
+          {driver.canSubmitChecks === false ? t('drivers.checkPermissionDisabled') : t('drivers.checkPermissionActive')}
+        </span>
+      </div>
       <div className="row-actions">
         <button className="small-button" disabled={saving} onClick={onEdit} type="button">
           <Pencil size={15} />
@@ -15169,6 +15207,7 @@ function DriverCreatePanel({ onAddDriver, onBackHome, syncStatus, vehicleRecords
     const added = await onAddDriver({
       id: `drv-${Date.now()}`,
       authEmail,
+      canSubmitChecks: form.canSubmitChecks !== false,
       depot: form.depot,
       email: form.email || authEmail,
       name: form.name,
@@ -15249,6 +15288,17 @@ function DriverCreatePanel({ onAddDriver, onBackHome, syncStatus, vehicleRecords
                 </option>
               ))}
           </select>
+        </label>
+        <label className="checkbox-field driver-check-create-toggle">
+          <input
+            checked={form.canSubmitChecks !== false}
+            onChange={(event) => updateField('canSubmitChecks', event.target.checked)}
+            type="checkbox"
+          />
+          <span>
+            <strong>{form.canSubmitChecks === false ? t('drivers.checkPermissionDisabled') : t('drivers.checkPermissionActive')}</strong>
+            <small>{t('drivers.checkPermissionHelp')}</small>
+          </span>
         </label>
       </div>
       <div className="auth-email-box">
@@ -21066,6 +21116,7 @@ function DriverMobile({
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   const lastCheck = driverChecks[0]
   const hasSentMorningCheck = morningCheckSent || isSameLocalDay(lastCheck?.createdAt)
+  const driverCanSubmitChecks = driver.canSubmitChecks !== false
   const openFaults = faultReportRecords.filter(
     (report) => report.driverId === driver.id && report.status !== 'closed',
   )
@@ -21148,6 +21199,7 @@ function DriverMobile({
 
   async function handleCheckSubmit(event) {
     event.preventDefault()
+    if (!driverCanSubmitChecks) return
     if (!selectedVehicle) return
 
     setSendingOperation('check')
@@ -21321,7 +21373,14 @@ function DriverMobile({
             </button>
           </article>
         )}
-        {!hasSentMorningCheck && (
+        {!driverCanSubmitChecks ? (
+          <article className="check-card">
+            <div>
+              <strong>{t('drivers.checkPermissionDisabled')}</strong>
+              <span>L azienda non richiede il check giornaliero per questo account. Segnala guasto resta sempre disponibile.</span>
+            </div>
+          </article>
+        ) : !hasSentMorningCheck && (
         <article className="check-card">
           <div>
             <strong>{t('driverApp.morningCheck')}</strong>

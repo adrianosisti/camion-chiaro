@@ -52,6 +52,7 @@ function mapDriver(row) {
     phone: row.phone,
     profileImagePath: row.profile_image_path ?? '',
     role: row.role ?? 'Autista',
+    canSubmitChecks: row.can_submit_checks ?? true,
     status: driverStatusLabels[row.status] ?? row.status,
     username: row.username,
     vehicleId: '',
@@ -267,7 +268,7 @@ async function findDriver(serviceClient, authUser) {
   for (const candidate of candidates) {
     const { data, error } = await serviceClient
       .from('drivers')
-      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
       .eq(candidate.column, candidate.value)
       .maybeSingle()
 
@@ -393,7 +394,7 @@ async function fetchCompanyPersonContext(serviceClient, person) {
       .order('full_name', { ascending: true }),
     serviceClient
       .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -534,7 +535,7 @@ async function fetchDriverContext(serviceClient, driver) {
       .order('full_name', { ascending: true }),
     serviceClient
       .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
       .eq('company_id', driver.company_id)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -684,7 +685,7 @@ export async function handler(event) {
       .from('drivers')
       .update({ user_id: authData.user.id })
       .eq('id', driver.id)
-      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status')
+      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
       .single()
 
     if (error) {

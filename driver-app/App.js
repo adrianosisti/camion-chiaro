@@ -76,6 +76,7 @@ import {
   updateTeamChatMessageReaction,
   updateCompanyComplianceItemStatus,
   updateCompanyCostEntry,
+  updateCompanyDriverSettings,
   updateFaultReportStatus,
   updateVoiceCallSession,
   updateVehicleCheckStatus,
@@ -904,11 +905,17 @@ function CamionChiaroApp() {
   const incomingCallSoundPlayer = useAudioPlayer(incomingCallSound, { keepAudioSessionActive: true })
 
   const driver = context?.drivers?.[0] ?? null
+  const driverCanSubmitChecks = driver?.canSubmitChecks !== false
   const currentPerson = context?.currentPerson ?? null
   const actorPerson = getContextActorPerson(context, driver)
   const actorPersonId = actorPerson?.id ?? ''
   const isWorkforcePerson = accountType === 'driver' && currentPerson && !driver
-  const visibleTabs = accountType === 'company' ? companyTabs : isWorkforcePerson ? workforceTabs : driverTabs
+  const visibleTabs = useMemo(() => {
+    if (accountType === 'company') return companyTabs
+    if (isWorkforcePerson) return workforceTabs
+    if (driverCanSubmitChecks) return driverTabs
+    return driverTabs.map((tab) => (tab.id === 'operations' ? { ...tab, icon: 'construct-outline', label: 'Guasto', labelKey: 'fault' } : tab))
+  }, [accountType, driverCanSubmitChecks, isWorkforcePerson])
   const activeCompanyContext = companyContext ?? context
   const companyName = accountType === 'company'
     ? activeCompanyContext?.companyProfile?.name ?? 'Azienda'
@@ -3240,6 +3247,10 @@ function CamionChiaroApp() {
 
   async function handleSubmitCheck(payload) {
     if (!driver) return false
+    if (driver.canSubmitChecks === false) {
+      Alert.alert('Check non richiesto', 'L azienda non ha attivato il check giornaliero per questo account.')
+      return false
+    }
 
     const result = await createVehicleCheck({
       ...payload,
@@ -3316,6 +3327,20 @@ function CamionChiaroApp() {
 
     await loadCompanyData({ silent: true })
     return result.data
+  }
+
+  async function handleUpdateCompanyDriverSettings(driverId, updates) {
+    if (!driverId) return false
+
+    const result = await updateCompanyDriverSettings({ driverId, updates })
+
+    if (result.error) {
+      Alert.alert('Autista non aggiornato', result.error.message)
+      return false
+    }
+
+    await loadCompanyData({ silent: true })
+    return true
   }
 
   async function handleCreateCompanyVehicle(payload) {
@@ -3918,6 +3943,7 @@ function CamionChiaroApp() {
             onRenewDeadline={handleRenewCompanyDeadline}
             onResetAccessPassword={handleResetCompanyAccessPassword}
             onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
+            onUpdateDriver={handleUpdateCompanyDriverSettings}
             onUpdateCostEntry={handleUpdateCompanyCostEntry}
             onUpdateFaultRepair={handleUpdateCompanyFaultRepair}
           />
@@ -4005,6 +4031,7 @@ function CamionChiaroApp() {
           checks={context?.vehicleChecks ?? []}
           faults={context?.faultReports ?? []}
           language={language}
+          canSubmitChecks={driverCanSubmitChecks}
           onOpenHome={() => setActiveTab('home')}
           onSubmitCheck={handleSubmitCheck}
           onSubmitFault={handleSubmitFault}
@@ -4048,6 +4075,7 @@ function CamionChiaroApp() {
 
     return (
       <HomeScreen
+        canSubmitChecks={driverCanSubmitChecks}
         companyName={companyName}
         context={context}
         driverName={driverName}

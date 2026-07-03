@@ -41,13 +41,13 @@ export function SettingsScreen({
             : t(language, 'appSettingsDriverHelp')}
         </Text>
         <View style={styles.buttonGap} />
-        <PrimaryButton onPress={onCheckAppUpdate} title="Controlla aggiornamenti app" tone="light" />
+        <PrimaryButton onPress={onCheckAppUpdate} title={t(language, 'appUpdatesButton')} tone="light" />
         {appUpdateStatus ? <Text style={styles.diagnosticLine}>{appUpdateStatus}</Text> : null}
       </Panel>
 
       <Panel kicker={t(language, 'language')} title={t(language, 'languageApp')}>
         <WheelPickerField
-          helper="Scegli la lingua dell'app"
+          helper={t(language, 'languageHelp')}
           label={t(language, 'language')}
           onPress={() => setWheelPicker({
             onSelect: (nextLanguage) => onLanguageChange?.(nextLanguage),
@@ -59,21 +59,21 @@ export function SettingsScreen({
         />
       </Panel>
 
-      <Panel kicker="Telefono" title="Notifiche app">
+      <Panel kicker={t(language, 'phone')} title={t(language, 'nativeNotifications')}>
         <Text style={styles.helper}>
-          Attiva questo telefono per ricevere chat, guasti e check anche quando Vygo non e aperta.
+          {t(language, 'nativeNotificationsHelp')}
         </Text>
         <View style={styles.buttonGap} />
-        <PrimaryButton onPress={onEnableNativeNotifications} title="Abilita notifiche app" tone="light" />
+        <PrimaryButton onPress={onEnableNativeNotifications} title={t(language, 'enableNativeNotifications')} tone="light" />
         {nativePushStatus ? <Text style={styles.diagnosticLine}>{nativePushStatus}</Text> : null}
       </Panel>
 
-      <Panel kicker="Supporto" title="Assistente Vygo">
+      <Panel kicker={t(language, 'support')} title={t(language, 'assistantTitle')}>
         <Text style={styles.helper}>
-          Apri una chat guidata per scadenze, guasti, documenti, chat e notifiche. Se non basta, prepara un ticket email per l assistenza.
+          {t(language, 'assistantHelp')}
         </Text>
         <View style={styles.buttonGap} />
-        <PrimaryButton onPress={onOpenAssistant} title="Apri assistente" tone="light" />
+        <PrimaryButton onPress={onOpenAssistant} title={t(language, 'openAssistant')} tone="light" />
       </Panel>
 
       <Panel kicker="Chat" title={t(language, 'chatSettings')}>
@@ -91,7 +91,7 @@ export function SettingsScreen({
         </View>
       </Panel>
 
-      <Panel kicker={t(language, 'session')} title="Account">
+      <Panel kicker={t(language, 'session')} title={t(language, 'account')}>
         <PrimaryButton onPress={onRefresh} title={t(language, 'refreshData')} tone="light" />
         <View style={styles.buttonGap} />
         <PrimaryButton onPress={onSignOut} title={t(language, 'signOut')} />

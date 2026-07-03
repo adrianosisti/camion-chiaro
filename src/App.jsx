@@ -306,6 +306,7 @@ const vygoSupportCostPerCompanyCents = 1200
 const vygoFleet10MonthlyPriceCents = 45000
 const vygoEstimatedTaxReserveRate = 0.35
 const vygoEconomyScenarios = [1, 2, 5, 10]
+const vygoFirstSalesTarget = 10
 const billingPlanCapabilities = {
   business: {
     chat: true,
@@ -993,7 +994,7 @@ const translations = {
     'support.vision': 'Product vision',
     'sync.addKeys': 'Configuration in progress',
     'sync.connected': 'Server online',
-    'sync.demo': 'Local environment',
+    'sync.demo': 'Offline mode',
     'topbar.searchPlaceholder': 'Search licence, plate, driver...',
     'topbar.searchSr': 'Search deadlines',
   },
@@ -1128,7 +1129,7 @@ const translations = {
     'support.vision': 'Vision producto',
     'sync.addKeys': 'Configuracion en curso',
     'sync.connected': 'Servidor conectado',
-    'sync.demo': 'Entorno local',
+    'sync.demo': 'Modo sin conexion',
     'topbar.searchPlaceholder': 'Buscar permiso, matricula, conductor...',
     'topbar.searchSr': 'Buscar vencimientos',
   },
@@ -1263,7 +1264,7 @@ const translations = {
     'support.vision': 'Vision produit',
     'sync.addKeys': 'Configuration en cours',
     'sync.connected': 'Serveur connecte',
-    'sync.demo': 'Environnement local',
+    'sync.demo': 'Mode hors ligne',
     'topbar.searchPlaceholder': 'Chercher permis, plaque, chauffeur...',
     'topbar.searchSr': 'Chercher echeances',
   },
@@ -1398,7 +1399,7 @@ const translations = {
     'support.vision': 'Produktvision',
     'sync.addKeys': 'Konfiguration lauft',
     'sync.connected': 'Server verbunden',
-    'sync.demo': 'Lokale Umgebung',
+    'sync.demo': 'Offline-Modus',
     'topbar.searchPlaceholder': 'Fuhrerschein, Kennzeichen, Fahrer suchen...',
     'topbar.searchSr': 'Fristen suchen',
   },
@@ -11422,6 +11423,8 @@ function AdminWorkspace({
   const estimatedMonthlyMarginCents = Number(summary.mrrCents ?? 0) - estimatedMonthlyCostCents
   const estimatedTaxReserveCents = Math.max(0, Math.round(estimatedMonthlyMarginCents * vygoEstimatedTaxReserveRate))
   const estimatedNetAfterTaxCents = estimatedMonthlyMarginCents - estimatedTaxReserveCents
+  const firstSalesTargetGap = Math.max(0, vygoFirstSalesTarget - activePayingCompanyCount)
+  const firstSalesTargetMrrCents = vygoFirstSalesTarget * vygoFleet10MonthlyPriceCents
   const breakEvenFleet10Clients = Math.max(
     1,
     Math.ceil(vygoBaseMonthlyCostCents / Math.max(1, vygoFleet10MonthlyPriceCents - vygoSupportCostPerCompanyCents - Math.round(vygoFleet10MonthlyPriceCents * 0.018) - 25)),
@@ -11570,6 +11573,11 @@ function AdminWorkspace({
           <Building2 size={20} />
           <strong>{summary.companyCount}</strong>
           <span>Aziende</span>
+        </article>
+        <article className={firstSalesTargetGap ? 'is-target' : 'is-money'}>
+          <RadioTower size={20} />
+          <strong>{firstSalesTargetGap ? `${firstSalesTargetGap} mancanti` : 'Raggiunto'}</strong>
+          <span>Obiettivo 10 clienti · {formatMoneyCents(firstSalesTargetMrrCents, 'EUR')} MRR</span>
         </article>
         <article className={attentionCompanyCount ? 'is-warning' : ''}>
           <AlertTriangle size={20} />

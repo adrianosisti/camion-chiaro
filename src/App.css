@@ -4633,7 +4633,7 @@
 
 .admin-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -4655,6 +4655,11 @@
 .admin-kpi-grid article.is-warning {
   border-color: #fed7aa;
   background: #fff7ed;
+}
+
+.admin-kpi-grid article.is-target {
+  border-color: #bae6fd;
+  background: #f0f9ff;
 }
 
 .admin-kpi-grid svg {

@@ -961,7 +961,7 @@
   display: flex;
   flex: 0 0 260px;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
   width: 260px;
   min-width: 0;
   height: 100svh;
@@ -973,12 +973,13 @@
 .brand {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  min-height: 48px;
+  min-height: 76px;
 }
 
 .brand-button {
-  width: 100%;
+  width: auto;
   padding: 0;
   border: 0;
   color: inherit;
@@ -1013,25 +1014,12 @@
 }
 
 .sidebar-brand-mark {
-  flex-basis: 40px;
-  width: 40px;
-  height: 40px;
-}
-
-.sidebar-brand-copy {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.sidebar-brand-wordmark {
-  display: block;
-  width: 128px;
-  max-width: 100%;
-  height: auto;
-  padding: 3px 6px;
-  border-radius: 7px;
-  background: #ffffff;
+  flex-basis: 76px;
+  width: 76px;
+  height: 76px;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  background: #07111f;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
 }
 
 .language-selector {

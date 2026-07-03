@@ -10884,10 +10884,6 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
         <div className="brand-mark sidebar-brand-mark">
           <VygoMark />
         </div>
-        <div className="sidebar-brand-copy">
-          <img className="sidebar-brand-wordmark" src="/brand/vygo-logo-horizontal.png" alt="Vygo" />
-          <span>{t('session.companyArea')}</span>
-        </div>
       </button>
 
       <nav className="nav-list">

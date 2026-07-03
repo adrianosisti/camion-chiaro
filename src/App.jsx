@@ -154,6 +154,7 @@ const filters = [
   { id: 'all', label: 'Tutte' },
   { id: 'urgent', label: 'Critiche' },
   { id: 'month', label: '30 giorni' },
+  { id: 'vehicle_urgent', label: 'Flotta critica' },
   { id: 'driver', label: 'Autisti' },
   { id: 'vehicle', label: 'Mezzi' },
   { id: 'medical', label: 'Mediche' },
@@ -791,6 +792,8 @@ const translations = {
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
     'nav.reports': 'Report',
+    'nav.costs': 'Centro costi',
+    'nav.newCost': 'Nuova spesa',
     'nav.settings': 'Impostazioni',
     'nav.support': 'Guida',
     'onboarding.body': 'Completa questi passaggi per rendere Vygo operativo senza confusione.',
@@ -1005,6 +1008,8 @@ const translations = {
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
     'nav.reports': 'Reports',
+    'nav.costs': 'Cost center',
+    'nav.newCost': 'New expense',
     'nav.settings': 'Settings',
     'nav.support': 'Guide',
     'onboarding.body': 'Complete these steps to make Vygo operational without confusion.',
@@ -1140,6 +1145,8 @@ const translations = {
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
     'nav.reports': 'Informes',
+    'nav.costs': 'Centro costes',
+    'nav.newCost': 'Nuevo coste',
     'nav.settings': 'Ajustes',
     'nav.support': 'Guia',
     'onboarding.body': 'Completa estos pasos para poner Vygo operativo sin confusion.',
@@ -1275,6 +1282,8 @@ const translations = {
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
     'nav.reports': 'Rapports',
+    'nav.costs': 'Centre couts',
+    'nav.newCost': 'Nouvelle depense',
     'nav.settings': 'Reglages',
     'nav.support': 'Guide',
     'onboarding.body': 'Complete ces etapes pour rendre Vygo operationnel sans confusion.',
@@ -1410,6 +1419,8 @@ const translations = {
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
     'nav.reports': 'Berichte',
+    'nav.costs': 'Kostenstelle',
+    'nav.newCost': 'Neue Ausgabe',
     'nav.settings': 'Einstellungen',
     'nav.support': 'Hilfe',
     'onboarding.body': 'Schliesse diese Schritte ab, damit Vygo sauber einsatzbereit ist.',
@@ -2210,6 +2221,7 @@ const workflowTranslations = {
     'filter.medical': 'Mediche',
     'filter.month': '30 giorni',
     'filter.urgent': 'Critiche',
+    'filter.vehicleUrgent': 'Flotta critica',
     'filter.vehicle': 'Mezzi',
     'form.missingFields': 'Mancano: {fields}.',
     'notifications.bellAria': 'Notifiche: {count} da leggere',
@@ -2513,6 +2525,7 @@ const workflowTranslations = {
     'filter.medical': 'Medical',
     'filter.month': '30 days',
     'filter.urgent': 'Critical',
+    'filter.vehicleUrgent': 'Critical fleet',
     'filter.vehicle': 'Vehicles',
     'form.missingFields': 'Missing: {fields}.',
     'notifications.bellAria': 'Notifications: {count} unread',
@@ -2814,6 +2827,7 @@ const workflowTranslations = {
     'filter.medical': 'Medicas',
     'filter.month': '30 dias',
     'filter.urgent': 'Criticas',
+    'filter.vehicleUrgent': 'Flota critica',
     'filter.vehicle': 'Vehiculos',
     'form.missingFields': 'Faltan: {fields}.',
     'notifications.bellAria': 'Avisos: {count} por leer',
@@ -3115,6 +3129,7 @@ const workflowTranslations = {
     'filter.medical': 'Medicales',
     'filter.month': '30 jours',
     'filter.urgent': 'Critiques',
+    'filter.vehicleUrgent': 'Flotte critique',
     'filter.vehicle': 'Vehicules',
     'form.missingFields': 'Manquent : {fields}.',
     'notifications.bellAria': 'Alertes : {count} a lire',
@@ -3416,6 +3431,7 @@ const workflowTranslations = {
     'filter.medical': 'Medizinisch',
     'filter.month': '30 Tage',
     'filter.urgent': 'Kritisch',
+    'filter.vehicleUrgent': 'Kritische Flotte',
     'filter.vehicle': 'Fahrzeuge',
     'form.missingFields': 'Fehlt: {fields}.',
     'notifications.bellAria': 'Hinweise: {count} ungelesen',
@@ -3986,6 +4002,8 @@ const regionalTranslations = {
     'nav.notifications': 'Notificari',
     'nav.records': 'Date',
     'nav.reports': 'Rapoarte',
+    'nav.costs': 'Centru costuri',
+    'nav.newCost': 'Cheltuiala noua',
     'nav.settings': 'Setari',
     'nav.support': 'Ghid',
     'onboarding.body': 'Completeaza acesti pasi pentru a porni Vygo fara confuzie.',
@@ -4044,6 +4062,8 @@ const regionalTranslations = {
     'nav.notifications': 'Powiadomienia',
     'nav.records': 'Kartoteki',
     'nav.reports': 'Raporty',
+    'nav.costs': 'Centrum kosztow',
+    'nav.newCost': 'Nowy koszt',
     'nav.settings': 'Ustawienia',
     'nav.support': 'Pomoc',
     'onboarding.body': 'Wykonaj te kroki, aby Vygo bylo gotowe do pracy.',
@@ -4680,6 +4700,7 @@ const filterTranslationKeys = {
   all: 'filter.all',
   urgent: 'filter.urgent',
   month: 'filter.month',
+  vehicle_urgent: 'filter.vehicleUrgent',
   driver: 'filter.driver',
   vehicle: 'filter.vehicle',
   medical: 'filter.medical',
@@ -7108,6 +7129,7 @@ function App() {
         activeFilter === 'all' ||
         (activeFilter === 'urgent' && ['expired', 'critical'].includes(item.urgency.key)) ||
         (activeFilter === 'month' && item.urgency.days <= 30) ||
+        (activeFilter === 'vehicle_urgent' && item.scope === 'vehicle' && item.urgency.days <= 30) ||
         (activeFilter === 'driver' && item.scope === 'driver') ||
         (activeFilter === 'vehicle' && item.scope === 'vehicle') ||
         (activeFilter === 'medical' && item.type.toLowerCase().includes('medica'))
@@ -9243,7 +9265,7 @@ function App() {
       setCostReportResetKey(Date.now())
     }
 
-    setActiveView('reports')
+    setActiveView(shouldStartAdding ? 'newCost' : 'costs')
     window.setTimeout(() => {
       document.getElementById('fault-cost-report')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 0)
@@ -9412,6 +9434,7 @@ function App() {
   function openComplianceFilter(filter) {
     setCostReportResetKey(Date.now())
     setActiveFilter(filter)
+    setComplianceShowAll(false)
     setActiveView('deadlines')
     window.setTimeout(() => {
       document.getElementById('compliance-board-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -9431,6 +9454,16 @@ function App() {
 
     if (viewId === 'chat') {
       openCompanyChat()
+      return
+    }
+
+    if (viewId === 'costs') {
+      openCostReport()
+      return
+    }
+
+    if (viewId === 'newCost') {
+      openCostReport({ add: true })
       return
     }
 
@@ -9640,7 +9673,7 @@ function App() {
               onUpgrade={openBillingSettings}
             />
           )
-        ) : activeView === 'reports' ? (
+        ) : ['reports', 'costs', 'newCost'].includes(activeView) ? (
           planFeatureAccess.costCenter || planFeatureAccess.reports ? (
             <ReportsWorkspace
               acknowledgedCheckIds={acknowledgedCheckIds}
@@ -9748,9 +9781,11 @@ function App() {
                 onOpenCostReport={openCostReport}
                 onOpenCriticalChecks={() => openNotifications('critical_checks')}
                 onOpenDeadlineWindow={() => openComplianceFilter('month')}
+                onOpenFleetDeadlines={() => openComplianceFilter('vehicle_urgent')}
                 onOpenFleetHealth={openReports}
                 onOpenFaults={() => openNotifications('faults')}
                 onOpenNotifications={() => openNotifications('inbox')}
+                onOpenWork={() => openNotifications('open_work')}
                 openFaultCount={openFaultCount}
                 summary={summary}
                 t={t}
@@ -10873,6 +10908,8 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
     { id: 'notifications', label: t('nav.notifications'), icon: Bell },
     { id: 'chat', label: t('nav.chat'), icon: Mail },
     { id: 'reports', label: t('nav.reports'), icon: FileText },
+    { id: 'costs', label: t('nav.costs'), icon: Banknote },
+    { id: 'newCost', label: t('nav.newCost'), icon: Plus },
     { id: 'support', label: t('nav.support'), icon: BookOpen },
     { id: 'settings', label: t('nav.settings'), icon: SettingsIcon },
     ...(isAdminSession ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck }] : []),
@@ -12340,9 +12377,11 @@ function HeroPanel({
   onOpenCostReport,
   onOpenCriticalChecks,
   onOpenDeadlineWindow,
+  onOpenFleetDeadlines,
   onOpenFleetHealth,
   onOpenFaults,
   onOpenNotifications,
+  onOpenWork,
   openFaultCount,
   summary,
   t,
@@ -12540,31 +12579,31 @@ function HeroPanel({
           <strong>{t('hero.radarSubtitle')}</strong>
         </div>
         <div className="executive-radar-grid">
-          <article>
+          <button className="executive-radar-card" onClick={onOpenWork || onOpenNotifications} type="button">
             <small>{t('hero.radarIndex')}</small>
             <b>{controlScore}%</b>
             <em>{controlReason}</em>
-          </article>
-          <article>
+          </button>
+          <button className="executive-radar-card" onClick={onOpenWork || onOpenNotifications} type="button">
             <small>{t('hero.radarOpen')}</small>
             <b>{openWorkCount}</b>
             <em>{t('hero.radarOpenDetail')}</em>
-          </article>
-          <article className={`tone-${fleetDeadlineTone}`}>
+          </button>
+          <button className={`executive-radar-card tone-${fleetDeadlineTone}`} onClick={onOpenFleetDeadlines || onOpenDeadlineWindow} type="button">
             <small>{t('hero.radarFleetDeadlines')}</small>
             <b>{fleetDeadlinePercentLabel}</b>
             <em>{t('hero.radarFleetDeadlinesDetail', { expired: fleetExpiredDeadlineCount, soon: fleetSoonDeadlineCount })}</em>
-          </article>
-          <article>
+          </button>
+          <button className="executive-radar-card" onClick={onOpenCostReport} type="button">
             <small>{t('hero.radarCost')}</small>
             <b>{costMonthValue}</b>
             <em>{t('hero.radarCostDetail', { count: costRepairCount })}</em>
-          </article>
-          <article className={`tone-${fleetHealthTone}`}>
+          </button>
+          <button className={`executive-radar-card tone-${fleetHealthTone}`} onClick={onOpenFleetHealth || onOpenCostReport} type="button">
             <small>{t('hero.radarFleetHealth')}</small>
             <b>{fleetHealthPercentLabel}</b>
             <em>{t('hero.radarFleetHealthDetail', { count: fleetHealthCriticalCount })}</em>
-          </article>
+          </button>
         </div>
         <button className="executive-radar-action" onClick={radarAction.onClick} type="button">
           <span>
@@ -16789,6 +16828,13 @@ function OperationsWorkspace({
           (operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds) && hasCheckIssues(operation.data))
         )
       }
+      if (filter === 'open_work') {
+        return (
+          (operation.kind === 'fault' && isFaultUnread(operation.data)) ||
+          (operation.kind === 'deadline' && daysUntil(operation.data.dueDate) <= 7) ||
+          (operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds) && hasCheckIssues(operation.data))
+        )
+      }
       if (filter === 'critical_checks') {
         return operation.kind === 'check' && !isVehicleCheckArchived(operation.data, acknowledgedCheckIds) && hasCheckIssues(operation.data)
       }
@@ -16894,6 +16940,10 @@ function OperationsWorkspace({
             {priorityOperation ? <ChevronRight size={17} /> : null}
           </button>
           <div className="operations-quick-actions">
+            <button className={filter === 'open_work' ? 'is-active' : ''} onClick={() => changeFilter('open_work')} type="button">
+              <Bell size={15} />
+              Aperte
+            </button>
             <button className={filter === 'critical' ? 'is-active' : ''} onClick={() => changeFilter('critical')} type="button">
               <AlertTriangle size={15} />
               Critiche
@@ -16919,6 +16969,9 @@ function OperationsWorkspace({
         <div className="filter-tabs operations-filters" role="tablist" aria-label={t('notifications.filterAria')}>
           <button className={filter === 'inbox' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('inbox')} type="button">
             {t('operations.inbox')} ({newFaults.length + unreadChecks.length + actionableDeadlines.length})
+          </button>
+          <button className={filter === 'open_work' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('open_work')} type="button">
+            Pratiche aperte ({newFaults.length + criticalChecks.length + criticalDeadlines.length})
           </button>
           <button className={filter === 'critical' ? 'filter-tab is-active' : 'filter-tab'} onClick={() => changeFilter('critical')} type="button">
             {t('operations.critical')} ({criticalFaults.length + criticalChecks.length + criticalDeadlines.length})

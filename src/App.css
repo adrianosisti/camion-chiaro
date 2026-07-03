@@ -1932,7 +1932,7 @@
   gap: 7px;
 }
 
-.executive-radar-grid article,
+.executive-radar-card,
 .executive-radar-action {
   min-width: 0;
   border: 1px solid rgba(186, 230, 253, 0.18);
@@ -1940,15 +1940,28 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.executive-radar-grid article {
+.executive-radar-card {
   align-content: start;
   display: grid;
   gap: 3px;
   min-height: 78px;
   padding: 8px 9px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
-.executive-radar-grid article:first-child {
+.executive-radar-card:hover,
+.executive-radar-card:focus-visible {
+  border-color: var(--radar-accent, #12c6df);
+  background: var(--radar-soft, rgba(18, 198, 223, 0.18));
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.executive-radar-card:first-child {
   grid-column: span 2;
 }
 
@@ -1969,35 +1982,35 @@
   white-space: nowrap;
 }
 
-.executive-radar-grid article:first-child b {
+.executive-radar-card:first-child b {
   color: var(--radar-accent, #12c6df);
   font-size: 1.36rem;
 }
 
-.executive-radar-grid article.tone-success {
+.executive-radar-card.tone-success {
   border-color: rgba(34, 197, 94, 0.34);
   background: rgba(34, 197, 94, 0.12);
 }
 
-.executive-radar-grid article.tone-warning {
+.executive-radar-card.tone-warning {
   border-color: rgba(245, 158, 11, 0.4);
   background: rgba(245, 158, 11, 0.13);
 }
 
-.executive-radar-grid article.tone-danger {
+.executive-radar-card.tone-danger {
   border-color: rgba(244, 63, 94, 0.44);
   background: rgba(244, 63, 94, 0.15);
 }
 
-.executive-radar-grid article.tone-success b {
+.executive-radar-card.tone-success b {
   color: #86efac;
 }
 
-.executive-radar-grid article.tone-warning b {
+.executive-radar-card.tone-warning b {
   color: #fcd34d;
 }
 
-.executive-radar-grid article.tone-danger b {
+.executive-radar-card.tone-danger b {
   color: #fda4af;
 }
 
@@ -11010,7 +11023,7 @@
     font-size: 0.76rem;
   }
 
-  .workspace.is-dashboard-home .executive-radar-grid article {
+  .workspace.is-dashboard-home .executive-radar-card {
     min-height: 72px;
     padding: 7px 8px;
   }
@@ -11390,7 +11403,7 @@
     grid-template-columns: 1fr;
   }
 
-  .executive-radar-grid article:first-child {
+  .executive-radar-card:first-child {
     grid-column: auto;
   }
 

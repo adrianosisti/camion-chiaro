@@ -12639,9 +12639,6 @@ function HeroPanel({
     <section className="hero-panel" aria-label={t('hero.aria')}>
       <div className="hero-dashboard-head">
         <div className="hero-heading-copy">
-          <div className="hero-dashboard-title">
-            <h2>{t('session.dashboardTitle')}</h2>
-          </div>
           <div className="hero-brand-lockup" aria-label="Vygo">
             <img src="/brand/vygo-logo-horizontal.png" alt="Vygo - Move. Manage. Succeed." />
           </div>

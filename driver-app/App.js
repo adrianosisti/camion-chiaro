@@ -522,7 +522,6 @@ const companyTabs = [
   { id: 'manage', icon: 'add-circle-outline', label: 'Anagraf.' },
   { id: 'archive', icon: 'albums-outline', label: 'Archivio', labelKey: 'archive' },
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
-  { id: 'settings', icon: 'settings-outline', label: 'Menu', labelKey: 'menu' },
 ]
 
 const camionChiaroIcon = require('./assets/brand/icon.png')
@@ -1923,10 +1922,12 @@ function CamionChiaroApp() {
   }, [accountType, driver?.id])
 
   useEffect(() => {
+    if (accountType === 'company' && activeTab === 'settings') return
+
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab('home')
     }
-  }, [activeTab, visibleTabs])
+  }, [accountType, activeTab, visibleTabs])
 
   useEffect(() => {
     if (accountType !== 'driver' || !driver?.companyId || !driver?.id) return undefined
@@ -3785,6 +3786,44 @@ function CamionChiaroApp() {
     setActiveTab('archive')
   }
 
+  function handleCompanyMenuNavigate(target = 'dashboard') {
+    if (target === 'dashboard') {
+      setActiveTab('home')
+      return
+    }
+
+    if (target === 'operations') {
+      openCompanyManagement('faults')
+      return
+    }
+
+    if (target === 'deadlines') {
+      openCompanyManagement('deadlines')
+      return
+    }
+
+    if (target === 'costs' || target === 'reports') {
+      openCompanyManagement('costs')
+      return
+    }
+
+    if (target === 'records') {
+      setManagementInitialSection('drivers')
+      setActiveTab('manage')
+      return
+    }
+
+    if (target === 'archive') {
+      setManagementInitialSection('faults')
+      setActiveTab('archive')
+      return
+    }
+
+    if (target === 'chat') {
+      openNativeChatTab()
+    }
+  }
+
   function handleIncomingShareConsumed() {
     setIncomingChatShare(null)
   }
@@ -3852,6 +3891,7 @@ function CamionChiaroApp() {
             onCheckAppUpdate={() => checkForAppUpdates()}
             onEnableNativeNotifications={handleEnableNativeNotifications}
             onOpenAssistant={() => setIsAssistantOpen(true)}
+            onNavigateCompanyMenu={handleCompanyMenuNavigate}
             onLanguageChange={setLanguage}
             onRefresh={() => loadCompanyData()}
             onSignOut={handleSignOut}
@@ -4129,13 +4169,25 @@ function CamionChiaroApp() {
             <Text numberOfLines={1} style={styles.driverName}>{headerSubtitle}</Text>
           </View>
         </View>
-        <View style={styles.headerBrandPill}>
-          <Image
-            accessibilityIgnoresInvertColors
-            resizeMode="contain"
-            source={vygoLogoHorizontal}
-            style={styles.headerBrandLogo}
-          />
+        <View style={styles.headerActions}>
+          <View style={styles.headerBrandPill}>
+            <Image
+              accessibilityIgnoresInvertColors
+              resizeMode="contain"
+              source={vygoLogoHorizontal}
+              style={styles.headerBrandLogo}
+            />
+          </View>
+          {accountType === 'company' ? (
+            <Pressable
+              accessibilityLabel="Apri menu aziendale"
+              onPress={() => setActiveTab('settings')}
+              style={[styles.headerMenuButton, activeTab === 'settings' && styles.headerMenuButtonActive]}
+            >
+              <Ionicons color={activeTab === 'settings' ? colors.ink : colors.white} name="menu" size={19} />
+              <Text style={[styles.headerMenuText, activeTab === 'settings' && styles.headerMenuTextActive]}>Menu</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -4552,9 +4604,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPadding,
     paddingVertical: 14,
   },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 7,
+  },
   headerBrandLogo: {
-    height: 28,
-    width: 112,
+    height: 26,
+    width: 98,
   },
   headerBrandPill: {
     alignItems: 'center',
@@ -4569,7 +4626,7 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 4, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
-    width: 126,
+    width: 108,
   },
   headerIdentity: {
     alignItems: 'center',
@@ -4597,6 +4654,29 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 12,
     fontWeight: '900',
+  },
+  headerMenuButton: {
+    alignItems: 'center',
+    backgroundColor: '#07111f',
+    borderColor: 'rgba(18, 198, 223, 0.55)',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    minHeight: 38,
+    paddingHorizontal: 9,
+  },
+  headerMenuButtonActive: {
+    backgroundColor: colors.cyan,
+    borderColor: colors.cyan,
+  },
+  headerMenuText: {
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  headerMenuTextActive: {
+    color: colors.ink,
   },
   headerTextWrap: {
     flex: 1,

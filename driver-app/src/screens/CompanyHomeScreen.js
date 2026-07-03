@@ -302,17 +302,43 @@ function DetailRow({ label, value }) {
   )
 }
 
-function HomeCommandButton({ icon = 'grid-outline', label, onPress, tone = 'info', value }) {
+function getToneColor(tone = 'info') {
+  if (tone === 'danger') return colors.danger
+  if (tone === 'warning') return '#92400e'
+  if (tone === 'success') return colors.success
+  if (tone === 'cost') return '#065f46'
+  return colors.cyanDark
+}
+
+function RadarTile({ icon = 'radio-outline', label, meta, onPress, tone = 'info', value }) {
   return (
-    <Pressable onPress={onPress} style={[styles.homeCommandButton, styles[`${tone}CommandButton`]]}>
-      <View style={[styles.homeCommandIcon, styles[`${tone}CommandIcon`]]}>
-        <Ionicons color={tone === 'danger' ? colors.danger : tone === 'warning' ? '#92400e' : tone === 'cost' ? '#065f46' : colors.cyanDark} name={icon} size={20} />
+    <Pressable onPress={onPress} style={[styles.radarTile, styles[`${tone}DashboardSignalRow`]]}>
+      <View style={styles.radarTileTop}>
+        <View style={styles.radarTileIcon}>
+          <Ionicons color={getToneColor(tone)} name={icon} size={16} />
+        </View>
+        {value !== '' && value !== null && value !== undefined ? (
+          <Text adjustsFontSizeToFit minimumFontScale={0.68} numberOfLines={1} style={styles.radarTileValue}>{value}</Text>
+        ) : null}
       </View>
-      <View style={styles.homeCommandCopy}>
-        <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={styles.homeCommandLabel}>{label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={styles.radarTileLabel}>{label}</Text>
+      <Text numberOfLines={2} style={styles.radarTileMeta}>{meta}</Text>
+    </Pressable>
+  )
+}
+
+function DashboardSignalRow({ icon = 'radio-outline', label, meta, onPress, tone = 'info', value }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.dashboardSignalRow, styles[`${tone}DashboardSignalRow`]]}>
+      <View style={styles.dashboardSignalIcon}>
+        <Ionicons color={getToneColor(tone)} name={icon} size={18} />
+      </View>
+      <View style={styles.dashboardSignalCopy}>
+        <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={styles.dashboardSignalLabel}>{label}</Text>
+        <Text numberOfLines={1} style={styles.dashboardSignalMeta}>{meta}</Text>
       </View>
       {value !== '' && value !== null && value !== undefined ? (
-        <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1} style={styles.homeCommandValue}>{value}</Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1} style={styles.dashboardSignalValue}>{value}</Text>
       ) : null}
     </Pressable>
   )
@@ -581,16 +607,53 @@ export function CompanyHomeScreen({
   const deadlineTone = hasExpiredDeadlines ? 'danger' : hasSoonDeadlines ? 'warning' : 'info'
   const dailyPhrase = getDailyPhrase()
   const operationsToWork = openFaults.length + activeChecks.length
+  const expiredDeadlineCount = activeDeadlines.filter((item) => getDeadlineDays(item.dueDate) < 0).length
+  const soonDeadlineCount = activeDeadlines.filter((item) => {
+    const days = getDeadlineDays(item.dueDate)
+    return days >= 0 && days <= 30
+  }).length
   const fleetHealthRows = getFleetHealthRows({ checks, complianceItems, costEntries, faults, vehicles })
   const fleetHealthWorst = fleetHealthRows[0] ?? null
   const fleetHealthAverage = fleetHealthRows.length
     ? Math.round(fleetHealthRows.reduce((total, row) => total + row.score, 0) / fleetHealthRows.length)
     : 100
   const fleetHealthTone = fleetHealthAverage < 55 ? 'danger' : fleetHealthAverage < 78 ? 'warning' : 'success'
-  const fleetHealthLabel = fleetHealthTone === 'danger' ? 'Da controllare' : fleetHealthTone === 'warning' ? 'Attenzione' : 'Sotto controllo'
   const fleetHealthMeta = fleetHealthWorst?.issues?.length
     ? `${fleetHealthWorst.plate}: ${fleetHealthWorst.issues[0]}`
     : `${vehicles.length} mezzi monitorati`
+  const costPressure = Math.min(18, Math.floor(Number(repairCostSummary.monthCents || 0) / 150000))
+  const operationalScore = Math.max(
+    0,
+    Math.min(
+      100,
+      fleetHealthAverage
+        - (criticalChecks.length * 16)
+        - (openFaults.length * 13)
+        - (expiredDeadlineCount * 14)
+        - (soonDeadlineCount * 3)
+        - costPressure,
+    ),
+  )
+  const operationalTone = operationalScore >= 82 ? 'success' : operationalScore >= 62 ? 'warning' : 'danger'
+  const operationalMeta = criticalChecks.length
+    ? `${criticalChecks.length} check critici`
+    : openFaults.length
+      ? `${openFaults.length} guasti aperti`
+      : expiredDeadlineCount
+        ? `${expiredDeadlineCount} scadenze scadute`
+        : soonDeadlineCount
+          ? `${soonDeadlineCount} scadenze vicine`
+          : 'Situazione sotto controllo'
+  const openWorkSection = () => onOpenManagement?.(openFaults.length ? 'faults' : activeChecks.length ? 'checks' : 'deadlines')
+  const nextAction = criticalChecks.length
+    ? { icon: 'warning-outline', label: 'Apri check critici', onPress: () => onOpenManagement?.('checks'), tone: 'danger' }
+    : openFaults.length
+      ? { icon: 'construct-outline', label: 'Apri guasti', onPress: () => onOpenManagement?.('faults'), tone: 'warning' }
+      : activeDeadlines.length
+        ? { icon: 'calendar-outline', label: 'Apri scadenze', onPress: () => onOpenManagement?.('deadlines'), tone: deadlineTone }
+        : unreadMessages
+          ? { icon: 'chatbubbles-outline', label: 'Apri chat', onPress: onOpenChat, tone: 'warning' }
+          : { icon: 'shield-checkmark-outline', label: 'Tutto sotto controllo', onPress: onOpenAssistant, tone: 'success' }
 
   async function resolveSelectedDetail(detail = selectedDetail, repair = undefined) {
     if (!detail?.item?.id) return
@@ -607,17 +670,9 @@ export function CompanyHomeScreen({
   return (
     <View style={styles.content}>
       <View style={styles.hero}>
+        <Text style={styles.heroDashboardTitle}>{t(language, 'companyDashboard')}</Text>
         <View style={styles.vygoBrandStrip}>
           <Image resizeMode="contain" source={vygoLogo} style={styles.vygoBrandLogo} />
-        </View>
-        <View style={styles.heroTop}>
-          <View style={styles.companyMark}>
-            {logoUrl ? <Image source={{ uri: logoUrl }} style={styles.companyLogoImage} /> : <Text style={styles.companyLogoText}>CC</Text>}
-          </View>
-          <View style={styles.heroCopy}>
-            <Text numberOfLines={1} style={styles.companyName}>{company.name ?? 'Azienda'}</Text>
-            <Text style={styles.companyMeta}>{t(language, 'companyDashboard')}</Text>
-          </View>
         </View>
         <View style={styles.metricGrid}>
           <CompanyMetricMini
@@ -632,104 +687,97 @@ export function CompanyHomeScreen({
             tone={criticalChecks.length ? 'danger' : activeChecks.length ? 'success' : 'info'}
             value={activeChecks.length}
           />
-          <CompanyMetricMini label={t(language, 'deadlines')} onPress={() => onOpenManagement?.('deadlines')} tone={deadlineTone} value={activeDeadlines.length} />
           <CompanyMetricMini
-            label="Centro costi"
-            onPress={() => onOpenManagement?.('costs')}
-            tone={repairCostSummary.monthCents ? 'info' : 'success'}
-            value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
-          />
-        </View>
-        <Pressable onPress={() => onOpenManagement?.('vehicles')} style={[styles.fleetHealthHeroCard, styles[`${fleetHealthTone}FleetHealthHeroCard`]]}>
-          <View style={styles.fleetHealthIcon}>
-            <Ionicons color={fleetHealthTone === 'danger' ? colors.danger : fleetHealthTone === 'warning' ? '#92400e' : colors.success} name="pulse-outline" size={22} />
-          </View>
-          <View style={styles.fleetHealthCopy}>
-            <Text numberOfLines={1} style={styles.fleetHealthKicker}>Salute flotta</Text>
-            <Text numberOfLines={1} style={styles.fleetHealthTitle}>{fleetHealthLabel}</Text>
-            <Text numberOfLines={1} style={styles.fleetHealthMeta}>{fleetHealthMeta}</Text>
-          </View>
-          <Text adjustsFontSizeToFit minimumFontScale={0.75} numberOfLines={1} style={styles.fleetHealthScore}>{fleetHealthAverage}</Text>
-        </Pressable>
-        {dailyPhrase ? <Text numberOfLines={1} style={styles.dailyPhrase}>{dailyPhrase}</Text> : null}
-      </View>
-
-      <View style={styles.homeCommandPanel}>
-        <View style={styles.homeCommandHeader}>
-          <View>
-            <Text style={styles.homeCommandTitle}>Comandi azienda</Text>
-          </View>
-        </View>
-        <View style={styles.homeCommandGrid}>
-          <HomeCommandButton
-            detail="Check e guasti da lavorare"
-            icon="notifications-outline"
-            label="Registro"
-            onPress={() => onOpenManagement?.(openFaults.length ? 'faults' : 'checks')}
-            tone={operationsToWork ? 'warning' : 'info'}
-            value={operationsToWork}
-          />
-          <HomeCommandButton
-            detail="Rinnovi, documenti e solleciti"
-            icon="calendar-outline"
-            label="Scadenze"
+            label={t(language, 'deadlines')}
             onPress={() => onOpenManagement?.('deadlines')}
             tone={deadlineTone}
             value={activeDeadlines.length}
           />
-          <HomeCommandButton
-            detail="Spese libere e report"
+          <CompanyMetricMini
+            label="Chat"
+            onPress={onOpenChat}
+            tone={unreadMessages ? 'warning' : 'success'}
+            value={unreadMessages}
+          />
+        </View>
+        <View style={styles.companyClientStrip}>
+          <View style={styles.companyMark}>
+            {logoUrl ? <Image source={{ uri: logoUrl }} style={styles.companyLogoImage} /> : <Text style={styles.companyLogoText}>VY</Text>}
+          </View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.companyMeta}>Azienda cliente</Text>
+            <Text numberOfLines={1} style={styles.companyName}>{company.name ?? 'Azienda'}</Text>
+          </View>
+        </View>
+        {dailyPhrase ? (
+          <View style={styles.dailyPhraseCard}>
+            <View style={styles.dailyPhraseMark}>
+              <Text style={styles.dailyPhraseMarkText}>V</Text>
+            </View>
+            <View style={styles.dailyPhraseCopy}>
+              <Text style={styles.dailyPhraseOverline}>Frase del giorno</Text>
+              <Text numberOfLines={2} style={styles.dailyPhraseText}>{dailyPhrase}</Text>
+            </View>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.executiveRadarPanel}>
+        <View style={styles.executiveRadarHeader}>
+          <View>
+            <Text style={styles.executiveRadarKicker}>Radar direzione</Text>
+            <Text style={styles.executiveRadarTitle}>Priorita di oggi</Text>
+          </View>
+          <Text style={[styles.executiveRadarScore, styles[`${operationalTone}SignalScore`]]}>{operationalScore}%</Text>
+        </View>
+        <Pressable onPress={openWorkSection} style={[styles.operationalRadarCard, styles[`${operationalTone}FleetHealthHeroCard`]]}>
+          <View style={styles.operationalRadarTop}>
+            <Text style={styles.operationalRadarLabel}>Stato operativo</Text>
+            <Text style={styles.operationalRadarScore}>{operationalScore}%</Text>
+          </View>
+          <Text numberOfLines={2} style={styles.operationalRadarMeta}>
+            {operationalMeta}. Tocca per aprire la priorita operativa.
+          </Text>
+        </Pressable>
+        <View style={styles.radarTileGrid}>
+          <RadarTile
+            icon="radio-outline"
+            label="Pratiche aperte"
+            meta="Guasti, check e scadenze da lavorare"
+            onPress={openWorkSection}
+            tone={operationsToWork ? 'warning' : 'info'}
+            value={operationsToWork}
+          />
+          <RadarTile
+            icon="calendar-outline"
+            label="Scadenze"
+            meta={`${expiredDeadlineCount} scadute · ${soonDeadlineCount} entro 30 gg`}
+            onPress={() => onOpenManagement?.('deadlines')}
+            tone={deadlineTone}
+            value={activeDeadlines.length}
+          />
+          <RadarTile
             icon="cash-outline"
-            label="Centro costi"
+            label="Costi mese"
+            meta={`${repairCostSummary.count} voci · anno ${formatCompactMoneyCents(repairCostSummary.yearCents, defaultCurrency)}`}
             onPress={() => onOpenManagement?.('costs')}
             tone={repairCostSummary.monthCents ? 'cost' : 'info'}
             value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
           />
-          <HomeCommandButton
-            detail="Inserisci subito fatture, gomme, tagliandi o costi generali"
-            icon="add-circle-outline"
-            label="Nuova spesa"
-            onPress={() => onOpenManagement?.('costs', { addCost: true })}
-            tone="cost"
-            value=""
-          />
-          <HomeCommandButton
-            detail="Ufficio, magazzino e reparti"
-            icon="people-outline"
-            label="Persone"
-            onPress={() => onOpenManagement?.('people')}
-            value={peopleCount}
-          />
-          <HomeCommandButton
-            detail="Profili e credenziali"
-            icon="person-circle-outline"
-            label="Autisti"
-            onPress={() => onOpenManagement?.('drivers')}
-            value={drivers.length}
-          />
-          <HomeCommandButton
-            detail="Mezzi, targhe e semirimorchi"
-            icon="bus-outline"
-            label="Flotta"
+          <RadarTile
+            icon="pulse-outline"
+            label="Salute flotta"
+            meta={fleetHealthMeta}
             onPress={() => onOpenManagement?.('vehicles')}
-            value={vehicles.length}
-          />
-          <HomeCommandButton
-            detail="Singole, gruppi e reparti"
-            icon="chatbubbles-outline"
-            label="Chat"
-            onPress={onOpenChat}
-            tone={unreadMessages ? 'warning' : 'info'}
-            value={unreadMessages}
-          />
-          <HomeCommandButton
-            detail="Guida e ticket supporto"
-            icon="help-buoy-outline"
-            label="Aiuto"
-            onPress={onOpenAssistant}
-            value=""
+            tone={fleetHealthTone}
+            value={`${fleetHealthAverage}%`}
           />
         </View>
+        <Pressable onPress={nextAction.onPress} style={[styles.nextActionStrip, styles[`${nextAction.tone}DashboardSignalRow`]]}>
+          <Ionicons color={getToneColor(nextAction.tone)} name={nextAction.icon} size={17} />
+          <Text style={styles.nextActionKicker}>Prossima azione</Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={styles.nextActionLabel}>{nextAction.label}</Text>
+        </Pressable>
       </View>
 
       <OperationsDetailPanel
@@ -753,28 +801,40 @@ const styles = StyleSheet.create({
   },
   companyLogoText: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
   },
   companyMark: {
     alignItems: 'center',
     backgroundColor: colors.white,
-    borderRadius: 14,
-    height: 46,
+    borderRadius: 11,
+    height: 38,
     justifyContent: 'center',
     overflow: 'hidden',
-    width: 46,
+    width: 38,
   },
   companyMeta: {
     color: '#cffafe',
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 4,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
   },
   companyName: {
     color: colors.white,
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: '900',
+  },
+  companyClientStrip: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.09)',
+    borderColor: 'rgba(125, 211, 252, 0.25)',
+    borderRadius: 13,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    marginTop: 6,
+    padding: 7,
   },
   archiveOpenText: {
     color: colors.muted,
@@ -783,11 +843,50 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    gap: 8,
-    padding: 10,
-    paddingBottom: 8,
+    gap: 6,
+    padding: 8,
+    paddingBottom: 6,
   },
-  homeCommandPanel: {
+  executiveRadarPanel: {
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 16,
+    borderWidth: 1,
+    flex: 1,
+    gap: 7,
+    minHeight: 0,
+    padding: 9,
+  },
+  executiveRadarHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  executiveRadarKicker: {
+    color: colors.cyanDark,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  executiveRadarTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  executiveRadarScore: {
+    borderRadius: 999,
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+    minWidth: 56,
+    overflow: 'hidden',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    textAlign: 'center',
+  },
+  dashboardSignalsPanel: {
     backgroundColor: colors.white,
     borderColor: colors.line,
     borderRadius: 16,
@@ -796,99 +895,234 @@ const styles = StyleSheet.create({
     gap: 7,
     padding: 10,
   },
-  homeCommandHeader: {
-    alignItems: 'flex-start',
+  dashboardSignalsHeader: {
+    alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'space-between',
   },
-  homeCommandTitle: {
+  dashboardSignalsKicker: {
+    color: colors.cyanDark,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  dashboardSignalsTitle: {
     color: colors.ink,
     fontSize: 16,
     fontWeight: '900',
   },
-  homeCommandSubtitle: {
+  dashboardSignalsScore: {
+    borderRadius: 999,
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '900',
+    minWidth: 58,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    textAlign: 'center',
+  },
+  dangerSignalScore: {
+    backgroundColor: '#fee2e2',
+  },
+  successSignalScore: {
+    backgroundColor: '#dcfce7',
+  },
+  warningSignalScore: {
+    backgroundColor: '#fef3c7',
+  },
+  directionRadarBox: {
+    backgroundColor: '#ecfeff',
+    borderColor: '#bae6fd',
+    borderRadius: 13,
+    borderWidth: 1,
+    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  directionRadarText: {
     color: colors.muted,
-    flex: 1,
     fontSize: 12,
     fontWeight: '800',
-    lineHeight: 17,
-    maxWidth: 170,
-    textAlign: 'right',
+    lineHeight: 16,
   },
-  homeCommandGrid: {
+  directionRadarTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  dashboardSignalsList: {
     flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 6,
   },
-  homeCommandButton: {
+  dashboardSignalRow: {
     alignItems: 'center',
     backgroundColor: '#f8fbff',
     borderColor: '#d8e7ee',
     borderRadius: 13,
     borderWidth: 1,
     flexDirection: 'row',
-    flexBasis: '48.8%',
     gap: 6,
     justifyContent: 'flex-start',
-    minHeight: 58,
+    minHeight: 48,
     padding: 8,
   },
-  warningCommandButton: {
+  warningDashboardSignalRow: {
     backgroundColor: '#fffbeb',
     borderColor: '#fde68a',
   },
-  dangerCommandButton: {
+  dangerDashboardSignalRow: {
     backgroundColor: '#fff1f2',
     borderColor: '#fecdd3',
   },
-  costCommandButton: {
+  costDashboardSignalRow: {
     backgroundColor: '#ecfdf5',
     borderColor: '#bbf7d0',
   },
-  homeCommandIcon: {
+  successDashboardSignalRow: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+  },
+  infoDashboardSignalRow: {
+    backgroundColor: '#f8fbff',
+    borderColor: '#d8e7ee',
+  },
+  nextActionKicker: {
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  nextActionLabel: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  nextActionStrip: {
     alignItems: 'center',
-    backgroundColor: '#cffafe',
+    borderRadius: 13,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 42,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+  },
+  operationalRadarCard: {
+    borderRadius: 14,
+    gap: 4,
+    minHeight: 74,
+    padding: 10,
+  },
+  operationalRadarLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  operationalRadarMeta: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    lineHeight: 15,
+  },
+  operationalRadarScore: {
+    color: colors.ink,
+    fontSize: 27,
+    fontWeight: '900',
+    lineHeight: 29,
+  },
+  operationalRadarTop: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  radarTile: {
+    borderRadius: 13,
+    borderWidth: 1,
+    flexBasis: '48%',
+    flexGrow: 1,
+    gap: 3,
+    minHeight: 68,
+    padding: 8,
+  },
+  radarTileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  radarTileIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 9,
+    height: 27,
+    justifyContent: 'center',
+    width: 27,
+  },
+  radarTileLabel: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  radarTileMeta: {
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: '750',
+    lineHeight: 12,
+  },
+  radarTileTop: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 5,
+  },
+  radarTileValue: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+    maxWidth: 70,
+    minWidth: 24,
+    textAlign: 'right',
+  },
+  dashboardSignalIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
     borderRadius: 10,
     height: 30,
     justifyContent: 'center',
     width: 30,
   },
-  warningCommandIcon: {
-    backgroundColor: '#fef3c7',
-  },
-  dangerCommandIcon: {
-    backgroundColor: '#fee2e2',
-  },
-  costCommandIcon: {
-    backgroundColor: '#d1fae5',
-  },
-  homeCommandCopy: {
+  dashboardSignalCopy: {
     flex: 1,
     minWidth: 0,
   },
-  homeCommandLabel: {
+  dashboardSignalLabel: {
     color: colors.ink,
     fontSize: 12,
     fontWeight: '900',
   },
-  homeCommandDetail: {
+  dashboardSignalMeta: {
     color: colors.muted,
     fontSize: 10,
     fontWeight: '700',
-    lineHeight: 12,
     marginTop: 2,
   },
-  homeCommandValue: {
+  dashboardSignalValue: {
     alignSelf: 'center',
     backgroundColor: colors.white,
     borderRadius: 999,
     color: colors.ink,
     fontSize: 10,
     fontWeight: '900',
-    maxWidth: 58,
-    minWidth: 24,
+    maxWidth: 92,
+    minWidth: 28,
     overflow: 'hidden',
     paddingHorizontal: 5,
     paddingVertical: 3,
@@ -949,6 +1183,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     lineHeight: 16,
+  },
+  radarGrid: {
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 7,
+  },
+  radarHeroCard: {
+    borderRadius: 13,
+    flex: 1,
+    gap: 2,
+    minHeight: 74,
+    padding: 9,
+  },
+  radarScore: {
+    color: colors.ink,
+    fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 24,
   },
   costAlertCard: {
     backgroundColor: '#ecfeff',
@@ -1016,12 +1268,47 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
-  dailyPhrase: {
-    color: '#cffafe',
-    fontSize: 10,
+  dailyPhraseCard: {
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(8, 47, 73, 0.62)',
+    borderColor: 'rgba(103, 232, 249, 0.26)',
+    borderRadius: 11,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  dailyPhraseCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  dailyPhraseMark: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  dailyPhraseMarkText: {
+    color: colors.cyanDark,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  dailyPhraseOverline: {
+    color: '#67e8f9',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  dailyPhraseText: {
+    color: '#f8fbff',
+    fontSize: 11,
     fontWeight: '800',
-    lineHeight: 12,
-    marginTop: 5,
+    lineHeight: 14,
   },
   deadlineDate: {
     color: colors.cyanDark,
@@ -1249,21 +1536,28 @@ const styles = StyleSheet.create({
   hero: {
     backgroundColor: colors.ink,
     borderRadius: 17,
-    padding: 9,
+    padding: 8,
+  },
+  heroDashboardTitle: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '900',
+    lineHeight: 18,
+    marginBottom: 6,
   },
   vygoBrandLogo: {
-    height: 24,
-    width: 112,
+    height: 28,
+    width: 146,
   },
   vygoBrandStrip: {
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    alignSelf: 'stretch',
     backgroundColor: colors.white,
     borderRadius: 8,
     justifyContent: 'center',
-    marginBottom: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
+    marginBottom: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
   heroCopy: {
     flex: 1,
@@ -1330,31 +1624,30 @@ const styles = StyleSheet.create({
   },
   metricGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
     justifyContent: 'center',
   },
   metricMini: {
     alignItems: 'center',
     borderRadius: 12,
-    flexBasis: '48%',
+    flex: 1,
     justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 6,
+    minHeight: 42,
+    paddingHorizontal: 4,
     paddingVertical: 5,
   },
   metricMiniLabel: {
     color: colors.muted,
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
     marginTop: 1,
     textAlign: 'center',
   },
   metricMiniValue: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '900',
-    lineHeight: 17,
+    lineHeight: 16,
     textAlign: 'center',
   },
   dangerMetricMini: {

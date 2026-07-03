@@ -3,6 +3,8 @@ import { Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleShe
 import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as ImagePicker from 'expo-image-picker'
+import * as Print from 'expo-print'
+import DocumentScanner from 'react-native-document-scanner-plugin'
 import { DateField } from '../components/DateField'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
@@ -93,11 +95,106 @@ function getFileExtension(path = '') {
   return match?.[1]?.toLowerCase() || 'pdf'
 }
 
+function getScannedImageExtension(path = '') {
+  const extension = getFileExtension(path)
+  return ['heic', 'heif', 'jpg', 'jpeg', 'png', 'webp'].includes(extension) ? extension : 'jpg'
+}
+
+function getScannedImageMimeType(extension = 'jpg') {
+  if (extension === 'png') return 'image/png'
+  if (extension === 'webp') return 'image/webp'
+  if (extension === 'heic') return 'image/heic'
+  if (extension === 'heif') return 'image/heif'
+  return 'image/jpeg'
+}
+
 function isValidDateValue(value = '') {
   if (!value) return true
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const parsedDate = new Date(value)
   return Number.isFinite(parsedDate.getTime())
+}
+
+function normalizeScannedDocumentUri(value = '') {
+  const cleanValue = String(value ?? '').trim()
+  if (!cleanValue) return ''
+  if (/^(file|content|ph|assets-library):/i.test(cleanValue)) return cleanValue
+  if (cleanValue.startsWith('/')) return `file://${cleanValue}`
+  return cleanValue
+}
+
+async function buildScannedImageDataUri(uri = '') {
+  const extension = getScannedImageExtension(uri)
+  const mimeType = getScannedImageMimeType(extension)
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
+  return `data:${mimeType};base64,${base64}`
+}
+
+async function buildScannedDocumentFile(values = [], prefix = 'documento-scansionato') {
+  const uris = (Array.isArray(values) ? values : [values])
+    .map(normalizeScannedDocumentUri)
+    .filter(Boolean)
+    .slice(0, 2)
+
+  if (!uris.length) return null
+
+  if (uris.length === 1) {
+    const extension = getScannedImageExtension(uris[0])
+    return {
+      name: `${prefix}-${Date.now()}.${extension}`,
+      type: getScannedImageMimeType(extension),
+      uri: uris[0],
+    }
+  }
+
+  try {
+    const pages = await Promise.all(uris.map(async (uri) => {
+      const dataUri = await buildScannedImageDataUri(uri)
+      return `<section class="page"><img src="${dataUri}" /></section>`
+    }))
+    const printed = await Print.printToFileAsync({
+      html: `<!doctype html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <style>
+              @page { margin: 16mm; size: A4; }
+              * { box-sizing: border-box; }
+              body { margin: 0; background: #ffffff; }
+              .page {
+                align-items: center;
+                display: flex;
+                height: 265mm;
+                justify-content: center;
+                page-break-after: always;
+                width: 178mm;
+              }
+              .page:last-child { page-break-after: auto; }
+              img {
+                display: block;
+                max-height: 100%;
+                max-width: 100%;
+                object-fit: contain;
+              }
+            </style>
+          </head>
+          <body>${pages.join('')}</body>
+        </html>`,
+    })
+
+    return {
+      name: `${prefix}-fronte-retro-${Date.now()}.pdf`,
+      type: 'application/pdf',
+      uri: printed.uri,
+    }
+  } catch {
+    const extension = getScannedImageExtension(uris[0])
+    return {
+      name: `${prefix}-${Date.now()}.${extension}`,
+      type: getScannedImageMimeType(extension),
+      uri: uris[0],
+    }
+  }
 }
 
 function DocumentPreview({ language, onClose, preview }) {
@@ -205,7 +302,7 @@ function DocumentRow({ autoOpenRenewal = false, document, highlight = false, lan
     const result = await DocumentPicker.getDocumentAsync({
       copyToCacheDirectory: true,
       multiple: false,
-      type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+      type: ['application/pdf', 'image/heic', 'image/heif', 'image/jpeg', 'image/png', 'image/webp'],
     })
 
     if (result.canceled || !result.assets?.[0]) return
@@ -241,8 +338,36 @@ function DocumentRow({ autoOpenRenewal = false, document, highlight = false, lan
     })
   }
 
+  async function scanDocumentFile() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per scansionare il documento.')
+      return
+    }
+
+    try {
+      const result = await DocumentScanner.scanDocument({
+        croppedImageQuality: 86,
+        maxNumDocuments: 2,
+      })
+
+      if (result?.status === 'cancel') return
+
+      const scannedFile = await buildScannedDocumentFile(result?.scannedImages)
+      if (!scannedFile) {
+        Alert.alert('Scansione non completata', 'Non ho ricevuto un file valido dallo scanner. Riprova o usa la fotocamera.')
+        return
+      }
+
+      await uploadSelectedFile(scannedFile)
+    } catch {
+      Alert.alert('Scanner non disponibile', 'Su questo telefono lo scanner documento non e disponibile. Usa Fotocamera o File/Galleria.')
+    }
+  }
+
   function pickDocument() {
-    Alert.alert('Carica documento', 'Scegli se fotografarlo o caricarlo dai file.', [
+    Alert.alert('Carica documento', 'Scegli come inserire il documento. Con lo scanner puoi fare anche fronte e retro.', [
+      { text: 'Scansiona fronte/retro', onPress: scanDocumentFile },
       { text: 'Fotocamera', onPress: takeDocumentPhoto },
       { text: 'File/Galleria', onPress: pickDocumentFile },
       { style: 'cancel', text: 'Annulla' },
@@ -253,7 +378,7 @@ function DocumentRow({ autoOpenRenewal = false, document, highlight = false, lan
     const result = await DocumentPicker.getDocumentAsync({
       copyToCacheDirectory: true,
       multiple: false,
-      type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+      type: ['application/pdf', 'image/heic', 'image/heif', 'image/jpeg', 'image/png', 'image/webp'],
     })
 
     if (result.canceled || !result.assets?.[0]) return
@@ -287,6 +412,33 @@ function DocumentRow({ autoOpenRenewal = false, document, highlight = false, lan
       type: asset.mimeType || 'image/jpeg',
       uri: asset.uri,
     })
+  }
+
+  async function scanRenewFile() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per scansionare il documento.')
+      return
+    }
+
+    try {
+      const result = await DocumentScanner.scanDocument({
+        croppedImageQuality: 86,
+        maxNumDocuments: 2,
+      })
+
+      if (result?.status === 'cancel') return
+
+      const scannedFile = await buildScannedDocumentFile(result?.scannedImages, 'rinnovo-scansionato')
+      if (!scannedFile) {
+        Alert.alert('Scansione non completata', 'Non ho ricevuto un file valido dallo scanner. Riprova o usa la fotocamera.')
+        return
+      }
+
+      setRenewFile(scannedFile)
+    } catch {
+      Alert.alert('Scanner non disponibile', 'Su questo telefono lo scanner documento non e disponibile. Usa Fotocamera o File/Galleria.')
+    }
   }
 
   async function saveRenewal() {
@@ -395,6 +547,9 @@ function DocumentRow({ autoOpenRenewal = false, document, highlight = false, lan
               ) : null}
             </View>
             <View style={styles.renewActions}>
+              <Pressable disabled={isBusy} onPress={scanRenewFile} style={styles.renewActionButton}>
+                <Text style={styles.renewActionText}>Scanner F/R</Text>
+              </Pressable>
               <Pressable disabled={isBusy} onPress={takeRenewPhoto} style={styles.renewActionButton}>
                 <Text style={styles.renewActionText}>Fotocamera</Text>
               </Pressable>

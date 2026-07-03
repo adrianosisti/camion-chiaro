@@ -112,13 +112,13 @@ readme.getRange('A11:H11').format = { fill: palette.warning, font: { bold: true,
 
 addTable(
   workbook.worksheets.add('Autisti'),
-  ['Nome e cognome *', 'Username *', 'Password *', 'Telefono *', 'Email', 'Ruolo', 'Deposito / sede', 'Documento iniziale', 'Scadenza documento', 'Numero documento', 'Visibile in app', 'Note'],
+  ['Nome e cognome *', 'Username *', 'Password *', 'Telefono *', 'Ruolo', 'Deposito / sede', 'Documento iniziale', 'Scadenza documento', 'Numero documento', 'Visibile in app', 'Note'],
   [
-    ['Mario Rossi', 'mario.rossi', 'Vygo2026!', '+39 333 111 1111', 'mario.rossi@azienda.it', 'Autista bilico', 'Verona', 'Patente C+E', '2027-05-31', 'PCE12345', 'si', 'Riga esempio: puoi cancellarla'],
-    ['Anna Verdi', 'anna.verdi', 'Vygo2026!', '+39 333 222 2222', 'anna.verdi@azienda.it', 'Autista furgone', 'Milano', 'CQC', '2027-11-30', 'CQC9988', 'si', ''],
+    ['Mario Rossi', 'mario.rossi', 'Vygo2026!', '+39 333 111 1111', 'Autista bilico', 'Verona', 'Patente C+E', '2027-05-31', 'PCE12345', 'si', 'Riga esempio: puoi cancellarla'],
+    ['Anna Verdi', 'anna.verdi', 'Vygo2026!', '+39 333 222 2222', 'Autista furgone', 'Milano', 'CQC', '2027-11-30', 'CQC9988', 'si', ''],
   ],
-  [24, 18, 16, 18, 28, 20, 18, 22, 18, 20, 16, 32],
-  { requiredColumns: [0, 1, 2, 3], tableName: 'VygoAutisti', textColumns: ['B', 'C', 'D', 'J'], validations: { K: ['si', 'no'] } },
+  [24, 18, 16, 18, 20, 18, 22, 18, 20, 16, 32],
+  { requiredColumns: [0, 1, 2, 3], tableName: 'VygoAutisti', textColumns: ['B', 'C', 'D', 'I'], validations: { J: ['si', 'no'] } },
 )
 
 addTable(
@@ -194,8 +194,8 @@ workbook.worksheets.getItem('Scadenze').getRange('B2:B40').format.numberFormat =
 workbook.worksheets.getItem('Scadenze').getRange('E2:E40').format.numberFormat = '@'
 
 const csv = [
-  ['tipo_riga', 'ambito_scadenza', 'nome', 'username', 'password', 'telefono', 'email', 'reparto', 'ruolo', 'mansione', 'deposito_sede', 'targa_o_codice', 'categoria_mezzo', 'tipo_attrezzatura', 'modello', 'allestimento', 'km', 'tipo_scadenza', 'data_scadenza', 'numero_documento', 'responsabile', 'visibile_app', 'note'],
-  ['autista', '', 'Mario Rossi', 'mario.rossi', 'Vygo2026!', '+39 333 111 1111', 'mario.rossi@azienda.it', 'autisti', 'Autista bilico', '', 'Verona', '', '', '', '', '', '', 'Patente C+E', '2027-05-31', 'PCE12345', 'Ufficio personale', 'si', 'Esempio autista'],
+  ['tipo_riga', 'ambito_scadenza', 'nome', 'username', 'password', 'telefono', 'email_contatto_persona', 'reparto', 'ruolo', 'mansione', 'deposito_sede', 'targa_o_codice', 'categoria_mezzo', 'tipo_attrezzatura', 'modello', 'allestimento', 'km', 'tipo_scadenza', 'data_scadenza', 'numero_documento', 'responsabile', 'visibile_app', 'note'],
+  ['autista', '', 'Mario Rossi', 'mario.rossi', 'Vygo2026!', '+39 333 111 1111', '', 'autisti', 'Autista bilico', '', 'Verona', '', '', '', '', '', '', 'Patente C+E', '2027-05-31', 'PCE12345', 'Ufficio personale', 'si', 'Esempio autista'],
   ['mezzo', '', '', '', '', '', '', '', '', '', 'Verona', 'AB123CD', 'trattore', '', 'Volvo FH', 'Trattore stradale', '340000', '', '', '', '', '', 'Esempio mezzo'],
   ['scadenza', 'mezzo', '', '', '', '', '', '', '', '', '', 'AB123CD', '', '', '', '', '', 'Revisione mezzo', '2026-12-15', 'REV-AB123CD', 'Ufficio flotta', 'no', 'Esempio scadenza'],
 ]
@@ -205,7 +205,7 @@ function csvEscape(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
-await fs.writeFile(`${outputDir}/vygo-import-anagrafiche.csv`, csv.map((row) => row.map(csvEscape).join(',')).join('\n'), 'utf8')
+await fs.writeFile(`${outputDir}/vygo-import-anagrafiche.csv`, `${csv.map((row) => row.map(csvEscape).join(',')).join('\n')}\n`, 'utf8')
 
 for (const sheetName of ['LEGGIMI', 'Autisti', 'Persone', 'Mezzi', 'Attrezzature', 'Documenti autisti', 'Scadenze']) {
   const preview = await workbook.render({ sheetName, autoCrop: 'all', scale: 1, format: 'png' })

@@ -3409,7 +3409,7 @@ function CamionChiaroApp() {
     await loadCompanyData({ silent: true })
     Alert.alert(
       'Password temporanea',
-      `Utente: ${name || result.data?.username || 'persona'}\nUsername: ${result.data?.username || ''}\nEmail tecnica: ${result.data?.authEmail || ''}\nPassword: ${result.data?.password || ''}`,
+      `Utente: ${name || result.data?.username || 'persona'}\nUsername: ${result.data?.username || ''}\nPassword: ${result.data?.password || ''}`,
     )
     return true
   }

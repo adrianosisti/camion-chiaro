@@ -4611,28 +4611,6 @@
   line-height: 1.35;
 }
 
-.auth-email-box {
-  display: grid;
-  gap: 4px;
-  margin: 0 20px 16px;
-  padding: 12px;
-  border: 1px solid #bae6fd;
-  border-radius: 8px;
-  background: #e0f2fe;
-}
-
-.auth-email-box strong {
-  color: #075985;
-  font-size: 0.8rem;
-}
-
-.auth-email-box span {
-  overflow-wrap: anywhere;
-  color: #0f172a;
-  font-size: 0.86rem;
-  font-weight: 720;
-}
-
 .password-field-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

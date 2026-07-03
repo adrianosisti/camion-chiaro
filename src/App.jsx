@@ -2203,7 +2203,6 @@ const workflowTranslations = {
     'driverApp.lastCheck': 'Ultimo check: {time}',
     'drivers.addTitle': 'Nuovo autista',
     'drivers.archive': 'Archivia autista',
-    'drivers.authEmail': 'Email accesso autista',
     'drivers.credentials': 'Credenziali',
     'drivers.depot': 'Deposito',
     'drivers.edit': 'Modifica autista',
@@ -2511,7 +2510,6 @@ const workflowTranslations = {
     'driverApp.lastCheck': 'Last check: {time}',
     'drivers.addTitle': 'New driver',
     'drivers.archive': 'Archive driver',
-    'drivers.authEmail': 'Driver login email',
     'drivers.credentials': 'Credentials',
     'drivers.depot': 'Depot',
     'drivers.edit': 'Edit driver',
@@ -2817,7 +2815,6 @@ const workflowTranslations = {
     'driverApp.lastCheck': 'Ultimo check: {time}',
     'drivers.addTitle': 'Nuevo conductor',
     'drivers.archive': 'Archivar conductor',
-    'drivers.authEmail': 'Email acceso conductor',
     'drivers.credentials': 'Credenciales',
     'drivers.depot': 'Base',
     'drivers.edit': 'Modificar conductor',
@@ -3123,7 +3120,6 @@ const workflowTranslations = {
     'driverApp.lastCheck': 'Dernier check : {time}',
     'drivers.addTitle': 'Nouveau chauffeur',
     'drivers.archive': 'Archiver chauffeur',
-    'drivers.authEmail': 'Email acces chauffeur',
     'drivers.credentials': 'Identifiants',
     'drivers.depot': 'Depot',
     'drivers.edit': 'Modifier chauffeur',
@@ -3429,7 +3425,6 @@ const workflowTranslations = {
     'driverApp.lastCheck': 'Letzter Check: {time}',
     'drivers.addTitle': 'Neuer Fahrer',
     'drivers.archive': 'Fahrer archivieren',
-    'drivers.authEmail': 'Fahrer Login-E-Mail',
     'drivers.credentials': 'Zugangsdaten',
     'drivers.depot': 'Depot',
     'drivers.edit': 'Fahrer bearbeiten',
@@ -3634,8 +3629,6 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Genera',
     'drivers.createTitle': 'Crea autista',
     'drivers.noVehicle': 'Nessun mezzo',
-    'drivers.supabaseEmail': 'Email accesso app',
-    'drivers.usernameHelp': 'Compila username per generarla',
     'drivers.vehicleAssigned': 'Mezzo assegnato',
     'drivers.statusAvailable': 'Disponibile',
     'drivers.statusPaused': 'Sospeso',
@@ -3692,8 +3685,6 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Generate',
     'drivers.createTitle': 'Create driver',
     'drivers.noVehicle': 'No vehicle',
-    'drivers.supabaseEmail': 'App login email',
-    'drivers.usernameHelp': 'Enter username to generate it',
     'drivers.vehicleAssigned': 'Assigned vehicle',
     'drivers.statusAvailable': 'Available',
     'drivers.statusPaused': 'Paused',
@@ -3750,8 +3741,6 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Generar',
     'drivers.createTitle': 'Crear conductor',
     'drivers.noVehicle': 'Sin vehiculo',
-    'drivers.supabaseEmail': 'Email acceso app',
-    'drivers.usernameHelp': 'Introduce usuario para generarlo',
     'drivers.vehicleAssigned': 'Vehiculo asignado',
     'drivers.statusAvailable': 'Disponible',
     'drivers.statusPaused': 'Suspendido',
@@ -3808,8 +3797,6 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Generer',
     'drivers.createTitle': 'Creer chauffeur',
     'drivers.noVehicle': 'Aucun vehicule',
-    'drivers.supabaseEmail': 'Email acces app',
-    'drivers.usernameHelp': 'Saisis le nom utilisateur pour le generer',
     'drivers.vehicleAssigned': 'Vehicule assigne',
     'drivers.statusAvailable': 'Disponible',
     'drivers.statusPaused': 'Suspendu',
@@ -3866,8 +3853,6 @@ const microcopyTranslations = {
     'drivers.generatePassword': 'Generieren',
     'drivers.createTitle': 'Fahrer erstellen',
     'drivers.noVehicle': 'Kein Fahrzeug',
-    'drivers.supabaseEmail': 'App-Zugangs-E-Mail',
-    'drivers.usernameHelp': 'Benutzername eingeben, um sie zu erzeugen',
     'drivers.vehicleAssigned': 'Zugewiesenes Fahrzeug',
     'drivers.statusAvailable': 'Verfugbar',
     'drivers.statusPaused': 'Pausiert',
@@ -5567,7 +5552,6 @@ function getDriverCreateDefaults() {
   return {
     canSubmitChecks: true,
     depot: 'Verona',
-    email: '',
     name: '',
     password: generateTemporaryPassword(),
     phone: '',
@@ -6148,7 +6132,7 @@ function buildBulkImportPreview(rawEntries = [], context = {}) {
       detail = hasInitialDocument ? 'Autista con accesso app e documento iniziale' : 'Autista con accesso app'
       payload = {
         depot: normalizeImportValue(getImportField(row, ['deposito_sede', 'deposito', 'sede'])),
-        email: normalizeImportValue(getImportField(row, ['email'])),
+        email: '',
         id: `imp-driver-${lineNumber}-${Date.now()}`,
         initialDocument: hasInitialDocument ? {
           documentNumber: initialDocumentNumber,
@@ -6186,7 +6170,7 @@ function buildBulkImportPreview(rawEntries = [], context = {}) {
       payload = {
         department,
         depot: normalizeImportValue(getImportField(row, ['deposito_sede', 'sede', 'reparto_operativo'])),
-        email: normalizeImportValue(getImportField(row, ['email'])),
+        email: normalizeImportValue(getImportField(row, ['email_contatto_persona', 'email_contatto', 'email'])),
         id: `imp-person-${lineNumber}-${Date.now()}`,
         initialDeadlines: [],
         jobTitle: normalizeImportValue(getImportField(row, ['mansione'])) || getWorkforceRoleLabel(personType),
@@ -8320,7 +8304,7 @@ function App() {
     const cleanPerson = {
       ...personWithoutPassword,
       authEmail: buildDriverAuthEmail(cleanUsername),
-      email: person.email || buildDriverAuthEmail(cleanUsername),
+      email: person.email || '',
       jobTitle: person.jobTitle || getWorkforceRoleLabel(person.personType),
       status: 'active',
       username: cleanUsername,
@@ -8466,14 +8450,12 @@ function App() {
         return false
       }
 
-      const authEmail = result.data?.authEmail ?? ''
-      const loginEmails = Array.isArray(result.data?.loginEmails) ? result.data.loginEmails : []
       const password = result.data?.password ?? ''
       const username = result.data?.username ?? ''
 
       setStatus(`Password reimpostata per ${displayName}.`)
       window.alert(
-        `Password temporanea pronta per ${displayName}\n\nUsername: ${username || displayName}\nEmail tecnica principale: ${authEmail}\nPassword: ${password}\n\nSe con lo username non entra, prova una di queste email tecniche:\n${loginEmails.join('\n') || authEmail}\n\nComunicala alla persona e falla cambiare al prossimo accesso.`,
+        `Password temporanea pronta per ${displayName}\n\nUsername: ${username || displayName}\nPassword: ${password}\n\nComunicala alla persona e falla cambiare al prossimo accesso.`,
       )
       return true
     }
@@ -14704,7 +14686,6 @@ function PersonCreatePanel({ onAddPerson, syncStatus }) {
   const [isSaving, setIsSaving] = useState(false)
   const [form, setForm] = useState(getPersonCreateDefaults)
   const [showValidation, setShowValidation] = useState(false)
-  const authEmail = form.username ? buildDriverAuthEmail(form.username) : ''
   const currentPersonTypes = workforcePersonTypeOptions[form.department] ?? workforcePersonTypeOptions.office
   const missingRequiredFields = [
     form.name.trim() ? null : 'nome e cognome',
@@ -14862,10 +14843,6 @@ function PersonCreatePanel({ onAddPerson, syncStatus }) {
           </label>
         )}
       </div>
-      <div className="auth-email-box">
-        <strong>Email tecnica accesso app</strong>
-        <span>{authEmail || 'Si genera dallo username.'}</span>
-      </div>
       {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields, t)} />}
       {syncStatus && <p className="sync-status-line">{syncStatus}</p>}
       <button className="primary-button full-button" disabled={isSaving} type="submit">
@@ -14952,7 +14929,6 @@ function DriversWorkspace({
       ...currentDrafts,
       [driver.id]: {
         depot: driver.depot,
-        email: driver.email,
         name: driver.name,
         phone: driver.phone,
         role: driver.role,
@@ -15079,7 +15055,7 @@ function DriverManagementRow({
         </div>
         <div>
           <strong>{username}</strong>
-          <span>{buildDriverAuthEmail(username)}</span>
+          <span>Accesso con username</span>
         </div>
         <select value={draft.vehicleId} onChange={(event) => onUpdateDraft('vehicleId', event.target.value)}>
           <option value="">{t('drivers.noVehicle')}</option>
@@ -15141,7 +15117,7 @@ function DriverManagementRow({
       </div>
       <div>
         <strong>{username}</strong>
-        <span>{driver.authEmail ?? buildDriverAuthEmail(username)}</span>
+        <span>Accesso con username</span>
       </div>
       <div>
         <strong>{assignedVehicle?.plate ?? t('drivers.assignedNone')}</strong>
@@ -15175,7 +15151,6 @@ function DriverCreatePanel({ onAddDriver, onBackHome, syncStatus, vehicleRecords
   const [form, setForm] = useState(getDriverCreateDefaults)
   const [showValidation, setShowValidation] = useState(false)
 
-  const authEmail = form.username ? buildDriverAuthEmail(form.username) : ''
   const missingRequiredFields = [
     form.name.trim() ? null : t('drivers.name').toLowerCase(),
     form.username.trim() ? null : t('drivers.username').toLowerCase(),
@@ -15207,10 +15182,9 @@ function DriverCreatePanel({ onAddDriver, onBackHome, syncStatus, vehicleRecords
     setIsSaving(true)
     const added = await onAddDriver({
       id: `drv-${Date.now()}`,
-      authEmail,
       canSubmitChecks: form.canSubmitChecks !== false,
       depot: form.depot,
-      email: form.email || authEmail,
+      email: '',
       name: form.name,
       password: form.password,
       phone: form.phone,
@@ -15301,10 +15275,6 @@ function DriverCreatePanel({ onAddDriver, onBackHome, syncStatus, vehicleRecords
             <small>{t('drivers.checkPermissionHelp')}</small>
           </span>
         </label>
-      </div>
-      <div className="auth-email-box">
-        <strong>{t('drivers.supabaseEmail')}</strong>
-        <span>{authEmail || t('drivers.usernameHelp')}</span>
       </div>
       {showValidation && !canSubmit && <FormValidationAlert message={formatMissingFields(missingRequiredFields, t)} />}
       {syncStatus && <p className="sync-status-line in-create-panel">{syncStatus}</p>}

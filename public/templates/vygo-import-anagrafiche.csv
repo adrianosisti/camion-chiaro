@@ -1,4 +1,4 @@
-tipo_riga,ambito_scadenza,nome,username,password,telefono,email,reparto,ruolo,mansione,deposito_sede,targa_o_codice,categoria_mezzo,tipo_attrezzatura,modello,allestimento,km,tipo_scadenza,data_scadenza,numero_documento,responsabile,visibile_app,note
-autista,,Mario Rossi,mario.rossi,Vygo2026!,+39 333 111 1111,mario.rossi@azienda.it,autisti,Autista bilico,,Verona,,,,,,,Patente C+E,2027-05-31,PCE12345,Ufficio personale,si,Esempio autista
+tipo_riga,ambito_scadenza,nome,username,password,telefono,email_contatto_persona,reparto,ruolo,mansione,deposito_sede,targa_o_codice,categoria_mezzo,tipo_attrezzatura,modello,allestimento,km,tipo_scadenza,data_scadenza,numero_documento,responsabile,visibile_app,note
+autista,,Mario Rossi,mario.rossi,Vygo2026!,+39 333 111 1111,,autisti,Autista bilico,,Verona,,,,,,,Patente C+E,2027-05-31,PCE12345,Ufficio personale,si,Esempio autista
 mezzo,,,,,,,,,,Verona,AB123CD,trattore,,Volvo FH,Trattore stradale,340000,,,,,,Esempio mezzo
 scadenza,mezzo,,,,,,,,,,AB123CD,,,,,,Revisione mezzo,2026-12-15,REV-AB123CD,Ufficio flotta,no,Esempio scadenza

@@ -146,7 +146,7 @@ function toDriverPayload(driver, companyId, authUserId, authEmail, username) {
     auth_email: authEmail,
     company_id: companyId,
     depot: driver.depot ?? '',
-    email: driver.email || authEmail,
+    email: driver.email || null,
     full_name: driver.name,
     phone: driver.phone,
     profile_image_path: driver.profileImagePath || null,

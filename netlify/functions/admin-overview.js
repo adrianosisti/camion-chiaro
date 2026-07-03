@@ -125,6 +125,37 @@ function isPaidInvoice(invoice) {
   return ['paid', 'succeeded'].includes(invoice.status) || Boolean(invoice.paid_at)
 }
 
+function isRecentActivity(value, days = 7) {
+  if (!value) return false
+  const timestamp = new Date(value).getTime()
+  if (!Number.isFinite(timestamp)) return false
+  return Date.now() - timestamp <= days * 86400000
+}
+
+function buildPilotChecklist({ company, compliance, costs, documents, drivers, faults, people, teamMessages, vehicles, checks }) {
+  const activeDrivers = drivers.filter((driver) => !isArchivedStatus(driver.status))
+  const activePeople = people.filter((person) => !isArchivedStatus(person.status))
+  const activeVehicles = vehicles.filter((vehicle) => !isArchivedStatus(vehicle.status))
+  const checklist = [
+    { id: 'profile', label: 'Azienda configurata', done: Boolean(company.name) },
+    { id: 'people', label: 'Persone create', done: activeDrivers.length + activePeople.length > 0 },
+    { id: 'fleet', label: 'Flotta inserita', done: activeVehicles.length > 0 },
+    { id: 'documents', label: 'Documenti e scadenze', done: documents.length + compliance.length > 0 },
+    { id: 'checks', label: 'Check provato', done: checks.length > 0 },
+    { id: 'faults', label: 'Guasti provati', done: faults.length > 0 },
+    { id: 'chat', label: 'Chat usata', done: teamMessages.length > 0 },
+    { id: 'costs', label: 'Centro costi provato', done: costs.length > 0 || faults.some((fault) => Number(fault.repair_cost_cents ?? 0) > 0) },
+  ]
+  const doneCount = checklist.filter((item) => item.done).length
+
+  return {
+    checklist,
+    doneCount,
+    score: checklist.length ? Math.round((doneCount / checklist.length) * 100) : 0,
+    totalCount: checklist.length,
+  }
+}
+
 function buildCompanySummary(company, collections, options = {}) {
   const companyId = company.id
   const isInternalAdminCompany =
@@ -141,6 +172,7 @@ function buildCompanySummary(company, collections, options = {}) {
   const costs = getCompanyRows(collections.costs, companyId)
   const invoices = getCompanyRows(collections.invoices, companyId)
   const control = getCompanyRows(collections.controls, companyId)[0] ?? {}
+  const pilotFeedback = getCompanyRows(collections.pilotFeedback, companyId)
   const chatMessages = getCompanyRows(collections.chatMessages, companyId)
   const teamMessages = getCompanyRows(collections.teamMessages, companyId)
   const storageFiles = getCompanyRows(collections.storageFiles, companyId).filter((file) => !file.deleted_at)
@@ -173,6 +205,44 @@ function buildCompanySummary(company, collections, options = {}) {
       .filter((fault) => Number(fault.repair_cost_cents ?? 0) > 0)
       .filter((fault) => isCurrentMonth(fault.repair_recorded_at || fault.updated_at || fault.created_at))
       .reduce((total, fault) => total + Number(fault.repair_cost_cents ?? 0), 0)
+  const pilotChecklist = buildPilotChecklist({
+    checks,
+    company,
+    compliance,
+    costs,
+    documents,
+    drivers,
+    faults,
+    people,
+    teamMessages,
+    vehicles,
+  })
+  const pilotWeekActivityCount = [
+    ...drivers.map((row) => row.created_at),
+    ...vehicles.map((row) => row.created_at),
+    ...people.map((row) => row.created_at),
+    ...assets.map((row) => row.created_at),
+    ...checks.map((row) => row.created_at),
+    ...faults.map((row) => row.updated_at || row.created_at),
+    ...costs.map((row) => row.updated_at || row.created_at),
+    ...chatMessages.map((row) => row.created_at),
+    ...teamMessages.map((row) => row.created_at),
+    ...pilotFeedback.map((row) => row.created_at),
+  ].filter((value) => isRecentActivity(value, 7)).length
+  const latestPilotFeedback = [...pilotFeedback]
+    .sort((first, second) => new Date(second.created_at || 0) - new Date(first.created_at || 0))[0]
+  const pilotFeedbackThread = [...pilotFeedback]
+    .sort((first, second) => new Date(first.created_at || 0) - new Date(second.created_at || 0))
+    .slice(-24)
+    .map((entry) => ({
+      actorRole: entry.actor_role ?? 'company',
+      category: entry.category ?? 'problem',
+      createdAt: entry.created_at ?? '',
+      id: entry.id ?? `${entry.company_id}-${entry.created_at}`,
+      message: entry.message ?? '',
+      screen: entry.screen ?? '',
+      status: entry.status ?? 'open',
+    }))
   const latestActivityAt = getLatestDate(
     company.updated_at,
     drivers.map((row) => row.created_at),
@@ -184,6 +254,7 @@ function buildCompanySummary(company, collections, options = {}) {
     costs.map((row) => row.updated_at || row.created_at),
     chatMessages.map((row) => row.created_at),
     teamMessages.map((row) => row.created_at),
+    pilotFeedback.map((row) => row.created_at),
   )
   const alertCount = openFaults.length + criticalChecks.length + urgentDeadlines.length + expiredDocuments.length
   const health =
@@ -225,6 +296,21 @@ function buildCompanySummary(company, collections, options = {}) {
     name: company.name ?? 'Azienda',
     openFaultCount: openFaults.length,
     peopleCount: people.filter((person) => !isArchivedStatus(person.status)).length,
+    pilotChecklist: pilotChecklist.checklist,
+    pilotDoneCount: pilotChecklist.doneCount,
+    pilotFeedbackCount: pilotFeedback.length,
+    pilotFeedbackThread,
+    pilotLatestFeedback: latestPilotFeedback ? {
+      category: latestPilotFeedback.category ?? 'problem',
+      createdAt: latestPilotFeedback.created_at ?? '',
+      message: latestPilotFeedback.message ?? '',
+      screen: latestPilotFeedback.screen ?? '',
+      status: latestPilotFeedback.status ?? 'open',
+    } : null,
+    pilotOpenFeedbackCount: pilotFeedback.filter((entry) => !['done', 'archived'].includes(entry.status)).length,
+    pilotScore: pilotChecklist.score,
+    pilotTotalCount: pilotChecklist.totalCount,
+    pilotWeekActivityCount,
     storageBytes,
     storageFileCount: storageFiles.length,
     storageLimitBytes,
@@ -337,6 +423,7 @@ export async function handler(event) {
       storageFiles,
       invoices,
       controls,
+      pilotFeedback,
     ] = await Promise.all([
       safeSelect(serviceClient, 'drivers', 'company_id, status, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'vehicles', 'company_id, status, created_at', issues, { limit: 10000 }),
@@ -352,6 +439,7 @@ export async function handler(event) {
       safeSelect(serviceClient, 'company_storage_files', 'company_id, size_bytes, category, deleted_at, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'company_invoices', 'company_id, invoice_number, issued_at, paid_at, amount_cents, currency, status, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'admin_company_controls', 'company_id, sales_stage, priority, owner_name, next_follow_up, notes, updated_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'pilot_feedback', 'id, company_id, actor_role, category, screen, message, status, created_at, updated_at', issues, { limit: 10000 }),
     ])
 
     const collections = {
@@ -366,6 +454,7 @@ export async function handler(event) {
       faults,
       invoices,
       people,
+      pilotFeedback,
       storageFiles,
       teamMessages,
       vehicles,
@@ -385,6 +474,9 @@ export async function handler(event) {
         invoiceMonthCents: totals.invoiceMonthCents + company.invoiceMonthCents,
         lifetimeRevenueCents: totals.lifetimeRevenueCents + company.lifetimeRevenueCents,
         mrrCents: totals.mrrCents + company.monthlyPlanCents,
+        pilotOpenFeedbackCount: totals.pilotOpenFeedbackCount + company.pilotOpenFeedbackCount,
+        pilotReadyCompanyCount: totals.pilotReadyCompanyCount + (!company.isInternalAdminCompany && company.pilotScore >= 82 ? 1 : 0),
+        pilotWeekActivityCount: totals.pilotWeekActivityCount + company.pilotWeekActivityCount,
         storageBytes: totals.storageBytes + company.storageBytes,
       }),
       {
@@ -397,6 +489,9 @@ export async function handler(event) {
         invoiceMonthCents: 0,
         lifetimeRevenueCents: 0,
         mrrCents: 0,
+        pilotOpenFeedbackCount: 0,
+        pilotReadyCompanyCount: 0,
+        pilotWeekActivityCount: 0,
         storageBytes: 0,
       },
     )

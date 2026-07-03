@@ -83,6 +83,12 @@ const companyMenuItems = [
     title: 'Report',
   },
   {
+    body: 'Scrivi feedback a Vygo e segui i passaggi della prova reale.',
+    icon: 'chatbox-ellipses-outline',
+    id: 'pilot',
+    title: 'Area test',
+  },
+  {
     body: 'Autisti, persone, flotta, muletti e attrezzature.',
     icon: 'folder-open-outline',
     id: 'records',

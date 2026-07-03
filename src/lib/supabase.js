@@ -284,6 +284,21 @@ function mapCompanyInvoice(row) {
   }
 }
 
+function mapPilotFeedback(row) {
+  return {
+    actorRole: row.actor_role ?? 'company',
+    adminNotes: row.admin_notes ?? '',
+    category: row.category ?? 'problem',
+    companyId: row.company_id,
+    createdAt: row.created_at,
+    id: row.id,
+    message: row.message ?? '',
+    screen: row.screen ?? '',
+    status: row.status ?? 'open',
+    updatedAt: row.updated_at,
+  }
+}
+
 function mapCompanyStorageSummary(row = {}) {
   return {
     chatBytes: Number(row.chat_bytes ?? 0),
@@ -1223,6 +1238,46 @@ export async function updateAdminCompanyControl(companyId, updates = {}) {
   }
 }
 
+export async function createAdminPilotFeedbackReply(companyId, message) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId || !message?.trim()) {
+    return { data: null, error: { message: 'Messaggio non valido.' } }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione admin mancante. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/admin-pilot-feedback', {
+      body: JSON.stringify({ companyId, message }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload.error ?? 'Risposta Area test non inviata.' } }
+    }
+
+    return { data: payload.feedback ? mapPilotFeedback(payload.feedback) : null, error: null }
+  } catch {
+    return {
+      data: null,
+      error: {
+        message: 'Pannello admin non raggiungibile. Riprova dal sito online.',
+      },
+    }
+  }
+}
+
 export async function markDriverDocumentStorageFileDeleted(filePath) {
   await markCompanyStorageFileDeleted({ bucket: driverDocumentsBucket, filePath })
 }
@@ -1822,6 +1877,59 @@ export async function fetchCompanyCostEntries(companyId = configuredCompanyId) {
   }
 
   return { data: data?.map(mapCostEntry) ?? [], error }
+}
+
+export async function fetchPilotFeedback(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('pilot_feedback')
+    .select('id, company_id, actor_role, category, screen, message, status, admin_notes, created_at, updated_at')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(120)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapPilotFeedback) ?? [], error }
+}
+
+export async function createPilotFeedbackRecord(feedback, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+  const cleanMessage = feedback.message?.trim()
+
+  if (!supabase || !companyId || !cleanMessage) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('pilot_feedback')
+    .insert({
+      actor_role: feedback.actorRole || 'company',
+      category: feedback.category || 'problem',
+      company_id: companyId,
+      message: cleanMessage,
+      screen: feedback.screen?.trim() || null,
+      status: 'open',
+    })
+    .select('id, company_id, actor_role, category, screen, message, status, admin_notes, created_at, updated_at')
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Area test non ancora attiva. Esegui il file 53 su Supabase.' },
+      missingSchema: true,
+    }
+  }
+
+  return { data: data ? mapPilotFeedback(data) : null, error }
 }
 
 export async function fetchChatThreads(companyId = configuredCompanyId) {

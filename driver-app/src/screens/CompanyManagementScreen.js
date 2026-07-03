@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, ImageBackground, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
+import * as FileSystem from 'expo-file-system/legacy'
+import * as ImagePicker from 'expo-image-picker'
+import * as Print from 'expo-print'
 import { Ionicons } from '@expo/vector-icons'
+import DocumentScanner from 'react-native-document-scanner-plugin'
 import { DateField } from '../components/DateField'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
@@ -131,6 +135,232 @@ function isValidDateValue(value = '') {
   if (!value) return false
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   return Number.isFinite(new Date(value).getTime())
+}
+
+function getFileExtension(path = '') {
+  const cleanPath = String(path ?? '').split('?')[0]
+  const match = cleanPath.match(/\.([a-z0-9]+)$/i)
+  return match?.[1]?.toLowerCase() || 'pdf'
+}
+
+function getScannedImageExtension(path = '') {
+  const extension = getFileExtension(path)
+  return ['heic', 'heif', 'jpg', 'jpeg', 'png', 'webp'].includes(extension) ? extension : 'jpg'
+}
+
+function getScannedImageMimeType(extension = 'jpg') {
+  if (extension === 'png') return 'image/png'
+  if (extension === 'webp') return 'image/webp'
+  if (extension === 'heic') return 'image/heic'
+  if (extension === 'heif') return 'image/heif'
+  return 'image/jpeg'
+}
+
+function normalizeScannedDocumentUri(value = '') {
+  const cleanValue = String(value ?? '').trim()
+  if (!cleanValue) return ''
+  if (/^(file|content|ph|assets-library):/i.test(cleanValue)) return cleanValue
+  if (cleanValue.startsWith('/')) return `file://${cleanValue}`
+  return cleanValue
+}
+
+async function buildScannedImageDataUri(uri = '') {
+  const extension = getScannedImageExtension(uri)
+  const mimeType = getScannedImageMimeType(extension)
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
+  return `data:${mimeType};base64,${base64}`
+}
+
+async function buildScannedDocumentFile(values = [], prefix = 'documento-scansionato') {
+  const uris = (Array.isArray(values) ? values : [values])
+    .map(normalizeScannedDocumentUri)
+    .filter(Boolean)
+    .slice(0, 2)
+
+  if (!uris.length) return null
+
+  if (uris.length === 1) {
+    const extension = getScannedImageExtension(uris[0])
+    return {
+      name: `${prefix}-${Date.now()}.${extension}`,
+      type: getScannedImageMimeType(extension),
+      uri: uris[0],
+    }
+  }
+
+  try {
+    const pages = await Promise.all(uris.map(async (uri) => {
+      const dataUri = await buildScannedImageDataUri(uri)
+      return `<section class="page"><img src="${dataUri}" /></section>`
+    }))
+    const printed = await Print.printToFileAsync({
+      html: `<!doctype html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <style>
+              @page { margin: 16mm; size: A4; }
+              * { box-sizing: border-box; }
+              body { margin: 0; background: #ffffff; }
+              .page {
+                align-items: center;
+                display: flex;
+                height: 265mm;
+                justify-content: center;
+                page-break-after: always;
+                width: 178mm;
+              }
+              .page:last-child { page-break-after: auto; }
+              img {
+                display: block;
+                max-height: 100%;
+                max-width: 100%;
+                object-fit: contain;
+              }
+            </style>
+          </head>
+          <body>${pages.join('')}</body>
+        </html>`,
+    })
+
+    return {
+      name: `${prefix}-fronte-retro-${Date.now()}.pdf`,
+      type: 'application/pdf',
+      uri: printed.uri,
+    }
+  } catch {
+    const extension = getScannedImageExtension(uris[0])
+    return {
+      name: `${prefix}-${Date.now()}.${extension}`,
+      type: getScannedImageMimeType(extension),
+      uri: uris[0],
+    }
+  }
+}
+
+async function pickFileAttachment() {
+  const result = await DocumentPicker.getDocumentAsync({
+    copyToCacheDirectory: true,
+    multiple: false,
+    type: ['application/pdf', 'image/heic', 'image/heif', 'image/jpeg', 'image/png', 'image/webp'],
+  })
+
+  if (result.canceled || !result.assets?.[0]) return null
+
+  const file = result.assets[0]
+  return {
+    name: file.name,
+    type: file.mimeType || 'application/octet-stream',
+    uri: file.uri,
+  }
+}
+
+async function pickGalleryAttachment() {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+  if (!permission.granted) {
+    Alert.alert('Galleria bloccata', 'Consenti l accesso alla galleria per scegliere la foto del documento.')
+    return null
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    allowsMultipleSelection: false,
+    mediaTypes: ['images'],
+    quality: 0.82,
+  })
+
+  if (result.canceled || !result.assets?.[0]) return null
+
+  const asset = result.assets[0]
+  return {
+    name: asset.fileName || `foto-documento-${Date.now()}.jpg`,
+    type: asset.mimeType || 'image/jpeg',
+    uri: asset.uri,
+  }
+}
+
+async function takePhotoAttachment() {
+  const permission = await ImagePicker.requestCameraPermissionsAsync()
+  if (!permission.granted) {
+    Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per fotografare il documento.')
+    return null
+  }
+
+  const result = await ImagePicker.launchCameraAsync({
+    allowsEditing: false,
+    mediaTypes: ['images'],
+    quality: 0.78,
+  })
+
+  if (result.canceled || !result.assets?.[0]) return null
+
+  const asset = result.assets[0]
+  return {
+    name: asset.fileName || `foto-documento-${Date.now()}.jpg`,
+    type: asset.mimeType || 'image/jpeg',
+    uri: asset.uri,
+  }
+}
+
+async function scanAttachmentDocument() {
+  const permission = await ImagePicker.requestCameraPermissionsAsync()
+  if (!permission.granted) {
+    Alert.alert('Fotocamera bloccata', 'Consenti la fotocamera per scansionare il documento.')
+    return null
+  }
+
+  try {
+    const result = await DocumentScanner.scanDocument({
+      croppedImageQuality: 86,
+      maxNumDocuments: 2,
+    })
+
+    if (result?.status === 'cancel') return null
+
+    const scannedFile = await buildScannedDocumentFile(result?.scannedImages)
+    if (!scannedFile) {
+      Alert.alert('Scansione non completata', 'Non ho ricevuto un file valido dallo scanner. Riprova o usa la fotocamera.')
+      return null
+    }
+
+    return scannedFile
+  } catch {
+    Alert.alert('Scanner non disponibile', 'Su questo telefono lo scanner documento non e disponibile. Usa Fotocamera, Galleria o File/PDF.')
+    return null
+  }
+}
+
+function pickAttachmentWithOptions(onSelected, title = 'Allega documento') {
+  Alert.alert(title, 'Scegli come inserire il documento o la foto.', [
+    {
+      text: 'Scansiona fronte/retro',
+      onPress: async () => {
+        const file = await scanAttachmentDocument()
+        if (file) onSelected(file)
+      },
+    },
+    {
+      text: 'Fotocamera',
+      onPress: async () => {
+        const file = await takePhotoAttachment()
+        if (file) onSelected(file)
+      },
+    },
+    {
+      text: 'Galleria foto',
+      onPress: async () => {
+        const file = await pickGalleryAttachment()
+        if (file) onSelected(file)
+      },
+    },
+    {
+      text: 'File/PDF',
+      onPress: async () => {
+        const file = await pickFileAttachment()
+        if (file) onSelected(file)
+      },
+    },
+    { style: 'cancel', text: 'Annulla' },
+  ])
 }
 
 function formatDateTime(value, language = 'it') {
@@ -429,21 +659,8 @@ export function DeadlineRenewModal({
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
-  async function pickRenewFile() {
-    const result = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      multiple: false,
-      type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
-    })
-
-    if (result.canceled || !result.assets?.[0]) return
-
-    const file = result.assets[0]
-    updateField('file', {
-      name: file.name,
-      type: file.mimeType || 'application/octet-stream',
-      uri: file.uri,
-    })
+  function pickRenewFile() {
+    pickAttachmentWithOptions((file) => updateField('file', file), 'Carica rinnovo')
   }
 
   async function openCurrentFile() {
@@ -559,7 +776,7 @@ export function DeadlineRenewModal({
 
           <AttachmentButton
             file={form.file}
-            label="Carica nuovo PDF o foto"
+            label="Scanner, foto, galleria o PDF"
             onPress={pickRenewFile}
             onRemove={() => updateField('file', null)}
           />
@@ -1213,21 +1430,8 @@ export function CompanyManagementScreen({
     })
   }
 
-  async function pickAttachment(onSelected) {
-    const result = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      multiple: false,
-      type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
-    })
-
-    if (result.canceled || !result.assets?.[0]) return
-
-    const file = result.assets[0]
-    onSelected({
-      name: file.name,
-      type: file.mimeType || 'application/octet-stream',
-      uri: file.uri,
-    })
+  function pickAttachment(onSelected, title = 'Allega documento') {
+    pickAttachmentWithOptions(onSelected, title)
   }
 
   async function submitCostEntry() {
@@ -1850,29 +2054,29 @@ export function CompanyManagementScreen({
           <DateField label="Assicurazione" language={language} onChange={(value) => updateVehicleForm('insuranceDueDate', value)} value={vehicleForm.insuranceDueDate} />
           <AttachmentButton
             file={vehicleForm.insuranceFile}
-            label="Allega assicurazione"
-            onPress={() => pickAttachment((file) => updateVehicleForm('insuranceFile', file))}
+            label="Scanner, foto o file assicurazione"
+            onPress={() => pickAttachment((file) => updateVehicleForm('insuranceFile', file), 'Allega assicurazione')}
             onRemove={() => updateVehicleForm('insuranceFile', null)}
           />
           <DateField label="Revisione" language={language} onChange={(value) => updateVehicleForm('revisionDueDate', value)} value={vehicleForm.revisionDueDate} />
           <AttachmentButton
             file={vehicleForm.revisionFile}
-            label="Allega revisione"
-            onPress={() => pickAttachment((file) => updateVehicleForm('revisionFile', file))}
+            label="Scanner, foto o file revisione"
+            onPress={() => pickAttachment((file) => updateVehicleForm('revisionFile', file), 'Allega revisione')}
             onRemove={() => updateVehicleForm('revisionFile', null)}
           />
           <DateField label="Tachigrafo" language={language} onChange={(value) => updateVehicleForm('tachographDueDate', value)} value={vehicleForm.tachographDueDate} />
           <AttachmentButton
             file={vehicleForm.tachographFile}
-            label="Allega documento tachigrafo"
-            onPress={() => pickAttachment((file) => updateVehicleForm('tachographFile', file))}
+            label="Scanner, foto o file tachigrafo"
+            onPress={() => pickAttachment((file) => updateVehicleForm('tachographFile', file), 'Allega tachigrafo')}
             onRemove={() => updateVehicleForm('tachographFile', null)}
           />
           <DateField label="Libretto mezzo" language={language} onChange={(value) => updateVehicleForm('bookletDueDate', value)} value={vehicleForm.bookletDueDate} />
           <AttachmentButton
             file={vehicleForm.bookletFile}
-            label="Allega libretto"
-            onPress={() => pickAttachment((file) => updateVehicleForm('bookletFile', file))}
+            label="Scanner, foto o file libretto"
+            onPress={() => pickAttachment((file) => updateVehicleForm('bookletFile', file), 'Allega libretto')}
             onRemove={() => updateVehicleForm('bookletFile', null)}
           />
           <PrimaryButton loading={isSaving} onPress={submitVehicle} title="Aggiungi mezzo" />
@@ -1927,8 +2131,8 @@ export function CompanyManagementScreen({
           <TextField label="Responsabile" onChangeText={(value) => updateDeadlineForm('owner', value)} placeholder="Opzionale" value={deadlineForm.owner} />
           <AttachmentButton
             file={deadlineForm.file}
-            label="Allega PDF o foto"
-            onPress={() => pickAttachment((file) => updateDeadlineForm('file', file))}
+            label="Scanner, foto, galleria o PDF"
+            onPress={() => pickAttachment((file) => updateDeadlineForm('file', file), 'Allega scadenza')}
             onRemove={() => updateDeadlineForm('file', null)}
           />
           <PrimaryButton loading={isSaving} onPress={submitDeadline} title="Aggiungi scadenza" />
@@ -2313,7 +2517,12 @@ export function CompanyManagementScreen({
               <TextField label="Fornitore" onChangeText={(value) => updateCostForm('supplier', value)} placeholder="Officina, gommista..." value={costForm.supplier} />
               <TextField keyboardType="numeric" label="Km" onChangeText={(value) => updateCostForm('odometerKm', value)} placeholder="Opzionale" value={costForm.odometerKm} />
               <TextField label="Note" multiline onChangeText={(value) => updateCostForm('notes', value)} placeholder="Numero fattura, dettagli intervento..." value={costForm.notes} />
-              <AttachmentButton file={costForm.file} label="Allega fattura o foto" onPress={() => pickAttachment((file) => updateCostForm('file', file))} onRemove={() => updateCostForm('file', null)} />
+              <AttachmentButton
+                file={costForm.file}
+                label="Scanner, foto, galleria o PDF"
+                onPress={() => pickAttachment((file) => updateCostForm('file', file), 'Allega fattura o ricevuta')}
+                onRemove={() => updateCostForm('file', null)}
+              />
               <PrimaryButton loading={isSavingCost} onPress={submitCostEntry} title={costForm.id ? 'Aggiorna spesa' : 'Salva spesa libera'} />
               {costForm.id ? (
                 <Pressable onPress={resetCostForm} style={styles.secondaryInlineButton}>

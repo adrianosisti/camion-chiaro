@@ -757,6 +757,20 @@ const translations = {
     'hero.priorityDeadlineLabel': 'Scadenze 30 giorni',
     'hero.priorityFaultDetail': 'segnalazioni ancora aperte',
     'hero.priorityFaultLabel': 'Guasti aperti',
+    'hero.radarAction': 'Prossima azione',
+    'hero.radarAllGood': 'Giornata sotto controllo',
+    'hero.radarCost': 'Soldi del mese',
+    'hero.radarCostDetail': '{count} voci costo registrate',
+    'hero.radarIndex': 'Indice controllo',
+    'hero.radarOpen': 'Pratiche aperte',
+    'hero.radarOpenDetail': 'guasti, check e scadenze da lavorare',
+    'hero.radarOpenCosts': 'Apri costi',
+    'hero.radarOpenDeadlines': 'Apri scadenze',
+    'hero.radarOpenFaults': 'Apri guasti',
+    'hero.radarOpenNotifications': 'Apri notifiche',
+    'hero.radarPerfect': 'Nessuna urgenza reale: continua cosi.',
+    'hero.radarSubtitle': 'Il quadro da titolare: rischio operativo, soldi usciti e prima cosa da fare.',
+    'hero.radarTitle': 'Radar direzione',
     'language.label': 'Lingua',
     'language.short': 'Lingua',
     'nav.chat': 'Chat',
@@ -945,6 +959,20 @@ const translations = {
     'hero.priorityDeadlineLabel': '30-day deadlines',
     'hero.priorityFaultDetail': 'reports still open',
     'hero.priorityFaultLabel': 'Open faults',
+    'hero.radarAction': 'Next action',
+    'hero.radarAllGood': 'Day under control',
+    'hero.radarCost': 'Month money',
+    'hero.radarCostDetail': '{count} cost entries logged',
+    'hero.radarIndex': 'Control index',
+    'hero.radarOpen': 'Open work',
+    'hero.radarOpenCosts': 'Open costs',
+    'hero.radarOpenDeadlines': 'Open deadlines',
+    'hero.radarOpenDetail': 'faults, checks and deadlines to handle',
+    'hero.radarOpenFaults': 'Open faults',
+    'hero.radarOpenNotifications': 'Open notifications',
+    'hero.radarPerfect': 'No real urgency: keep going.',
+    'hero.radarSubtitle': 'Owner view: operational risk, money spent and first action.',
+    'hero.radarTitle': 'Management radar',
     'language.label': 'Language',
     'language.short': 'Language',
     'nav.chat': 'Chat',
@@ -12380,6 +12408,61 @@ function HeroPanel({
       value: costMonthValue,
     },
   ]
+  const criticalDeadlineCount = Number(summary?.critical ?? 0)
+  const next30DeadlineCount = Number(summary?.next30 ?? 0)
+  const openWorkCount = criticalCheckCount + openFaultCount + criticalDeadlineCount
+  const costPenalty = Math.min(18, Math.floor(Number(costMonthCents || 0) / 150000))
+  const controlScore = Math.max(
+    0,
+    100
+      - criticalCheckCount * 16
+      - openFaultCount * 13
+      - criticalDeadlineCount * 14
+      - Math.min(next30DeadlineCount, 8) * 3
+      - costPenalty,
+  )
+  const radarTone = controlScore >= 82 ? 'success' : controlScore >= 62 ? 'warning' : 'danger'
+  const radarAction = (() => {
+    if (criticalCheckCount > 0) {
+      return {
+        icon: AlertTriangle,
+        label: t('hero.priorityCriticalLabel'),
+        onClick: onOpenCriticalChecks,
+        value: `${criticalCheckCount}`,
+      }
+    }
+    if (openFaultCount > 0) {
+      return {
+        icon: Wrench,
+        label: t('hero.radarOpenFaults'),
+        onClick: onOpenFaults,
+        value: `${openFaultCount}`,
+      }
+    }
+    if (next30DeadlineCount > 0) {
+      return {
+        icon: CalendarClock,
+        label: t('hero.radarOpenDeadlines'),
+        onClick: onOpenDeadlineWindow,
+        value: `${next30DeadlineCount}`,
+      }
+    }
+    if (costMonthCents > 0) {
+      return {
+        icon: Banknote,
+        label: t('hero.radarOpenCosts'),
+        onClick: onOpenCostReport,
+        value: costMonthValue,
+      }
+    }
+
+    return {
+      icon: ShieldCheck,
+      label: t('hero.radarAllGood'),
+      onClick: onOpenNotifications,
+      value: 'OK',
+    }
+  })()
 
   return (
     <section className="hero-panel" aria-label={t('hero.aria')}>
@@ -12402,6 +12485,39 @@ function HeroPanel({
             <strong>{notificationCount}</strong>
             <span>{t('hero.factNotifications')}</span>
           </div>
+        </div>
+        <div className={`executive-radar tone-${radarTone}`} aria-label={t('hero.radarTitle')}>
+          <div className="executive-radar-head">
+            <span>
+              <Gauge size={16} />
+              {t('hero.radarTitle')}
+            </span>
+            <strong>{t('hero.radarSubtitle')}</strong>
+          </div>
+          <div className="executive-radar-grid">
+            <article>
+              <small>{t('hero.radarIndex')}</small>
+              <b>{controlScore}</b>
+            </article>
+            <article>
+              <small>{t('hero.radarOpen')}</small>
+              <b>{openWorkCount}</b>
+              <em>{t('hero.radarOpenDetail')}</em>
+            </article>
+            <article>
+              <small>{t('hero.radarCost')}</small>
+              <b>{costMonthValue}</b>
+              <em>{t('hero.radarCostDetail', { count: costRepairCount })}</em>
+            </article>
+          </div>
+          <button className="executive-radar-action" onClick={radarAction.onClick} type="button">
+            <span>
+              <radarAction.icon size={16} />
+              {t('hero.radarAction')}
+            </span>
+            <strong>{radarAction.label}</strong>
+            <b>{radarAction.value}</b>
+          </button>
         </div>
         <div className="hero-actions">
           <button className="ghost-button" onClick={onOpenNotifications} type="button">

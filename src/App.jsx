@@ -14904,6 +14904,7 @@ function FaultCostReport({
   const [reportType, setReportType] = useState('detail')
   const [isAddingCost, setIsAddingCost] = useState(false)
   const [isSavingCost, setIsSavingCost] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [selectedArchiveMonthKey, setSelectedArchiveMonthKey] = useState(() => getMonthArchiveKey())
   const [reportSection, setReportSection] = useState('overview')
   const [costForm, setCostForm] = useState({
@@ -15176,6 +15177,22 @@ function FaultCostReport({
     { label: 'Soggetto', value: selectedTargetLabel },
     { label: 'Tipologia', value: selectedCategoryLabel },
   ]
+  const exportPreviewCount = reportType === 'fine_ranking'
+    ? fineRanking.length
+    : reportType === 'fines'
+      ? fineRows.length
+      : reportRows.length
+  const exportPreviewRows = reportType === 'fine_ranking'
+    ? fineRanking.slice(0, 4).map((row, index) => ({
+        amount: formatMoneyCents(row.totalCents, defaultCurrency),
+        meta: `${row.count} multe · media ${formatMoneyCents(Math.round(row.totalCents / Math.max(row.count, 1)), defaultCurrency)}`,
+        title: `#${index + 1} · ${row.name}`,
+      }))
+    : (reportType === 'fines' ? fineRows : reportRows).slice(0, 4).map((row) => ({
+        amount: formatMoneyCents(row.amountCents, row.currency || defaultCurrency),
+        meta: `${getCostTargetLabel(row)} · ${getCostCategoryLabel(row.category)} · ${formatShortDateTime(row.date)}`,
+        title: row.title,
+      }))
   const reportPresetCards = [
     {
       description: 'Importi, targhe e responsabili nel periodo scelto.',
@@ -15229,6 +15246,10 @@ function FaultCostReport({
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
+  }
+
+  function openExportModal() {
+    setIsExportModalOpen(true)
   }
 
   function updateCostForm(field, value) {
@@ -15320,6 +15341,17 @@ function FaultCostReport({
     return () => window.clearTimeout(timeoutId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetCostFormKey])
+
+  useEffect(() => {
+    if (!isExportModalOpen) return undefined
+
+    function handleExportModalKeyDown(event) {
+      if (event.key === 'Escape') setIsExportModalOpen(false)
+    }
+
+    window.addEventListener('keydown', handleExportModalKeyDown)
+    return () => window.removeEventListener('keydown', handleExportModalKeyDown)
+  }, [isExportModalOpen])
 
   function resetCostForm() {
     setCostForm(getEmptyCostForm())
@@ -15826,16 +15858,10 @@ function FaultCostReport({
         </div>
         <div className="fault-cost-report-actions">
           {isReportWorkspace ? (
-            <>
-              <button className="secondary-button compact-button" onClick={downloadCostCsv} type="button">
-                <Download size={16} />
-                CSV filtrato
-              </button>
-              <button className="primary-button compact-button" onClick={printCostReport} type="button">
-                <FileText size={16} />
-                Stampa report
-              </button>
-            </>
+            <button className="primary-button compact-button" onClick={openExportModal} type="button">
+              <Download size={16} />
+              Esporta report
+            </button>
           ) : (
             <button className="primary-button compact-button" onClick={() => (isAddingCost ? resetCostForm() : openNewCostForm())} type="button">
               <Plus size={16} />
@@ -15880,6 +15906,176 @@ function FaultCostReport({
           ) : null}
         </div>
       ) : null}
+      {isReportWorkspace && isExportModalOpen ? (
+        <div className="report-export-backdrop" onClick={() => setIsExportModalOpen(false)}>
+          <section
+            aria-label="Esporta report"
+            aria-modal="true"
+            className="report-export-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="report-export-header">
+              <div>
+                <p className="overline">Esporta report</p>
+                <h3>Prepara CSV o stampa/PDF</h3>
+                <span>Scegli i filtri qui sotto: il file generato seguira esattamente questa selezione.</span>
+              </div>
+              <button aria-label="Chiudi esportazione report" className="icon-button" onClick={() => setIsExportModalOpen(false)} type="button">
+                <X size={18} />
+              </button>
+            </header>
+
+            <div className="report-export-layout">
+              <div className="report-export-filters" aria-label="Filtri esportazione report">
+                <label>
+                  Tipo report
+                  <select
+                    value={reportType}
+                    onChange={(event) => {
+                      const nextReportType = event.target.value
+                      setReportType(nextReportType)
+                      if (['fines', 'fine_ranking'].includes(nextReportType)) setCategoryFilter('fine')
+                    }}
+                  >
+                    <option value="detail">Dettaglio costi</option>
+                    <option value="fines">Solo multe / sanzioni</option>
+                    <option value="fine_ranking">Classifica multe autisti</option>
+                  </select>
+                </label>
+                <label>
+                  Soggetto
+                  <select value={targetFilter} onChange={(event) => setTargetFilter(event.target.value)}>
+                    <option value="all">Tutti i costi</option>
+                    <option value="company">Azienda generale</option>
+                    {vehicleRecords.map((vehicle) => (
+                      <option key={vehicle.id} value={`vehicle:${vehicle.id}`}>
+                        Mezzo · {vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}
+                      </option>
+                    ))}
+                    {driverRecords.map((driver) => (
+                      <option key={driver.id} value={`driver:${driver.id}`}>
+                        Autista · {driver.name}
+                      </option>
+                    ))}
+                    {assetRecords.map((asset) => (
+                      <option key={asset.id} value={`asset:${asset.id}`}>
+                        Attrezzatura · {asset.code} · {asset.model || 'Muletto'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Tipologia costo
+                  <select
+                    disabled={['fines', 'fine_ranking'].includes(reportType)}
+                    value={['fines', 'fine_ranking'].includes(reportType) ? 'fine' : categoryFilter}
+                    onChange={(event) => setCategoryFilter(event.target.value)}
+                  >
+                    <option value="all">Tutte le tipologie</option>
+                    {costCategoryOptions.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Periodo
+                  <select value={period} onChange={(event) => setPeriod(event.target.value)}>
+                    <option value="today">Oggi</option>
+                    <option value="month">Questo mese</option>
+                    <option value="year">Anno in corso</option>
+                    <option value="custom">Periodo personalizzato</option>
+                    <option value="all">Sempre</option>
+                  </select>
+                </label>
+                {period === 'custom' ? (
+                  <div className="report-export-date-grid">
+                    <label>
+                      Dal
+                      <input type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} />
+                    </label>
+                    <label>
+                      Al
+                      <input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} />
+                    </label>
+                  </div>
+                ) : null}
+              </div>
+
+              <aside className="report-export-preview" aria-label="Anteprima esportazione">
+                <div className="report-export-preview-title">
+                  <span>Anteprima report</span>
+                  <strong>{reportTitle}</strong>
+                  <small>{reportSubtitle}</small>
+                </div>
+                <div className="report-export-kpis">
+                  <article>
+                    <span>Totale</span>
+                    <strong>{formatMoneyCents(totalCents, defaultCurrency)}</strong>
+                  </article>
+                  <article>
+                    <span>Righe</span>
+                    <strong>{exportPreviewCount}</strong>
+                  </article>
+                  <article className={unassignedFineRows.length ? 'is-warning' : ''}>
+                    <span>Non assegnate</span>
+                    <strong>{unassignedFineRows.length}</strong>
+                  </article>
+                </div>
+                <div className="report-export-badges">
+                  {activeFilterBadges.map((badge) => (
+                    <span key={`export-${badge.label}`}>
+                      <small>{badge.label}</small>
+                      <b>{badge.value}</b>
+                    </span>
+                  ))}
+                </div>
+                <div className="report-export-rows">
+                  {exportPreviewRows.length ? exportPreviewRows.map((row) => (
+                    <article key={`${row.title}-${row.meta}`}>
+                      <span>
+                        <strong>{row.title}</strong>
+                        <small>{row.meta}</small>
+                      </span>
+                      <b>{row.amount}</b>
+                    </article>
+                  )) : (
+                    <p>Nessun dato con questi filtri. Cambia periodo, soggetto o tipologia prima di esportare.</p>
+                  )}
+                </div>
+              </aside>
+            </div>
+
+            <footer className="report-export-footer">
+              <button className="secondary-button compact-button" onClick={() => setIsExportModalOpen(false)} type="button">
+                Annulla
+              </button>
+              <button
+                className="secondary-button compact-button"
+                onClick={() => {
+                  downloadCostCsv()
+                  setIsExportModalOpen(false)
+                }}
+                type="button"
+              >
+                <Download size={16} />
+                Scarica CSV
+              </button>
+              <button
+                className="primary-button compact-button"
+                onClick={() => {
+                  printCostReport()
+                  setIsExportModalOpen(false)
+                }}
+                type="button"
+              >
+                <FileText size={16} />
+                Stampa / PDF
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
       {isReportWorkspace && showReportOverview ? (
         <div className="report-question-grid" aria-label="Domande rapide report">
           {reportPresetCards.map((card) => (
@@ -15916,15 +16112,10 @@ function FaultCostReport({
               <strong>Nuova sanzione</strong>
               <span>Multe con importo, targa e autista responsabile.</span>
             </button>
-            <button className="report-action-button" onClick={downloadCostCsv} type="button">
+            <button className="report-action-button is-primary" onClick={openExportModal} type="button">
               <Download size={18} />
-              <strong>Scarica CSV</strong>
-              <span>Esporta esattamente il report filtrato a video.</span>
-            </button>
-            <button className="report-action-button is-primary" onClick={printCostReport} type="button">
-              <FileText size={18} />
-              <strong>Stampa / PDF</strong>
-              <span>Genera una pagina pulita pronta da salvare o stampare.</span>
+              <strong>Esporta report</strong>
+              <span>Scegli filtri, controlla anteprima e poi scarica CSV o stampa/PDF.</span>
             </button>
           </div>
         </div>

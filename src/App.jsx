@@ -9182,10 +9182,6 @@ function App() {
   const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
-  const activePeopleCount = personRecords.filter((person) => (
-    !['archived', 'Archiviato'].includes(person.status)
-      && !['driver', 'drivers'].includes(person.department)
-  )).length
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
   if (activeCompanyId && activeView !== 'admin' && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
@@ -9446,96 +9442,6 @@ function App() {
     setActiveView(viewId)
   }
 
-  const homeCommandActions = [
-    {
-      detail: t('homeCommand.operationsDetail'),
-      icon: Bell,
-      label: t('homeCommand.operationsLabel'),
-      onClick: () => openNotifications('inbox'),
-      tone: notificationCount > 0 ? 'warning' : 'info',
-      value: notificationCount,
-    },
-    {
-      detail: t('homeCommand.deadlinesDetail'),
-      icon: CalendarClock,
-      label: t('homeCommand.deadlinesLabel'),
-      onClick: () => openComplianceFilter('month'),
-      tone: summary.next30 > 0 ? 'warning' : 'info',
-      value: summary.next30,
-    },
-    {
-      detail: t('homeCommand.costsDetail'),
-      icon: Banknote,
-      label: t('homeCommand.costsLabel'),
-      onClick: openCostReport,
-      tone: faultCostSummary.monthCents > 0 ? 'cost' : 'info',
-      value: formatCompactMoneyCents(faultCostSummary.monthCents, defaultCurrency),
-    },
-    {
-      detail: 'Stampa, CSV e analisi filtrate per periodo, targa, autista e multe',
-      icon: FileText,
-      label: t('nav.reports'),
-      onClick: openReports,
-      tone: 'cost',
-      value: faultCostSummary.count,
-    },
-    {
-      detail: 'Aggiungi subito manutenzioni, gomme, assicurazioni o costi generali',
-      icon: Plus,
-      label: 'Nuova spesa',
-      onClick: () => openCostReport({ add: true }),
-      tone: 'cost',
-      value: '',
-    },
-    {
-      detail: 'Registra multa con importo, data, autista responsabile e targa collegata',
-      icon: AlertTriangle,
-      label: 'Nuova sanzione',
-      onClick: () => openCostReport({ add: true, category: 'fine' }),
-      tone: 'warning',
-      value: '',
-    },
-    {
-      detail: t('homeCommand.peopleDetail'),
-      icon: Users,
-      label: t('homeCommand.peopleLabel'),
-      onClick: () => openRecords('people'),
-      tone: 'info',
-      value: activePeopleCount,
-    },
-    {
-      detail: t('homeCommand.fleetDetail'),
-      icon: Truck,
-      label: t('homeCommand.fleetLabel'),
-      onClick: () => openRecords('fleet'),
-      tone: 'info',
-      value: activeVehicleCount,
-    },
-    {
-      detail: t('homeCommand.chatDetail'),
-      icon: Mail,
-      label: t('homeCommand.chatLabel'),
-      onClick: openCompanyChat,
-      tone: companyUnreadChatCount > 0 ? 'warning' : 'info',
-      value: companyUnreadChatCount,
-    },
-    {
-      detail: t('homeCommand.quickAddDetail'),
-      icon: Plus,
-      label: t('homeCommand.quickAddLabel'),
-      onClick: () => openRecords('people'),
-      tone: 'info',
-      value: '',
-    },
-    {
-      detail: t('homeCommand.settingsDetail'),
-      icon: SettingsIcon,
-      label: t('homeCommand.settingsLabel'),
-      onClick: () => setActiveView('settings'),
-      tone: 'info',
-      value: '',
-    },
-  ]
   const pushSupportStatus = getPushSupportStatus()
   const homeNotificationStatus = phoneNotificationEnabled
     ? { tone: 'success', value: t('homeStatus.ready') }
@@ -9849,7 +9755,6 @@ function App() {
                 summary={summary}
                 t={t}
               />
-              <HomeCommandPanel actions={homeCommandActions} t={t} />
               <HomeAssistantStrip
                 companyName={companyName}
                 contextSummary={{
@@ -12669,41 +12574,6 @@ function HeroPanel({
             </div>
             <strong>{card.value}</strong>
             <small>{card.detail}</small>
-          </button>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function HomeCommandPanel({ actions = [], t }) {
-  return (
-    <section className="home-command-panel" aria-label={t('homeCommand.aria')}>
-      <div className="home-command-header">
-        <div>
-          <h2>{t('homeCommand.title')}</h2>
-        </div>
-      </div>
-      <div className="home-command-grid">
-        {actions.map((action) => (
-          <button
-            aria-label={`${t('homeCommand.open')} ${action.label}`}
-            className={`home-command-button tone-${action.tone ?? 'info'}`}
-            key={action.label}
-            onClick={action.onClick}
-            type="button"
-          >
-            <span className="home-command-icon">
-              <action.icon size={20} />
-            </span>
-            <span className="home-command-copy">
-              <strong>{action.label}</strong>
-              <small>{action.detail}</small>
-            </span>
-            {action.value !== '' && action.value !== null && action.value !== undefined && (
-              <b className="home-command-value">{action.value}</b>
-            )}
-            <ChevronRight className="home-command-arrow" size={18} />
           </button>
         ))}
       </div>

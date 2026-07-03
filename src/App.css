@@ -1217,7 +1217,7 @@
   overflow: hidden;
   padding: 18px 20px;
   background:
-    linear-gradient(180deg, #061321 0 148px, #e8fbff 148px 54%, #f8fbff 78%, #ffffff 100%);
+    linear-gradient(180deg, #061321 0 238px, #e8fbff 238px 58%, #f8fbff 80%, #ffffff 100%);
 }
 
 .workspace.is-admin-workspace {
@@ -1571,7 +1571,7 @@
   align-content: start;
   gap: 12px;
   height: 100%;
-  grid-template-rows: minmax(260px, 1fr) auto auto auto;
+  grid-template-rows: minmax(0, 1fr) auto auto;
   min-height: 0;
   overflow: hidden;
 }
@@ -1595,8 +1595,8 @@
 .workspace.is-dashboard-home .hero-panel {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.54fr);
   gap: 16px;
-  min-height: 248px;
-  overflow: visible;
+  min-height: 0;
+  overflow: hidden;
   padding: 18px;
   border-color: rgba(18, 198, 223, 0.28);
   color: #f8fbff;
@@ -3034,8 +3034,8 @@
 .workspace.is-dashboard-home .priority-card {
   align-content: start;
   gap: 6px;
-  min-height: 104px;
-  padding: 13px 12px 14px;
+  min-height: 96px;
+  padding: 12px;
 }
 
 .priority-card:hover,
@@ -10917,7 +10917,7 @@
   }
 
   .workspace.is-dashboard-home .overview-grid {
-    grid-template-rows: minmax(210px, 1fr) auto auto auto;
+    grid-template-rows: minmax(210px, 1fr) auto auto;
   }
 
   .workspace.is-dashboard-home .topbar h1 {
@@ -11471,7 +11471,7 @@
 
   .workspace.is-dashboard-home .overview-grid {
     gap: 8px;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: minmax(0, 1fr) auto auto;
     min-height: 0;
   }
 

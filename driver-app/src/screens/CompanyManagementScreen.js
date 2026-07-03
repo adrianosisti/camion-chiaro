@@ -551,6 +551,106 @@ function getDeadlineSubject(item, drivers, vehicles, people = [], assets = []) {
   return 'Azienda'
 }
 
+function isOpenFault(fault = {}) {
+  return !['closed', 'archived', 'resolved', 'done'].includes(fault.status)
+}
+
+function getVehicleSnapshot({ checks = [], costRows = [], deadlines = [], faults = [], vehicle = {} }) {
+  const vehicleId = vehicle.id
+  const monthStart = getRepairPeriodStart('month')
+  const vehicleDeadlines = deadlines.filter((item) => item.vehicleId === vehicleId && item.dueDate && !['done', 'archived'].includes(item.status))
+  const overdueDeadlines = vehicleDeadlines.filter((item) => getDeadlineDays(item.dueDate) < 0)
+  const upcomingDeadlines = vehicleDeadlines.filter((item) => {
+    const days = getDeadlineDays(item.dueDate)
+    return days >= 0 && days <= 30
+  })
+  const openFaults = faults.filter((fault) => fault.vehicleId === vehicleId && isOpenFault(fault))
+  const criticalChecks = checks.filter((check) => (
+    check.tractorId === vehicleId
+      && !isCheckResolved(check)
+      && getCheckIssues(check).length > 0
+  ))
+  const latestCheck = checks
+    .filter((check) => check.tractorId === vehicleId)
+    .slice()
+    .sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0))[0]
+  const monthCostRows = costRows.filter((row) => row.vehicleId === vehicleId && new Date(row.date) >= monthStart)
+  const monthCostCents = monthCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const costPenalty = Math.min(18, Math.floor(monthCostCents / 30000))
+  const score = Math.max(
+    0,
+    100
+      - overdueDeadlines.length * 34
+      - upcomingDeadlines.length * 8
+      - openFaults.length * 18
+      - criticalChecks.length * 18
+      - costPenalty,
+  )
+  const tone = score >= 82 ? 'success' : score >= 62 ? 'warning' : 'danger'
+  const nextAction = overdueDeadlines[0]
+    ? `Rinnova ${overdueDeadlines[0].type}`
+    : openFaults[0]
+      ? `Gestisci ${openFaults[0].title}`
+      : criticalChecks[0]
+        ? 'Apri ultimo check critico'
+        : upcomingDeadlines[0]
+          ? `Prepara ${upcomingDeadlines[0].type}`
+          : 'Mezzo sotto controllo'
+
+  return {
+    criticalChecks,
+    latestCheck,
+    monthCostCents,
+    nextAction,
+    openFaults,
+    overdueDeadlines,
+    score,
+    tone,
+    upcomingDeadlines,
+  }
+}
+
+function VehicleInstantSheet({ checks = [], costRows = [], currency = 'EUR', deadlines = [], faults = [], language = 'it', vehicle }) {
+  const snapshot = getVehicleSnapshot({ checks, costRows, deadlines, faults, vehicle })
+  const latestCheckText = snapshot.latestCheck
+    ? `${formatDateTime(snapshot.latestCheck.createdAt, language)}`
+    : 'mai ricevuto'
+
+  return (
+    <View style={[styles.vehicleSnapshot, styles[`${snapshot.tone}VehicleSnapshot`]]}>
+      <View style={styles.vehicleSnapshotHeader}>
+        <View>
+          <Text style={styles.vehicleSnapshotKicker}>Scheda mezzo</Text>
+          <Text style={[styles.vehicleHealthScore, styles[`${snapshot.tone}Text`]]}>{snapshot.score}%</Text>
+        </View>
+        <View style={styles.vehicleSnapshotAction}>
+          <Text style={styles.vehicleSnapshotActionLabel}>Prossima azione</Text>
+          <Text numberOfLines={1} style={styles.vehicleSnapshotActionText}>{snapshot.nextAction}</Text>
+        </View>
+      </View>
+      <View style={styles.vehicleSnapshotGrid}>
+        <View style={styles.vehicleSnapshotMetric}>
+          <Text style={styles.vehicleSnapshotValue}>{snapshot.openFaults.length}</Text>
+          <Text style={styles.vehicleSnapshotLabel}>guasti</Text>
+        </View>
+        <View style={styles.vehicleSnapshotMetric}>
+          <Text style={styles.vehicleSnapshotValue}>{snapshot.overdueDeadlines.length + snapshot.upcomingDeadlines.length}</Text>
+          <Text style={styles.vehicleSnapshotLabel}>scadenze</Text>
+        </View>
+        <View style={styles.vehicleSnapshotMetric}>
+          <Text style={styles.vehicleSnapshotValue}>{snapshot.criticalChecks.length}</Text>
+          <Text style={styles.vehicleSnapshotLabel}>check</Text>
+        </View>
+        <View style={styles.vehicleSnapshotMetricWide}>
+          <Text numberOfLines={1} style={styles.vehicleSnapshotValueSmall}>{formatMoneyCents(snapshot.monthCostCents, currency)}</Text>
+          <Text style={styles.vehicleSnapshotLabel}>mese</Text>
+        </View>
+      </View>
+      <Text style={styles.vehicleSnapshotMeta}>Ultimo check: {latestCheckText}</Text>
+    </View>
+  )
+}
+
 function getSortedDeadlines(deadlines) {
   return deadlines
     .filter((item) => item.dueDate && !['done', 'archived'].includes(item.status))
@@ -2324,6 +2424,15 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{vehicle.model || 'Modello mancante'} · {vehicle.fleetType || 'mezzo'}</Text>
                   </View>
                 </View>
+                <VehicleInstantSheet
+                  checks={checks}
+                  costRows={allCostRows}
+                  currency={defaultCurrency}
+                  deadlines={deadlines}
+                  faults={faults}
+                  language={language}
+                  vehicle={vehicle}
+                />
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.vehicleId === vehicle.id)} language={language} />
               </View>
             ))}
@@ -3775,5 +3884,105 @@ const styles = StyleSheet.create({
   },
   warningText: {
     color: colors.warning,
+  },
+  dangerVehicleSnapshot: {
+    borderColor: '#fb7185',
+  },
+  successVehicleSnapshot: {
+    borderColor: '#22c55e',
+  },
+  vehicleHealthScore: {
+    fontSize: 24,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  vehicleSnapshot: {
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 12,
+  },
+  vehicleSnapshotAction: {
+    alignItems: 'flex-end',
+    flex: 1,
+  },
+  vehicleSnapshotActionLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  vehicleSnapshotActionText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 3,
+    maxWidth: 190,
+    textAlign: 'right',
+  },
+  vehicleSnapshotGrid: {
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 10,
+  },
+  vehicleSnapshotHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  vehicleSnapshotKicker: {
+    color: colors.cyanDark,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  vehicleSnapshotLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  vehicleSnapshotMeta: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 9,
+  },
+  vehicleSnapshotMetric: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 52,
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  vehicleSnapshotMetricWide: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1.35,
+    minHeight: 52,
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  vehicleSnapshotValue: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  vehicleSnapshotValueSmall: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  warningVehicleSnapshot: {
+    borderColor: '#f59e0b',
   },
 })

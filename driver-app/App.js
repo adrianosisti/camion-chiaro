@@ -281,8 +281,7 @@ function LegalAcceptanceScreen({
           <Text style={styles.legalNativeOverline}>{isCompany ? 'Primo accesso azienda' : 'Primo accesso personale'}</Text>
           <Text style={styles.legalNativeTitle}>{companyName}</Text>
           <Text style={styles.legalNativeIntro}>
-            Prima di usare Vygo dobbiamo salvare le accettazioni corrette. I testi restano consultabili e la conferma viene
-            registrata su azienda, utente, data e versione documento.
+            Prima di usare Vygo leggi e accetta i documenti richiesti. Potrai consultarli di nuovo dalle impostazioni.
           </Text>
 
           {isLoading ? (

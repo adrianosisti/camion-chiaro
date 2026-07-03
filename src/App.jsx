@@ -11109,8 +11109,7 @@ function LegalAcceptanceGate({
             )}
 
             <p className="legal-mini-copy">
-              Salviamo utente, azienda, data, versione documento e dispositivo. Il consenso marketing e separato e puo essere
-              gestito in seguito.
+              Puoi rileggere questi documenti quando vuoi. Le comunicazioni commerciali restano facoltative e modificabili.
             </p>
 
             {message ? <p className="sync-status-line">{message}</p> : null}

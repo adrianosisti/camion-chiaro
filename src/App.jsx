@@ -759,11 +759,11 @@ const translations = {
     'hero.priorityFaultLabel': 'Guasti aperti',
     'hero.radarAction': 'Prossima azione',
     'hero.radarAllGood': 'Giornata sotto controllo',
-    'hero.radarCost': 'Soldi del mese',
+    'hero.radarCost': 'Costi mese',
     'hero.radarCostDetail': '{count} voci costo registrate',
     'hero.radarFleetHealth': 'Salute flotta',
     'hero.radarFleetHealthDetail': '{count} mezzi sotto soglia',
-    'hero.radarIndex': 'Indice controllo',
+    'hero.radarIndex': 'Controllo azienda',
     'hero.radarOpen': 'Pratiche aperte',
     'hero.radarOpenDetail': 'guasti, check e scadenze da lavorare',
     'hero.radarOpenCosts': 'Apri costi',
@@ -771,7 +771,7 @@ const translations = {
     'hero.radarOpenFaults': 'Apri guasti',
     'hero.radarOpenNotifications': 'Apri notifiche',
     'hero.radarPerfect': 'Nessuna urgenza reale: continua cosi.',
-    'hero.radarSubtitle': 'Il quadro da titolare: rischio operativo, soldi usciti e prima cosa da fare.',
+    'hero.radarSubtitle': 'Situazione operativa aggiornata in tempo reale.',
     'hero.radarTitle': 'Radar direzione',
     'language.label': 'Lingua',
     'language.short': 'Lingua',
@@ -963,11 +963,11 @@ const translations = {
     'hero.priorityFaultLabel': 'Open faults',
     'hero.radarAction': 'Next action',
     'hero.radarAllGood': 'Day under control',
-    'hero.radarCost': 'Month money',
+    'hero.radarCost': 'Month costs',
     'hero.radarCostDetail': '{count} cost entries logged',
     'hero.radarFleetHealth': 'Fleet health',
     'hero.radarFleetHealthDetail': '{count} vehicles below threshold',
-    'hero.radarIndex': 'Control index',
+    'hero.radarIndex': 'Company control',
     'hero.radarOpen': 'Open work',
     'hero.radarOpenCosts': 'Open costs',
     'hero.radarOpenDeadlines': 'Open deadlines',
@@ -975,7 +975,7 @@ const translations = {
     'hero.radarOpenFaults': 'Open faults',
     'hero.radarOpenNotifications': 'Open notifications',
     'hero.radarPerfect': 'No real urgency: keep going.',
-    'hero.radarSubtitle': 'Owner view: operational risk, money spent and first action.',
+    'hero.radarSubtitle': 'Live operating situation updated in real time.',
     'hero.radarTitle': 'Management radar',
     'language.label': 'Language',
     'language.short': 'Language',
@@ -12444,6 +12444,8 @@ function HeroPanel({
   )
   const controlScore = Math.max(0, Math.min(operationalControlScore, Number(fleetHealthScore ?? 100)))
   const radarTone = controlScore >= 82 ? 'success' : controlScore >= 62 ? 'warning' : 'danger'
+  const fleetHealthTone = fleetHealthScore >= 82 ? 'success' : fleetHealthScore >= 62 ? 'warning' : 'danger'
+  const fleetHealthPercentLabel = `${fleetHealthScore}%`
   const radarAction = (() => {
     if (criticalCheckCount > 0) {
       return {
@@ -12474,7 +12476,7 @@ function HeroPanel({
         icon: Gauge,
         label: t('hero.radarFleetHealth'),
         onClick: onOpenFleetHealth || onOpenCostReport,
-        value: `${fleetHealthScore}`,
+        value: fleetHealthPercentLabel,
       }
     }
     if (costMonthCents > 0) {
@@ -12527,7 +12529,7 @@ function HeroPanel({
           <div className="executive-radar-grid">
             <article>
               <small>{t('hero.radarIndex')}</small>
-              <b>{controlScore}</b>
+              <b>{controlScore}%</b>
             </article>
             <article>
               <small>{t('hero.radarOpen')}</small>
@@ -12539,9 +12541,9 @@ function HeroPanel({
               <b>{costMonthValue}</b>
               <em>{t('hero.radarCostDetail', { count: costRepairCount })}</em>
             </article>
-            <article>
+            <article className={`tone-${fleetHealthTone}`}>
               <small>{t('hero.radarFleetHealth')}</small>
-              <b>{fleetHealthScore}</b>
+              <b>{fleetHealthPercentLabel}</b>
               <em>{t('hero.radarFleetHealthDetail', { count: fleetHealthCriticalCount })}</em>
             </article>
           </div>

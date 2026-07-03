@@ -1902,6 +1902,33 @@
   font-size: 1.36rem;
 }
 
+.executive-radar-grid article.tone-success {
+  border-color: rgba(34, 197, 94, 0.34);
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.executive-radar-grid article.tone-warning {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.13);
+}
+
+.executive-radar-grid article.tone-danger {
+  border-color: rgba(244, 63, 94, 0.44);
+  background: rgba(244, 63, 94, 0.15);
+}
+
+.executive-radar-grid article.tone-success b {
+  color: #86efac;
+}
+
+.executive-radar-grid article.tone-warning b {
+  color: #fcd34d;
+}
+
+.executive-radar-grid article.tone-danger b {
+  color: #fda4af;
+}
+
 .executive-radar-grid em {
   overflow: hidden;
   color: #cbd5e1;

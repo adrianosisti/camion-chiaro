@@ -8,6 +8,7 @@ const driverStatusLabels = {
 
 export function mapDriver(row = {}) {
   return {
+    accessPassword: row.access_password ?? row.accessPassword ?? '',
     companyId: row.company_id ?? row.companyId ?? '',
     depot: row.depot ?? '',
     email: row.email ?? row.auth_email ?? '',
@@ -196,6 +197,7 @@ export function mapVoiceCallSession(row = {}) {
 
 export function mapCompanyPerson(row = {}) {
   return {
+    accessPassword: row.access_password ?? row.accessPassword ?? '',
     authEmail: row.auth_email ?? row.authEmail ?? '',
     companyId: row.company_id ?? row.companyId ?? '',
     department: row.department ?? 'drivers',

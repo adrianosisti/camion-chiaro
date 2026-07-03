@@ -26,7 +26,7 @@ const companyTrainingGuides = [
   },
   {
     body: 'Crea autisti, ufficio e magazzino con credenziali e dati corretti.',
-    steps: ['Apri Anagrafiche.', 'Scegli Persone o Autisti.', 'Compila nome, telefono, ruolo e password temporanea.', 'Fai fare il primo accesso e attivare notifiche.'],
+    steps: ['Apri Anagrafiche.', 'Scegli Persone o Autisti.', 'Compila nome, telefono, ruolo e password.', 'Fai fare il primo accesso e attivare notifiche.'],
     title: 'Persone e accessi',
   },
   {

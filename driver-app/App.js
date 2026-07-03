@@ -85,6 +85,7 @@ import {
 } from './src/services/driverApi'
 import { getNativePushDeviceRegistration, registerNativePushDevice } from './src/services/nativePush'
 import { t } from './src/i18n/native'
+import { getLegalDocument } from './src/legalDocuments'
 import { colors, layout } from './src/theme'
 
 const settingsStorageKey = 'camion-chiaro-native-settings'
@@ -183,6 +184,7 @@ function LegalAcceptanceScreen({
   companyName = 'Vygo',
   isLoading = false,
   isSaving = false,
+  language = 'it',
   message = '',
   onAccept,
   onSignOut,
@@ -196,7 +198,7 @@ function LegalAcceptanceScreen({
     terms: false,
   })
   const [openDocumentId, setOpenDocumentId] = useState('')
-  const openDocument = nativeLegalDocuments[openDocumentId]
+  const openDocument = openDocumentId ? getLegalDocument(openDocumentId, language) ?? nativeLegalDocuments[openDocumentId] : null
   const canAccept = isCompany
     ? accepted.terms && accepted.privacy && accepted.dpa
     : accepted.staffTerms && accepted.privacy
@@ -250,12 +252,17 @@ function LegalAcceptanceScreen({
               </Pressable>
             </View>
             <Text style={styles.legalNativeIntro}>{openDocument.intro}</Text>
-            {openDocument.sections.map(([title, body]) => (
-              <View key={title} style={styles.legalNativeSection}>
-                <Text style={styles.legalNativeSectionTitle}>{title}</Text>
-                <Text style={styles.legalNativeSectionBody}>{body}</Text>
-              </View>
-            ))}
+            {openDocument.sections.map((section) => {
+              const title = section.title ?? section[0]
+              const body = section.body ?? section[1]
+
+              return (
+                <View key={title} style={styles.legalNativeSection}>
+                  <Text style={styles.legalNativeSectionTitle}>{title}</Text>
+                  <Text style={styles.legalNativeSectionBody}>{body}</Text>
+                </View>
+              )
+            })}
             <Pressable onPress={() => setOpenDocumentId('')} style={styles.legalNativePrimaryButton}>
               <Text style={styles.legalNativePrimaryText}>Ho letto</Text>
             </Pressable>
@@ -3391,24 +3398,25 @@ function CamionChiaroApp() {
     return result.data
   }
 
-  async function handleResetCompanyAccessPassword({ targetId, targetType, name }) {
+  async function handleResetCompanyAccessPassword({ password = '', targetId, targetType, name }) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !targetId || !targetType) return false
 
     const result = await resetCompanyAccessPassword({
       companyId,
+      password,
       targetId,
       targetType,
     })
 
     if (result.error) {
-      Alert.alert('Password non reimpostata', result.error.message)
+      Alert.alert('Password non aggiornata', result.error.message)
       return false
     }
 
     await loadCompanyData({ silent: true })
     Alert.alert(
-      'Password temporanea',
+      'Password aggiornata',
       `Utente: ${name || result.data?.username || 'persona'}\nUsername: ${result.data?.username || ''}\nPassword: ${result.data?.password || ''}`,
     )
     return true
@@ -4165,6 +4173,7 @@ function CamionChiaroApp() {
         companyName={companyName}
         isLoading={legalAcceptanceStatus.loading}
         isSaving={legalAcceptanceStatus.isSaving}
+        language={language}
         message={legalAcceptanceStatus.message}
         onAccept={handleAcceptNativeLegal}
         onSignOut={handleSignOut}

@@ -25,8 +25,14 @@ function buildAuthEmail(username) {
   return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${authDomain}`
 }
 
+function isMissingAccessPasswordColumn(error) {
+  const message = String(error?.message ?? '')
+  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('access_password')
+}
+
 function mapCompanyPerson(row = {}) {
   return {
+    accessPassword: row.access_password ?? '',
     authEmail: row.auth_email ?? '',
     companyId: row.company_id ?? '',
     department: row.department ?? 'office',
@@ -124,8 +130,9 @@ async function verifyCompanyOperator(serviceClient, userId, companyId) {
   return { allowed: Boolean(data && !error), error }
 }
 
-function toPersonPayload(person, companyId, userId, authEmail, username) {
+function toPersonPayload(person, companyId, userId, authEmail, username, accessPassword) {
   return {
+    access_password: accessPassword || null,
     auth_email: authEmail,
     company_id: companyId,
     department: person.department || 'office',
@@ -181,7 +188,7 @@ export async function handler(event) {
   const cleanName = String(person?.name ?? '').trim()
 
   if (!companyId || !cleanName || !username || !cleanPassword) {
-    return jsonResponse(400, { error: 'Compila nome, username e password temporanea.' })
+    return jsonResponse(400, { error: 'Compila nome, username e password.' })
   }
 
   if (!['office', 'warehouse'].includes(person?.department)) {
@@ -193,7 +200,7 @@ export async function handler(event) {
   }
 
   if (cleanPassword.length < 8) {
-    return jsonResponse(400, { error: 'La password temporanea deve avere almeno 8 caratteri.' })
+    return jsonResponse(400, { error: 'La password deve avere almeno 8 caratteri.' })
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey)
@@ -252,11 +259,24 @@ export async function handler(event) {
     })
   }
 
-  const { data: personRow, error: insertPersonError } = await serviceClient
+  const personPayload = toPersonPayload(person, companyId, createdUser.user.id, authEmail, username, cleanPassword)
+  let insertPersonResult = await serviceClient
     .from('company_people')
-    .insert(toPersonPayload(person, companyId, createdUser.user.id, authEmail, username))
-    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .insert(personPayload)
+    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, access_password, status')
     .single()
+
+  if (isMissingAccessPasswordColumn(insertPersonResult.error)) {
+    const fallbackPayload = { ...personPayload }
+    delete fallbackPayload.access_password
+    insertPersonResult = await serviceClient
+      .from('company_people')
+      .insert(fallbackPayload)
+      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .single()
+  }
+
+  const { data: personRow, error: insertPersonError } = insertPersonResult
 
   if (insertPersonError) {
     await serviceClient.auth.admin.deleteUser(createdUser.user.id)

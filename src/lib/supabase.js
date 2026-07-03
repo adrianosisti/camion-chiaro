@@ -8,11 +8,11 @@ export const driverDocumentsBucket = 'driver-documents'
 export const companyAssetsBucket = 'company-assets'
 export const companyInvoicesBucket = 'company-invoices'
 export const legalDocumentVersions = {
-  dpa: 'vygo-dpa-2026-07-01',
-  marketing: 'vygo-marketing-2026-07-01',
-  privacy: 'vygo-privacy-2026-07-01',
-  staffTerms: 'vygo-staff-terms-2026-07-01',
-  terms: 'vygo-terms-2026-07-01',
+  dpa: 'vygo-dpa-2026-07-03',
+  marketing: 'vygo-marketing-2026-07-03',
+  privacy: 'vygo-privacy-2026-07-03',
+  staffTerms: 'vygo-staff-terms-2026-07-03',
+  terms: 'vygo-terms-2026-07-03',
 }
 
 function getRequiredLegalDocuments(accountRole = 'company') {
@@ -71,6 +71,7 @@ const driverDocumentStatusValues = {
 
 function mapDriver(row) {
   return {
+    accessPassword: row.access_password ?? row.accessPassword ?? '',
     id: row.id,
     authEmail: row.auth_email,
     companyId: row.company_id,
@@ -121,6 +122,7 @@ function mapComplianceItem(row) {
 
 function mapCompanyPerson(row) {
   return {
+    accessPassword: row.access_password ?? row.accessPassword ?? '',
     authEmail: row.auth_email ?? '',
     companyId: row.company_id,
     department: row.department ?? 'drivers',
@@ -614,7 +616,9 @@ function isMissingReactionsColumn(error) {
 
 function isMissingDriverCheckPermissionColumn(error) {
   const message = String(error?.message ?? '')
-  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('can_submit_checks')
+  return ['42703', 'PGRST204'].includes(error?.code) && (
+    message.includes('access_password') || message.includes('can_submit_checks')
+  )
 }
 
 function isMissingWorkforceSchemaError(error) {
@@ -622,10 +626,18 @@ function isMissingWorkforceSchemaError(error) {
 }
 
 const driverSelectBaseColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
-const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
+const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, access_password, status'
+const companyPersonSelectBaseColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status'
+const companyPersonSelectWithAccessColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, access_password, status'
+
+function isMissingAccessPasswordColumn(error) {
+  const message = String(error?.message ?? '')
+  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('access_password')
+}
 
 function removeDriverCheckPermissionColumn(payload) {
   const fallbackPayload = { ...payload }
+  delete fallbackPayload.access_password
   delete fallbackPayload.can_submit_checks
   return fallbackPayload
 }
@@ -633,6 +645,7 @@ function removeDriverCheckPermissionColumn(payload) {
 function toDriverPayload(driver, companyId = configuredCompanyId) {
   return {
     auth_email: driver.authEmail,
+    access_password: driver.accessPassword || null,
     company_id: companyId,
     depot: driver.depot,
     email: driver.email || null,
@@ -715,6 +728,7 @@ function toDriverDocumentPayload(document, companyId = configuredCompanyId) {
 function toCompanyPersonPayload(person, companyId = configuredCompanyId) {
   return {
     auth_email: person.authEmail || null,
+    access_password: person.accessPassword || null,
     company_id: companyId,
     department: person.department || 'office',
     depot: person.depot || null,
@@ -1273,12 +1287,23 @@ export async function fetchCompanyPeople(companyId = configuredCompanyId) {
     return { data: [], error: null }
   }
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from('company_people')
-    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .select(companyPersonSelectWithAccessColumns)
     .eq('company_id', companyId)
     .neq('status', 'archived')
     .order('full_name', { ascending: true })
+
+  if (isMissingAccessPasswordColumn(result.error)) {
+    result = await supabase
+      .from('company_people')
+      .select(companyPersonSelectBaseColumns)
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('full_name', { ascending: true })
+  }
+
+  const { data, error } = result
 
   if (isMissingWorkforceSchemaError(error)) {
     return { data: [], error: null, missingSchema: true }
@@ -2113,8 +2138,24 @@ export async function createCompanyPerson(person, companyId = configuredCompanyI
   const { data, error } = await supabase
     .from('company_people')
     .insert(toCompanyPersonPayload(person, companyId))
-    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .select(companyPersonSelectWithAccessColumns)
     .single()
+
+  if (isMissingAccessPasswordColumn(error)) {
+    const fallbackPayload = { ...toCompanyPersonPayload(person, companyId) }
+    delete fallbackPayload.access_password
+    const fallbackResult = await supabase
+      .from('company_people')
+      .insert(fallbackPayload)
+      .select(companyPersonSelectBaseColumns)
+      .single()
+
+    if (isMissingWorkforceSchemaError(fallbackResult.error)) {
+      return { data: null, error: { message: 'Persone e reparti non ancora attivi. Contatta assistenza Vygo.' } }
+    }
+
+    return { data: fallbackResult.data ? mapCompanyPerson(fallbackResult.data) : null, error: fallbackResult.error }
+  }
 
   if (isMissingWorkforceSchemaError(error)) {
     return { data: null, error: { message: 'Persone e reparti non ancora attivi. Contatta assistenza Vygo.' } }

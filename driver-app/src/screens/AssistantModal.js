@@ -61,7 +61,7 @@ const assistantTopics = [
     keywords: ['ufficio', 'magazzino', 'magazziniere', 'persona', 'reparto', 'dipendente'],
   },
   {
-    answer: 'Le credenziali di autisti e personale vengono create dall azienda. Se una password non funziona, entra in Anagrafiche, apri la persona e usa reset password o imposta una nuova password temporanea.',
+    answer: 'Le credenziali di autisti e personale vengono create dall azienda. Se una password non funziona, entra in Anagrafiche, apri la persona e usa Cambia password.',
     id: 'access',
     label: 'Accessi',
     keywords: ['login', 'accesso', 'password', 'credenziali', 'utente', 'username', 'reset'],

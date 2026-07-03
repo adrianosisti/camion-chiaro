@@ -43,6 +43,7 @@ function buildDriverAuthEmail(username) {
 
 function mapDriver(row) {
   return {
+    accessPassword: row.access_password ?? '',
     id: row.id,
     authEmail: row.auth_email,
     depot: row.depot ?? '',
@@ -64,10 +65,11 @@ function isMissingDriverCheckPermissionColumn(error) {
 }
 
 const driverSelectBaseColumns = 'id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
-const driverSelectWithCheckColumns = 'id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
+const driverSelectWithCheckColumns = 'id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, access_password, status'
 
 function removeDriverCheckPermissionColumn(payload) {
   const fallbackPayload = { ...payload }
+  delete fallbackPayload.access_password
   delete fallbackPayload.can_submit_checks
   return fallbackPayload
 }
@@ -141,8 +143,9 @@ async function verifyPlanUserLimit(serviceClient, companyId) {
   }
 }
 
-function toDriverPayload(driver, companyId, authUserId, authEmail, username) {
+function toDriverPayload(driver, companyId, authUserId, authEmail, username, accessPassword) {
   return {
+    access_password: accessPassword || null,
     auth_email: authEmail,
     company_id: companyId,
     depot: driver.depot ?? '',
@@ -217,7 +220,7 @@ export async function handler(event) {
   }
 
   if (cleanPassword.length < 8) {
-    return jsonResponse(400, { error: 'La password temporanea deve avere almeno 8 caratteri.' })
+    return jsonResponse(400, { error: 'La password deve avere almeno 8 caratteri.' })
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey)
@@ -274,7 +277,7 @@ export async function handler(event) {
     })
   }
 
-  const driverPayload = toDriverPayload(driver, companyId, createdUser.user.id, authEmail, username)
+  const driverPayload = toDriverPayload(driver, companyId, createdUser.user.id, authEmail, username, cleanPassword)
   let insertDriverResult = await serviceClient
     .from('drivers')
     .insert(driverPayload)

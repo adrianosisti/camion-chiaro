@@ -55,6 +55,7 @@ import Wrench from 'lucide-react/dist/esm/icons/wrench.mjs'
 import X from 'lucide-react/dist/esm/icons/x.mjs'
 import camionChiaroIconUrl from '../driver-app/assets/brand/icon.png'
 import { company, complianceItems, driverDocuments, drivers, vehicles } from './data/sampleData'
+import { getLegalDocument } from './legalDocuments'
 import { daysUntil, decorateComplianceWithWorkforce, formatDate, getSummary } from './lib/expiry'
 import {
   archiveDriverRecord as archiveSupabaseDriver,
@@ -2207,7 +2208,7 @@ const workflowTranslations = {
     'drivers.depot': 'Deposito',
     'drivers.edit': 'Modifica autista',
     'drivers.name': 'Nome e cognome',
-    'drivers.password': 'Password temporanea',
+    'drivers.password': 'Password',
     'drivers.phone': 'Cellulare',
     'drivers.photo': 'Foto profilo',
     'drivers.role': 'Ruolo',
@@ -2514,7 +2515,7 @@ const workflowTranslations = {
     'drivers.depot': 'Depot',
     'drivers.edit': 'Edit driver',
     'drivers.name': 'Full name',
-    'drivers.password': 'Temporary password',
+    'drivers.password': 'Password',
     'drivers.phone': 'Mobile phone',
     'drivers.photo': 'Profile photo',
     'drivers.role': 'Role',
@@ -2819,7 +2820,7 @@ const workflowTranslations = {
     'drivers.depot': 'Base',
     'drivers.edit': 'Modificar conductor',
     'drivers.name': 'Nombre completo',
-    'drivers.password': 'Contraseña temporal',
+    'drivers.password': 'Contraseña',
     'drivers.phone': 'Movil',
     'drivers.photo': 'Foto perfil',
     'drivers.role': 'Rol',
@@ -3124,7 +3125,7 @@ const workflowTranslations = {
     'drivers.depot': 'Depot',
     'drivers.edit': 'Modifier chauffeur',
     'drivers.name': 'Nom complet',
-    'drivers.password': 'Mot de passe temporaire',
+    'drivers.password': 'Mot de passe',
     'drivers.phone': 'Telephone mobile',
     'drivers.photo': 'Photo profil',
     'drivers.role': 'Role',
@@ -3429,7 +3430,7 @@ const workflowTranslations = {
     'drivers.depot': 'Depot',
     'drivers.edit': 'Fahrer bearbeiten',
     'drivers.name': 'Vollstandiger Name',
-    'drivers.password': 'Temporäres Passwort',
+    'drivers.password': 'Passwort',
     'drivers.phone': 'Mobiltelefon',
     'drivers.photo': 'Profilfoto',
     'drivers.role': 'Rolle',
@@ -4606,10 +4607,10 @@ const supportSections = [
         title: 'Tour dashboard azienda',
       },
       {
-        body: 'Come creare un utente, assegnare ruolo, impostare password temporanea, cambiare foto profilo e archiviare un profilo non piu attivo.',
+        body: 'Come creare un utente, assegnare ruolo, impostare password, cambiare foto profilo e archiviare un profilo non piu attivo.',
         guide: [
           {
-            points: ['Apri Anagrafiche.', 'Vai su Persone o Autisti.', 'Compila nome, telefono, username e ruolo.', 'Imposta una password temporanea semplice da comunicare alla persona.'],
+            points: ['Apri Anagrafiche.', 'Vai su Persone o Autisti.', 'Compila nome, telefono, username e ruolo.', 'Imposta una password semplice da comunicare alla persona.'],
             title: 'Creazione utente',
           },
           {
@@ -4617,7 +4618,7 @@ const supportSections = [
             title: 'Completamento profilo',
           },
           {
-            points: ['Se la persona non entra, usa reset password dalla scheda.', 'Se non lavora piu in azienda, archivia il profilo.', 'Non cancellare dati storici se servono per report e pratiche passate.'],
+            points: ['Se la persona non entra, usa Cambia password dalla scheda.', 'Se non lavora piu in azienda, archivia il profilo.', 'Non cancellare dati storici se servono per report e pratiche passate.'],
             title: 'Gestione successiva',
           },
         ],
@@ -8247,20 +8248,21 @@ function App() {
       return showPlanResourceLimit('users', setDriversSyncStatus)
     }
 
-    const temporaryPassword = driver.password?.trim() ?? ''
+    const accessPassword = driver.password?.trim() ?? ''
     const driverWithoutPassword = { ...driver }
     delete driverWithoutPassword.initialDocument
     delete driverWithoutPassword.password
     const cleanDriver = {
       ...driverWithoutPassword,
+      accessPassword,
       authEmail: buildDriverAuthEmail(driver.username),
       username: normalizeDriverUsername(driver.username),
     }
 
     if (hasCompanyDataConnection && session?.role === 'company') {
       setDriversSyncStatus('Creo account autista e salvo anagrafica...')
-      const result = temporaryPassword
-        ? await createSupabaseDriverAccount(cleanDriver, temporaryPassword, activeCompanyId)
+      const result = accessPassword
+        ? await createSupabaseDriverAccount(cleanDriver, accessPassword, activeCompanyId)
         : await createSupabaseDriver(cleanDriver, activeCompanyId)
 
       if (result.error) {
@@ -8272,8 +8274,8 @@ function App() {
 
       setDriverRecords((currentDrivers) => [result.data, ...currentDrivers])
       setDriversSyncStatus(
-        temporaryPassword
-          ? `Autista creato. Username: ${cleanDriver.username}. Password temporanea: ${temporaryPassword}`
+        accessPassword
+          ? `Autista creato. Username: ${cleanDriver.username}. Password: ${accessPassword}`
           : 'Autista salvato.',
       )
       return result.data
@@ -8294,7 +8296,7 @@ function App() {
       return showPlanResourceLimit('users', setPeopleSyncStatus)
     }
 
-    const temporaryPassword = person.password?.trim() ?? ''
+    const accessPassword = person.password?.trim() ?? ''
     const initialDeadlines = person.initialDeadlines ?? []
     const personWithoutPassword = { ...person }
     delete personWithoutPassword.password
@@ -8303,6 +8305,7 @@ function App() {
     const cleanUsername = normalizeDriverUsername(person.username)
     const cleanPerson = {
       ...personWithoutPassword,
+      accessPassword,
       authEmail: buildDriverAuthEmail(cleanUsername),
       email: person.email || '',
       jobTitle: person.jobTitle || getWorkforceRoleLabel(person.personType),
@@ -8364,7 +8367,7 @@ function App() {
 
     if (hasCompanyDataConnection && session?.role === 'company') {
       setPeopleSyncStatus('Creo account persona e salvo anagrafica...')
-      const result = await createSupabaseCompanyPerson({ ...cleanPerson, password: temporaryPassword }, activeCompanyId)
+      const result = await createSupabaseCompanyPerson({ ...cleanPerson, password: accessPassword }, activeCompanyId)
 
       if (result.error) {
         const errorMessage = `Persona non salvata: ${result.error.message}`
@@ -8382,7 +8385,7 @@ function App() {
       setPersonRecords((currentPeople) => [savedPerson, ...currentPeople])
       const savedDeadlineCount = await saveInitialDeadlines(savedPerson)
       setPeopleSyncStatus(
-        `Persona creata. Username: ${cleanPerson.username}. Password temporanea: ${temporaryPassword}${savedDeadlineCount ? `. Scadenze create: ${savedDeadlineCount}.` : ''}`,
+        `Persona creata. Username: ${cleanPerson.username}. Password: ${accessPassword}${savedDeadlineCount ? `. Scadenze create: ${savedDeadlineCount}.` : ''}`,
       )
       return savedPerson
     }
@@ -8425,7 +8428,7 @@ function App() {
 
   async function resetAccessPassword(targetType, targetId, displayName = 'utente') {
     const chosenPassword = window.prompt(
-      `Nuova password temporanea per ${displayName}\n\nScrivila qui se vuoi sceglierla tu. Deve avere almeno 8 caratteri.\nLascia vuoto e premi OK se vuoi farla generare a Vygo.`,
+      `Nuova password per ${displayName}\n\nScrivila qui se vuoi sceglierla tu. Deve avere almeno 8 caratteri.\nLascia vuoto e premi OK se vuoi farla generare a Vygo.`,
       '',
     )
 
@@ -8446,21 +8449,33 @@ function App() {
       const result = await resetSupabaseCompanyAccessPassword({ password: cleanPassword, targetId, targetType }, activeCompanyId)
 
       if (result.error) {
-        setStatus(`Errore reset password: ${result.error.message}`)
+        setStatus(`Errore cambio password: ${result.error.message}`)
         return false
       }
 
       const password = result.data?.password ?? ''
       const username = result.data?.username ?? ''
 
-      setStatus(`Password reimpostata per ${displayName}.`)
+      if (password) {
+        if (isDriver) {
+          setDriverRecords((currentDrivers) =>
+            currentDrivers.map((driver) => (driver.id === targetId ? { ...driver, accessPassword: password } : driver)),
+          )
+        } else {
+          setPersonRecords((currentPeople) =>
+            currentPeople.map((person) => (person.id === targetId ? { ...person, accessPassword: password } : person)),
+          )
+        }
+      }
+
+      setStatus(`Password aggiornata per ${displayName}.`)
       window.alert(
-        `Password temporanea pronta per ${displayName}\n\nUsername: ${username || displayName}\nPassword: ${password}\n\nComunicala alla persona e falla cambiare al prossimo accesso.`,
+        `Password pronta per ${displayName}\n\nUsername: ${username || displayName}\nPassword: ${password}\n\nComunicala alla persona: usera questa password per entrare in app.`,
       )
       return true
     }
 
-    window.alert('Il reset password funziona solo dal sito pubblicato e con azienda loggata.')
+    window.alert('Il cambio password funziona solo dal sito pubblicato e con azienda loggata.')
     return false
   }
 
@@ -10698,7 +10713,8 @@ function LegalReadButton({ documentId, label = 'Leggi', onOpen }) {
 }
 
 function LegalDocumentModal({ documentId, onClose }) {
-  const document = documentId ? legalDocumentLibrary[documentId] : null
+  const { language } = useI18n()
+  const document = documentId ? getLegalDocument(documentId, language) ?? legalDocumentLibrary[documentId] : null
 
   if (!document) return null
 
@@ -14692,7 +14708,7 @@ function PersonCreatePanel({ onAddPerson, syncStatus }) {
     form.department ? null : 'reparto',
     form.personType ? null : 'ruolo',
     form.username.trim() ? null : 'username app',
-    form.password.trim() ? null : 'password temporanea',
+    form.password.trim() ? null : 'password',
     form.password.trim() && form.password.trim().length < 8 ? 'password min 8' : null,
   ].filter(Boolean)
   const canSubmit = missingRequiredFields.length === 0
@@ -14811,7 +14827,7 @@ function PersonCreatePanel({ onAddPerson, syncStatus }) {
           <input required value={form.username} onChange={(event) => updateField('username', event.target.value)} />
         </label>
         <label>
-          Password temporanea
+          Password
           <span className="password-field-row">
             <input
               minLength={8}
@@ -14870,8 +14886,12 @@ function PeopleDepartmentBlock({ emptyText, icon: Icon, itemRecords, onResetAcce
               <span>{person.jobTitle || getWorkforceRoleLabel(person.personType)} · {getWorkforceDepartmentLabel(person.department)}</span>
               <small>{[person.phone, person.email, person.depot].filter(Boolean).join(' · ') || 'Contatto non indicato'}</small>
             </div>
+            <div className="credential-inline">
+              <span>Username: {person.username || 'non indicato'}</span>
+              <span>Password: {person.accessPassword || 'non salvata'}</span>
+            </div>
             <button className="small-button" onClick={() => onResetAccessPassword?.('person', person.id, person.name)} type="button">
-              Reimposta password
+              Cambia password
             </button>
             <WorkforceDeadlineMiniList deadlines={deadlines} />
           </article>
@@ -15134,8 +15154,11 @@ function DriverManagementRow({
           <Pencil size={15} />
           {t('common.edit')}
         </button>
+        <div className="credential-inline driver-credential-inline">
+          <span>Password: {driver.accessPassword || 'non salvata'}</span>
+        </div>
         <button className="small-button" disabled={saving} onClick={onResetPassword} type="button">
-          Reimposta password
+          Cambia password
         </button>
         <button className="small-button danger-action" disabled={saving} onClick={onArchive} type="button">
           {saving ? t('common.archiving') : t('common.archive')}

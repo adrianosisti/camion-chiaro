@@ -65,7 +65,14 @@ function isMissingWorkforceSchemaError(error) {
 
 function isMissingDriverCheckPermissionColumn(error) {
   const message = String(error?.message ?? '')
-  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('can_submit_checks')
+  return ['42703', 'PGRST204'].includes(error?.code) && (
+    message.includes('access_password') || message.includes('can_submit_checks')
+  )
+}
+
+function isMissingAccessPasswordColumn(error) {
+  const message = String(error?.message ?? '')
+  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('access_password')
 }
 
 function workforceSchemaError() {
@@ -84,7 +91,9 @@ const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_m
 const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
 const driverSelectBaseColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
-const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
+const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, access_password, status'
+const companyPersonSelectBaseColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status'
+const companyPersonSelectWithAccessColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, access_password, status'
 
 async function runDriverSelect(configureQuery) {
   let result = await configureQuery(supabase.from('drivers').select(driverSelectWithCheckColumns))
@@ -122,11 +131,11 @@ const faultReportLegacySelect =
 const costEntrySelect =
   'id, company_id, vehicle_id, asset_id, driver_id, source_type, category, title, supplier, amount_cents, currency, spent_at, odometer_km, notes, file_bucket, file_path, created_at, updated_at'
 const legalDocumentVersions = {
-  dpa: 'vygo-dpa-2026-07-01',
-  marketing: 'vygo-marketing-2026-07-01',
-  privacy: 'vygo-privacy-2026-07-01',
-  staffTerms: 'vygo-staff-terms-2026-07-01',
-  terms: 'vygo-terms-2026-07-01',
+  dpa: 'vygo-dpa-2026-07-03',
+  marketing: 'vygo-marketing-2026-07-03',
+  privacy: 'vygo-privacy-2026-07-03',
+  staffTerms: 'vygo-staff-terms-2026-07-03',
+  terms: 'vygo-terms-2026-07-03',
 }
 
 function getRequiredLegalDocuments(accountRole = 'company') {
@@ -318,6 +327,7 @@ function toCompanyPersonPayload(person, companyId) {
   const cleanName = String(person.name ?? '').trim()
 
   return {
+    access_password: person.accessPassword || person.password || null,
     company_id: companyId,
     department: person.department || 'office',
     depot: person.depot || null,
@@ -547,7 +557,7 @@ async function fetchCurrentCompanyPerson(companyId, userId, driverId = '') {
   if (driverId) {
     const byDriverResult = await supabase
       .from('company_people')
-      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .select(companyPersonSelectWithAccessColumns)
       .eq('company_id', companyId)
       .eq('linked_driver_id', driverId)
       .neq('status', 'archived')
@@ -562,7 +572,7 @@ async function fetchCurrentCompanyPerson(companyId, userId, driverId = '') {
         .from('company_people')
         .update({ user_id: userId })
         .eq('id', byDriverResult.data.id)
-        .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+        .select(companyPersonSelectWithAccessColumns)
         .maybeSingle()
 
       if (!updatedResult.error && updatedResult.data) {
@@ -585,7 +595,7 @@ async function fetchCurrentCompanyPerson(companyId, userId, driverId = '') {
 
   const byUserResult = await supabase
     .from('company_people')
-    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .select(companyPersonSelectWithAccessColumns)
     .eq('company_id', companyId)
     .eq('user_id', userId)
     .neq('status', 'archived')
@@ -910,7 +920,7 @@ async function fetchDriverContextDirect() {
   if (!driverResult.data) {
     const personResult = await supabase
       .from('company_people')
-      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .select(companyPersonSelectWithAccessColumns)
       .eq('user_id', user.id)
       .neq('status', 'archived')
       .limit(1)
@@ -980,7 +990,7 @@ async function fetchDriverContextDirect() {
     fetchDriverUnreadCompanyMessages(driver.company_id, driver.id),
     supabase
       .from('company_people')
-      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .select(companyPersonSelectWithAccessColumns)
       .eq('company_id', driver.company_id)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -1059,7 +1069,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
       .maybeSingle(),
     supabase
       .from('company_people')
-      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .select(companyPersonSelectWithAccessColumns)
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -1206,7 +1216,7 @@ export async function fetchCompanyContext() {
       .order('plate', { ascending: true }),
     supabase
       .from('company_people')
-      .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+      .select(companyPersonSelectWithAccessColumns)
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
@@ -2382,11 +2392,23 @@ export async function createCompanyPerson({ companyId, person }) {
   const payload = toCompanyPersonPayload(person, companyId)
   if (!payload.full_name) return { data: null, error: { message: 'Nome persona obbligatorio.' } }
 
-  const { data, error } = await supabase
+  let insertResult = await supabase
     .from('company_people')
     .insert(payload)
-    .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
+    .select(companyPersonSelectWithAccessColumns)
     .single()
+
+  if (isMissingAccessPasswordColumn(insertResult.error)) {
+    const fallbackPayload = { ...payload }
+    delete fallbackPayload.access_password
+    insertResult = await supabase
+      .from('company_people')
+      .insert(fallbackPayload)
+      .select(companyPersonSelectBaseColumns)
+      .single()
+  }
+
+  const { data, error } = insertResult
 
   if (isMissingWorkforceSchemaError(error)) {
     return { data: null, error: workforceSchemaError() }

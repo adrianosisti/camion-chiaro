@@ -59,6 +59,11 @@ function generateTemporaryPassword() {
   return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
 }
 
+function isMissingAccessPasswordColumn(error) {
+  const message = String(error?.message ?? '')
+  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('access_password')
+}
+
 async function verifyCompanyOperator(serviceClient, userId, companyId) {
   const { data, error } = await serviceClient
     .from('company_members')
@@ -214,7 +219,7 @@ export async function handler(event) {
   const username = normalizeUsername(target.username || target.full_name)
   const candidateAuthEmails = getCandidateAuthEmails(target, username)
   const authEmail = candidateAuthEmails[0] || buildAuthEmail(username)
-  const temporaryPassword = requestedPassword || generateTemporaryPassword()
+  const accessPassword = requestedPassword || generateTemporaryPassword()
   const metadata = getTargetMetadata(targetType, target, companyId)
   const matchingUsers = await findUsersByEmails(serviceClient, candidateAuthEmails)
   const authUserIds = uniqueStrings([target.user_id, ...matchingUsers.map((user) => user.id)])
@@ -224,7 +229,7 @@ export async function handler(event) {
   for (const authUserId of authUserIds) {
     const { data: updatedUser, error: updateError } = await serviceClient.auth.admin.updateUserById(authUserId, {
       email_confirm: true,
-      password: temporaryPassword,
+      password: accessPassword,
       user_metadata: metadata,
     })
 
@@ -241,7 +246,7 @@ export async function handler(event) {
     const { data: createdUser, error: createError } = await serviceClient.auth.admin.createUser({
       email: authEmail,
       email_confirm: true,
-      password: temporaryPassword,
+      password: accessPassword,
       user_metadata: metadata,
     })
 
@@ -254,11 +259,21 @@ export async function handler(event) {
     authUserId = createdUser.user.id
   }
 
-  const { error: updateRecordError } = await serviceClient
+  let updateRecordResult = await serviceClient
     .from(targetResult.table)
-    .update({ auth_email: authEmail, user_id: authUserId })
+    .update({ access_password: accessPassword, auth_email: authEmail, user_id: authUserId })
     .eq('company_id', companyId)
     .eq('id', targetId)
+
+  if (isMissingAccessPasswordColumn(updateRecordResult.error)) {
+    updateRecordResult = await serviceClient
+      .from(targetResult.table)
+      .update({ auth_email: authEmail, user_id: authUserId })
+      .eq('company_id', companyId)
+      .eq('id', targetId)
+  }
+
+  const { error: updateRecordError } = updateRecordResult
 
   if (updateRecordError) {
     return jsonResponse(500, { error: updateRecordError.message })
@@ -267,7 +282,7 @@ export async function handler(event) {
   return jsonResponse(200, {
     authEmail,
     loginEmails: candidateAuthEmails,
-    password: temporaryPassword,
+    password: accessPassword,
     passwordGenerated: !requestedPassword,
     targetId,
     targetType,

@@ -821,6 +821,8 @@ export function CompanyManagementScreen({
   const [selectedArchiveMonthKey, setSelectedArchiveMonthKey] = useState(() => getMonthArchiveKey())
   const [showAllDeadlines, setShowAllDeadlines] = useState(false)
   const [wheelPicker, setWheelPicker] = useState(null)
+  const [passwordResetTarget, setPasswordResetTarget] = useState(null)
+  const [passwordResetValue, setPasswordResetValue] = useState('')
   const currentScopes = workforceSchemaReady ? workforceScopes : scopes
   const costVehicleOptions = useMemo(
     () => [
@@ -1347,17 +1349,28 @@ export function CompanyManagementScreen({
   }
 
   function resetAccess(targetType, targetId, name) {
-    Alert.alert(
-      'Reimposta password',
-      `Genero una nuova password temporanea per ${name}?`,
-      [
-        { style: 'cancel', text: 'Annulla' },
-        {
-          onPress: () => onResetAccessPassword?.({ name, targetId, targetType }),
-          text: 'Genera',
-        },
-      ],
-    )
+    setPasswordResetTarget({ name, targetId, targetType })
+    setPasswordResetValue('')
+  }
+
+  async function submitPasswordReset() {
+    if (!passwordResetTarget) return
+
+    const cleanPassword = passwordResetValue.trim()
+    if (cleanPassword && cleanPassword.length < 8) {
+      Alert.alert('Password breve', 'La password deve avere almeno 8 caratteri.')
+      return
+    }
+
+    const saved = await onResetAccessPassword?.({
+      ...passwordResetTarget,
+      password: cleanPassword,
+    })
+
+    if (saved) {
+      setPasswordResetTarget(null)
+      setPasswordResetValue('')
+    }
   }
 
   async function submitDriver() {
@@ -1372,7 +1385,7 @@ export function CompanyManagementScreen({
     const password = driverForm.password.trim()
 
     if (!payload.name || !payload.phone || !payload.username || !password) {
-      Alert.alert('Dati mancanti', 'Compila nome, telefono, username e password temporanea.')
+      Alert.alert('Dati mancanti', 'Compila nome, telefono, username e password.')
       return
     }
 
@@ -1439,12 +1452,12 @@ export function CompanyManagementScreen({
     }
 
     if (!payload.name || !payload.department || !payload.personType || !payload.username || !payload.password) {
-      Alert.alert('Dati mancanti', 'Compila nome, reparto, ruolo, username e password temporanea.')
+      Alert.alert('Dati mancanti', 'Compila nome, reparto, ruolo, username e password.')
       return
     }
 
     if (payload.password.length < 8) {
-      Alert.alert('Password breve', 'La password temporanea deve avere almeno 8 caratteri.')
+      Alert.alert('Password breve', 'La password deve avere almeno 8 caratteri.')
       return
     }
 
@@ -1719,7 +1732,7 @@ export function CompanyManagementScreen({
           <TextField label="Nome e cognome" onChangeText={(value) => updateDriverForm('name', value)} placeholder="Marco Bianchi" value={driverForm.name} />
           <TextField label="Telefono" keyboardType="phone-pad" onChangeText={(value) => updateDriverForm('phone', value)} placeholder="+39..." value={driverForm.phone} />
           <TextField label="Username app" onChangeText={(value) => updateDriverForm('username', value)} placeholder="marco.bianchi" value={driverForm.username} />
-          <TextField label="Password temporanea" onChangeText={(value) => updateDriverForm('password', value)} placeholder="minimo 8 caratteri" secureTextEntry value={driverForm.password} />
+          <TextField label="Password" onChangeText={(value) => updateDriverForm('password', value)} placeholder="minimo 8 caratteri" secureTextEntry value={driverForm.password} />
           <TextField label="Ruolo" onChangeText={(value) => updateDriverForm('role', value)} placeholder="Autista" value={driverForm.role} />
           <TextField label="Deposito" onChangeText={(value) => updateDriverForm('depot', value)} placeholder="Sede o reparto" value={driverForm.depot} />
           <Pressable
@@ -1775,7 +1788,7 @@ export function CompanyManagementScreen({
           <TextField label="Telefono" keyboardType="phone-pad" onChangeText={(value) => updatePersonForm('phone', value)} placeholder="+39..." value={personForm.phone} />
           <TextField label="Email" keyboardType="email-address" onChangeText={(value) => updatePersonForm('email', value)} placeholder="nome@azienda.it" value={personForm.email} />
           <TextField label="Username app" onChangeText={(value) => updatePersonForm('username', value)} placeholder="paola.rossi" value={personForm.username} />
-          <TextField label="Password temporanea" onChangeText={(value) => updatePersonForm('password', value)} placeholder="minimo 8 caratteri" secureTextEntry value={personForm.password} />
+          <TextField label="Password" onChangeText={(value) => updatePersonForm('password', value)} placeholder="minimo 8 caratteri" secureTextEntry value={personForm.password} />
           <TextField label="Sede o reparto" onChangeText={(value) => updatePersonForm('depot', value)} placeholder="Ufficio Verona, Magazzino 1..." value={personForm.depot} />
           <Text style={styles.groupTitle}>Scadenze iniziali</Text>
           <DateField label="Visita medica" language={language} onChange={(value) => updatePersonForm('medicalDueDate', value)} value={personForm.medicalDueDate} />
@@ -1951,11 +1964,15 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{person.phone || person.email || person.username || 'contatto mancante'}</Text>
                   </View>
                 </View>
+                <View style={styles.credentialCard}>
+                  <Text style={styles.credentialText}>Username: {person.username || 'non indicato'}</Text>
+                  <Text style={styles.credentialText}>Password: {person.accessPassword || 'non salvata'}</Text>
+                </View>
                 <Pressable
                   onPress={() => resetAccess(person.linkedDriverId ? 'driver' : 'person', person.linkedDriverId || person.id, person.name)}
                   style={styles.smallButton}
                 >
-                  <Text style={styles.smallButtonText}>Reimposta password</Text>
+                  <Text style={styles.smallButtonText}>Cambia password</Text>
                 </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id || item.driverId === person.linkedDriverId)} language={language} />
               </View>
@@ -1977,8 +1994,12 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{person.jobTitle || 'Ufficio'} · {person.phone || person.email || 'contatto mancante'}</Text>
                   </View>
                 </View>
+                <View style={styles.credentialCard}>
+                  <Text style={styles.credentialText}>Username: {person.username || 'non indicato'}</Text>
+                  <Text style={styles.credentialText}>Password: {person.accessPassword || 'non salvata'}</Text>
+                </View>
                 <Pressable onPress={() => resetAccess('person', person.id, person.name)} style={styles.smallButton}>
-                  <Text style={styles.smallButtonText}>Reimposta password</Text>
+                  <Text style={styles.smallButtonText}>Cambia password</Text>
                 </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id)} language={language} />
               </View>
@@ -2000,8 +2021,12 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{person.jobTitle || getPersonTypeLabel(person.personType)} · {person.phone || 'contatto mancante'}</Text>
                   </View>
                 </View>
+                <View style={styles.credentialCard}>
+                  <Text style={styles.credentialText}>Username: {person.username || 'non indicato'}</Text>
+                  <Text style={styles.credentialText}>Password: {person.accessPassword || 'non salvata'}</Text>
+                </View>
                 <Pressable onPress={() => resetAccess('person', person.id, person.name)} style={styles.smallButton}>
-                  <Text style={styles.smallButtonText}>Reimposta password</Text>
+                  <Text style={styles.smallButtonText}>Cambia password</Text>
                 </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.personId === person.id)} language={language} />
               </View>
@@ -2040,8 +2065,12 @@ export function CompanyManagementScreen({
                     <Text style={styles.listMeta}>{driver.username} · {driver.phone || 'telefono mancante'}</Text>
                   </View>
                 </View>
+                <View style={styles.credentialCard}>
+                  <Text style={styles.credentialText}>Username: {driver.username || 'non indicato'}</Text>
+                  <Text style={styles.credentialText}>Password: {driver.accessPassword || 'non salvata'}</Text>
+                </View>
                 <Pressable onPress={() => resetAccess('driver', driver.id, driver.name)} style={styles.smallButton}>
-                  <Text style={styles.smallButtonText}>Reimposta password</Text>
+                  <Text style={styles.smallButtonText}>Cambia password</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => onUpdateDriver?.(driver.id, { canSubmitChecks: driver.canSubmitChecks === false })}
@@ -2469,6 +2498,33 @@ export function CompanyManagementScreen({
         ) : null}
       </Panel>
       ) : null}
+      <Modal animationType="fade" onRequestClose={() => setPasswordResetTarget(null)} transparent visible={Boolean(passwordResetTarget)}>
+        <View style={styles.passwordModalOverlay}>
+          <View style={styles.passwordModalCard}>
+            <Text style={styles.passwordModalTitle}>Cambia password</Text>
+            <Text style={styles.passwordModalMeta}>
+              {passwordResetTarget?.name || 'Utente'} entrera in app con questa password. Lascia vuoto per farla generare a Vygo.
+            </Text>
+            <TextInput
+              autoCapitalize="none"
+              onChangeText={setPasswordResetValue}
+              placeholder="Nuova password o lascia vuoto"
+              secureTextEntry
+              style={styles.passwordModalInput}
+              value={passwordResetValue}
+            />
+            <View style={styles.passwordModalActions}>
+              <Pressable onPress={() => setPasswordResetTarget(null)} style={styles.secondaryInlineButton}>
+                <Text style={styles.secondaryInlineButtonText}>Annulla</Text>
+              </Pressable>
+              <Pressable onPress={submitPasswordReset} style={styles.smallButton}>
+                <Text style={styles.smallButtonText}>{passwordResetValue.trim() ? 'Salva password' : 'Genera password'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <SelectionWheelModal
         onClose={closeWheelPicker}
         onConfirm={confirmWheelPicker}
@@ -3258,6 +3314,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
+  },
+  credentialCard: {
+    backgroundColor: '#ecfeff',
+    borderColor: '#bae6fd',
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
+    marginTop: 10,
+    padding: 10,
+  },
+  credentialText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  passwordModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-end',
+    marginTop: 14,
+  },
+  passwordModalCard: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    gap: 10,
+    padding: 18,
+    width: '100%',
+  },
+  passwordModalInput: {
+    backgroundColor: '#f8fbff',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '800',
+    minHeight: 50,
+    paddingHorizontal: 14,
+  },
+  passwordModalMeta: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '750',
+    lineHeight: 18,
+  },
+  passwordModalOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 6, 23, 0.54)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 18,
+  },
+  passwordModalTitle: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '900',
   },
   renewSummaryBox: {
     backgroundColor: '#ecfeff',

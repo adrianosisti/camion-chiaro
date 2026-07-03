@@ -771,6 +771,7 @@ const translations = {
     'homeAssistant.status': 'Guida rapida',
     'homeAssistant.title': 'Assistente Vygo',
     'hero.aria': 'Controllo scadenze',
+    'hero.customerLabel': 'Azienda cliente',
     'hero.description': 'Priorita operative, scadenze, check e guasti sempre visibili appena entri.',
     'hero.factDrivers': 'autisti attivi',
     'hero.factNotifications': 'notifiche aperte',
@@ -989,6 +990,7 @@ const translations = {
     'homeAssistant.status': 'Live assistant',
     'homeAssistant.title': 'Vygo Assistant',
     'hero.aria': 'Deadline control',
+    'hero.customerLabel': 'Client company',
     'hero.description': 'A clean screen to see deadlines, morning checks and faults to manage right away.',
     'hero.factDrivers': 'active drivers',
     'hero.factNotifications': 'open notifications',
@@ -1154,6 +1156,7 @@ const translations = {
     'homeCommand.subtitle': 'Las principales areas operativas siempre a mano.',
     'homeCommand.title': 'Comandos empresa',
     'hero.aria': 'Control de vencimientos',
+    'hero.customerLabel': 'Empresa cliente',
     'hero.description': 'Una pantalla limpia para ver vencimientos, checks matinales y averias pendientes.',
     'hero.factDrivers': 'conductores activos',
     'hero.factNotifications': 'notificaciones abiertas',
@@ -1293,6 +1296,7 @@ const translations = {
     'homeCommand.subtitle': 'Les principales zones operationnelles toujours a portee de main.',
     'homeCommand.title': 'Commandes entreprise',
     'hero.aria': 'Controle des echeances',
+    'hero.customerLabel': 'Entreprise cliente',
     'hero.description': 'Un ecran clair pour voir tout de suite echeances, checks du matin et pannes a gerer.',
     'hero.factDrivers': 'chauffeurs actifs',
     'hero.factNotifications': 'notifications ouvertes',
@@ -1432,6 +1436,7 @@ const translations = {
     'homeCommand.subtitle': 'Die wichtigsten Arbeitsbereiche immer griffbereit.',
     'homeCommand.title': 'Firmenbefehle',
     'hero.aria': 'Fristenkontrolle',
+    'hero.customerLabel': 'Kundenfirma',
     'hero.description': 'Eine klare Ansicht fur Fristen, Morgenchecks und offene Schaden.',
     'hero.factDrivers': 'aktive Fahrer',
     'hero.factNotifications': 'offene Hinweise',
@@ -4024,6 +4029,7 @@ const regionalTranslations = {
     'common.save': 'Salveaza',
     'driver.area': 'Zona sofer',
     'driverApp.greeting': 'Buna ziua',
+    'hero.customerLabel': 'Companie client',
     'hero.description': 'O pagina clara pentru scadente, check-uri de dimineata si defectiuni de gestionat.',
     'hero.factDrivers': 'soferi activi',
     'hero.factNotifications': 'notificari deschise',
@@ -4084,6 +4090,7 @@ const regionalTranslations = {
     'common.save': 'Zapisz',
     'driver.area': 'Strefa kierowcy',
     'driverApp.greeting': 'Dzien dobry',
+    'hero.customerLabel': 'Firma klienta',
     'hero.description': 'Czytelny ekran terminow, porannych kontroli i usterek do obslugi.',
     'hero.factDrivers': 'aktywni kierowcy',
     'hero.factNotifications': 'otwarte powiadomienia',
@@ -12628,9 +12635,11 @@ function HeroPanel({
     <section className="hero-panel" aria-label={t('hero.aria')}>
       <div className="hero-dashboard-head">
         <div className="hero-heading-copy">
-          <div className="company-title-row">
-            <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
-            <h2>{companyName}</h2>
+          <div className="hero-dashboard-title">
+            <h2>{t('session.dashboardTitle')}</h2>
+          </div>
+          <div className="hero-brand-lockup" aria-label="Vygo">
+            <img src="/brand/vygo-logo-horizontal.png" alt="Vygo - Move. Manage. Succeed." />
           </div>
           <DailyMotivation role="company" t={t} />
           <div className="hero-facts" aria-label="Dimensione azienda">
@@ -12645,6 +12654,13 @@ function HeroPanel({
             <div>
               <strong>{notificationCount}</strong>
               <span>{t('hero.factNotifications')}</span>
+            </div>
+          </div>
+          <div className="hero-company-strip">
+            <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
+            <div>
+              <span>{t('hero.customerLabel')}</span>
+              <strong>{companyName}</strong>
             </div>
           </div>
         </div>

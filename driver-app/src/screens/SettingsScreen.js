@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { getWheelOptionLabel, SelectionWheelModal, WheelPickerField } from '../components/WheelPicker'
 import { t } from '../i18n/native'
 import { colors, layout } from '../theme'
+
+const panelGradient = require('../../assets/brand/panel-gradient.png')
 
 const languages = [
   { id: 'it', label: 'Italiano' },
@@ -124,10 +125,16 @@ export function SettingsScreen({
 }) {
   const [wheelPicker, setWheelPicker] = useState(null)
   const [activeTrainingIndex, setActiveTrainingIndex] = useState(0)
+  const [isTrainingOpen, setIsTrainingOpen] = useState(false)
   const activeTrainingGuide = companyTrainingGuides[activeTrainingIndex] ?? companyTrainingGuides[0]
+  const SettingsSection = accountType === 'company' ? ImageBackground : View
+  const settingsSectionProps = accountType === 'company'
+    ? { imageStyle: styles.darkGradientImage, resizeMode: 'cover', source: panelGradient }
+    : {}
 
   function handleCompanyMenuPress(item) {
     if (item.id === 'guide') {
+      setIsTrainingOpen(true)
       setActiveTrainingIndex(0)
       return
     }
@@ -138,7 +145,7 @@ export function SettingsScreen({
   return (
     <ScrollView contentContainerStyle={styles.content}>
       {accountType === 'company' ? (
-        <View style={styles.companyMenuShell}>
+        <ImageBackground imageStyle={styles.darkGradientImage} resizeMode="cover" source={panelGradient} style={styles.companyMenuShell}>
           <View style={styles.companyMenuHeader}>
             <View style={styles.companyMenuHeaderIcon}>
               <Ionicons color={colors.cyan} name="menu" size={24} />
@@ -149,6 +156,10 @@ export function SettingsScreen({
               <Text style={styles.companyMenuSubtitle}>Tutte le sezioni operative in un posto solo.</Text>
             </View>
           </View>
+          <Pressable onPress={() => onNavigateCompanyMenu?.('dashboard')} style={styles.companyMenuCloseButton}>
+            <Ionicons color={colors.ink} name="arrow-back" size={17} />
+            <Text style={styles.companyMenuCloseText}>Torna alla dashboard</Text>
+          </Pressable>
           <View style={styles.companyMenuList}>
             {companyMenuItems.map((item) => (
               <Pressable key={item.id} onPress={() => handleCompanyMenuPress(item)} style={styles.companyMenuRow}>
@@ -163,12 +174,21 @@ export function SettingsScreen({
               </Pressable>
             ))}
           </View>
-        </View>
+        </ImageBackground>
       ) : null}
 
-      {accountType === 'company' ? (
-        <Panel kicker="Formazione" title="Guide operative Vygo">
-          <Text style={styles.helper}>
+      {accountType === 'company' && isTrainingOpen ? (
+        <ImageBackground imageStyle={styles.darkGradientImage} resizeMode="cover" source={panelGradient} style={styles.darkSection}>
+          <View style={styles.darkSectionHeader}>
+            <View>
+              <Text style={styles.darkSectionKicker}>Formazione</Text>
+              <Text style={styles.darkSectionTitle}>Guide operative Vygo</Text>
+            </View>
+            <Pressable onPress={() => setIsTrainingOpen(false)} style={styles.darkCloseButton}>
+              <Ionicons color={colors.ink} name="close" size={17} />
+            </Pressable>
+          </View>
+          <Text style={styles.darkHelper}>
             Percorsi rapidi per usare dashboard, anagrafiche, flotta, costi e chat senza confusione.
           </Text>
           <View style={styles.trainingList}>
@@ -205,18 +225,20 @@ export function SettingsScreen({
               </View>
             ))}
           </View>
-        </Panel>
+        </ImageBackground>
       ) : null}
 
       {accountType === 'company' ? (
-        <View style={styles.settingsDivider}>
+        <ImageBackground imageStyle={styles.darkGradientImage} resizeMode="cover" source={panelGradient} style={styles.settingsDivider}>
           <Text style={styles.settingsDividerKicker}>Impostazioni</Text>
           <Text style={styles.settingsDividerTitle}>App, notifiche e account</Text>
-        </View>
+        </ImageBackground>
       ) : null}
 
-      <Panel kicker="App" title={t(language, 'appSettings')}>
-        <Text style={styles.helper}>
+      <SettingsSection {...settingsSectionProps} style={accountType === 'company' ? styles.darkSection : styles.lightSection}>
+        <Text style={accountType === 'company' ? styles.darkSectionKicker : styles.lightSectionKicker}>App</Text>
+        <Text style={accountType === 'company' ? styles.darkSectionTitle : styles.lightSectionTitle}>{t(language, 'appSettings')}</Text>
+        <Text style={accountType === 'company' ? styles.darkHelper : styles.helper}>
           {accountType === 'company'
             ? t(language, 'appSettingsCompanyHelp')
             : t(language, 'appSettingsDriverHelp')}
@@ -224,9 +246,11 @@ export function SettingsScreen({
         <View style={styles.buttonGap} />
         <PrimaryButton onPress={onCheckAppUpdate} title={t(language, 'appUpdatesButton')} tone="light" />
         {appUpdateStatus ? <Text style={styles.diagnosticLine}>{appUpdateStatus}</Text> : null}
-      </Panel>
+      </SettingsSection>
 
-      <Panel kicker={t(language, 'language')} title={t(language, 'languageApp')}>
+      <SettingsSection {...settingsSectionProps} style={accountType === 'company' ? styles.darkSection : styles.lightSection}>
+        <Text style={accountType === 'company' ? styles.darkSectionKicker : styles.lightSectionKicker}>{t(language, 'language')}</Text>
+        <Text style={accountType === 'company' ? styles.darkSectionTitle : styles.lightSectionTitle}>{t(language, 'languageApp')}</Text>
         <WheelPickerField
           helper={t(language, 'languageHelp')}
           label={t(language, 'language')}
@@ -238,30 +262,36 @@ export function SettingsScreen({
           })}
           value={getWheelOptionLabel(languages, language)}
         />
-      </Panel>
+      </SettingsSection>
 
-      <Panel kicker={t(language, 'phone')} title={t(language, 'nativeNotifications')}>
-        <Text style={styles.helper}>
+      <SettingsSection {...settingsSectionProps} style={accountType === 'company' ? styles.darkSection : styles.lightSection}>
+        <Text style={accountType === 'company' ? styles.darkSectionKicker : styles.lightSectionKicker}>{t(language, 'phone')}</Text>
+        <Text style={accountType === 'company' ? styles.darkSectionTitle : styles.lightSectionTitle}>{t(language, 'nativeNotifications')}</Text>
+        <Text style={accountType === 'company' ? styles.darkHelper : styles.helper}>
           {t(language, 'nativeNotificationsHelp')}
         </Text>
         <View style={styles.buttonGap} />
         <PrimaryButton onPress={onEnableNativeNotifications} title={t(language, 'enableNativeNotifications')} tone="light" />
         {nativePushStatus ? <Text style={styles.diagnosticLine}>{nativePushStatus}</Text> : null}
-      </Panel>
+      </SettingsSection>
 
-      <Panel kicker={t(language, 'support')} title={t(language, 'assistantTitle')}>
-        <Text style={styles.helper}>
+      <SettingsSection {...settingsSectionProps} style={accountType === 'company' ? styles.darkSection : styles.lightSection}>
+        <Text style={accountType === 'company' ? styles.darkSectionKicker : styles.lightSectionKicker}>{t(language, 'support')}</Text>
+        <Text style={accountType === 'company' ? styles.darkSectionTitle : styles.lightSectionTitle}>{t(language, 'assistantTitle')}</Text>
+        <Text style={accountType === 'company' ? styles.darkHelper : styles.helper}>
           {t(language, 'assistantHelp')}
         </Text>
         <View style={styles.buttonGap} />
         <PrimaryButton onPress={onOpenAssistant} title={t(language, 'openAssistant')} tone="light" />
-      </Panel>
+      </SettingsSection>
 
-      <Panel kicker="Chat" title={t(language, 'chatSettings')}>
+      <SettingsSection {...settingsSectionProps} style={accountType === 'company' ? styles.darkSection : styles.lightSection}>
+        <Text style={accountType === 'company' ? styles.darkSectionKicker : styles.lightSectionKicker}>Chat</Text>
+        <Text style={accountType === 'company' ? styles.darkSectionTitle : styles.lightSectionTitle}>{t(language, 'chatSettings')}</Text>
         <View style={styles.settingRow}>
           <View style={styles.settingCopy}>
-            <Text style={styles.settingTitle}>{t(language, 'chatSound')}</Text>
-            <Text style={styles.settingMeta}>{t(language, 'chatSoundHelp')}</Text>
+            <Text style={accountType === 'company' ? styles.darkSettingTitle : styles.settingTitle}>{t(language, 'chatSound')}</Text>
+            <Text style={accountType === 'company' ? styles.darkSettingMeta : styles.settingMeta}>{t(language, 'chatSoundHelp')}</Text>
           </View>
           <Switch
             onValueChange={onChatSoundChange}
@@ -270,13 +300,15 @@ export function SettingsScreen({
             value={chatSoundEnabled}
           />
         </View>
-      </Panel>
+      </SettingsSection>
 
-      <Panel kicker={t(language, 'session')} title={t(language, 'account')}>
+      <SettingsSection {...settingsSectionProps} style={accountType === 'company' ? styles.darkSection : styles.lightSection}>
+        <Text style={accountType === 'company' ? styles.darkSectionKicker : styles.lightSectionKicker}>{t(language, 'session')}</Text>
+        <Text style={accountType === 'company' ? styles.darkSectionTitle : styles.lightSectionTitle}>{t(language, 'account')}</Text>
         <PrimaryButton onPress={onRefresh} title={t(language, 'refreshData')} tone="light" />
         <View style={styles.buttonGap} />
         <PrimaryButton onPress={onSignOut} title={t(language, 'signOut')} />
-      </Panel>
+      </SettingsSection>
       <SelectionWheelModal
         onClose={() => setWheelPicker(null)}
         onConfirm={(value) => {
@@ -310,6 +342,22 @@ const styles = StyleSheet.create({
   companyMenuCopy: {
     flex: 1,
     minWidth: 0,
+  },
+  companyMenuCloseButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.cyan,
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  companyMenuCloseText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
   },
   companyMenuHeader: {
     alignItems: 'center',
@@ -369,13 +417,14 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   companyMenuShell: {
-    backgroundColor: '#07111f',
+    backgroundColor: colors.night,
     borderColor: 'rgba(18, 198, 223, 0.38)',
     borderRadius: 22,
     borderWidth: 1,
     gap: 2,
+    overflow: 'hidden',
     padding: 14,
-    shadowColor: '#020617',
+    shadowColor: colors.night,
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.16,
     shadowRadius: 22,
@@ -400,11 +449,73 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   diagnosticLine: {
-    color: colors.muted,
+    color: '#cbd5e1',
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 16,
     marginTop: 4,
+  },
+  darkCloseButton: {
+    alignItems: 'center',
+    backgroundColor: colors.cyan,
+    borderRadius: 999,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  darkHelper: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '750',
+    lineHeight: 19,
+    marginTop: 8,
+  },
+  darkSection: {
+    backgroundColor: colors.night,
+    borderColor: 'rgba(18, 198, 223, 0.34)',
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    padding: 14,
+    shadowColor: colors.night,
+    shadowOffset: { height: 10, width: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+  darkSectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  darkSectionKicker: {
+    color: '#67e8f9',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  darkSectionTitle: {
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  darkSettingMeta: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  darkSettingTitle: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  darkGradientImage: {
+    borderRadius: 22,
   },
   languageButton: {
     alignItems: 'center',
@@ -433,6 +544,27 @@ const styles = StyleSheet.create({
   languageTextActive: {
     color: colors.white,
   },
+  lightSection: {
+    backgroundColor: colors.white,
+    borderColor: colors.line,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 14,
+  },
+  lightSectionKicker: {
+    color: colors.cyanDark,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  lightSectionTitle: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: '900',
+    marginBottom: 8,
+    marginTop: 2,
+  },
   settingCopy: {
     flex: 1,
     paddingRight: 12,
@@ -454,33 +586,34 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   settingsDivider: {
-    backgroundColor: '#e8fbff',
-    borderColor: '#bae6fd',
-    borderRadius: 16,
+    backgroundColor: colors.nightSoft,
+    borderColor: 'rgba(103, 232, 249, 0.26)',
+    borderRadius: 18,
     borderWidth: 1,
     marginTop: 4,
+    overflow: 'hidden',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   settingsDividerKicker: {
-    color: colors.cyanDark,
+    color: '#67e8f9',
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.7,
     textTransform: 'uppercase',
   },
   settingsDividerTitle: {
-    color: colors.ink,
+    color: colors.white,
     fontSize: 16,
     fontWeight: '900',
     marginTop: 2,
   },
   trainingBadge: {
-    backgroundColor: '#f0fdff',
-    borderColor: '#bae6fd',
+    backgroundColor: 'rgba(18, 198, 223, 0.14)',
+    borderColor: 'rgba(103, 232, 249, 0.28)',
     borderRadius: 999,
     borderWidth: 1,
-    color: colors.cyanDark,
+    color: '#67e8f9',
     fontSize: 10,
     fontWeight: '900',
     paddingHorizontal: 8,
@@ -492,7 +625,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   trainingBody: {
-    color: colors.muted,
+    color: '#cbd5e1',
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 15,
@@ -500,8 +633,8 @@ const styles = StyleSheet.create({
   },
   trainingCard: {
     alignItems: 'center',
-    backgroundColor: '#f8fbff',
-    borderColor: colors.line,
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderColor: 'rgba(148, 163, 184, 0.22)',
     borderRadius: 13,
     borderWidth: 1,
     flexDirection: 'row',
@@ -509,7 +642,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   trainingCardActive: {
-    backgroundColor: '#ecfeff',
+    backgroundColor: 'rgba(18, 198, 223, 0.16)',
     borderColor: colors.cyan,
   },
   trainingCopy: {
@@ -517,8 +650,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   trainingDetail: {
-    backgroundColor: '#f8fbff',
-    borderColor: '#bae6fd',
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderColor: 'rgba(103, 232, 249, 0.28)',
     borderRadius: 14,
     borderWidth: 1,
     gap: 8,
@@ -526,14 +659,14 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   trainingDetailKicker: {
-    color: colors.cyanDark,
+    color: '#67e8f9',
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.7,
     textTransform: 'uppercase',
   },
   trainingDetailTitle: {
-    color: colors.ink,
+    color: colors.white,
     fontSize: 16,
     fontWeight: '900',
   },
@@ -542,9 +675,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   trainingNumber: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(18, 198, 223, 0.14)',
     borderRadius: 10,
-    color: colors.cyanDark,
+    color: '#67e8f9',
     fontSize: 12,
     fontWeight: '900',
     overflow: 'hidden',
@@ -552,8 +685,8 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   trainingNumberActive: {
-    backgroundColor: colors.ink,
-    color: colors.white,
+    backgroundColor: colors.cyan,
+    color: colors.ink,
   },
   trainingStep: {
     alignItems: 'flex-start',
@@ -561,9 +694,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   trainingStepNumber: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.cyan,
     borderRadius: 999,
-    color: colors.cyanDark,
+    color: colors.ink,
     fontSize: 11,
     fontWeight: '900',
     minWidth: 22,
@@ -572,14 +705,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   trainingStepText: {
-    color: colors.ink,
+    color: '#e2e8f0',
     flex: 1,
     fontSize: 12,
     fontWeight: '800',
     lineHeight: 17,
   },
   trainingTitle: {
-    color: colors.ink,
+    color: colors.white,
     fontSize: 13,
     fontWeight: '900',
   },

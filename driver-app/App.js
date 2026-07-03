@@ -4157,8 +4157,8 @@ function CamionChiaroApp() {
 
   return (
     <View style={styles.shell}>
-      <ExpoStatusBar backgroundColor="#020617" style="light" translucent={false} />
-      <StatusBar backgroundColor="#020617" barStyle="light-content" translucent={false} />
+      <ExpoStatusBar backgroundColor={colors.night} style="light" translucent={false} />
+      <StatusBar backgroundColor={colors.night} barStyle="light-content" translucent={false} />
       <View style={[styles.header, { paddingTop: headerSafeTop + 10 }]}>
         <View style={styles.headerIdentity}>
           <View style={styles.headerLogo}>
@@ -4170,18 +4170,20 @@ function CamionChiaroApp() {
           </View>
         </View>
         <View style={styles.headerActions}>
-          <View style={styles.headerBrandPill}>
-            <Image
-              accessibilityIgnoresInvertColors
-              resizeMode="contain"
-              source={vygoLogoHorizontal}
-              style={styles.headerBrandLogo}
-            />
-          </View>
+          {accountType !== 'company' ? (
+            <View style={styles.headerBrandPill}>
+              <Image
+                accessibilityIgnoresInvertColors
+                resizeMode="contain"
+                source={vygoLogoHorizontal}
+                style={styles.headerBrandLogo}
+              />
+            </View>
+          ) : null}
           {accountType === 'company' ? (
             <Pressable
               accessibilityLabel="Apri menu aziendale"
-              onPress={() => setActiveTab('settings')}
+              onPress={() => setActiveTab((currentTab) => (currentTab === 'settings' ? 'home' : 'settings'))}
               style={[styles.headerMenuButton, activeTab === 'settings' && styles.headerMenuButtonActive]}
             >
               <Ionicons color={activeTab === 'settings' ? colors.ink : colors.white} name="menu" size={19} />
@@ -4456,7 +4458,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 14,
     padding: 18,
-    shadowColor: '#020617',
+    shadowColor: colors.night,
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -4567,7 +4569,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 14,
     padding: 20,
-    shadowColor: '#020617',
+    shadowColor: colors.night,
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -4585,7 +4587,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   content: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.cyan,
     flex: 1,
   },
   driverName: {
@@ -4622,7 +4624,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 6,
     paddingVertical: 3,
-    shadowColor: '#020617',
+    shadowColor: colors.night,
     shadowOffset: { height: 4, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -4657,7 +4659,7 @@ const styles = StyleSheet.create({
   },
   headerMenuButton: {
     alignItems: 'center',
-    backgroundColor: '#07111f',
+    backgroundColor: colors.night,
     borderColor: 'rgba(18, 198, 223, 0.55)',
     borderRadius: 12,
     borderWidth: 1,
@@ -4735,7 +4737,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   shell: {
-    backgroundColor: '#020617',
+    backgroundColor: colors.night,
     flex: 1,
   },
   statusText: {
@@ -4764,7 +4766,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tabBar: {
-    backgroundColor: '#020617',
+    backgroundColor: colors.night,
     borderTopColor: 'rgba(18, 198, 223, 0.55)',
     borderTopWidth: 1,
     flexDirection: 'row',
@@ -4772,7 +4774,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 26 : 12,
-    shadowColor: '#000',
+    shadowColor: colors.night,
     shadowOffset: { height: -8, width: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 16,
@@ -4780,7 +4782,7 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     alignItems: 'center',
-    backgroundColor: '#0b1220',
+    backgroundColor: colors.nightSoft,
     borderColor: 'rgba(148, 163, 184, 0.26)',
     borderWidth: 1,
     borderRadius: 18,
@@ -4797,7 +4799,7 @@ const styles = StyleSheet.create({
   },
   tabIconShell: {
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderColor: 'rgba(18, 198, 223, 0.35)',
     borderRadius: 999,
     borderWidth: 1,

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ChatScreen } from './ChatScreen'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
+
+const panelGradient = require('../../assets/brand/panel-gradient.png')
 
 function getInitials(value = 'A') {
   return String(value)
@@ -315,10 +317,10 @@ export function CompanyChatScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
+      <ImageBackground imageStyle={styles.panelGradientImage} resizeMode="cover" source={panelGradient} style={styles.hero}>
         <Text style={styles.heroTitle}>Messaggi azienda</Text>
         <Text style={styles.heroText}>Chat ordinate per persone e gruppi, con messaggi non letti subito in evidenza.</Text>
-      </View>
+      </ImageBackground>
 
       <View style={styles.inboxSummary}>
         <View style={styles.inboxSummaryCopy}>
@@ -851,7 +853,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     borderRadius: 20,
     marginBottom: 12,
+    overflow: 'hidden',
     padding: 16,
+  },
+  panelGradientImage: {
+    borderRadius: 20,
   },
   heroText: {
     color: '#cffafe',

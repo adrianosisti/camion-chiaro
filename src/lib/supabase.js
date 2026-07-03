@@ -711,6 +711,18 @@ function toCompanyPersonPayload(person, companyId = configuredCompanyId) {
   }
 }
 
+function toCompanyAssetPayload(asset, companyId = configuredCompanyId) {
+  return {
+    asset_type: asset.assetType || 'forklift',
+    code: asset.code,
+    company_id: companyId,
+    location: asset.location || null,
+    model: asset.model || null,
+    serial_number: asset.serialNumber || null,
+    status: asset.status || 'active',
+  }
+}
+
 function toComplianceItemPayload(item, companyId = configuredCompanyId) {
   return {
     asset_id: item.scope === 'asset' ? item.assigneeId : null,
@@ -2073,6 +2085,26 @@ export async function createCompanyPerson(person, companyId = configuredCompanyI
   }
 
   return { data: data ? mapCompanyPerson(data) : null, error }
+}
+
+export async function createCompanyAssetRecord(asset, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('company_assets')
+    .insert(toCompanyAssetPayload(asset, companyId))
+    .select('id, company_id, asset_type, code, model, serial_number, location, status')
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: { message: 'Attrezzature e magazzino non ancora attivi. Contatta assistenza Vygo.' } }
+  }
+
+  return { data: data ? mapCompanyAsset(data) : null, error }
 }
 
 export async function resetCompanyAccessPassword({ password = '', targetId, targetType }, companyId = configuredCompanyId) {

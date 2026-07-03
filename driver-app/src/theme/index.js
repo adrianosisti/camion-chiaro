@@ -3,7 +3,9 @@ export const colors = {
   cyan: '#12c6df',
   cyanDark: '#075985',
   danger: '#ef4444',
-  ink: '#020617',
+  ink: '#073b4c',
+  night: '#061f2b',
+  nightSoft: '#0b4c5c',
   line: '#d6e6f5',
   muted: '#64748b',
   success: '#16a34a',
@@ -19,7 +21,7 @@ export const layout = {
 export const shadows = {
   panel: {
     elevation: 2,
-    shadowColor: '#020617',
+    shadowColor: '#073b4c',
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 18,

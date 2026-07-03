@@ -63,6 +63,7 @@ import {
   createCompanyAssetSignedUrl,
   createBillingCheckoutSession,
   createBillingPortalSession,
+  createCompanyAssetRecord as createSupabaseCompanyAsset,
   createCompanyPerson as createSupabaseCompanyPerson,
   createCompanyInvoiceSignedUrl,
   createComplianceItemRecord as createSupabaseComplianceItem,
@@ -4462,6 +4463,10 @@ const supportSections = [
         title: 'Crea le persone',
       },
       {
+        body: 'Se l azienda ha gia un archivio Excel, apri Anagrafiche, usa Importa da Excel, scarica il modello Vygo e carica in blocco persone, mezzi, muletti, documenti e scadenze.',
+        title: 'Importa archivio Excel',
+      },
+      {
         body: 'Aggiungi furgoni, motrici, trattori, semirimorchi e attrezzature. Per ogni mezzo puoi collegare documenti, scadenze, guasti, costi e storico operativo.',
         title: 'Registra flotta e strumenti',
       },
@@ -4520,6 +4525,10 @@ const supportSections = [
       {
         points: ['Apri Anagrafiche.', 'Aggiungi persone, mezzi e strumenti.', 'Collega ruoli, telefoni, targhe e assegnazioni principali.'],
         title: 'Anagrafiche',
+      },
+      {
+        points: ['Apri Anagrafiche.', 'Apri Importa da Excel.', 'Scarica Modello Excel o CSV.', 'Compila le righe esempio.', 'Carica il file e importa solo le righe valide.'],
+        title: 'Import massivo',
       },
       {
         points: ['Apri Scadenze o Documenti.', 'Carica file o foto.', 'Inserisci data di scadenza con calendario.', 'Scegli se il documento deve essere visibile all utente.'],
@@ -5567,6 +5576,619 @@ function getPersonCreateDefaults() {
 function buildDriverAuthEmail(username) {
   const cleanUsername = normalizeDriverUsername(username)
   return cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@${driverAuthDomain}`
+}
+
+const bulkImportTemplateCsvPath = '/templates/vygo-import-anagrafiche.csv'
+const bulkImportTemplateXlsxPath = '/templates/vygo-import-anagrafiche.xlsx'
+const bulkImportRowPriority = {
+  driver: 1,
+  person: 2,
+  vehicle: 3,
+  asset: 4,
+  driver_document: 5,
+  deadline: 6,
+}
+
+function normalizeImportToken(value = '') {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
+function normalizeImportValue(value = '') {
+  return String(value ?? '').trim()
+}
+
+function normalizeImportRowType(value = '') {
+  const token = normalizeImportToken(value)
+  const aliases = {
+    asset: 'asset',
+    attrezzatura: 'asset',
+    autista: 'driver',
+    autisti: 'driver',
+    deadline: 'deadline',
+    dipendente: 'person',
+    doc_autista: 'driver_document',
+    documento: 'driver_document',
+    documento_autista: 'driver_document',
+    driver: 'driver',
+    forklift: 'asset',
+    magazziniere: 'person',
+    mezzo: 'vehicle',
+    muletto: 'asset',
+    persona: 'person',
+    scadenza: 'deadline',
+    staff: 'person',
+    vehicle: 'vehicle',
+  }
+
+  return aliases[token] ?? ''
+}
+
+function normalizeImportScope(value = '') {
+  const token = normalizeImportToken(value)
+  const aliases = {
+    asset: 'asset',
+    attrezzatura: 'asset',
+    autista: 'driver',
+    autisti: 'driver',
+    azienda: 'company',
+    company: 'company',
+    dipendente: 'person',
+    driver: 'driver',
+    flotta: 'vehicle',
+    magazzino: 'person',
+    mezzo: 'vehicle',
+    muletto: 'asset',
+    persona: 'person',
+    person: 'person',
+    targa: 'vehicle',
+    vehicle: 'vehicle',
+  }
+
+  return aliases[token] ?? ''
+}
+
+function normalizeImportDepartment(value = '') {
+  const token = normalizeImportToken(value)
+  if (['magazzino', 'warehouse', 'carrellista', 'magazziniere'].includes(token)) return 'warehouse'
+  return 'office'
+}
+
+function normalizeImportPersonType(value = '', department = 'office') {
+  const token = normalizeImportToken(value)
+  const aliases = {
+    carrellista: 'forklift_operator',
+    forklift: 'forklift_operator',
+    forklift_operator: 'forklift_operator',
+    impiegato: 'office',
+    manager: 'manager',
+    magazziniere: 'warehouse_worker',
+    office: 'office',
+    responsabile: 'manager',
+    warehouse: 'warehouse_worker',
+    warehouse_worker: 'warehouse_worker',
+  }
+
+  return aliases[token] ?? (department === 'warehouse' ? 'warehouse_worker' : 'office')
+}
+
+function normalizeImportFleetType(value = '') {
+  const token = normalizeImportToken(value)
+  const aliases = {
+    bilico: 'trattore',
+    furgone: 'furgone',
+    motrice: 'motrice',
+    semirimorchio: 'semirimorchio',
+    semi: 'semirimorchio',
+    trattore: 'trattore',
+    van: 'furgone',
+  }
+
+  return aliases[token] ?? 'trattore'
+}
+
+function normalizeImportAssetType(value = '') {
+  const token = normalizeImportToken(value)
+  const aliases = {
+    altro: 'other',
+    attrezzatura: 'warehouse_equipment',
+    forklift: 'forklift',
+    muletto: 'forklift',
+    pallet: 'pallet_truck',
+    transpallet: 'pallet_truck',
+    warehouse_equipment: 'warehouse_equipment',
+  }
+
+  return aliases[token] ?? 'forklift'
+}
+
+function normalizeImportDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10)
+  }
+
+  const cleanValue = normalizeImportValue(value)
+  if (!cleanValue) return ''
+
+  if (/^\d{1,5}(\.\d+)?$/.test(cleanValue)) {
+    const serial = Number(cleanValue)
+    if (Number.isFinite(serial) && serial > 20000) {
+      const date = new Date(Date.UTC(1899, 11, 30) + serial * 86400000)
+      return date.toISOString().slice(0, 10)
+    }
+  }
+
+  const isoMatch = cleanValue.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/)
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+
+  const italianMatch = cleanValue.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/)
+  if (italianMatch) {
+    const [, day, month, rawYear] = italianMatch
+    const year = rawYear.length === 2 ? `20${rawYear}` : rawYear
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+
+  return ''
+}
+
+function parseBooleanImportValue(value, defaultValue = true) {
+  const token = normalizeImportToken(value)
+  if (!token) return defaultValue
+  if (['no', 'n', 'false', '0', 'non_visibile'].includes(token)) return false
+  return true
+}
+
+function getImportField(row, aliases = []) {
+  let fallbackValue = ''
+
+  for (const alias of aliases) {
+    const key = normalizeImportToken(alias)
+    if (Object.prototype.hasOwnProperty.call(row, key)) {
+      fallbackValue = row[key]
+      if (normalizeImportValue(row[key])) return row[key]
+    }
+  }
+
+  return fallbackValue
+}
+
+function detectCsvDelimiter(firstLine = '') {
+  const semicolonCount = (firstLine.match(/;/g) ?? []).length
+  const commaCount = (firstLine.match(/,/g) ?? []).length
+  return semicolonCount >= commaCount ? ';' : ','
+}
+
+function parseDelimitedText(text = '') {
+  const cleanText = String(text ?? '').replace(/^\uFEFF/, '')
+  const delimiter = detectCsvDelimiter(cleanText.split(/\r?\n/, 1)[0] ?? '')
+  const rows = []
+  let cell = ''
+  let row = []
+  let inQuotes = false
+
+  for (let index = 0; index < cleanText.length; index += 1) {
+    const char = cleanText[index]
+    const nextChar = cleanText[index + 1]
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        cell += '"'
+        index += 1
+      } else {
+        inQuotes = !inQuotes
+      }
+      continue
+    }
+
+    if (char === delimiter && !inQuotes) {
+      row.push(cell)
+      cell = ''
+      continue
+    }
+
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') index += 1
+      row.push(cell)
+      rows.push(row)
+      row = []
+      cell = ''
+      continue
+    }
+
+    cell += char
+  }
+
+  if (cell || row.length) {
+    row.push(cell)
+    rows.push(row)
+  }
+
+  return rows.filter((currentRow) => currentRow.some((value) => normalizeImportValue(value)))
+}
+
+function rowsToImportObjects(rows = []) {
+  const headerIndex = rows.findIndex((row) => row.some((value) => normalizeImportToken(value) === 'tipo_riga'))
+  const headerRow = rows[headerIndex >= 0 ? headerIndex : 0] ?? []
+  const headers = headerRow.map(normalizeImportToken)
+
+  return rows.slice((headerIndex >= 0 ? headerIndex : 0) + 1).map((row, index) => ({
+    lineNumber: index + (headerIndex >= 0 ? headerIndex : 0) + 2,
+    row: headers.reduce((record, header, columnIndex) => {
+      if (header) record[header] = normalizeImportValue(row[columnIndex])
+      return record
+    }, {}),
+  })).filter((entry) => Object.values(entry.row).some((value) => normalizeImportValue(value)))
+}
+
+async function inflateXlsxEntry(bytes) {
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error('Questo browser non legge XLSX direttamente. Scarica il modello CSV e carica quello.')
+  }
+
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
+  return new Uint8Array(await new Response(stream).arrayBuffer())
+}
+
+async function readZipEntries(arrayBuffer) {
+  const view = new DataView(arrayBuffer)
+  let eocdOffset = -1
+
+  for (let offset = view.byteLength - 22; offset >= 0; offset -= 1) {
+    if (view.getUint32(offset, true) === 0x06054b50) {
+      eocdOffset = offset
+      break
+    }
+  }
+
+  if (eocdOffset < 0) throw new Error('File XLSX non leggibile.')
+
+  const entryCount = view.getUint16(eocdOffset + 10, true)
+  const centralDirectoryOffset = view.getUint32(eocdOffset + 16, true)
+  const entries = new Map()
+  let pointer = centralDirectoryOffset
+
+  for (let index = 0; index < entryCount; index += 1) {
+    if (view.getUint32(pointer, true) !== 0x02014b50) break
+
+    const compressionMethod = view.getUint16(pointer + 10, true)
+    const compressedSize = view.getUint32(pointer + 20, true)
+    const fileNameLength = view.getUint16(pointer + 28, true)
+    const extraLength = view.getUint16(pointer + 30, true)
+    const commentLength = view.getUint16(pointer + 32, true)
+    const localHeaderOffset = view.getUint32(pointer + 42, true)
+    const fileName = new TextDecoder().decode(new Uint8Array(arrayBuffer, pointer + 46, fileNameLength))
+    const localFileNameLength = view.getUint16(localHeaderOffset + 26, true)
+    const localExtraLength = view.getUint16(localHeaderOffset + 28, true)
+    const dataOffset = localHeaderOffset + 30 + localFileNameLength + localExtraLength
+    const compressedBytes = new Uint8Array(arrayBuffer, dataOffset, compressedSize)
+    const dataBytes = compressionMethod === 0 ? compressedBytes : await inflateXlsxEntry(compressedBytes)
+
+    entries.set(fileName, new TextDecoder().decode(dataBytes))
+    pointer += 46 + fileNameLength + extraLength + commentLength
+  }
+
+  return entries
+}
+
+function parseXml(text = '') {
+  return new DOMParser().parseFromString(text, 'application/xml')
+}
+
+function resolveXlsxPath(basePath, target = '') {
+  if (target.startsWith('/')) return target.slice(1)
+  const baseDirectory = basePath.split('/').slice(0, -1).join('/')
+  return `${baseDirectory}/${target}`.replace(/\/+/g, '/')
+}
+
+function getXlsxSharedStrings(entries) {
+  const xml = entries.get('xl/sharedStrings.xml')
+  if (!xml) return []
+
+  return Array.from(parseXml(xml).getElementsByTagName('si')).map((item) =>
+    Array.from(item.getElementsByTagName('t')).map((node) => node.textContent ?? '').join(''),
+  )
+}
+
+function getCellColumnIndex(cellRef = '') {
+  const letters = String(cellRef).match(/[A-Z]+/i)?.[0]?.toUpperCase() ?? ''
+  return letters.split('').reduce((total, letter) => total * 26 + letter.charCodeAt(0) - 64, 0) - 1
+}
+
+function parseXlsxWorksheet(xml, sharedStrings = []) {
+  const document = parseXml(xml)
+
+  return Array.from(document.getElementsByTagName('row')).map((rowNode) => {
+    const row = []
+
+    Array.from(rowNode.getElementsByTagName('c')).forEach((cellNode) => {
+      const columnIndex = getCellColumnIndex(cellNode.getAttribute('r'))
+      const type = cellNode.getAttribute('t')
+      const rawValue = cellNode.getElementsByTagName('v')[0]?.textContent ?? ''
+      let value = rawValue
+
+      if (type === 's') value = sharedStrings[Number(rawValue)] ?? ''
+      if (type === 'inlineStr') value = Array.from(cellNode.getElementsByTagName('t')).map((node) => node.textContent ?? '').join('')
+      if (type === 'b') value = rawValue === '1' ? 'TRUE' : 'FALSE'
+
+      row[columnIndex] = value
+    })
+
+    return row
+  })
+}
+
+async function parseImportFile(file) {
+  const extension = getFileExtension(file?.name)
+
+  if (extension === 'csv' || extension === 'txt') {
+    return rowsToImportObjects(parseDelimitedText(await file.text()))
+  }
+
+  if (extension === 'xlsx') {
+    const entries = await readZipEntries(await file.arrayBuffer())
+    const workbookPath = 'xl/workbook.xml'
+    const workbookXml = entries.get(workbookPath)
+    const relsXml = entries.get('xl/_rels/workbook.xml.rels')
+    const sharedStrings = getXlsxSharedStrings(entries)
+    const relationships = new Map()
+
+    if (relsXml) {
+      Array.from(parseXml(relsXml).getElementsByTagName('Relationship')).forEach((relationship) => {
+        relationships.set(relationship.getAttribute('Id'), resolveXlsxPath(workbookPath, relationship.getAttribute('Target') ?? ''))
+      })
+    }
+
+    const sheetPaths = workbookXml
+      ? Array.from(parseXml(workbookXml).getElementsByTagName('sheet'))
+          .map((sheetNode) => relationships.get(sheetNode.getAttribute('r:id') ?? sheetNode.getAttribute('id') ?? ''))
+          .filter(Boolean)
+      : ['xl/worksheets/sheet1.xml']
+
+    for (const sheetPath of sheetPaths) {
+      const sheetRows = parseXlsxWorksheet(entries.get(sheetPath) ?? '', sharedStrings)
+      const objects = rowsToImportObjects(sheetRows)
+      if (objects.length > 0) return objects
+    }
+
+    return []
+  }
+
+  throw new Error('Formato non supportato. Usa il modello CSV o XLSX di Vygo.')
+}
+
+function buildBulkImportPreview(rawEntries = [], context = {}) {
+  const {
+    assetRecords = [],
+    driverRecords = [],
+    personRecords = [],
+    vehicleRecords = [],
+  } = context
+  const existingUsernames = new Set([
+    ...driverRecords.map((driver) => normalizeDriverUsername(driver.username || driver.name || '')),
+    ...personRecords.map((person) => normalizeDriverUsername(person.username || person.name || '')),
+  ].filter(Boolean))
+  const existingPlates = new Set(vehicleRecords.map((vehicle) => normalizePlate(vehicle.plate || '')).filter(Boolean))
+  const existingAssetCodes = new Set(assetRecords.map((asset) => normalizeImportToken(asset.code || '')).filter(Boolean))
+  const plannedDriverUsernames = new Set()
+  const plannedPersonUsernames = new Set()
+  const plannedUsernames = new Set()
+  const plannedPlates = new Set()
+  const plannedAssetCodes = new Set()
+  const duplicatePlannedUsernames = new Set()
+  const duplicatePlannedPlates = new Set()
+  const duplicatePlannedAssetCodes = new Set()
+
+  rawEntries.forEach(({ row }) => {
+    const rowType = normalizeImportRowType(getImportField(row, ['tipo_riga', 'tipo']))
+    const username = normalizeDriverUsername(getImportField(row, ['username', 'utente', 'nome_utente']))
+    const plateOrCode = normalizeImportValue(getImportField(row, ['targa_o_codice', 'targa', 'codice', 'target']))
+
+    if (rowType === 'driver' && username) {
+      if (plannedUsernames.has(username)) duplicatePlannedUsernames.add(username)
+      plannedDriverUsernames.add(username)
+      plannedUsernames.add(username)
+    }
+
+    if (rowType === 'person' && username) {
+      if (plannedUsernames.has(username)) duplicatePlannedUsernames.add(username)
+      plannedPersonUsernames.add(username)
+      plannedUsernames.add(username)
+    }
+
+    if (rowType === 'vehicle' && plateOrCode) {
+      const plate = normalizePlate(plateOrCode)
+      if (plannedPlates.has(plate)) duplicatePlannedPlates.add(plate)
+      plannedPlates.add(plate)
+    }
+
+    if (rowType === 'asset' && plateOrCode) {
+      const code = normalizeImportToken(plateOrCode)
+      if (plannedAssetCodes.has(code)) duplicatePlannedAssetCodes.add(code)
+      plannedAssetCodes.add(code)
+    }
+  })
+
+  const targetExists = (scope, targetKey) => {
+    if (scope === 'company') return true
+    if (scope === 'driver') {
+      const username = normalizeDriverUsername(targetKey)
+      return Boolean(
+        driverRecords.some((driver) => normalizeDriverUsername(driver.username || '') === username) ||
+          plannedDriverUsernames.has(username),
+      )
+    }
+    if (scope === 'person') {
+      const username = normalizeDriverUsername(targetKey)
+      return Boolean(
+        personRecords.some((person) => normalizeDriverUsername(person.username || '') === username) ||
+          plannedPersonUsernames.has(username),
+      )
+    }
+    if (scope === 'vehicle') {
+      const plate = normalizePlate(targetKey)
+      return Boolean(vehicleRecords.some((vehicle) => normalizePlate(vehicle.plate || '') === plate) || plannedPlates.has(plate))
+    }
+    if (scope === 'asset') {
+      const code = normalizeImportToken(targetKey)
+      return Boolean(assetRecords.some((asset) => normalizeImportToken(asset.code || '') === code) || plannedAssetCodes.has(code))
+    }
+
+    return false
+  }
+
+  return rawEntries.map(({ lineNumber, row }) => {
+    const rowType = normalizeImportRowType(getImportField(row, ['tipo_riga', 'tipo']))
+    const errors = []
+    const common = {
+      lineNumber,
+      rowType,
+    }
+    let payload = {}
+    let label = 'Riga non riconosciuta'
+    let detail = ''
+
+    if (!rowType) errors.push('tipo_riga non riconosciuto')
+
+    if (rowType === 'driver') {
+      const name = normalizeImportValue(getImportField(row, ['nome', 'nome_cognome', 'ragione_sociale']))
+      const username = normalizeDriverUsername(getImportField(row, ['username', 'utente', 'nome_utente']))
+      const password = normalizeImportValue(getImportField(row, ['password', 'password_temporanea']))
+      const phone = normalizeImportValue(getImportField(row, ['telefono', 'cellulare', 'phone']))
+      label = name || username || 'Autista'
+      detail = 'Autista con accesso app'
+      payload = {
+        depot: normalizeImportValue(getImportField(row, ['deposito_sede', 'deposito', 'sede'])),
+        email: normalizeImportValue(getImportField(row, ['email'])),
+        id: `imp-driver-${lineNumber}-${Date.now()}`,
+        name,
+        password,
+        phone,
+        role: normalizeImportValue(getImportField(row, ['ruolo', 'mansione'])) || 'Autista',
+        status: 'Disponibile',
+        username,
+        vehicleId: '',
+      }
+      if (!name) errors.push('nome mancante')
+      if (!username) errors.push('username mancante')
+      if (!phone) errors.push('telefono mancante')
+      if (!password || password.length < 8) errors.push('password min 8 caratteri')
+      if (existingUsernames.has(username)) errors.push('username già presente in azienda')
+      if (duplicatePlannedUsernames.has(username)) errors.push('username duplicato nel file')
+    }
+
+    if (rowType === 'person') {
+      const name = normalizeImportValue(getImportField(row, ['nome', 'nome_cognome']))
+      const username = normalizeDriverUsername(getImportField(row, ['username', 'utente', 'nome_utente']))
+      const password = normalizeImportValue(getImportField(row, ['password', 'password_temporanea']))
+      const department = normalizeImportDepartment(getImportField(row, ['reparto', 'dipartimento']))
+      const personType = normalizeImportPersonType(getImportField(row, ['ruolo', 'tipo_persona', 'mansione']), department)
+      label = name || username || 'Persona'
+      detail = `${getWorkforceDepartmentLabel(department)} · ${getWorkforceRoleLabel(personType)}`
+      payload = {
+        department,
+        depot: normalizeImportValue(getImportField(row, ['deposito_sede', 'sede', 'reparto_operativo'])),
+        email: normalizeImportValue(getImportField(row, ['email'])),
+        id: `imp-person-${lineNumber}-${Date.now()}`,
+        initialDeadlines: [],
+        jobTitle: normalizeImportValue(getImportField(row, ['mansione'])) || getWorkforceRoleLabel(personType),
+        name,
+        password,
+        personType,
+        phone: normalizeImportValue(getImportField(row, ['telefono', 'cellulare', 'phone'])),
+        status: 'active',
+        username,
+      }
+      if (!name) errors.push('nome mancante')
+      if (!username) errors.push('username mancante')
+      if (!password || password.length < 8) errors.push('password min 8 caratteri')
+      if (existingUsernames.has(username)) errors.push('username già presente in azienda')
+      if (duplicatePlannedUsernames.has(username)) errors.push('username duplicato nel file')
+    }
+
+    if (rowType === 'vehicle') {
+      const plate = normalizePlate(getImportField(row, ['targa_o_codice', 'targa', 'plate']))
+      const fleetType = normalizeImportFleetType(getImportField(row, ['categoria_mezzo', 'tipo_mezzo', 'categoria']))
+      label = plate || 'Mezzo'
+      detail = getFleetTypeLabel(fleetType)
+      payload = {
+        fleetType,
+        id: `imp-vehicle-${lineNumber}-${Date.now()}`,
+        km: Number.parseInt(normalizeImportValue(getImportField(row, ['km', 'chilometri'])), 10) || 0,
+        model: normalizeImportValue(getImportField(row, ['modello', 'model'])),
+        plate,
+        status: 'Operativo',
+        type: normalizeImportValue(getImportField(row, ['allestimento', 'tipo', 'setup'])) || getFleetTypeLabel(fleetType),
+      }
+      if (!plate) errors.push('targa mancante')
+      if (existingPlates.has(plate)) errors.push('targa già presente in flotta')
+      if (duplicatePlannedPlates.has(plate)) errors.push('targa duplicata nel file')
+    }
+
+    if (rowType === 'asset') {
+      const code = normalizeImportValue(getImportField(row, ['targa_o_codice', 'codice', 'asset_code']))
+      const assetType = normalizeImportAssetType(getImportField(row, ['tipo_attrezzatura', 'categoria_attrezzatura', 'categoria']))
+      label = code || 'Attrezzatura'
+      detail = assetType === 'forklift' ? 'Muletto / carrello' : 'Attrezzatura magazzino'
+      payload = {
+        assetType,
+        code: code.toUpperCase(),
+        id: `imp-asset-${lineNumber}-${Date.now()}`,
+        location: normalizeImportValue(getImportField(row, ['deposito_sede', 'sede', 'location'])),
+        model: normalizeImportValue(getImportField(row, ['modello', 'model'])),
+        serialNumber: normalizeImportValue(getImportField(row, ['numero_documento', 'matricola', 'seriale'])),
+        status: 'active',
+      }
+      if (!code) errors.push('codice attrezzatura mancante')
+      if (existingAssetCodes.has(normalizeImportToken(code))) errors.push('codice attrezzatura già presente')
+      if (duplicatePlannedAssetCodes.has(normalizeImportToken(code))) errors.push('codice attrezzatura duplicato nel file')
+    }
+
+    if (rowType === 'deadline' || rowType === 'driver_document') {
+      const scope = rowType === 'driver_document'
+        ? 'driver'
+        : normalizeImportScope(getImportField(row, ['ambito_scadenza', 'ambito', 'scope']))
+      const targetKey = normalizeImportValue(getImportField(row, ['username', 'targa_o_codice', 'target', 'targa', 'codice']))
+      const dueDate = normalizeImportDate(getImportField(row, ['data_scadenza', 'scadenza', 'due_date']))
+      const type = normalizeImportValue(getImportField(row, ['tipo_scadenza', 'documento', 'tipo_documento', 'type'])) || 'Scadenza'
+      const documentNumber = normalizeImportValue(getImportField(row, ['numero_documento', 'numero', 'matricola']))
+      label = `${type} · ${targetKey || getWorkforceDepartmentLabel(scope)}`
+      detail = rowType === 'driver_document' ? 'Documento autista visibile in app' : `Scadenza ${scope || 'non indicata'}`
+      payload = {
+        documentNumber,
+        dueDate,
+        owner: normalizeImportValue(getImportField(row, ['responsabile', 'owner'])) || 'Ufficio',
+        scope,
+        status: 'open',
+        targetKey,
+        type,
+        visibleToDriver: parseBooleanImportValue(getImportField(row, ['visibile_app', 'visibile', 'visible']), true),
+      }
+      if (!scope) errors.push('ambito_scadenza mancante')
+      if (scope !== 'company' && !targetKey) errors.push('username, targa o codice target mancante')
+      if (scope && !targetExists(scope, targetKey)) errors.push('target non trovato nel file o in anagrafica')
+      if (!dueDate) errors.push('data_scadenza non valida: usa AAAA-MM-GG')
+      if (!type) errors.push('tipo_scadenza mancante')
+    }
+
+    return {
+      ...common,
+      detail,
+      errors,
+      id: `${lineNumber}-${rowType || 'unknown'}`,
+      label,
+      payload,
+      raw: row,
+      status: errors.length ? 'error' : 'ready',
+    }
+  })
 }
 
 function formatOptionalDate(date) {
@@ -7291,8 +7913,41 @@ function App() {
     return true
   }
 
-  function addComplianceItem(formItem) {
-    setItems((currentItems) => [formItem, ...currentItems])
+  async function addComplianceItem(formItem) {
+    const cleanItem = {
+      ...formItem,
+      assigneeId:
+        formItem.assigneeId ||
+        formItem.driverId ||
+        formItem.vehicleId ||
+        formItem.personId ||
+        formItem.assetId ||
+        '',
+      documentNumber: formItem.documentNumber ?? '',
+      owner: formItem.owner ?? '',
+      reminderDays: formItem.reminderDays ?? [60, 30, 15, 7],
+      status: formItem.status ?? 'open',
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setDocumentsSyncStatus('Salvataggio scadenza...')
+      const result = await createSupabaseComplianceItem(cleanItem, activeCompanyId)
+
+      if (result.error) {
+        setDocumentsSyncStatus(`Scadenza non salvata: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setItems((currentItems) => [result.data, ...currentItems])
+        setDocumentsSyncStatus('Scadenza salvata.')
+        return result.data
+      }
+    }
+
+    setItems((currentItems) => [cleanItem, ...currentItems])
+    setDocumentsSyncStatus('Scadenza aggiunta su questo dispositivo.')
+    return cleanItem
   }
 
   async function sendReminder(id) {
@@ -7525,12 +8180,12 @@ function App() {
           ? `Autista creato. Username: ${cleanDriver.username}. Password temporanea: ${temporaryPassword}`
           : 'Autista salvato.',
       )
-      return true
+      return result.data
     }
 
     setDriverRecords((currentDrivers) => [cleanDriver, ...currentDrivers])
     setDriversSyncStatus('Autista aggiunto su questo dispositivo.')
-    return true
+    return cleanDriver
   }
 
   async function addPersonRecord(person) {
@@ -7759,12 +8414,54 @@ function App() {
 
       setVehicleRecords((currentVehicles) => [result.data, ...currentVehicles])
       setFleetSyncStatus('Mezzo salvato.')
-      return true
+      return result.data
     }
 
     setVehicleRecords((currentVehicles) => [cleanVehicle, ...currentVehicles])
     setFleetSyncStatus('Mezzo aggiunto su questo dispositivo.')
-    return true
+    return cleanVehicle
+  }
+
+  async function addCompanyAssetRecord(asset) {
+    if (!canUseCurrentPlanFeature('departments')) {
+      setPeopleSyncStatus(getPlanFeatureLimitMessage('departments'))
+      return false
+    }
+
+    if (!canUsePlanResource('assets')) {
+      return showPlanResourceLimit('assets', setPeopleSyncStatus)
+    }
+
+    const cleanAsset = {
+      ...asset,
+      code: normalizeImportValue(asset.code).toUpperCase(),
+      status: asset.status || 'active',
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setPeopleSyncStatus('Salvataggio attrezzatura...')
+      const result = await createSupabaseCompanyAsset(cleanAsset, activeCompanyId)
+
+      if (result.error) {
+        setPeopleSyncStatus(`Attrezzatura non salvata: ${result.error.message}`)
+        if (String(result.error.message ?? '').includes('Piano Vygo')) window.alert(result.error.message)
+        return false
+      }
+
+      setAssetRecords((currentAssets) => [result.data, ...currentAssets])
+      setPeopleSyncStatus('Attrezzatura salvata.')
+      return result.data
+    }
+
+    const localAsset = {
+      ...cleanAsset,
+      companyId: activeCompanyId,
+      id: asset.id ?? `asset-${Date.now()}`,
+    }
+
+    setAssetRecords((currentAssets) => [localAsset, ...currentAssets])
+    setPeopleSyncStatus('Attrezzatura aggiunta su questo dispositivo.')
+    return localAsset
   }
 
   async function addCostEntryRecord(entry, receiptFile = null) {
@@ -9669,6 +10366,7 @@ function App() {
             driverRecords={driverRecords}
             documentsSyncStatus={documentsSyncStatus}
             faultReportRecords={visibleFaultReportRecords}
+            onAddAsset={addCompanyAssetRecord}
             onAddDriver={addDriverRecord}
             onAddDeadline={addComplianceItem}
             onAddDocument={addDriverDocumentRecord}
@@ -13008,6 +13706,7 @@ function RecordsWorkspace({
   onAddDriver,
   onAddDeadline,
   onAddDocument,
+  onAddAsset,
   onAddPerson,
   onAddVehicle,
   onArchiveDriver,
@@ -13107,6 +13806,19 @@ function RecordsWorkspace({
         </div>
       </div>
 
+      <BulkImportPanel
+        assetRecords={assetRecords}
+        driverRecords={driverRecords}
+        onAddAsset={onAddAsset}
+        onAddDeadline={onAddDeadline}
+        onAddDocument={onAddDocument}
+        onAddDriver={onAddDriver}
+        onAddPerson={onAddPerson}
+        onAddVehicle={onAddVehicle}
+        personRecords={personRecords}
+        vehicleRecords={vehicleRecords}
+      />
+
       {activeTab === 'people' ? (
         <PeopleWorkspace
           assetRecords={assetRecords}
@@ -13165,6 +13877,313 @@ function RecordsWorkspace({
           syncStatus={driversSyncStatus}
           vehicleRecords={vehicleRecords}
         />
+      )}
+    </section>
+  )
+}
+
+function BulkImportPanel({
+  assetRecords = [],
+  driverRecords = [],
+  onAddAsset,
+  onAddDeadline,
+  onAddDocument,
+  onAddDriver,
+  onAddPerson,
+  onAddVehicle,
+  personRecords = [],
+  vehicleRecords = [],
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [fileName, setFileName] = useState('')
+  const [importRows, setImportRows] = useState([])
+  const [isParsing, setIsParsing] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('')
+  const validRows = importRows.filter((row) => row.errors.length === 0)
+  const invalidRows = importRows.filter((row) => row.errors.length > 0)
+  const summary = validRows.reduce((totals, row) => {
+    totals[row.rowType] = (totals[row.rowType] ?? 0) + 1
+    return totals
+  }, {})
+
+  function resetImport() {
+    setFileName('')
+    setImportRows([])
+    setStatusMessage('')
+  }
+
+  async function handleFile(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    setIsParsing(true)
+    setFileName(file.name)
+    setStatusMessage('Lettura file in corso...')
+
+    try {
+      const rawRows = await parseImportFile(file)
+      const previewRows = buildBulkImportPreview(rawRows, {
+        assetRecords,
+        driverRecords,
+        personRecords,
+        vehicleRecords,
+      })
+
+      setImportRows(previewRows)
+      setStatusMessage(
+        previewRows.length
+          ? `${previewRows.length} righe lette. ${previewRows.filter((row) => row.errors.length === 0).length} pronte da importare.`
+          : 'File letto, ma non ho trovato righe compilate.',
+      )
+    } catch (error) {
+      setImportRows([])
+      setStatusMessage(error.message || 'File non letto. Controlla il modello e riprova.')
+    } finally {
+      setIsParsing(false)
+    }
+  }
+
+  function buildRuntimeMaps() {
+    return {
+      assetsByCode: new Map(assetRecords.map((asset) => [normalizeImportToken(asset.code), asset])),
+      driversByUsername: new Map(driverRecords.map((driver) => [normalizeDriverUsername(driver.username), driver])),
+      peopleByUsername: new Map(personRecords.map((person) => [normalizeDriverUsername(person.username), person])),
+      vehiclesByPlate: new Map(vehicleRecords.map((vehicle) => [normalizePlate(vehicle.plate), vehicle])),
+    }
+  }
+
+  function resolveImportTarget(scope, targetKey, maps) {
+    if (scope === 'company') return { id: '', owner: 'Azienda' }
+    if (scope === 'driver') return maps.driversByUsername.get(normalizeDriverUsername(targetKey))
+    if (scope === 'person') return maps.peopleByUsername.get(normalizeDriverUsername(targetKey))
+    if (scope === 'vehicle') return maps.vehiclesByPlate.get(normalizePlate(targetKey))
+    if (scope === 'asset') return maps.assetsByCode.get(normalizeImportToken(targetKey))
+    return null
+  }
+
+  function buildCompliancePayload(row, target) {
+    const payload = {
+      assigneeId: target?.id ?? '',
+      documentNumber: row.payload.documentNumber,
+      dueDate: row.payload.dueDate,
+      id: `cmp-import-${row.lineNumber}-${Date.now()}`,
+      owner: row.payload.owner,
+      reminderDays: [60, 30, 15, 7],
+      scope: row.payload.scope,
+      status: 'open',
+      type: row.payload.type,
+    }
+
+    if (row.payload.scope === 'driver') payload.driverId = target?.id ?? ''
+    if (row.payload.scope === 'person') payload.personId = target?.id ?? ''
+    if (row.payload.scope === 'vehicle') payload.vehicleId = target?.id ?? ''
+    if (row.payload.scope === 'asset') payload.assetId = target?.id ?? ''
+
+    return payload
+  }
+
+  async function importValidRows() {
+    if (validRows.length === 0 || isImporting) return
+
+    setIsImporting(true)
+    setStatusMessage('Importazione in corso...')
+    const maps = buildRuntimeMaps()
+    const importOrder = [...validRows].sort((first, second) => (
+      (bulkImportRowPriority[first.rowType] ?? 99) - (bulkImportRowPriority[second.rowType] ?? 99)
+    ))
+    let savedCount = 0
+    let failedCount = 0
+    const nextRows = importRows.map((row) => ({ ...row }))
+
+    async function markRow(row, status, message = '') {
+      const targetRow = nextRows.find((entry) => entry.id === row.id)
+      if (targetRow) {
+        targetRow.importMessage = message
+        targetRow.importStatus = status
+      }
+      setImportRows([...nextRows])
+    }
+
+    for (const row of importOrder) {
+      await markRow(row, 'running', 'Importazione...')
+
+      try {
+        let result = null
+
+        if (row.rowType === 'driver') {
+          result = await onAddDriver?.(row.payload)
+          if (result?.username) maps.driversByUsername.set(normalizeDriverUsername(result.username), result)
+        }
+
+        if (row.rowType === 'person') {
+          result = await onAddPerson?.(row.payload)
+          if (result?.username) maps.peopleByUsername.set(normalizeDriverUsername(result.username), result)
+        }
+
+        if (row.rowType === 'vehicle') {
+          result = await onAddVehicle?.(row.payload)
+          if (result?.plate) maps.vehiclesByPlate.set(normalizePlate(result.plate), result)
+        }
+
+        if (row.rowType === 'asset') {
+          result = await onAddAsset?.(row.payload)
+          if (result?.code) maps.assetsByCode.set(normalizeImportToken(result.code), result)
+        }
+
+        if (row.rowType === 'driver_document') {
+          const driver = resolveImportTarget('driver', row.payload.targetKey, maps)
+          if (!driver?.id) throw new Error('Autista non trovato durante l import.')
+
+          result = await onAddDocument?.({
+            documentNumber: row.payload.documentNumber,
+            driverId: driver.id,
+            expiresAt: row.payload.dueDate,
+            filePath: '',
+            id: `doc-import-${row.lineNumber}-${Date.now()}`,
+            status: getDriverDocumentStatusFromExpiry(row.payload.dueDate, ''),
+            type: row.payload.type,
+            visibleToDriver: row.payload.visibleToDriver,
+          })
+
+          await onAddDeadline?.(buildCompliancePayload(row, driver))
+        }
+
+        if (row.rowType === 'deadline') {
+          const target = resolveImportTarget(row.payload.scope, row.payload.targetKey, maps)
+          if (row.payload.scope !== 'company' && !target?.id) throw new Error('Target scadenza non trovato durante l import.')
+          result = await onAddDeadline?.(buildCompliancePayload(row, target))
+        }
+
+        if (!result && !['driver_document'].includes(row.rowType)) throw new Error('Riga non salvata.')
+
+        savedCount += 1
+        await markRow(row, 'done', 'Importata')
+      } catch (error) {
+        failedCount += 1
+        await markRow(row, 'error', error.message || 'Non importata')
+      }
+    }
+
+    setIsImporting(false)
+    setStatusMessage(`Import completato: ${savedCount} righe salvate${failedCount ? `, ${failedCount} da controllare` : ''}.`)
+  }
+
+  return (
+    <section className={expanded ? 'panel bulk-import-panel is-open' : 'panel bulk-import-panel'} aria-label="Import Excel anagrafiche">
+      <div className="bulk-import-head">
+        <div className="bulk-import-icon">
+          <Upload size={20} />
+        </div>
+        <div>
+          <p className="overline">Avvio rapido</p>
+          <h2>Importa da Excel</h2>
+          <span>Carica in blocco autisti, persone, mezzi, muletti, documenti e scadenze.</span>
+        </div>
+        <button className="small-button" onClick={() => setExpanded((current) => !current)} type="button">
+          {expanded ? 'Chiudi' : 'Apri import'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="bulk-import-body">
+          <div className="bulk-import-guide">
+            <article>
+              <strong>1. Scarica modello</strong>
+              <span>Usa le righe esempio e cambia solo i dati dell azienda.</span>
+            </article>
+            <article>
+              <strong>2. Compila righe</strong>
+              <span>tipo_riga decide cosa crei: autista, persona, mezzo, attrezzatura, scadenza o documento_autista.</span>
+            </article>
+            <article>
+              <strong>3. Controlla anteprima</strong>
+              <span>Vygo blocca duplicati, date scritte male e scadenze non collegate.</span>
+            </article>
+          </div>
+
+          <div className="bulk-import-actions">
+            <a className="secondary-button compact-button" download href={bulkImportTemplateXlsxPath}>
+              <Download size={16} />
+              Modello Excel
+            </a>
+            <a className="secondary-button compact-button" download href={bulkImportTemplateCsvPath}>
+              <Download size={16} />
+              Modello CSV
+            </a>
+            <label className="primary-button compact-button bulk-file-button">
+              <Upload size={16} />
+              Scegli file
+              <input accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFile} type="file" />
+            </label>
+            {importRows.length > 0 && (
+              <button className="small-button" onClick={resetImport} type="button">
+                <X size={15} />
+                Pulisci
+              </button>
+            )}
+          </div>
+
+          <div className="bulk-import-status">
+            <strong>{fileName || 'Nessun file selezionato'}</strong>
+            <span>{isParsing ? 'Lettura...' : statusMessage || 'Scarica il modello, compilalo e caricalo qui.'}</span>
+          </div>
+
+          {importRows.length > 0 && (
+            <>
+              <div className="bulk-import-summary">
+                <div>
+                  <strong>{validRows.length}</strong>
+                  <span>righe pronte</span>
+                </div>
+                <div className={invalidRows.length ? 'is-danger' : 'is-ok'}>
+                  <strong>{invalidRows.length}</strong>
+                  <span>da correggere</span>
+                </div>
+                <div>
+                  <strong>{summary.driver ?? 0}</strong>
+                  <span>autisti</span>
+                </div>
+                <div>
+                  <strong>{summary.person ?? 0}</strong>
+                  <span>persone</span>
+                </div>
+                <div>
+                  <strong>{summary.vehicle ?? 0}</strong>
+                  <span>mezzi</span>
+                </div>
+                <div>
+                  <strong>{(summary.deadline ?? 0) + (summary.driver_document ?? 0)}</strong>
+                  <span>scadenze/doc</span>
+                </div>
+              </div>
+
+              <div className="bulk-import-preview">
+                {importRows.slice(0, 12).map((row) => (
+                  <article className={row.errors.length ? 'is-error' : row.importStatus === 'done' ? 'is-done' : ''} key={row.id}>
+                    <span>Riga {row.lineNumber}</span>
+                    <div>
+                      <strong>{row.label}</strong>
+                      <small>{row.errors.length ? row.errors.join(' · ') : row.importMessage || row.detail}</small>
+                    </div>
+                    <b>{row.importStatus === 'done' ? 'OK' : row.errors.length ? 'Errore' : 'Pronta'}</b>
+                  </article>
+                ))}
+                {importRows.length > 12 && <p className="archive-note">Anteprima limitata alle prime 12 righe. Verranno importate tutte le righe valide.</p>}
+              </div>
+
+              <div className="bulk-import-footer">
+                <span>
+                  Le righe con errori restano ferme: puoi correggere il file e ricaricarlo senza sporcare l archivio.
+                </span>
+                <button className="primary-button compact-button" disabled={isImporting || validRows.length === 0} onClick={importValidRows} type="button">
+                  {isImporting ? 'Importazione...' : `Importa ${validRows.length} righe valide`}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </section>
   )
@@ -19549,15 +20568,16 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
     })
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
     setShowValidation(true)
     if (!canSubmit) return
 
-    onAdd({
+    const added = await onAdd({
       id: `cmp-${Date.now()}`,
       type: form.type,
       scope: form.scope,
+      assigneeId: form.assigneeId,
       driverId: form.scope === 'driver' ? form.assigneeId : null,
       vehicleId: form.scope === 'vehicle' ? form.assigneeId : null,
       dueDate: form.dueDate,
@@ -19567,7 +20587,7 @@ function AddDeadlineForm({ driverRecords, onAdd, onBackHome, vehicleRecords }) {
       documentNumber: `NEW-${Date.now().toString().slice(-5)}`,
       lastReminderAt: null,
     })
-    setShowValidation(false)
+    if (added) setShowValidation(false)
   }
 
   return (

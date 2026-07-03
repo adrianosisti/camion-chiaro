@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { MetricPill } from '../components/MetricPill'
@@ -9,6 +9,7 @@ import { getLocale, t } from '../i18n/native'
 import { colors, layout } from '../theme'
 
 const vygoLogo = require('../../assets/brand/logo-horizontal.png')
+const panelGradient = require('../../assets/brand/panel-gradient.png')
 
 function formatDate(value, language) {
   if (!value) return t(language, 'noDeadline')
@@ -187,7 +188,7 @@ export function HomeScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
+      <ImageBackground imageStyle={styles.panelGradientImage} resizeMode="cover" source={panelGradient} style={styles.hero}>
         <View style={styles.vygoBrandStrip}>
           <Image resizeMode="contain" source={vygoLogo} style={styles.vygoBrandLogo} />
         </View>
@@ -224,7 +225,7 @@ export function HomeScreen({
           <MetricPill label={t(language, 'checkCritical')} tone={criticalChecks.length ? 'danger' : 'success'} value={criticalChecks.length} />
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
-      </View>
+      </ImageBackground>
 
       {criticalDocuments.length ? (
         <Pressable
@@ -555,7 +556,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     marginBottom: 12,
+    overflow: 'hidden',
     padding: 14,
+  },
+  panelGradientImage: {
+    borderRadius: 20,
   },
   vygoBrandLogo: {
     height: 24,

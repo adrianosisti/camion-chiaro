@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, ImageBackground, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { DateField } from '../components/DateField'
@@ -10,6 +10,8 @@ import { getLocale } from '../i18n/native'
 import { getDaysUntilDate, isComplianceActionRequired, sortByDueDate } from '../services/deadlineRules'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
+
+const panelGradient = require('../../assets/brand/panel-gradient.png')
 
 const fleetTypes = [
   { id: 'furgone', label: 'Furgone' },
@@ -1668,7 +1670,7 @@ export function CompanyManagementScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
+      <ImageBackground imageStyle={styles.panelGradientImage} resizeMode="cover" source={panelGradient} style={styles.hero}>
         <Text style={styles.heroTitle}>{mode === 'create' ? 'Anagrafiche' : 'Archivio'}</Text>
         <Text style={styles.heroMeta}>
           {mode === 'create' ? 'Aggiungi autisti, persone, mezzi e scadenze' : 'Consulta persone, flotta e scadenze'}
@@ -1678,7 +1680,7 @@ export function CompanyManagementScreen({
           <SummaryCard icon="briefcase-outline" label="Ufficio" value={officePeople.length} />
           <SummaryCard icon="cube-outline" label="Magazzino" value={warehousePeople.length} />
         </View>
-      </View>
+      </ImageBackground>
 
       {!workforceSchemaReady ? (
         <View style={styles.schemaNotice}>
@@ -3084,7 +3086,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     marginBottom: 12,
+    overflow: 'hidden',
     padding: 14,
+  },
+  panelGradientImage: {
+    borderRadius: 20,
   },
   heroMeta: {
     color: '#cffafe',

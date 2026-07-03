@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { getLocale, t } from '../i18n/native'
 import { getDaysUntilDate, isComplianceActionRequired, sortByDueDate } from '../services/deadlineRules'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
 
 const vygoLogo = require('../../assets/brand/logo-horizontal.png')
+const panelGradient = require('../../assets/brand/panel-gradient.png')
 
 function formatDateTime(value, language = 'it') {
   if (!value) return ''
@@ -669,7 +670,7 @@ export function CompanyHomeScreen({
 
   return (
     <View style={styles.content}>
-      <View style={styles.hero}>
+      <ImageBackground imageStyle={styles.panelGradientImage} resizeMode="cover" source={panelGradient} style={styles.hero}>
         <Text style={styles.heroDashboardTitle}>{t(language, 'companyDashboard')}</Text>
         <View style={styles.vygoBrandStrip}>
           <Image resizeMode="contain" source={vygoLogo} style={styles.vygoBrandLogo} />
@@ -720,15 +721,14 @@ export function CompanyHomeScreen({
             </View>
           </View>
         ) : null}
-      </View>
+      </ImageBackground>
 
-      <View style={styles.executiveRadarPanel}>
+      <ImageBackground imageStyle={styles.panelGradientImage} resizeMode="cover" source={panelGradient} style={styles.executiveRadarPanel}>
         <View style={styles.executiveRadarHeader}>
           <View>
             <Text style={styles.executiveRadarKicker}>Radar direzione</Text>
             <Text style={styles.executiveRadarTitle}>Priorita di oggi</Text>
           </View>
-          <Text style={[styles.executiveRadarScore, styles[`${operationalTone}SignalScore`]]}>{operationalScore}%</Text>
         </View>
         <Pressable onPress={openWorkSection} style={[styles.operationalRadarCard, styles[`${operationalTone}FleetHealthHeroCard`]]}>
           <View style={styles.operationalRadarTop}>
@@ -778,7 +778,7 @@ export function CompanyHomeScreen({
           <Text style={styles.nextActionKicker}>Prossima azione</Text>
           <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={styles.nextActionLabel}>{nextAction.label}</Text>
         </Pressable>
-      </View>
+      </ImageBackground>
 
       <OperationsDetailPanel
         detail={selectedDetail}
@@ -842,20 +842,25 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   content: {
+    backgroundColor: colors.cyan,
     flex: 1,
-    gap: 6,
+    gap: 7,
     padding: 8,
-    paddingBottom: 6,
+    paddingBottom: 10,
   },
   executiveRadarPanel: {
-    backgroundColor: colors.white,
-    borderColor: colors.line,
+    backgroundColor: colors.night,
+    borderColor: 'rgba(103, 232, 249, 0.26)',
     borderRadius: 16,
     borderWidth: 1,
     flex: 1,
-    gap: 7,
+    gap: 5,
     minHeight: 0,
-    padding: 9,
+    overflow: 'hidden',
+    paddingHorizontal: 9,
+    paddingBottom: 10,
+    paddingTop: 8,
+    position: 'relative',
   },
   executiveRadarHeader: {
     alignItems: 'center',
@@ -864,14 +869,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   executiveRadarKicker: {
-    color: colors.cyanDark,
+    color: '#67e8f9',
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.7,
     textTransform: 'uppercase',
   },
   executiveRadarTitle: {
-    color: colors.ink,
+    color: colors.white,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -1009,15 +1014,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 7,
-    minHeight: 42,
-    paddingHorizontal: 9,
-    paddingVertical: 7,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   operationalRadarCard: {
     borderRadius: 14,
     gap: 4,
-    minHeight: 74,
-    padding: 10,
+    minHeight: 66,
+    padding: 9,
   },
   operationalRadarLabel: {
     color: colors.muted,
@@ -1034,9 +1040,9 @@ const styles = StyleSheet.create({
   },
   operationalRadarScore: {
     color: colors.ink,
-    fontSize: 27,
+    fontSize: 25,
     fontWeight: '900',
-    lineHeight: 29,
+    lineHeight: 27,
   },
   operationalRadarTop: {
     alignItems: 'flex-start',
@@ -1050,8 +1056,8 @@ const styles = StyleSheet.create({
     flexBasis: '48%',
     flexGrow: 1,
     gap: 3,
-    minHeight: 68,
-    padding: 8,
+    minHeight: 60,
+    padding: 7,
   },
   radarTileGrid: {
     flexDirection: 'row',
@@ -1062,9 +1068,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: 9,
-    height: 27,
+    height: 25,
     justifyContent: 'center',
-    width: 27,
+    width: 25,
   },
   radarTileLabel: {
     color: colors.ink,
@@ -1075,7 +1081,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 9,
     fontWeight: '750',
-    lineHeight: 12,
+    lineHeight: 11,
   },
   radarTileTop: {
     alignItems: 'center',
@@ -1085,7 +1091,7 @@ const styles = StyleSheet.create({
   },
   radarTileValue: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
     maxWidth: 70,
     minWidth: 24,
@@ -1534,9 +1540,11 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   hero: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.night,
     borderRadius: 17,
+    overflow: 'hidden',
     padding: 8,
+    position: 'relative',
   },
   heroDashboardTitle: {
     color: colors.white,
@@ -1558,6 +1566,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     paddingHorizontal: 9,
     paddingVertical: 5,
+  },
+  panelGradientImage: {
+    borderRadius: 16,
   },
   heroCopy: {
     flex: 1,

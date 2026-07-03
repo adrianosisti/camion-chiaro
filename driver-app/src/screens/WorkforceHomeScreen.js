@@ -1,9 +1,11 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ImageBackground, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { MetricPill } from '../components/MetricPill'
 import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { colors, layout } from '../theme'
+
+const panelGradient = require('../../assets/brand/panel-gradient.png')
 
 function getDepartmentLabel(value = '') {
   if (value === 'warehouse') return 'Magazzino'
@@ -33,7 +35,7 @@ export function WorkforceHomeScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
+      <ImageBackground imageStyle={styles.panelGradientImage} resizeMode="cover" source={panelGradient} style={styles.hero}>
         <View style={styles.heroIcon}>
           <Ionicons color={colors.ink} name={person?.department === 'warehouse' ? 'cube-outline' : 'briefcase-outline'} size={28} />
         </View>
@@ -44,7 +46,7 @@ export function WorkforceHomeScreen({
           <MetricPill label="Gruppi" tone="info" value={groups.length} />
           <MetricPill label="Scadenze" tone={criticalDeadlines.length ? 'warning' : 'success'} value={criticalDeadlines.length} />
         </View>
-      </View>
+      </ImageBackground>
 
       <Panel kicker="Chat" title="Azienda, reparti e persone">
         <Text style={styles.bodyText}>
@@ -81,7 +83,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     borderRadius: 22,
     marginBottom: 14,
+    overflow: 'hidden',
     padding: 18,
+  },
+  panelGradientImage: {
+    borderRadius: 22,
   },
   heroIcon: {
     alignItems: 'center',

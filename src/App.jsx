@@ -12486,76 +12486,76 @@ function HeroPanel({
 
   return (
     <section className="hero-panel" aria-label={t('hero.aria')}>
-      <div className="hero-copy">
-        <div className="company-title-row">
-          <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
-          <h2>{companyName}</h2>
+      <div className="hero-dashboard-head">
+        <div className="hero-heading-copy">
+          <div className="company-title-row">
+            <EntityAvatar imageUrl={companyLogoUrl} name={companyName} variant="company" />
+            <h2>{companyName}</h2>
+          </div>
+          <DailyMotivation role="company" t={t} />
+          <div className="hero-facts" aria-label="Dimensione azienda">
+            <div>
+              <strong>{activeDriverCount}</strong>
+              <span>{t('hero.factDrivers')}</span>
+            </div>
+            <div>
+              <strong>{activeVehicleCount}</strong>
+              <span>{t('hero.factVehicles')}</span>
+            </div>
+            <div>
+              <strong>{notificationCount}</strong>
+              <span>{t('hero.factNotifications')}</span>
+            </div>
+          </div>
         </div>
-        <DailyMotivation role="company" t={t} />
-        <div className="hero-facts" aria-label="Dimensione azienda">
-          <div>
-            <strong>{activeDriverCount}</strong>
-            <span>{t('hero.factDrivers')}</span>
-          </div>
-          <div>
-            <strong>{activeVehicleCount}</strong>
-            <span>{t('hero.factVehicles')}</span>
-          </div>
-          <div>
-            <strong>{notificationCount}</strong>
-            <span>{t('hero.factNotifications')}</span>
-          </div>
+        <button className="hero-notification-button" onClick={onOpenNotifications} type="button">
+          <Bell size={17} />
+          {t('hero.openBell')}
+        </button>
+      </div>
+      <div className={`executive-radar tone-${radarTone}`} aria-label={t('hero.radarTitle')}>
+        <div className="executive-radar-head">
+          <span>
+            <Gauge size={16} />
+            {t('hero.radarTitle')}
+          </span>
+          <strong>{t('hero.radarSubtitle')}</strong>
         </div>
-        <div className={`executive-radar tone-${radarTone}`} aria-label={t('hero.radarTitle')}>
-          <div className="executive-radar-head">
-            <span>
-              <Gauge size={16} />
-              {t('hero.radarTitle')}
-            </span>
-            <strong>{t('hero.radarSubtitle')}</strong>
-          </div>
-          <div className="executive-radar-grid">
-            <article>
-              <small>{t('hero.radarIndex')}</small>
-              <b>{controlScore}%</b>
-              <em>{controlReason}</em>
-            </article>
-            <article>
-              <small>{t('hero.radarOpen')}</small>
-              <b>{openWorkCount}</b>
-              <em>{t('hero.radarOpenDetail')}</em>
-            </article>
-            <article className={`tone-${fleetDeadlineTone}`}>
-              <small>{t('hero.radarFleetDeadlines')}</small>
-              <b>{fleetDeadlinePercentLabel}</b>
-              <em>{t('hero.radarFleetDeadlinesDetail', { expired: fleetExpiredDeadlineCount, soon: fleetSoonDeadlineCount })}</em>
-            </article>
-            <article>
-              <small>{t('hero.radarCost')}</small>
-              <b>{costMonthValue}</b>
-              <em>{t('hero.radarCostDetail', { count: costRepairCount })}</em>
-            </article>
-            <article className={`tone-${fleetHealthTone}`}>
-              <small>{t('hero.radarFleetHealth')}</small>
-              <b>{fleetHealthPercentLabel}</b>
-              <em>{t('hero.radarFleetHealthDetail', { count: fleetHealthCriticalCount })}</em>
-            </article>
-          </div>
-          <button className="executive-radar-action" onClick={radarAction.onClick} type="button">
-            <span>
-              <radarAction.icon size={16} />
-              {t('hero.radarAction')}
-            </span>
-            <strong>{radarAction.label}</strong>
-            <b>{radarAction.value}</b>
-          </button>
+        <div className="executive-radar-grid">
+          <article>
+            <small>{t('hero.radarIndex')}</small>
+            <b>{controlScore}%</b>
+            <em>{controlReason}</em>
+          </article>
+          <article>
+            <small>{t('hero.radarOpen')}</small>
+            <b>{openWorkCount}</b>
+            <em>{t('hero.radarOpenDetail')}</em>
+          </article>
+          <article className={`tone-${fleetDeadlineTone}`}>
+            <small>{t('hero.radarFleetDeadlines')}</small>
+            <b>{fleetDeadlinePercentLabel}</b>
+            <em>{t('hero.radarFleetDeadlinesDetail', { expired: fleetExpiredDeadlineCount, soon: fleetSoonDeadlineCount })}</em>
+          </article>
+          <article>
+            <small>{t('hero.radarCost')}</small>
+            <b>{costMonthValue}</b>
+            <em>{t('hero.radarCostDetail', { count: costRepairCount })}</em>
+          </article>
+          <article className={`tone-${fleetHealthTone}`}>
+            <small>{t('hero.radarFleetHealth')}</small>
+            <b>{fleetHealthPercentLabel}</b>
+            <em>{t('hero.radarFleetHealthDetail', { count: fleetHealthCriticalCount })}</em>
+          </article>
         </div>
-        <div className="hero-actions">
-          <button className="ghost-button" onClick={onOpenNotifications} type="button">
-            <Bell size={17} />
-            {t('hero.openBell')}
-          </button>
-        </div>
+        <button className="executive-radar-action" onClick={radarAction.onClick} type="button">
+          <span>
+            <radarAction.icon size={16} />
+            {t('hero.radarAction')}
+          </span>
+          <strong>{radarAction.label}</strong>
+          <b>{radarAction.value}</b>
+        </button>
       </div>
       <div className="priority-grid" aria-label={t('hero.priorityAria')}>
         {priorityCards.map((card) => (

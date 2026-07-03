@@ -4401,6 +4401,161 @@
   line-height: 1.35;
 }
 
+.fleet-health-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #c8edf5;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(19, 197, 223, 0.12), rgba(255, 255, 255, 0) 42%),
+    #ffffff;
+  padding: 14px;
+}
+
+.fleet-health-head,
+.fleet-health-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.fleet-health-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.fleet-health-head span,
+.fleet-health-foot span {
+  color: #075985;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.fleet-health-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.02rem;
+}
+
+.fleet-health-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.fleet-health-main-score {
+  display: grid;
+  place-items: center;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 1.45rem;
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.12);
+}
+
+.fleet-health-main-score.tone-success {
+  background: #0f766e;
+}
+
+.fleet-health-main-score.tone-warning {
+  background: #ea580c;
+}
+
+.fleet-health-main-score.tone-danger {
+  background: #be123c;
+}
+
+.fleet-health-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.fleet-health-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  min-height: 104px;
+  border: 1px solid #d6eef5;
+  border-radius: 8px;
+  background: #f8fdff;
+  padding: 11px;
+}
+
+.fleet-health-card > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fleet-health-card strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleet-health-card span,
+.fleet-health-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.fleet-health-card b {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.95rem;
+}
+
+.fleet-health-card p {
+  grid-column: 1 / -1;
+}
+
+.fleet-health-card.tone-success b {
+  background: #0f766e;
+}
+
+.fleet-health-card.tone-warning {
+  border-color: #fed7aa;
+  background: #fffaf3;
+}
+
+.fleet-health-card.tone-warning b {
+  background: #ea580c;
+}
+
+.fleet-health-card.tone-danger {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
+.fleet-health-card.tone-danger b {
+  background: #be123c;
+}
+
+.fleet-health-foot {
+  padding-top: 2px;
+}
+
+.fleet-health-foot span {
+  color: var(--muted);
+  text-transform: none;
+}
+
 .report-section-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -10148,6 +10303,7 @@
   .report-active-summary,
   .report-action-grid,
   .report-question-grid,
+  .fleet-health-grid,
   .reports-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -10532,6 +10688,7 @@
   }
 
   .public-extra-pricing,
+  .fleet-health-grid,
   .reports-kpi-grid,
   .report-action-grid,
   .fault-cost-grid,

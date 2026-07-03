@@ -102,6 +102,66 @@ function getRepairCostSummary(faults = [], costEntries = []) {
   }
 }
 
+function getVehicleMonthCost(vehicleId, costEntries = [], faults = []) {
+  const monthStart = getRepairPeriodStart('month')
+  const safeVehicleId = String(vehicleId ?? '')
+  if (!monthStart || !safeVehicleId) return 0
+
+  const manualCost = costEntries
+    .filter((entry) => String(entry.vehicleId ?? '') === safeVehicleId && new Date(getCostEntryDate(entry)) >= monthStart)
+    .reduce((total, entry) => total + Number(entry.amountCents ?? 0), 0)
+  const faultCost = faults
+    .filter((fault) => String(fault.vehicleId ?? '') === safeVehicleId && new Date(getRepairCostDate(fault)) >= monthStart)
+    .reduce((total, fault) => total + Number(fault.repairCostCents ?? 0), 0)
+
+  return manualCost + faultCost
+}
+
+function getFleetHealthRows({ checks = [], complianceItems = [], costEntries = [], faults = [], vehicles = [] } = {}) {
+  return vehicles
+    .filter((vehicle) => !['archived', 'Archiviato'].includes(vehicle.status))
+    .map((vehicle) => {
+      const vehicleId = String(vehicle.id ?? '')
+      const openFaults = faults.filter((fault) => (
+        String(fault.vehicleId ?? '') === vehicleId && !['closed', 'archived'].includes(fault.status)
+      ))
+      const criticalChecks = checks.filter((check) => (
+        String(check.tractorId ?? '') === vehicleId && isCheckCritical(check)
+      ))
+      const vehicleDeadlines = complianceItems.filter((item) => (
+        item.scope === 'vehicle' && String(item.vehicleId ?? '') === vehicleId && isComplianceActionRequired(item)
+      ))
+      const expiredDeadlines = vehicleDeadlines.filter((item) => getDeadlineDays(item.dueDate) < 0)
+      const upcomingDeadlines = vehicleDeadlines.filter((item) => getDeadlineDays(item.dueDate) >= 0 && getDeadlineDays(item.dueDate) <= 30)
+      const monthCostCents = getVehicleMonthCost(vehicleId, costEntries, faults)
+      const score = Math.max(
+        0,
+        100
+          - (openFaults.length * 18)
+          - (criticalChecks.length * 14)
+          - (expiredDeadlines.length * 22)
+          - (upcomingDeadlines.length * 8)
+          - Math.min(18, Math.floor(monthCostCents / 50000)),
+      )
+      const issues = [
+        openFaults.length ? `${openFaults.length} guasti aperti` : '',
+        criticalChecks.length ? `${criticalChecks.length} check critici` : '',
+        expiredDeadlines.length ? `${expiredDeadlines.length} scadenze scadute` : '',
+        upcomingDeadlines.length ? `${upcomingDeadlines.length} entro 30 gg` : '',
+      ].filter(Boolean)
+
+      return {
+        id: vehicle.id,
+        issues,
+        monthCostCents,
+        plate: vehicle.plate || 'Mezzo',
+        score,
+        tone: score < 55 ? 'danger' : score < 78 ? 'warning' : 'success',
+      }
+    })
+    .sort((first, second) => first.score - second.score)
+}
+
 function getDriverName(drivers, driverId) {
   return drivers.find((driver) => driver.id === driverId)?.name ?? 'Autista'
 }
@@ -521,6 +581,16 @@ export function CompanyHomeScreen({
   const deadlineTone = hasExpiredDeadlines ? 'danger' : hasSoonDeadlines ? 'warning' : 'info'
   const dailyPhrase = getDailyPhrase()
   const operationsToWork = openFaults.length + activeChecks.length
+  const fleetHealthRows = getFleetHealthRows({ checks, complianceItems, costEntries, faults, vehicles })
+  const fleetHealthWorst = fleetHealthRows[0] ?? null
+  const fleetHealthAverage = fleetHealthRows.length
+    ? Math.round(fleetHealthRows.reduce((total, row) => total + row.score, 0) / fleetHealthRows.length)
+    : 100
+  const fleetHealthTone = fleetHealthAverage < 55 ? 'danger' : fleetHealthAverage < 78 ? 'warning' : 'success'
+  const fleetHealthLabel = fleetHealthTone === 'danger' ? 'Da controllare' : fleetHealthTone === 'warning' ? 'Attenzione' : 'Sotto controllo'
+  const fleetHealthMeta = fleetHealthWorst?.issues?.length
+    ? `${fleetHealthWorst.plate}: ${fleetHealthWorst.issues[0]}`
+    : `${vehicles.length} mezzi monitorati`
 
   async function resolveSelectedDetail(detail = selectedDetail, repair = undefined) {
     if (!detail?.item?.id) return
@@ -570,6 +640,17 @@ export function CompanyHomeScreen({
             value={formatCompactMoneyCents(repairCostSummary.monthCents, defaultCurrency)}
           />
         </View>
+        <Pressable onPress={() => onOpenManagement?.('vehicles')} style={[styles.fleetHealthHeroCard, styles[`${fleetHealthTone}FleetHealthHeroCard`]]}>
+          <View style={styles.fleetHealthIcon}>
+            <Ionicons color={fleetHealthTone === 'danger' ? colors.danger : fleetHealthTone === 'warning' ? '#92400e' : colors.success} name="pulse-outline" size={22} />
+          </View>
+          <View style={styles.fleetHealthCopy}>
+            <Text numberOfLines={1} style={styles.fleetHealthKicker}>Salute flotta</Text>
+            <Text numberOfLines={1} style={styles.fleetHealthTitle}>{fleetHealthLabel}</Text>
+            <Text numberOfLines={1} style={styles.fleetHealthMeta}>{fleetHealthMeta}</Text>
+          </View>
+          <Text adjustsFontSizeToFit minimumFontScale={0.75} numberOfLines={1} style={styles.fleetHealthScore}>{fleetHealthAverage}</Text>
+        </Pressable>
         {dailyPhrase ? <Text numberOfLines={1} style={styles.dailyPhrase}>{dailyPhrase}</Text> : null}
       </View>
 
@@ -812,6 +893,62 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 3,
     textAlign: 'center',
+  },
+  fleetHealthCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  fleetHealthHeroCard: {
+    alignItems: 'center',
+    borderRadius: 13,
+    flexDirection: 'row',
+    gap: 9,
+    marginTop: 7,
+    minHeight: 48,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  dangerFleetHealthHeroCard: {
+    backgroundColor: '#fee2e2',
+  },
+  successFleetHealthHeroCard: {
+    backgroundColor: '#dcfce7',
+  },
+  warningFleetHealthHeroCard: {
+    backgroundColor: '#fef3c7',
+  },
+  fleetHealthIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  fleetHealthKicker: {
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  fleetHealthMeta: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+  fleetHealthScore: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    minWidth: 38,
+    textAlign: 'right',
+  },
+  fleetHealthTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
+    lineHeight: 16,
   },
   costAlertCard: {
     backgroundColor: '#ecfeff',

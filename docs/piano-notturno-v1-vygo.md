@@ -33,6 +33,8 @@ Ogni mezzo riceve un punteggio 0-100 basato su scadenze, guasti, check critici, 
 
 Perche vende: il titolare capisce subito quali mezzi stanno diventando un problema.
 
+Stato: prima versione inserita nei Report web e nella home mobile azienda. Da evolvere con filtri, dettaglio per targa e soglie personalizzabili.
+
 ### 2. Fascicolo mezzo stampabile
 
 Una pagina A4 per targa con dati mezzo, scadenze, documenti, ultimi guasti, costi e note.

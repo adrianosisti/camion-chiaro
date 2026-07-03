@@ -898,7 +898,7 @@ const translations = {
     'homeStatus.ready': 'Active',
     'homeStatus.storageDetail': '{files} files',
     'homeStatus.sync': 'System',
-    'homeStatus.syncDemo': 'Local environment',
+    'homeStatus.syncDemo': 'Offline mode',
     'homeStatus.syncReady': 'Connected',
     'homeStatus.waiting': 'To enable',
     'homeFlow.archive': 'Archive',
@@ -11928,6 +11928,17 @@ function ReportsWorkspace({
   const vehicleRows = reportRows.filter((row) => row.vehicleId)
   const driverRows = reportRows.filter((row) => row.driverId)
   const monthTotalCents = monthRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const fleetHealthRows = getFleetHealthRows({
+    complianceItems,
+    costRows: reportRows,
+    faultReportRecords,
+    vehicleCheckRecords,
+    vehicleRecords,
+  })
+  const averageFleetHealthScore = fleetHealthRows.length
+    ? Math.round(fleetHealthRows.reduce((total, row) => total + row.score, 0) / fleetHealthRows.length)
+    : 100
+  const criticalFleetHealthRows = fleetHealthRows.filter((row) => row.score < 62)
 
   return (
     <section className="reports-workspace" aria-label="Report aziendali">
@@ -11958,6 +11969,38 @@ function ReportsWorkspace({
           <span>voci collegate ad autisti</span>
         </article>
       </div>
+      <section className="fleet-health-panel" aria-label="Indice salute flotta">
+        <div className="fleet-health-head">
+          <div>
+            <span>Controllo direzionale</span>
+            <h3>Indice salute flotta</h3>
+            <p>Un punteggio rapido che combina guasti, check critici, scadenze e costi del mese.</p>
+          </div>
+          <strong className={`fleet-health-main-score tone-${averageFleetHealthScore >= 82 ? 'success' : averageFleetHealthScore >= 62 ? 'warning' : 'danger'}`}>
+            {averageFleetHealthScore}
+          </strong>
+        </div>
+        {fleetHealthRows.length > 0 ? (
+          <div className="fleet-health-grid">
+            {fleetHealthRows.slice(0, 6).map((row) => (
+              <article className={`fleet-health-card tone-${row.tone}`} key={row.vehicle.id}>
+                <div>
+                  <strong>{row.vehicle.plate || 'Targa non inserita'}</strong>
+                  <span>{[getFleetTypeLabel(row.vehicle.fleetType), row.vehicle.model].filter(Boolean).join(' · ') || 'Mezzo'}</span>
+                </div>
+                <b>{row.score}</b>
+                <p>{row.issues.length ? row.issues.join(' · ') : 'Nessuna criticita rilevante'}</p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="archive-note">Aggiungi mezzi, scadenze, check e costi per generare l indice salute flotta.</p>
+        )}
+        <div className="fleet-health-foot">
+          <span>{criticalFleetHealthRows.length} mezzi sotto soglia attenzione</span>
+          <span>{fleetHealthRows.length ? `${fleetHealthRows.length} mezzi analizzati` : 'Nessun mezzo analizzato'}</span>
+        </div>
+      </section>
       <FaultCostReport
         acknowledgedCheckIds={acknowledgedCheckIds}
         assetRecords={assetRecords}
@@ -14730,6 +14773,17 @@ function buildCostReportRows(faultReportRecords = [], costEntryRecords = []) {
   return [...faultRows, ...entryRows].sort((first, second) => new Date(second.date) - new Date(first.date))
 }
 
+function getDaysUntil(dateValue) {
+  const date = new Date(dateValue)
+  if (Number.isNaN(date.getTime())) return Infinity
+
+  const today = new Date()
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  return Math.ceil((startOfDate - startOfToday) / 86400000)
+}
+
 function getFaultCostSummary(faultReportRecords = [], costEntryRecords = []) {
   const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
   const monthStart = getFaultCostPeriodStart('month')
@@ -14745,6 +14799,74 @@ function getFaultCostSummary(faultReportRecords = [], costEntryRecords = []) {
     monthCents: sumRows(monthRows),
     yearCents: sumRows(yearRows),
   }
+}
+
+function getFleetHealthRows({
+  complianceItems = [],
+  costRows = [],
+  faultReportRecords = [],
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+} = {}) {
+  const now = new Date()
+  const monthStart = getFaultCostPeriodStart('month')
+  const activeVehicles = vehicleRecords.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
+
+  return activeVehicles.map((vehicle) => {
+    const vehicleId = vehicle.id
+    const openFaults = faultReportRecords.filter((report) => report.vehicleId === vehicleId && isFaultUnread(report)).length
+    const criticalChecks = vehicleCheckRecords.filter((check) => (
+      check.tractorId === vehicleId
+        && !isVehicleCheckArchived(check)
+        && hasCheckIssues(check)
+    )).length
+    const overdueDeadlines = complianceItems.filter((item) => (
+      item.vehicleId === vehicleId
+        && item.status !== 'done'
+        && item.dueDate
+        && new Date(item.dueDate) < now
+    )).length
+    const upcomingDeadlines = complianceItems.filter((item) => (
+      item.vehicleId === vehicleId
+        && item.status !== 'done'
+        && item.dueDate
+        && new Date(item.dueDate) >= now
+        && getDaysUntil(item.dueDate) <= 30
+    )).length
+    const monthCostCents = costRows
+      .filter((row) => row.vehicleId === vehicleId && new Date(row.date) >= monthStart)
+      .reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+
+    const costPenalty = Math.min(20, Math.floor(monthCostCents / 25000))
+    const score = Math.max(
+      0,
+      100
+        - openFaults * 14
+        - criticalChecks * 18
+        - overdueDeadlines * 16
+        - upcomingDeadlines * 6
+        - costPenalty,
+    )
+    const tone = score >= 82 ? 'success' : score >= 62 ? 'warning' : 'danger'
+    const issues = [
+      openFaults ? `${openFaults} guasti aperti` : '',
+      criticalChecks ? `${criticalChecks} check critici` : '',
+      overdueDeadlines ? `${overdueDeadlines} scadenze scadute` : '',
+      upcomingDeadlines ? `${upcomingDeadlines} entro 30 giorni` : '',
+      monthCostCents ? `${formatMoneyCents(monthCostCents, costRows.find((row) => row.vehicleId === vehicleId)?.currency || 'EUR')} mese` : '',
+    ].filter(Boolean)
+
+    return {
+      criticalChecks,
+      issues,
+      monthCostCents,
+      openFaults,
+      score,
+      tone,
+      upcomingDeadlines,
+      vehicle,
+    }
+  }).sort((first, second) => first.score - second.score || second.monthCostCents - first.monthCostCents)
 }
 
 function FaultCostReport({

@@ -3771,7 +3771,7 @@
 }
 
 .support-content-panel {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .support-section-description {
@@ -3840,7 +3840,7 @@
 .support-training-card {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 7px 10px;
   align-items: center;
   min-height: 84px;
@@ -3886,8 +3886,26 @@
   white-space: nowrap;
 }
 
+.support-training-card b {
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  color: #075985;
+  background: #f0fdff;
+  padding: 4px 8px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.support-training-card.is-active b {
+  border-color: #12c6df;
+  color: #020617;
+  background: #67e8f9;
+}
+
 .support-training-card small {
-  grid-column: 2 / 4;
+  grid-column: 2 / 5;
   color: #64748b;
   font-size: 0.78rem;
   line-height: 1.35;

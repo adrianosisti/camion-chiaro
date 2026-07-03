@@ -12161,7 +12161,10 @@ function SupportWorkspace({ t }) {
             aria-selected={activeSection.id === section.id}
             className={activeSection.id === section.id ? 'support-tab is-active' : 'support-tab'}
             key={section.id}
-            onClick={() => setActiveSectionId(section.id)}
+            onClick={() => {
+              setActiveSectionId(section.id)
+              if (section.id === 'videos') setActiveTrainingIndex(0)
+            }}
             role="tab"
             type="button"
           >
@@ -12192,6 +12195,7 @@ function SupportWorkspace({ t }) {
                 >
                   <span>{String(index + 1).padStart(2, '0')}</span>
                   <strong>{item.title}</strong>
+                  <b>{activeTrainingItem?.title === item.title ? 'Aperta' : 'Apri guida'}</b>
                   <small>{item.body}</small>
                   <ChevronRight size={16} />
                 </button>

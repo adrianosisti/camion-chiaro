@@ -3651,7 +3651,13 @@ const microcopyTranslations = {
     'chat.fileAttached': 'File allegato',
     'chat.mediaReady': 'Allegato pronto: {name}',
     'chat.mediaSaveTitle': 'Salvataggio media',
+    'chat.openAttachment': 'Apri',
+    'chat.openPhotoVideo': 'Apri foto e video',
     'chat.photoVideo': 'Foto/video',
+    'chat.photoVideoEmptyBody': 'Le foto e i video condivisi in questa chat appariranno qui.',
+    'chat.photoVideoEmptyTitle': 'Nessuna foto o video',
+    'chat.photoVideoLibrarySubtitle': '{count} foto/video condivisi',
+    'chat.photoVideoLibraryTitle': 'Foto e video',
     'chat.recordAudio': 'Audio',
     'chat.recording': 'Registrazione',
     'chat.recordingFailed': 'Microfono non disponibile',
@@ -3707,7 +3713,13 @@ const microcopyTranslations = {
     'chat.fileAttached': 'File attached',
     'chat.mediaReady': 'Attachment ready: {name}',
     'chat.mediaSaveTitle': 'Media saving',
+    'chat.openAttachment': 'Open',
+    'chat.openPhotoVideo': 'Open photos and videos',
     'chat.photoVideo': 'Photo/video',
+    'chat.photoVideoEmptyBody': 'Photos and videos shared in this chat will appear here.',
+    'chat.photoVideoEmptyTitle': 'No photos or videos',
+    'chat.photoVideoLibrarySubtitle': '{count} photos/videos shared',
+    'chat.photoVideoLibraryTitle': 'Photos and videos',
     'chat.recordAudio': 'Audio',
     'chat.recording': 'Recording',
     'chat.recordingFailed': 'Microphone unavailable',
@@ -3763,7 +3775,13 @@ const microcopyTranslations = {
     'chat.fileAttached': 'Archivo adjunto',
     'chat.mediaReady': 'Adjunto listo: {name}',
     'chat.mediaSaveTitle': 'Guardado media',
+    'chat.openAttachment': 'Abrir',
+    'chat.openPhotoVideo': 'Abrir fotos y videos',
     'chat.photoVideo': 'Foto/video',
+    'chat.photoVideoEmptyBody': 'Las fotos y videos compartidos en este chat apareceran aqui.',
+    'chat.photoVideoEmptyTitle': 'Sin fotos ni videos',
+    'chat.photoVideoLibrarySubtitle': '{count} fotos/videos compartidos',
+    'chat.photoVideoLibraryTitle': 'Fotos y videos',
     'chat.recordAudio': 'Audio',
     'chat.recording': 'Grabando',
     'chat.recordingFailed': 'Microfono no disponible',
@@ -3819,7 +3837,13 @@ const microcopyTranslations = {
     'chat.fileAttached': 'Fichier joint',
     'chat.mediaReady': 'Piece jointe prete : {name}',
     'chat.mediaSaveTitle': 'Sauvegarde medias',
+    'chat.openAttachment': 'Ouvrir',
+    'chat.openPhotoVideo': 'Ouvrir photos et videos',
     'chat.photoVideo': 'Photo/video',
+    'chat.photoVideoEmptyBody': 'Les photos et videos partagees dans ce chat apparaitront ici.',
+    'chat.photoVideoEmptyTitle': 'Aucune photo ou video',
+    'chat.photoVideoLibrarySubtitle': '{count} photos/videos partagees',
+    'chat.photoVideoLibraryTitle': 'Photos et videos',
     'chat.recordAudio': 'Audio',
     'chat.recording': 'Enregistrement',
     'chat.recordingFailed': 'Microphone indisponible',
@@ -3875,7 +3899,13 @@ const microcopyTranslations = {
     'chat.fileAttached': 'Datei angehangt',
     'chat.mediaReady': 'Anhang bereit: {name}',
     'chat.mediaSaveTitle': 'Medien speichern',
+    'chat.openAttachment': 'Offnen',
+    'chat.openPhotoVideo': 'Fotos und Videos offnen',
     'chat.photoVideo': 'Foto/Video',
+    'chat.photoVideoEmptyBody': 'Fotos und Videos aus diesem Chat erscheinen hier.',
+    'chat.photoVideoEmptyTitle': 'Keine Fotos oder Videos',
+    'chat.photoVideoLibrarySubtitle': '{count} Fotos/Videos geteilt',
+    'chat.photoVideoLibraryTitle': 'Fotos und Videos',
     'chat.recordAudio': 'Audio',
     'chat.recording': 'Aufnahme',
     'chat.recordingFailed': 'Mikrofon nicht verfugbar',
@@ -18405,6 +18435,22 @@ function ChatSoundButton({ enabled, onToggle, t }) {
   )
 }
 
+function ChatMediaButton({ count = 0, disabled = false, onClick, t }) {
+  return (
+    <button
+      aria-label={t('chat.openPhotoVideo')}
+      className="icon-button chat-media-button"
+      disabled={disabled}
+      onClick={onClick}
+      title={t('chat.openPhotoVideo')}
+      type="button"
+    >
+      <ImageIcon size={18} />
+      {count > 0 && <span>{count}</span>}
+    </button>
+  )
+}
+
 function ChatVoiceCallButton({ callPayload = {}, disabled = false, onCall, targetName = 'contatto' }) {
   if (!onCall) return null
 
@@ -18512,6 +18558,78 @@ function ChatAttachment({ attachmentPath, compact = false, onLoad, onMediaError,
         </button>
       )}
     </div>
+  )
+}
+
+function ChatMediaLibraryPanel({ messages = [], onClose, onImageOpen, onMediaError, senderLabel, t, title, urlForPath }) {
+  return (
+    <section className="chat-media-panel" aria-label={t('chat.photoVideoLibraryTitle')}>
+      <header className="chat-media-header">
+        <button aria-label={t('common.back')} className="icon-button" onClick={onClose} type="button">
+          <ArrowLeft size={18} />
+        </button>
+        <div>
+          <strong>{t('chat.photoVideoLibraryTitle')}</strong>
+          <span>{title} · {t('chat.photoVideoLibrarySubtitle', { count: messages.length })}</span>
+        </div>
+      </header>
+      <div className="chat-media-grid">
+        {messages.length === 0 ? (
+          <div className="chat-media-empty">
+            <ImageIcon size={26} />
+            <strong>{t('chat.photoVideoEmptyTitle')}</strong>
+            <span>{t('chat.photoVideoEmptyBody')}</span>
+          </div>
+        ) : messages.map((message) => {
+          const attachmentPath = message.attachmentPath
+          const attachmentUrl = urlForPath?.(attachmentPath) || attachmentPath
+          const attachmentKind = getChatAttachmentKind(attachmentPath)
+          const fileName = getChatAttachmentFileName(attachmentPath)
+          const label = getChatAttachmentLabel(attachmentKind, t)
+
+          return (
+            <article className={`chat-media-card is-${attachmentKind || 'file'}`} key={`${message.id}-${attachmentPath}`}>
+              <div className="chat-media-thumb">
+                {attachmentKind === 'image' && attachmentUrl ? (
+                  <button
+                    aria-label={t('chat.openAttachment')}
+                    onClick={() => onImageOpen?.(attachmentUrl, fileName)}
+                    type="button"
+                  >
+                    <img alt={label} onError={() => onMediaError?.(attachmentPath)} src={attachmentUrl} />
+                  </button>
+                ) : attachmentKind === 'video' && attachmentUrl ? (
+                  <video controls onError={() => onMediaError?.(attachmentPath)} playsInline preload="metadata" src={attachmentUrl} />
+                ) : (
+                  <a href={attachmentUrl} rel="noreferrer" target="_blank">
+                    <Paperclip size={24} />
+                  </a>
+                )}
+              </div>
+              <div className="chat-media-card-body">
+                <strong>{label}</strong>
+                <small>{senderLabel?.(message) ?? ''} · {formatShortDateTime(message.createdAt)}</small>
+                <span title={fileName}>{fileName}</span>
+              </div>
+              {attachmentUrl && (
+                <div className="chat-media-card-actions">
+                  {attachmentKind !== 'image' && (
+                    <a href={attachmentUrl} rel="noreferrer" target="_blank">
+                      <ExternalLink size={14} />
+                      {t('chat.openAttachment')}
+                    </a>
+                  )}
+                  <button onClick={() => triggerChatMediaDownload(attachmentUrl, fileName)} type="button">
+                    <Download size={14} />
+                    {t('chat.downloadMedia')}
+                  </button>
+                </div>
+              )}
+            </article>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -19050,6 +19168,7 @@ function ChatWorkspace({
   const [copiedMessageId, setCopiedMessageId] = useState('')
   const [highlightedMessageId, setHighlightedMessageId] = useState('')
   const [chatPhotoPreview, setChatPhotoPreview] = useState(null)
+  const [isMediaPanelOpen, setIsMediaPanelOpen] = useState(false)
   const messagesListRef = useRef(null)
   const composeTextareaRef = useRef(null)
   const seenChatMessageIdsRef = useRef(new Set())
@@ -19221,6 +19340,10 @@ function ChatWorkspace({
         : [],
     [messagesByThread, selectedTeamThread, selectedThread, teamMessagesByThread],
   )
+  const photoVideoMessages = useMemo(
+    () => visibleMessages.filter((message) => ['image', 'video'].includes(getChatAttachmentKind(message.attachmentPath))),
+    [visibleMessages],
+  )
   const lastVisibleMessageId = visibleMessages[visibleMessages.length - 1]?.id ?? ''
   const selectedDriverIsOnline = isChatActorOnline(chatLiveState, 'driver', selectedDriver?.id)
   const selectedDriverIsTyping = Boolean(
@@ -19287,6 +19410,10 @@ function ChatWorkspace({
       onMarkTeamRead?.(selectedTeamThread.id)
     }
   }, [hasUnreadTeamMessages, isCompanyChatOpen, onMarkTeamRead, selectedTeamThread?.id])
+
+  useEffect(() => {
+    setIsMediaPanelOpen(false)
+  }, [selectedThread?.id])
 
   function getDriverThread(driverId) {
     return chatThreads.find((thread) => thread.driverId === driverId && thread.contextType === 'general')
@@ -19730,6 +19857,12 @@ function ChatWorkspace({
             </span>
           </div>
           <div className="chat-thread-header-actions">
+            <ChatMediaButton
+              count={photoVideoMessages.length}
+              disabled={!hasSelectedChatTarget}
+              onClick={() => setIsMediaPanelOpen(true)}
+              t={t}
+            />
             <ChatVoiceCallButton
               callPayload={selectedVoiceCallPayload}
               disabled={!hasSelectedChatTarget}
@@ -19751,6 +19884,18 @@ function ChatWorkspace({
             imageUrl={chatPhotoPreview.imageUrl}
             name={chatPhotoPreview.name}
             onClose={() => setChatPhotoPreview(null)}
+          />
+        )}
+        {isMediaPanelOpen && (
+          <ChatMediaLibraryPanel
+            messages={photoVideoMessages}
+            onClose={() => setIsMediaPanelOpen(false)}
+            onImageOpen={(imageUrl, name) => setChatPhotoPreview({ imageUrl, name })}
+            onMediaError={onRefreshAssetPreviewUrl}
+            senderLabel={getCompanyMessageSenderLabel}
+            t={t}
+            title={selectedChatTitle}
+            urlForPath={(attachmentPath) => assetPreviewUrl(attachmentPath)}
           />
         )}
         <div className="chat-message-list" ref={messagesListRef}>

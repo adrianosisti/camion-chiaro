@@ -761,6 +761,8 @@ const translations = {
     'hero.radarAllGood': 'Giornata sotto controllo',
     'hero.radarCost': 'Soldi del mese',
     'hero.radarCostDetail': '{count} voci costo registrate',
+    'hero.radarFleetHealth': 'Salute flotta',
+    'hero.radarFleetHealthDetail': '{count} mezzi sotto soglia',
     'hero.radarIndex': 'Indice controllo',
     'hero.radarOpen': 'Pratiche aperte',
     'hero.radarOpenDetail': 'guasti, check e scadenze da lavorare',
@@ -963,6 +965,8 @@ const translations = {
     'hero.radarAllGood': 'Day under control',
     'hero.radarCost': 'Month money',
     'hero.radarCostDetail': '{count} cost entries logged',
+    'hero.radarFleetHealth': 'Fleet health',
+    'hero.radarFleetHealthDetail': '{count} vehicles below threshold',
     'hero.radarIndex': 'Control index',
     'hero.radarOpen': 'Open work',
     'hero.radarOpenCosts': 'Open costs',
@@ -8922,6 +8926,17 @@ function App() {
   const openFaultCount = visibleFaultReportRecords.filter(isFaultUnread).length
   const criticalCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds) && hasCheckIssues(check)).length
   const faultCostSummary = getFaultCostSummary(visibleFaultReportRecords, costEntryRecords)
+  const homeFleetHealthRows = getFleetHealthRows({
+    complianceItems: decoratedItems,
+    costRows: buildCostReportRows(visibleFaultReportRecords, costEntryRecords),
+    faultReportRecords: visibleFaultReportRecords,
+    vehicleCheckRecords,
+    vehicleRecords,
+  })
+  const averageFleetHealthScore = homeFleetHealthRows.length
+    ? Math.round(homeFleetHealthRows.reduce((total, row) => total + row.score, 0) / homeFleetHealthRows.length)
+    : 100
+  const criticalFleetHealthCount = homeFleetHealthRows.filter((row) => row.score < 62).length
   const defaultCurrency = getDefaultCurrency(language)
   const notificationCount = unreadCheckCount + openFaultCount
   const companyVisibleTeamThreadIds = new Set(
@@ -9768,10 +9783,13 @@ function App() {
                 costMonthValue={formatCompactMoneyCents(faultCostSummary.monthCents, defaultCurrency)}
                 costRepairCount={faultCostSummary.count}
                 criticalCheckCount={criticalCheckCount}
+                fleetHealthCriticalCount={criticalFleetHealthCount}
+                fleetHealthScore={averageFleetHealthScore}
                 notificationCount={notificationCount}
                 onOpenCostReport={openCostReport}
                 onOpenCriticalChecks={() => openNotifications('critical_checks')}
                 onOpenDeadlineWindow={() => openComplianceFilter('month')}
+                onOpenFleetHealth={openReports}
                 onOpenFaults={() => openNotifications('faults')}
                 onOpenNotifications={() => openNotifications('inbox')}
                 openFaultCount={openFaultCount}
@@ -12359,10 +12377,13 @@ function HeroPanel({
   costMonthValue = '0 €',
   costRepairCount = 0,
   criticalCheckCount,
+  fleetHealthCriticalCount = 0,
+  fleetHealthScore = 100,
   notificationCount,
   onOpenCostReport,
   onOpenCriticalChecks,
   onOpenDeadlineWindow,
+  onOpenFleetHealth,
   onOpenFaults,
   onOpenNotifications,
   openFaultCount,
@@ -12412,7 +12433,7 @@ function HeroPanel({
   const next30DeadlineCount = Number(summary?.next30 ?? 0)
   const openWorkCount = criticalCheckCount + openFaultCount + criticalDeadlineCount
   const costPenalty = Math.min(18, Math.floor(Number(costMonthCents || 0) / 150000))
-  const controlScore = Math.max(
+  const operationalControlScore = Math.max(
     0,
     100
       - criticalCheckCount * 16
@@ -12421,6 +12442,7 @@ function HeroPanel({
       - Math.min(next30DeadlineCount, 8) * 3
       - costPenalty,
   )
+  const controlScore = Math.max(0, Math.min(operationalControlScore, Number(fleetHealthScore ?? 100)))
   const radarTone = controlScore >= 82 ? 'success' : controlScore >= 62 ? 'warning' : 'danger'
   const radarAction = (() => {
     if (criticalCheckCount > 0) {
@@ -12445,6 +12467,14 @@ function HeroPanel({
         label: t('hero.radarOpenDeadlines'),
         onClick: onOpenDeadlineWindow,
         value: `${next30DeadlineCount}`,
+      }
+    }
+    if (fleetHealthCriticalCount > 0) {
+      return {
+        icon: Gauge,
+        label: t('hero.radarFleetHealth'),
+        onClick: onOpenFleetHealth || onOpenCostReport,
+        value: `${fleetHealthScore}`,
       }
     }
     if (costMonthCents > 0) {
@@ -12508,6 +12538,11 @@ function HeroPanel({
               <small>{t('hero.radarCost')}</small>
               <b>{costMonthValue}</b>
               <em>{t('hero.radarCostDetail', { count: costRepairCount })}</em>
+            </article>
+            <article>
+              <small>{t('hero.radarFleetHealth')}</small>
+              <b>{fleetHealthScore}</b>
+              <em>{t('hero.radarFleetHealthDetail', { count: fleetHealthCriticalCount })}</em>
             </article>
           </div>
           <button className="executive-radar-action" onClick={radarAction.onClick} type="button">

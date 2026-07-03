@@ -1862,7 +1862,7 @@
 
 .executive-radar-grid {
   display: grid;
-  grid-template-columns: 0.72fr 1fr 1fr;
+  grid-template-columns: 0.68fr 0.9fr 1fr 0.86fr;
   gap: 7px;
 }
 

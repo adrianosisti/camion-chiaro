@@ -58,6 +58,20 @@ function mapDriver(row) {
   }
 }
 
+function isMissingDriverCheckPermissionColumn(error) {
+  const message = String(error?.message ?? '')
+  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('can_submit_checks')
+}
+
+const driverSelectBaseColumns = 'id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
+const driverSelectWithCheckColumns = 'id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
+
+function removeDriverCheckPermissionColumn(payload) {
+  const fallbackPayload = { ...payload }
+  delete fallbackPayload.can_submit_checks
+  return fallbackPayload
+}
+
 const planUserLimits = {
   business: 40,
   enterprise: Infinity,
@@ -260,11 +274,22 @@ export async function handler(event) {
     })
   }
 
-  const { data: driverRow, error: insertDriverError } = await serviceClient
+  const driverPayload = toDriverPayload(driver, companyId, createdUser.user.id, authEmail, username)
+  let insertDriverResult = await serviceClient
     .from('drivers')
-    .insert(toDriverPayload(driver, companyId, createdUser.user.id, authEmail, username))
-    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+    .insert(driverPayload)
+    .select(driverSelectWithCheckColumns)
     .single()
+
+  if (isMissingDriverCheckPermissionColumn(insertDriverResult.error)) {
+    insertDriverResult = await serviceClient
+      .from('drivers')
+      .insert(removeDriverCheckPermissionColumn(driverPayload))
+      .select(driverSelectBaseColumns)
+      .single()
+  }
+
+  const { data: driverRow, error: insertDriverError } = insertDriverResult
 
   if (insertDriverError) {
     await serviceClient.auth.admin.deleteUser(createdUser.user.id)

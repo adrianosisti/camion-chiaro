@@ -236,9 +236,33 @@ const companyProfileBillingSelectColumns = `
   billing_current_period_end,
   billing_activated_at
 `
+const driverSelectBaseColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
+const driverSelectWithCheckColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
 
 function isMissingBillingColumn(error) {
   return error?.code === '42703' && String(error.message ?? '').includes('billing_')
+}
+
+function isMissingDriverCheckPermissionColumn(error) {
+  const message = String(error?.message ?? '')
+  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('can_submit_checks')
+}
+
+async function runDriverSelect(serviceClient, configureQuery) {
+  let result = await configureQuery(serviceClient.from('drivers').select(driverSelectWithCheckColumns))
+
+  if (isMissingDriverCheckPermissionColumn(result.error)) {
+    result = await configureQuery(serviceClient.from('drivers').select(driverSelectBaseColumns))
+  }
+
+  return result
+}
+
+async function fetchCompanyDriverRows(serviceClient, companyId) {
+  return runDriverSelect(serviceClient, (query) => query
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('full_name', { ascending: true }))
 }
 
 async function fetchCompanyProfile(serviceClient, companyId) {
@@ -266,11 +290,9 @@ async function findDriver(serviceClient, authUser) {
   ].filter((candidate) => candidate.value)
 
   for (const candidate of candidates) {
-    const { data, error } = await serviceClient
-      .from('drivers')
-      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+    const { data, error } = await runDriverSelect(serviceClient, (query) => query
       .eq(candidate.column, candidate.value)
-      .maybeSingle()
+      .maybeSingle())
 
     if (error) {
       return { data: null, error }
@@ -392,12 +414,7 @@ async function fetchCompanyPersonContext(serviceClient, person) {
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
-    serviceClient
-      .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
-      .eq('company_id', companyId)
-      .neq('status', 'archived')
-      .order('full_name', { ascending: true }),
+    fetchCompanyDriverRows(serviceClient, companyId),
     serviceClient
       .from('compliance_items')
       .select('id, type, scope, driver_id, vehicle_id, due_date, reminder_days, owner, status, document_number, last_reminder_at')
@@ -533,12 +550,7 @@ async function fetchDriverContext(serviceClient, driver) {
       .eq('company_id', driver.company_id)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
-    serviceClient
-      .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
-      .eq('company_id', driver.company_id)
-      .neq('status', 'archived')
-      .order('full_name', { ascending: true }),
+    fetchCompanyDriverRows(serviceClient, driver.company_id),
     teamThreadIds.length
       ? serviceClient
           .from('team_chat_threads')
@@ -681,12 +693,23 @@ export async function handler(event) {
   let driver = driverResult.data
 
   if (!driver.user_id) {
-    const { data, error } = await serviceClient
+    let updateDriverResult = await serviceClient
       .from('drivers')
       .update({ user_id: authData.user.id })
       .eq('id', driver.id)
-      .select('id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+      .select(driverSelectWithCheckColumns)
       .single()
+
+    if (isMissingDriverCheckPermissionColumn(updateDriverResult.error)) {
+      updateDriverResult = await serviceClient
+        .from('drivers')
+        .update({ user_id: authData.user.id })
+        .eq('id', driver.id)
+        .select(driverSelectBaseColumns)
+        .single()
+    }
+
+    const { data, error } = updateDriverResult
 
     if (error) {
       return jsonResponse(500, { error: error.message })

@@ -1729,9 +1729,9 @@ export function CompanyManagementScreen({
             <Ionicons color={driverForm.canSubmitChecks !== false ? colors.ink : colors.cyanDark} name={driverForm.canSubmitChecks !== false ? 'checkbox-outline' : 'square-outline'} size={20} />
             <View style={styles.permissionCopy}>
               <Text style={styles.permissionTitle}>
-                {driverForm.canSubmitChecks === false ? 'Check giornaliero disattivato' : 'Check giornaliero attivo'}
+                {driverForm.canSubmitChecks === false ? 'Check non richiesto' : 'Check richiesto'}
               </Text>
-              <Text style={styles.permissionMeta}>Se lo spegni, l autista vedra comunque sempre Segnala guasto.</Text>
+              <Text style={styles.permissionMeta}>Scegli se questo autista deve inviare il check giornaliero.</Text>
             </View>
           </Pressable>
           <Text style={styles.groupTitle}>Scadenze iniziali</Text>
@@ -2050,9 +2050,11 @@ export function CompanyManagementScreen({
                   <Ionicons color={driver.canSubmitChecks !== false ? colors.ink : colors.cyanDark} name={driver.canSubmitChecks !== false ? 'checkbox-outline' : 'square-outline'} size={19} />
                   <View style={styles.permissionCopy}>
                     <Text style={styles.permissionTitle}>
-                      {driver.canSubmitChecks === false ? 'Check disattivato' : 'Check attivo'}
+                      {driver.canSubmitChecks === false ? 'Check non richiesto' : 'Check richiesto'}
                     </Text>
-                    <Text style={styles.permissionMeta}>Tocca per cambiare. I guasti restano sempre visibili.</Text>
+                    <Text style={styles.permissionMeta}>
+                      {driver.canSubmitChecks === false ? 'Tocca per richiedere il check a questo autista.' : 'Tocca per non richiederlo a questo autista.'}
+                    </Text>
                   </View>
                 </Pressable>
                 <RelatedDeadlines deadlines={deadlines.filter((item) => item.driverId === driver.id)} language={language} />

@@ -63,6 +63,11 @@ function isMissingWorkforceSchemaError(error) {
   return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error?.code)
 }
 
+function isMissingDriverCheckPermissionColumn(error) {
+  const message = String(error?.message ?? '')
+  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('can_submit_checks')
+}
+
 function workforceSchemaError() {
   return { message: featureNotReadyMessage }
 }
@@ -78,6 +83,25 @@ function putCurrentDriverFirst(driver, drivers = []) {
 const chatThreadSelect = 'id, company_id, driver_id, title, context_type, last_message_at'
 const chatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, reactions, read_by_company_at, read_by_driver_at, created_at'
+const driverSelectBaseColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
+const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
+
+async function runDriverSelect(configureQuery) {
+  let result = await configureQuery(supabase.from('drivers').select(driverSelectWithCheckColumns))
+
+  if (isMissingDriverCheckPermissionColumn(result.error)) {
+    result = await configureQuery(supabase.from('drivers').select(driverSelectBaseColumns))
+  }
+
+  return result
+}
+
+async function fetchCompanyDriverRows(companyId) {
+  return runDriverSelect((query) => query
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('full_name', { ascending: true }))
+}
 const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
 const teamChatThreadSelect = 'id, company_id, thread_type, audience_type, direct_key, title, status, last_message_at, created_at'
@@ -876,13 +900,11 @@ async function fetchDriverContextDirect() {
     return { data: null, error: { message: 'Sessione autista scaduta. Fai login.' } }
   }
 
-  const driverResult = await supabase
-    .from('drivers')
-    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+  const driverResult = await runDriverSelect((query) => query
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .limit(1)
-    .maybeSingle()
+    .maybeSingle())
 
   if (driverResult.error) return { data: null, error: driverResult.error }
   if (!driverResult.data) {
@@ -962,12 +984,7 @@ async function fetchDriverContextDirect() {
       .eq('company_id', driver.company_id)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
-    supabase
-      .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
-      .eq('company_id', driver.company_id)
-      .neq('status', 'archived')
-      .order('full_name', { ascending: true }),
+    fetchCompanyDriverRows(driver.company_id),
     fetchTeamChatThreads(driver.company_id),
     fetchTeamUnreadCounts(driver.company_id),
   ])
@@ -1046,12 +1063,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
       .eq('company_id', companyId)
       .neq('status', 'archived')
       .order('full_name', { ascending: true }),
-    supabase
-      .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
-      .eq('company_id', companyId)
-      .neq('status', 'archived')
-      .order('full_name', { ascending: true }),
+    fetchCompanyDriverRows(companyId),
     supabase
       .from('compliance_items')
       .select('id, type, scope, driver_id, vehicle_id, person_id, asset_id, due_date, document_number, status')
@@ -1185,12 +1197,7 @@ export async function fetchCompanyContext() {
       .select(companyProfileSelect)
       .eq('id', companyId)
       .maybeSingle(),
-    supabase
-      .from('drivers')
-      .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
-      .eq('company_id', companyId)
-      .neq('status', 'archived')
-      .order('full_name', { ascending: true }),
+    fetchCompanyDriverRows(companyId),
     supabase
       .from('vehicles')
       .select('id, plate, model, type, fleet_type, km, status')
@@ -2306,13 +2313,21 @@ export async function updateCompanyDriverSettings({ driverId, updates = {} }) {
     return { data: null, error: { message: 'Nessuna modifica da salvare.' } }
   }
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from('drivers')
     .update(payload)
     .eq('id', driverId)
-    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+    .select(driverSelectWithCheckColumns)
     .single()
 
+  if (isMissingDriverCheckPermissionColumn(result.error) && 'can_submit_checks' in payload) {
+    return {
+      data: null,
+      error: { message: 'Permesso check non salvato. Esegui il file SQL 51 in Supabase e riprova.' },
+    }
+  }
+
+  const { data, error } = result
   return { data: data ? mapDriver(data) : null, error }
 }
 

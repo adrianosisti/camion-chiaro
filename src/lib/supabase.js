@@ -612,8 +612,22 @@ function isMissingReactionsColumn(error) {
   return error?.code === '42703' && String(error.message ?? '').includes('reactions')
 }
 
+function isMissingDriverCheckPermissionColumn(error) {
+  const message = String(error?.message ?? '')
+  return ['42703', 'PGRST204'].includes(error?.code) && message.includes('can_submit_checks')
+}
+
 function isMissingWorkforceSchemaError(error) {
   return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error?.code)
+}
+
+const driverSelectBaseColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
+const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
+
+function removeDriverCheckPermissionColumn(payload) {
+  const fallbackPayload = { ...payload }
+  delete fallbackPayload.can_submit_checks
+  return fallbackPayload
 }
 
 function toDriverPayload(driver, companyId = configuredCompanyId) {
@@ -897,12 +911,21 @@ export async function fetchDrivers(companyId = configuredCompanyId) {
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from('drivers')
-    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+    .select(driverSelectWithCheckColumns)
     .eq('company_id', companyId)
     .order('full_name', { ascending: true })
 
+  if (isMissingDriverCheckPermissionColumn(result.error)) {
+    result = await supabase
+      .from('drivers')
+      .select(driverSelectBaseColumns)
+      .eq('company_id', companyId)
+      .order('full_name', { ascending: true })
+  }
+
+  const { data, error } = result
   return { data: data?.map(mapDriver) ?? null, error }
 }
 
@@ -1982,12 +2005,22 @@ export async function createDriverRecord(driver, companyId = configuredCompanyId
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  const payload = toDriverPayload(driver, companyId)
+  let result = await supabase
     .from('drivers')
-    .insert(toDriverPayload(driver, companyId))
-    .select('id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+    .insert(payload)
+    .select(driverSelectWithCheckColumns)
     .single()
 
+  if (isMissingDriverCheckPermissionColumn(result.error)) {
+    result = await supabase
+      .from('drivers')
+      .insert(removeDriverCheckPermissionColumn(payload))
+      .select(driverSelectBaseColumns)
+      .single()
+  }
+
+  const { data, error } = result
   return { data: data ? mapDriver(data) : null, error }
 }
 
@@ -2185,13 +2218,33 @@ export async function updateDriverRecord(driverId, updates) {
     return { data: null, error: null }
   }
 
-  const { data, error } = await supabase
+  const payload = toDriverUpdatePayload(updates)
+  let result = await supabase
     .from('drivers')
-    .update(toDriverUpdatePayload(updates))
+    .update(payload)
     .eq('id', driverId)
-    .select('id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status')
+    .select(driverSelectWithCheckColumns)
     .single()
 
+  if (isMissingDriverCheckPermissionColumn(result.error) && 'can_submit_checks' in payload) {
+    const fallbackPayload = removeDriverCheckPermissionColumn(payload)
+
+    if (Object.keys(fallbackPayload).length === 0) {
+      return {
+        data: null,
+        error: { message: 'Permesso check non salvato. Esegui il file SQL 51 in Supabase e riprova.' },
+      }
+    }
+
+    result = await supabase
+      .from('drivers')
+      .update(fallbackPayload)
+      .eq('id', driverId)
+      .select(driverSelectBaseColumns)
+      .single()
+  }
+
+  const { data, error } = result
   return { data: data ? mapDriver(data) : null, error }
 }
 

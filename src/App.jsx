@@ -12803,8 +12803,24 @@ function AdminWorkspace({
             {!filteredCompanies.length ? (
               <div className="admin-empty-panel">
                 <ShieldCheck size={24} />
-                <strong>Nessuna azienda trovata</strong>
-                <span>Modifica filtri o ricerca per vedere altri clienti.</span>
+                <strong>{companies.length ? 'Nessun risultato con questi filtri' : 'Nessuna azienda caricata'}</strong>
+                <span>{companies.length ? 'Svuota ricerca o torna alla lista completa.' : statusMessage || 'Premi aggiorna. Se resta vuoto, controlla che Netlify punti al Supabase giusto.'}</span>
+                {companies.length ? (
+                  <button
+                    className="secondary-button compact-button"
+                    onClick={() => {
+                      setFilter('all')
+                      setSearchTerm('')
+                    }}
+                    type="button"
+                  >
+                    Mostra tutte
+                  </button>
+                ) : (
+                  <button className="secondary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
+                    Aggiorna admin
+                  </button>
+                )}
               </div>
             ) : null}
           </div>

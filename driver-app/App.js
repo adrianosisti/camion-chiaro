@@ -1939,7 +1939,7 @@ function CamionChiaroApp() {
   }, [accountType, driver?.id])
 
   useEffect(() => {
-    if (accountType === 'company' && activeTab === 'settings') return
+    if (accountType === 'company' && ['settings', 'pilot'].includes(activeTab)) return
 
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab('home')

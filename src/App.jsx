@@ -4568,26 +4568,110 @@ const supportSections = [
     items: [
       {
         body: 'Come leggere dashboard, radar, pratiche aperte, scadenze, notifiche e centro costi senza perdersi tra le sezioni.',
+        guide: [
+          {
+            points: ['Guarda prima Stato operativo e Salute flotta.', 'Apri Pratiche aperte per lavorare solo cio che richiede attenzione.', 'Usa Scadenze flotta per controllare revisioni, assicurazioni e documenti mezzo.', 'Apri Costi mese per capire dove stanno andando le spese.'],
+            title: 'Lettura iniziale',
+          },
+          {
+            points: ['Se un riquadro e rosso o arancione, cliccalo.', 'Apri il dettaglio della pratica.', 'Chiudi, rinnova, sollecita o archivia in base al caso.', 'Torna in dashboard e controlla che il contatore migliori.'],
+            title: 'Come intervenire',
+          },
+          {
+            points: ['Nessuna pratica critica non letta.', 'Scadenze principali sotto controllo.', 'Guasti aperti verificati.', 'Centro costi aggiornato con le spese note.'],
+            title: 'Controllo finale',
+          },
+        ],
         title: 'Tour dashboard azienda',
       },
       {
         body: 'Come creare un utente, assegnare ruolo, impostare password temporanea, cambiare foto profilo e archiviare un profilo non piu attivo.',
+        guide: [
+          {
+            points: ['Apri Anagrafiche.', 'Vai su Persone o Autisti.', 'Compila nome, telefono, username e ruolo.', 'Imposta una password temporanea semplice da comunicare alla persona.'],
+            title: 'Creazione utente',
+          },
+          {
+            points: ['Assegna reparto: autista, ufficio o magazzino.', 'Carica foto profilo se disponibile.', 'Aggiungi eventuali scadenze personali come visita medica o documenti abilitanti.', 'Salva e fai eseguire il primo accesso dall app.'],
+            title: 'Completamento profilo',
+          },
+          {
+            points: ['Se la persona non entra, usa reset password dalla scheda.', 'Se non lavora piu in azienda, archivia il profilo.', 'Non cancellare dati storici se servono per report e pratiche passate.'],
+            title: 'Gestione successiva',
+          },
+        ],
         title: 'Gestione persone',
       },
       {
         body: 'Come aggiungere un mezzo, caricare libretto, assicurazione, revisione, bollo e collegare scadenze future.',
+        guide: [
+          {
+            points: ['Apri Anagrafiche e poi Flotta.', 'Scegli tipo: furgone, motrice, trattore o semirimorchio.', 'Inserisci targa, modello, km e stato operativo.', 'Salva il mezzo prima di aggiungere documenti e costi.'],
+            title: 'Inserimento mezzo',
+          },
+          {
+            points: ['Aggiungi assicurazione, revisione, bollo, libretto e altri documenti.', 'Carica file o foto leggibile.', 'Inserisci sempre data di scadenza dal calendario.', 'Verifica che la scadenza compaia nella dashboard quando e vicina.'],
+            title: 'Documenti mezzo',
+          },
+          {
+            points: ['Aggiorna km e stato quando cambia la situazione.', 'Archivia i mezzi non piu usati.', 'Registra manutenzioni e spese nel Centro costi collegandole alla targa.'],
+            title: 'Manutenzione anagrafica',
+          },
+        ],
         title: 'Gestione flotta',
       },
       {
         body: 'Come l autista invia check, segnala un guasto, allega foto e consulta documenti da mostrare.',
+        guide: [
+          {
+            points: ['L autista apre l app e seleziona il mezzo usato.', 'Se aggancia un semirimorchio, lo indica nel campo opzionale.', 'Compila km, luci, gomme e documenti a bordo.', 'Invia il check: se tutto e ok resta nello storico, se ci sono anomalie arriva criticita.'],
+            title: 'Check giornaliero',
+          },
+          {
+            points: ['Da Segnala guasto sceglie il mezzo corretto.', 'Descrive il problema in modo chiaro.', 'Allega foto o video quando utile.', 'L azienda riceve il dettaglio e puo archiviare quando risolto.'],
+            title: 'Segnalazione guasto',
+          },
+          {
+            points: ['Da Documenti apre i file visibili.', 'Se un documento e scaduto, carica quello aggiornato o avvisa l azienda.', 'La foto profilo e i documenti devono essere leggibili e aggiornati.'],
+            title: 'Documenti personali',
+          },
+        ],
         title: 'App personale',
       },
       {
         body: 'Come registrare manutenzioni, sanzioni e spese libere, poi filtrare report per periodo, targa, persona o categoria.',
+        guide: [
+          {
+            points: ['Apri Centro costi dal menu laterale.', 'Scegli Nuova spesa.', 'Indica categoria: manutenzione, sanzione, assicurazione, revisione, gomme o spesa libera.', 'Inserisci importo, data e valuta.'],
+            title: 'Registrazione spesa',
+          },
+          {
+            points: ['Collega la spesa a targa, persona o attrezzatura quando possibile.', 'Carica ricevuta o documento se disponibile.', 'Aggiungi note utili per capire il motivo della spesa.', 'Salva e verifica che entri nel totale del periodo.'],
+            title: 'Collegamenti utili',
+          },
+          {
+            points: ['Apri Report.', 'Filtra periodo, categoria, mezzo, persona o attrezzatura.', 'Controlla totali e classifiche.', 'Esporta CSV o stampa solo dopo aver impostato i filtri corretti.'],
+            title: 'Analisi e export',
+          },
+        ],
         title: 'Centro costi',
       },
       {
         body: 'Come distinguere chat singole, gruppi e notifiche non lette, usando allegati, audio, foto e video in modo ordinato.',
+        guide: [
+          {
+            points: ['Apri Chat.', 'Usa Chat singole per parlare con una persona.', 'Usa Gruppi e reparti per comunicazioni a piu utenti.', 'I numeri rossi indicano messaggi ancora da leggere.'],
+            title: 'Orientamento',
+          },
+          {
+            points: ['Scrivi messaggi brevi e chiari.', 'Usa audio solo quando e piu rapido della scrittura.', 'Allega foto o video quando servono prove o dettagli.', 'Apri media e allegati dalla conversazione quando devi rivederli.'],
+            title: 'Uso corretto',
+          },
+          {
+            points: ['Leggi le chat con contatore rosso.', 'Rispondi o archivia mentalmente la pratica collegata.', 'Se una comunicazione riguarda guasto, documento o costo, registra anche la pratica nella sezione corretta.'],
+            title: 'Buona abitudine',
+          },
+        ],
         title: 'Chat e comunicazioni',
       },
     ],
@@ -12045,8 +12129,13 @@ function ReportsWorkspace({
 
 function SupportWorkspace({ t }) {
   const [activeSectionId, setActiveSectionId] = useState(supportSections[0].id)
+  const [activeTrainingIndex, setActiveTrainingIndex] = useState(0)
   const activeSection = supportSections.find((section) => section.id === activeSectionId) ?? supportSections[0]
   const ActiveIcon = activeSection.icon
+  const isTrainingSection = activeSection.id === 'videos'
+  const activeTrainingItem = isTrainingSection
+    ? activeSection.items[Math.min(activeTrainingIndex, activeSection.items.length - 1)] ?? activeSection.items[0]
+    : null
 
   return (
     <section className="support-workspace" aria-label={t('support.title')}>
@@ -12084,21 +12173,62 @@ function SupportWorkspace({ t }) {
           <ActiveIcon size={20} />
         </div>
         <p className="support-section-description">{activeSection.description}</p>
-        <div className="support-card-grid">
-          {activeSection.items.map((item) => (
-            <section className="support-card" key={item.title}>
-              <strong>{item.title}</strong>
-              {item.body && <p>{item.body}</p>}
-              {item.points && (
-                <ul>
-                  {item.points.map((point) => (
-                    <li key={point}>{point}</li>
+        {isTrainingSection ? (
+          <div className="support-training-layout">
+            <div className="support-training-list" aria-label="Argomenti formazione">
+              {activeSection.items.map((item, index) => (
+                <button
+                  className={activeTrainingItem?.title === item.title ? 'support-training-card is-active' : 'support-training-card'}
+                  key={item.title}
+                  onClick={() => setActiveTrainingIndex(index)}
+                  type="button"
+                >
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <strong>{item.title}</strong>
+                  <small>{item.body}</small>
+                  <ChevronRight size={16} />
+                </button>
+              ))}
+            </div>
+            {activeTrainingItem && (
+              <section className="support-training-detail" aria-label={`Guida ${activeTrainingItem.title}`}>
+                <div className="support-training-detail-head">
+                  <p className="overline">Guida dettagliata</p>
+                  <h3>{activeTrainingItem.title}</h3>
+                  <span>{activeTrainingItem.body}</span>
+                </div>
+                <div className="support-training-steps">
+                  {activeTrainingItem.guide?.map((guideSection) => (
+                    <article className="support-training-step" key={guideSection.title}>
+                      <strong>{guideSection.title}</strong>
+                      <ol>
+                        {guideSection.points.map((point) => (
+                          <li key={point}>{point}</li>
+                        ))}
+                      </ol>
+                    </article>
                   ))}
-                </ul>
-              )}
-            </section>
-          ))}
-        </div>
+                </div>
+              </section>
+            )}
+          </div>
+        ) : (
+          <div className="support-card-grid">
+            {activeSection.items.map((item) => (
+              <section className="support-card" key={item.title}>
+                <strong>{item.title}</strong>
+                {item.body && <p>{item.body}</p>}
+                {item.points && (
+                  <ul>
+                    {item.points.map((point) => (
+                      <li key={point}>{point}</li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
       </article>
     </section>
   )

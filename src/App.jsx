@@ -15033,8 +15033,24 @@ function FaultCostReport({
     key: row.category || 'maintenance',
     name: getCostCategoryLabel(row.category),
   }))
+  const vehicleCostRanking = buildCostRanking(periodTargetCosts.filter((row) => row.vehicleId), (row) => ({
+    key: `vehicle:${row.vehicleId}`,
+    name: getCostTargetLabel(row),
+  }))
+  const driverCostRanking = buildCostRanking(periodTargetCosts.filter((row) => row.driverId), (row) => ({
+    key: `driver:${row.driverId}`,
+    name: getCostTargetLabel(row),
+  }))
   const topTargetCost = targetCostRanking[0] ?? null
   const topCategoryCost = categoryCostRanking[0] ?? null
+  const topVehicleCost = vehicleCostRanking[0] ?? null
+  const topDriverCost = driverCostRanking[0] ?? null
+  const getCostSeverityTone = (amountCents) => {
+    if (!amountCents) return 'neutral'
+    if (amountCents >= 500000) return 'danger'
+    if (amountCents >= 150000) return 'warning'
+    return 'info'
+  }
   const monthlyRange = getMonthRangeFromKey(selectedArchiveMonthKey)
   const monthlyCostRows = costRows.filter((row) => isDateInRange(row.date, monthlyRange.start, monthlyRange.end))
   const monthlyFaultRows = faultReportRecords.filter((report) => isDateInRange(report.createdAt || report.updatedAt, monthlyRange.start, monthlyRange.end))
@@ -15197,38 +15213,50 @@ function FaultCostReport({
     {
       description: 'Importi, targhe e responsabili nel periodo scelto.',
       label: 'Multe e sanzioni',
+      metric: formatMoneyCents(fineTotalCents, defaultCurrency),
       onClick: () => {
         setReportType('fines')
         setCategoryFilter('fine')
         setTargetFilter('all')
       },
+      status: `${fineRows.length} registrate`,
+      tone: unassignedFineRows.length ? 'danger' : fineRows.length ? 'warning' : 'neutral',
     },
     {
       description: 'Chi ha generato piu sanzioni e quanto sono costate.',
       label: 'Classifica autisti',
+      metric: fineRanking[0]?.name ?? 'Nessun dato',
       onClick: () => {
         setReportType('fine_ranking')
         setCategoryFilter('fine')
         setTargetFilter('all')
       },
+      status: fineRanking[0] ? formatMoneyCents(fineRanking[0].totalCents, defaultCurrency) : '0 euro',
+      tone: fineRanking.length ? 'info' : 'neutral',
     },
     {
       description: 'Manutenzioni, guasti e spese su una targa precisa.',
       label: 'Costi per targa',
+      metric: topVehicleCost?.name ?? 'Nessun mezzo',
       onClick: () => {
         setReportType('detail')
         setCategoryFilter('all')
-        setTargetFilter(vehicleRecords[0]?.id ? `vehicle:${vehicleRecords[0].id}` : 'all')
+        setTargetFilter(topVehicleCost?.key ?? (vehicleRecords[0]?.id ? `vehicle:${vehicleRecords[0].id}` : 'all'))
       },
+      status: topVehicleCost ? formatMoneyCents(topVehicleCost.totalCents, defaultCurrency) : '0 euro',
+      tone: getCostSeverityTone(topVehicleCost?.totalCents ?? 0),
     },
     {
       description: 'Patenti, multe o costi collegati a una persona.',
       label: 'Costi per autista',
+      metric: topDriverCost?.name ?? 'Nessun autista',
       onClick: () => {
         setReportType('detail')
         setCategoryFilter('all')
-        setTargetFilter(driverRecords[0]?.id ? `driver:${driverRecords[0].id}` : 'all')
+        setTargetFilter(topDriverCost?.key ?? (driverRecords[0]?.id ? `driver:${driverRecords[0].id}` : 'all'))
       },
+      status: topDriverCost ? formatMoneyCents(topDriverCost.totalCents, defaultCurrency) : '0 euro',
+      tone: getCostSeverityTone(topDriverCost?.totalCents ?? 0),
     },
   ]
 
@@ -16077,13 +16105,21 @@ function FaultCostReport({
         </div>
       ) : null}
       {isReportWorkspace && showReportOverview ? (
-        <div className="report-question-grid" aria-label="Domande rapide report">
-          {reportPresetCards.map((card) => (
-            <button className="report-question-card" key={card.label} onClick={card.onClick} type="button">
-              <strong>{card.label}</strong>
-              <span>{card.description}</span>
-            </button>
-          ))}
+        <div className="report-shortcuts-panel" aria-label="Scorciatoie report">
+          <div className="report-shortcuts-head">
+            <strong>Scorciatoie operative</strong>
+            <span>Aprono subito la vista utile. Per creare CSV o PDF usa Esporta report.</span>
+          </div>
+          <div className="report-question-grid">
+            {reportPresetCards.map((card) => (
+              <button className={`report-question-card tone-${card.tone || 'neutral'}`} key={card.label} onClick={card.onClick} type="button">
+                <small>{card.status}</small>
+                <strong>{card.label}</strong>
+                <em>{card.metric}</em>
+                <span>{card.description}</span>
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
       {isReportWorkspace && showReportActions ? (
@@ -16354,10 +16390,10 @@ function FaultCostReport({
           </div>
         </section>
       ) : null}
-      {(showReportOverview || showReportDetails) ? (
+      {(isReportWorkspace ? showReportDetails : (showReportOverview || showReportDetails)) ? (
       <div className="fault-cost-controls">
         <label>
-          {isReportWorkspace ? 'Che report vuoi?' : 'Vista costi'}
+          {isReportWorkspace ? 'Vista dettaglio' : 'Vista costi'}
           <select
             value={reportType}
             onChange={(event) => {
@@ -16411,7 +16447,7 @@ function FaultCostReport({
           <select value={period} onChange={(event) => setPeriod(event.target.value)}>
             <option value="today">Oggi</option>
             <option value="month">Questo mese</option>
-            <option value="year">Quest anno</option>
+            <option value="year">Anno in corso</option>
             <option value="custom">Periodo personalizzato</option>
             <option value="all">Sempre</option>
           </select>
@@ -16444,7 +16480,7 @@ function FaultCostReport({
           <strong>{formatMoneyCents(averageCents, defaultCurrency)}</strong>
           <span>Media</span>
         </div>
-        <div>
+        <div className={unassignedFineRows.length ? 'is-danger' : 'is-ok'}>
           <strong>{unassignedFineRows.length}</strong>
           <span>Multe non assegnate</span>
         </div>
@@ -16452,22 +16488,22 @@ function FaultCostReport({
       ) : null}
       {(showReportOverview || showReportDetails) ? (
       <div className="cost-insight-grid" aria-label="Analisi avanzata centro costi">
-        <article>
+        <article className={`tone-${getCostSeverityTone(topTargetCost?.totalCents ?? 0)}`}>
           <span>Soggetto più costoso</span>
           <strong>{topTargetCost?.name ?? 'Nessun dato'}</strong>
           <small>{topTargetCost ? formatMoneyCents(topTargetCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
         </article>
-        <article>
+        <article className={`tone-${getCostSeverityTone(topCategoryCost?.totalCents ?? 0)}`}>
           <span>Categoria più pesante</span>
           <strong>{topCategoryCost?.name ?? 'Nessun dato'}</strong>
           <small>{topCategoryCost ? formatMoneyCents(topCategoryCost.totalCents, defaultCurrency) : formatMoneyCents(0, defaultCurrency)}</small>
         </article>
-        <article className={unassignedFineRows.length ? 'is-warning' : ''}>
+        <article className={unassignedFineRows.length ? 'tone-danger' : 'tone-neutral'}>
           <span>Multe da assegnare</span>
           <strong>{unassignedFineRows.length}</strong>
           <small>{formatMoneyCents(unassignedFineTotalCents, defaultCurrency)}</small>
         </article>
-        <article className={unlinkedCostRows.length ? 'is-warning' : ''}>
+        <article className={unlinkedCostRows.length ? 'tone-warning' : 'tone-neutral'}>
           <span>Spese senza collegamento</span>
           <strong>{unlinkedCostRows.length}</strong>
           <small>Da collegare a targa, autista o attrezzatura</small>

@@ -4291,7 +4291,6 @@
 
 .chat-sound-button,
 .chat-voice-call-button,
-.chat-media-button,
 .chat-compose-icon-button {
   width: 38px;
   min-height: 38px;
@@ -4308,25 +4307,38 @@
 
 .chat-media-button {
   position: relative;
+  gap: 7px;
+  min-width: auto;
+  height: 38px;
+  padding: 0 12px;
+  border-color: #12c6df;
+  color: #064e5f;
+  background: #e6fbff;
+  white-space: nowrap;
 }
 
 .chat-media-button span {
-  position: absolute;
-  top: -6px;
-  right: -5px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.chat-media-button b {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border: 2px solid #ffffff;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
   border-radius: 999px;
   color: #ffffff;
   background: #0ea5e9;
-  font-size: 0.64rem;
+  font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
+}
+
+.chat-media-button:disabled {
+  opacity: 0.48;
 }
 
 .chat-voice-call-button {

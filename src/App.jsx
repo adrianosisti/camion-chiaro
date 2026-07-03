@@ -18439,14 +18439,15 @@ function ChatMediaButton({ count = 0, disabled = false, onClick, t }) {
   return (
     <button
       aria-label={t('chat.openPhotoVideo')}
-      className="icon-button chat-media-button"
+      className="secondary-button compact-button chat-media-button"
       disabled={disabled}
       onClick={onClick}
       title={t('chat.openPhotoVideo')}
       type="button"
     >
       <ImageIcon size={18} />
-      {count > 0 && <span>{count}</span>}
+      <span>{t('chat.photoVideo')}</span>
+      {count > 0 && <b>{count}</b>}
     </button>
   )
 }

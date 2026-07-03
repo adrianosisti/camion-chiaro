@@ -13767,6 +13767,13 @@ function RecordsWorkspace({
       text: t('records.documentsText'),
     },
     {
+      count: 'XLS',
+      icon: Upload,
+      id: 'import',
+      label: 'Import Excel',
+      text: 'Carica anagrafiche da file',
+    },
+    {
       count: archivedDrivers.length + archivedVehicles.length + archivedFaults.length + archivedChecks.length,
       icon: Clock3,
       id: 'archive',
@@ -13806,20 +13813,21 @@ function RecordsWorkspace({
         </div>
       </div>
 
-      <BulkImportPanel
-        assetRecords={assetRecords}
-        driverRecords={driverRecords}
-        onAddAsset={onAddAsset}
-        onAddDeadline={onAddDeadline}
-        onAddDocument={onAddDocument}
-        onAddDriver={onAddDriver}
-        onAddPerson={onAddPerson}
-        onAddVehicle={onAddVehicle}
-        personRecords={personRecords}
-        vehicleRecords={vehicleRecords}
-      />
-
-      {activeTab === 'people' ? (
+      {activeTab === 'import' ? (
+        <BulkImportPanel
+          assetRecords={assetRecords}
+          driverRecords={driverRecords}
+          expandedByDefault
+          onAddAsset={onAddAsset}
+          onAddDeadline={onAddDeadline}
+          onAddDocument={onAddDocument}
+          onAddDriver={onAddDriver}
+          onAddPerson={onAddPerson}
+          onAddVehicle={onAddVehicle}
+          personRecords={personRecords}
+          vehicleRecords={vehicleRecords}
+        />
+      ) : activeTab === 'people' ? (
         <PeopleWorkspace
           assetRecords={assetRecords}
           itemRecords={itemRecords}
@@ -13885,6 +13893,7 @@ function RecordsWorkspace({
 function BulkImportPanel({
   assetRecords = [],
   driverRecords = [],
+  expandedByDefault = false,
   onAddAsset,
   onAddDeadline,
   onAddDocument,
@@ -13894,7 +13903,7 @@ function BulkImportPanel({
   personRecords = [],
   vehicleRecords = [],
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(expandedByDefault)
   const [fileName, setFileName] = useState('')
   const [importRows, setImportRows] = useState([])
   const [isParsing, setIsParsing] = useState(false)

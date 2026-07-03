@@ -1052,6 +1052,18 @@ export function CompanyManagementScreen({
   const [passwordResetTarget, setPasswordResetTarget] = useState(null)
   const [passwordResetValue, setPasswordResetValue] = useState('')
   const currentScopes = workforceSchemaReady ? workforceScopes : scopes
+  const currentCreateFormOptions = workforceSchemaReady
+    ? createFormOptions
+    : createFormOptions.filter((option) => !['person', 'asset'].includes(option.id))
+  const currentArchiveListOptions = workforceSchemaReady
+    ? archiveListOptions
+    : archiveListOptions.filter((option) => !['people', 'office', 'warehouse'].includes(option.id))
+
+  useEffect(() => {
+    if (workforceSchemaReady) return
+    if (['person', 'asset'].includes(activeForm)) setActiveForm('driver')
+    if (['people', 'office', 'warehouse'].includes(activeList)) setActiveList('drivers')
+  }, [activeForm, activeList, workforceSchemaReady])
   const costVehicleOptions = useMemo(
     () => [
       { id: '', label: 'Senza targa', subtitle: 'Non collegare a un mezzo' },
@@ -1650,7 +1662,7 @@ export function CompanyManagementScreen({
 
   async function submitPerson() {
     if (!workforceSchemaReady) {
-      Alert.alert('Funzione non disponibile', 'Questa sezione non e ancora attiva per l azienda. Contatta l assistenza Vygo.')
+      Alert.alert('Modulo non attivo', 'Persone, ufficio e magazzino non risultano ancora attivi per questa azienda. Puoi continuare con autisti, mezzi e scadenze.')
       return
     }
 
@@ -1722,7 +1734,7 @@ export function CompanyManagementScreen({
 
   async function submitWarehouseAsset() {
     if (!workforceSchemaReady) {
-      Alert.alert('Funzione non disponibile', 'Questa sezione non e ancora attiva per l azienda. Contatta l assistenza Vygo.')
+      Alert.alert('Modulo non attivo', 'Attrezzature e magazzino non risultano ancora attivi per questa azienda. Puoi continuare con autisti, mezzi e scadenze.')
       return
     }
 
@@ -1914,26 +1926,17 @@ export function CompanyManagementScreen({
         </View>
       </ImageBackground>
 
-      {!workforceSchemaReady ? (
-        <View style={styles.schemaNotice}>
-          <Ionicons color={colors.warning} name="alert-circle-outline" size={18} />
-          <Text style={styles.schemaNoticeText}>
-            Reparti, ufficio, magazzino e attrezzature non sono ancora attivi per questa azienda.
-          </Text>
-        </View>
-      ) : null}
-
       {mode === 'create' ? (
         <View style={styles.createTypePanel}>
           <WheelPickerField
             label="Cosa vuoi aggiungere"
             onPress={() => openWheelPicker({
               onSelect: setActiveForm,
-              options: createFormOptions,
+              options: currentCreateFormOptions,
               title: 'Cosa vuoi aggiungere',
               value: activeForm,
             })}
-            value={getWheelOptionLabel(createFormOptions, activeForm)}
+            value={getWheelOptionLabel(currentCreateFormOptions, activeForm)}
           />
         </View>
       ) : null}
@@ -2156,11 +2159,11 @@ export function CompanyManagementScreen({
             label="Sezione archivio"
             onPress={() => openWheelPicker({
               onSelect: setActiveList,
-              options: archiveListOptions,
+              options: currentArchiveListOptions,
               title: 'Sezione archivio',
               value: activeList,
             })}
-            value={getWheelOptionLabel(archiveListOptions, activeList)}
+            value={getWheelOptionLabel(currentArchiveListOptions, activeList)}
           />
 
         {activeList === 'people' ? (

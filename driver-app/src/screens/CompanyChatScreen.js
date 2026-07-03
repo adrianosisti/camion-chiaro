@@ -604,27 +604,30 @@ function ChatFilterBar({ counts = {}, mode, onChange }) {
   ]
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.filterBarContent}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.filterBar}
-    >
+    <View style={styles.filterBar}>
       {items.map((item) => {
         const isActive = mode === item.id
+        const isUnread = item.id === 'unread' && counts.unread > 0
 
         return (
           <Pressable
             key={item.id}
             onPress={() => onChange?.(item.id)}
-            style={[styles.filterChip, isActive && styles.filterChipActive, item.id === 'unread' && counts.unread > 0 && styles.filterChipUnread]}
+            style={[styles.filterChip, isActive && styles.filterChipActive, isUnread && styles.filterChipUnread]}
           >
             <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{item.label}</Text>
-            <Text style={[styles.filterChipCount, isActive && styles.filterChipCountActive]}>{item.count}</Text>
+            <Text style={[
+              styles.filterChipCount,
+              item.count === 0 && styles.filterChipCountMuted,
+              isActive && styles.filterChipCountActive,
+              isUnread && styles.filterChipCountUnread,
+            ]}>
+              {item.count}
+            </Text>
           </Pressable>
         )
       })}
-    </ScrollView>
+    </View>
   )
 }
 
@@ -774,11 +777,10 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   filterBar: {
-    marginBottom: 12,
-  },
-  filterBarContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingRight: 6,
+    marginBottom: 12,
   },
   filterChip: {
     alignItems: 'center',
@@ -786,8 +788,11 @@ const styles = StyleSheet.create({
     borderColor: '#cfe8f3',
     borderRadius: 999,
     borderWidth: 1,
+    flexBasis: '48%',
+    flexGrow: 1,
     flexDirection: 'row',
     gap: 7,
+    justifyContent: 'space-between',
     minHeight: 38,
     paddingHorizontal: 12,
   },
@@ -810,6 +815,14 @@ const styles = StyleSheet.create({
   filterChipCountActive: {
     backgroundColor: colors.cyan,
     color: colors.ink,
+  },
+  filterChipCountMuted: {
+    backgroundColor: '#eef7fb',
+    color: colors.muted,
+  },
+  filterChipCountUnread: {
+    backgroundColor: colors.danger,
+    color: colors.white,
   },
   filterChipText: {
     color: colors.cyanDark,

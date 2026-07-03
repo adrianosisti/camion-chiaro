@@ -131,7 +131,7 @@ export function DriverChatHubScreen({
   unreadCompanyMessages = 0,
   unreadTeamByThreadId = {},
 }) {
-  const [chatListMode, setChatListMode] = useState('direct')
+  const [chatListMode, setChatListMode] = useState('all')
   const currentUserRole = 'me'
   const safeDrivers = Array.isArray(drivers) ? drivers : []
   const personById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people])
@@ -197,6 +197,26 @@ export function DriverChatHubScreen({
   const groupCount = groupTeamThreads.length
   const directUnreadCount = unreadCompanyMessages + companyDirectUnreadCount + directTeamThreads.reduce((total, thread) => total + Number(unreadTeamByThreadId[thread.id] ?? 0), 0)
   const groupUnreadCount = groupTeamThreads.reduce((total, thread) => total + Number(unreadTeamByThreadId[thread.id] ?? 0), 0)
+  const totalUnreadCount = directUnreadCount + groupUnreadCount
+  const getDirectRowUnreadCount = (row) => (
+    row.type === 'company'
+      ? unreadCompanyMessages + companyDirectUnreadCount
+      : Number(unreadTeamByThreadId[row.thread?.id] ?? 0)
+  )
+  const visibleDirectRows = directConversationRows.filter((row) => (
+    chatListMode === 'unread' ? getDirectRowUnreadCount(row) > 0 : true
+  ))
+  const visibleGroupThreads = groupTeamThreads.filter((thread) => (
+    chatListMode === 'unread' ? Number(unreadTeamByThreadId[thread.id] ?? 0) > 0 : true
+  ))
+  const shouldShowDirectRows = ['all', 'direct', 'unread'].includes(chatListMode)
+  const shouldShowGroupRows = ['all', 'groups', 'unread'].includes(chatListMode)
+  const modeTitle = {
+    all: 'Tutte le chat',
+    direct: 'Chat singole',
+    groups: 'Gruppi e reparti',
+    unread: 'Da leggere',
+  }[chatListMode] ?? 'Tutte le chat'
 
   if (selectedMode === 'company') {
     return (
@@ -291,22 +311,21 @@ export function DriverChatHubScreen({
 
       <View style={styles.modeLead}>
         <Text style={styles.modeLeadLabel}>Stai vedendo</Text>
-        <Text style={styles.modeLeadTitle}>{chatListMode === 'groups' ? 'Gruppi e reparti' : 'Chat singole'}</Text>
+        <Text style={styles.modeLeadTitle}>{modeTitle}</Text>
       </View>
 
       <ChatModeCards
-        counts={{ direct: directCount, groups: groupCount }}
+        counts={{ all: directCount + groupCount, direct: directCount, groups: groupCount, unread: totalUnreadCount }}
         mode={chatListMode}
         onChange={setChatListMode}
-        unreadCounts={{ direct: directUnreadCount, groups: groupUnreadCount }}
       />
 
-      {chatListMode === 'direct' ? (
+      {shouldShowDirectRows ? (
         <>
-          {directConversationRows.length ? (
+          {visibleDirectRows.length ? (
             <View style={styles.groupBlock}>
               <Text style={styles.groupTitle}>Chat singole</Text>
-              {directConversationRows.map((row) => (
+              {visibleDirectRows.map((row) => (
                 row.type === 'company' ? (
                   <ChatRow
                     badge={unreadCompanyMessages + companyDirectUnreadCount}
@@ -351,10 +370,10 @@ export function DriverChatHubScreen({
         </>
       ) : null}
 
-      {chatListMode === 'groups' && groupTeamThreads.length ? (
+      {shouldShowGroupRows && visibleGroupThreads.length ? (
         <View style={styles.groupBlock}>
           <Text style={styles.groupTitle}>Gruppi e reparti</Text>
-          {groupTeamThreads.map((thread) => (
+          {visibleGroupThreads.map((thread) => (
             <ChatRow
               icon={getGroupIcon(thread.audienceType)}
               key={thread.id}
@@ -369,7 +388,7 @@ export function DriverChatHubScreen({
         </View>
       ) : null}
 
-      {chatListMode === 'direct' && visiblePeople.length ? (
+      {['all', 'direct'].includes(chatListMode) && visiblePeople.length ? (
         <View style={styles.groupBlock}>
           <Text style={styles.groupTitle}>Nuova chat</Text>
           {visiblePeople.map((person) => (
@@ -393,25 +412,39 @@ export function DriverChatHubScreen({
       {chatListMode === 'groups' && !hasGroupRows ? (
         <Text style={styles.emptyText}>Nessun gruppo disponibile. L azienda deve aggiornare le anagrafiche.</Text>
       ) : null}
+      {chatListMode === 'unread' && !visibleDirectRows.length && !visibleGroupThreads.length ? (
+        <Text style={styles.emptyText}>Nessun messaggio da leggere.</Text>
+      ) : null}
     </ScrollView>
   )
 }
 
-function ChatModeCards({ counts = {}, mode, onChange, unreadCounts = {} }) {
+function ChatModeCards({ counts = {}, mode, onChange }) {
+  const unreadTotal = Number(counts.unread ?? 0)
   const items = [
+    {
+      count: counts.all ?? 0,
+      id: 'all',
+      icon: 'albums-outline',
+      label: 'Tutte',
+    },
     {
       count: counts.direct ?? 0,
       id: 'direct',
       icon: 'person-circle-outline',
-      label: 'Chat singole',
-      subtitle: 'Azienda e persone',
+      label: 'Singole',
     },
     {
       count: counts.groups ?? 0,
       id: 'groups',
       icon: 'people-outline',
-      label: 'Gruppi e reparti',
-      subtitle: 'Canali aziendali',
+      label: 'Gruppi',
+    },
+    {
+      count: unreadTotal,
+      id: 'unread',
+      icon: 'notifications-outline',
+      label: 'Da leggere',
     },
   ]
 
@@ -421,15 +454,21 @@ function ChatModeCards({ counts = {}, mode, onChange, unreadCounts = {} }) {
         const isActive = mode === item.id
 
         return (
-          <Pressable key={item.id} onPress={() => onChange?.(item.id)} style={[styles.modeCard, isActive && styles.modeCardActive]}>
+          <Pressable key={item.id} onPress={() => onChange?.(item.id)} style={[styles.modeCard, isActive && styles.modeCardActive, item.id === 'unread' && unreadTotal > 0 && styles.modeCardUnread]}>
             <View style={[styles.modeIconShell, isActive && styles.modeIconShellActive]}>
-              <Ionicons color={isActive ? colors.ink : colors.white} name={item.icon} size={21} />
+              <Ionicons color={isActive ? colors.ink : colors.white} name={item.icon} size={18} />
             </View>
             <View style={styles.modeCardCopy}>
               <Text numberOfLines={1} style={styles.modeCardTitle}>{item.label}</Text>
-              <Text numberOfLines={1} style={styles.modeCardSubtitle}>{item.subtitle}</Text>
             </View>
-            {unreadCounts[item.id] > 0 ? <Text style={styles.modeUnreadCount}>{unreadCounts[item.id]}</Text> : null}
+            <Text style={[
+              styles.modeCount,
+              item.count === 0 && styles.modeCountMuted,
+              isActive && styles.modeCountActive,
+              item.id === 'unread' && unreadTotal > 0 && styles.modeUnreadCount,
+            ]}>
+              {item.count}
+            </Text>
           </Pressable>
         )
       })}
@@ -668,17 +707,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderColor: '#cfe8f3',
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
+    flexBasis: '48%',
+    flexGrow: 1,
     flexDirection: 'row',
-    gap: 12,
-    minHeight: 72,
-    padding: 12,
+    gap: 8,
+    justifyContent: 'space-between',
+    minHeight: 48,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
   },
   modeCardActive: {
     backgroundColor: '#ecfeff',
     borderColor: colors.cyan,
     borderWidth: 2,
+  },
+  modeCardUnread: {
+    borderColor: colors.danger,
   },
   modeCardCopy: {
     flex: 1,
@@ -692,10 +738,12 @@ const styles = StyleSheet.create({
   },
   modeCardTitle: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '900',
   },
   modeCards: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 9,
     marginBottom: 12,
   },
@@ -715,6 +763,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cyan,
     color: colors.ink,
   },
+  modeCountMuted: {
+    backgroundColor: '#eef7fb',
+    color: colors.muted,
+  },
   modeUnreadCount: {
     backgroundColor: colors.danger,
     borderRadius: 999,
@@ -730,10 +782,10 @@ const styles = StyleSheet.create({
   modeIconShell: {
     alignItems: 'center',
     backgroundColor: colors.ink,
-    borderRadius: 16,
-    height: 46,
+    borderRadius: 13,
+    height: 34,
     justifyContent: 'center',
-    width: 46,
+    width: 34,
   },
   modeIconShellActive: {
     backgroundColor: colors.cyan,

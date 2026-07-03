@@ -12,6 +12,7 @@ const palette = {
   dark: '#102132',
   ink: '#0F172A',
   line: '#D6EAF2',
+  required: '#F97316',
   warning: '#FFF7ED',
 }
 
@@ -40,6 +41,15 @@ function addTable(sheet, headers, rows, widths, options = {}) {
   })
   sheet.getRangeByIndexes(1, 0, rows.length, headers.length).values = rows
   styleHeader(sheet.getRangeByIndexes(0, 0, 1, headers.length))
+  ;(options.requiredColumns ?? []).forEach((columnIndex) => {
+    sheet.getRangeByIndexes(0, columnIndex, 1, 1).format = {
+      fill: palette.required,
+      font: { bold: true, color: '#FFFFFF' },
+      horizontalAlignment: 'center',
+      verticalAlignment: 'center',
+      wrapText: true,
+    }
+  })
   const tableRange = sheet.getRange(`A1:${String.fromCharCode(64 + headers.length)}${rows.length + 1}`)
   tableRange.format = {
     borders: { preset: 'inside', style: 'thin', color: palette.line },
@@ -80,9 +90,9 @@ readme.getRange('A1').format.rowHeight = 34
 readme.getRange('A3:H11').values = [
   ['Come si usa', '', '', '', '', '', '', ''],
   ['1', 'Compila solo i fogli che ti servono: Autisti, Persone, Mezzi, Attrezzature, Documenti autisti, Scadenze.', '', '', '', '', '', ''],
-  ['2', 'Non cambiare i titoli della prima riga: Vygo li usa per capire cosa importare.', '', '', '', '', '', ''],
-  ['3', 'Le date possono essere scritte come 2027-05-31 oppure 31/05/2027.', '', '', '', '', '', ''],
-  ['4', 'Username, targhe e codici devono essere unici. Se li ripeti, Vygo ti segnala l errore prima di importare.', '', '', '', '', '', ''],
+  ['2', 'I titoli con * e colore arancio sono obbligatori. Gli altri campi sono facoltativi o servono solo se vuoi gia caricare documenti/scadenze.', '', '', '', '', '', ''],
+  ['3', 'Non cambiare i titoli della prima riga: Vygo li usa per capire cosa importare.', '', '', '', '', '', ''],
+  ['4', 'Le date possono essere scritte come 2027-05-31 oppure 31/05/2027.', '', '', '', '', '', ''],
   ['5', 'Carica il file in Vygo da Anagrafiche > Import Excel. Vedrai subito righe pronte e righe da correggere.', '', '', '', '', '', ''],
   ['', '', '', '', '', '', '', ''],
   ['Esempi accettati', 'Reparto: ufficio, magazzino', 'Mezzo: furgone, motrice, trattore, semirimorchio', 'Attrezzatura: muletto, transpallet, attrezzatura, altro', 'Ambito scadenza: autista, persona, mezzo, attrezzatura, azienda', 'Visibile in app: si/no', '', ''],
@@ -102,64 +112,64 @@ readme.getRange('A11:H11').format = { fill: palette.warning, font: { bold: true,
 
 addTable(
   workbook.worksheets.add('Autisti'),
-  ['Nome e cognome', 'Username', 'Password', 'Telefono', 'Email', 'Ruolo', 'Deposito / sede', 'Documento iniziale', 'Scadenza documento', 'Numero documento', 'Visibile in app', 'Note'],
+  ['Nome e cognome *', 'Username *', 'Password *', 'Telefono *', 'Email', 'Ruolo', 'Deposito / sede', 'Documento iniziale', 'Scadenza documento', 'Numero documento', 'Visibile in app', 'Note'],
   [
     ['Mario Rossi', 'mario.rossi', 'Vygo2026!', '+39 333 111 1111', 'mario.rossi@azienda.it', 'Autista bilico', 'Verona', 'Patente C+E', '2027-05-31', 'PCE12345', 'si', 'Riga esempio: puoi cancellarla'],
     ['Anna Verdi', 'anna.verdi', 'Vygo2026!', '+39 333 222 2222', 'anna.verdi@azienda.it', 'Autista furgone', 'Milano', 'CQC', '2027-11-30', 'CQC9988', 'si', ''],
   ],
   [24, 18, 16, 18, 28, 20, 18, 22, 18, 20, 16, 32],
-  { tableName: 'VygoAutisti', textColumns: ['B', 'C', 'D', 'J'], validations: { K: ['si', 'no'] } },
+  { requiredColumns: [0, 1, 2, 3], tableName: 'VygoAutisti', textColumns: ['B', 'C', 'D', 'J'], validations: { K: ['si', 'no'] } },
 )
 
 addTable(
   workbook.worksheets.add('Persone'),
-  ['Nome e cognome', 'Username', 'Password', 'Telefono', 'Email', 'Reparto', 'Ruolo', 'Mansione', 'Deposito / sede', 'Note'],
+  ['Nome e cognome *', 'Username *', 'Password *', 'Telefono', 'Email', 'Reparto', 'Ruolo', 'Mansione', 'Deposito / sede', 'Note'],
   [
     ['Paola Bianchi', 'paola.bianchi', 'Vygo2026!', '+39 333 444 4444', 'paola.bianchi@azienda.it', 'ufficio', 'Impiegato ufficio', 'Ufficio traffico', 'Sede centrale', 'Riga esempio: puoi cancellarla'],
     ['Luca Neri', 'luca.neri', 'Vygo2026!', '+39 333 555 5555', 'luca.neri@azienda.it', 'magazzino', 'Carrellista', 'Capo turno magazzino', 'Magazzino A', ''],
   ],
   [24, 18, 16, 18, 28, 16, 20, 24, 18, 32],
-  { tableName: 'VygoPersone', textColumns: ['B', 'C', 'D'], validations: { F: ['ufficio', 'magazzino'], G: ['Impiegato ufficio', 'Manager', 'Magazziniere', 'Carrellista'] } },
+  { requiredColumns: [0, 1, 2], tableName: 'VygoPersone', textColumns: ['B', 'C', 'D'], validations: { F: ['ufficio', 'magazzino'], G: ['Impiegato ufficio', 'Manager', 'Magazziniere', 'Carrellista'] } },
 )
 
 addTable(
   workbook.worksheets.add('Mezzi'),
-  ['Targa', 'Categoria mezzo', 'Modello', 'Allestimento', 'KM', 'Deposito / sede', 'Note'],
+  ['Targa *', 'Categoria mezzo', 'Modello', 'Allestimento', 'KM', 'Deposito / sede', 'Note'],
   [
     ['AB123CD', 'trattore', 'Volvo FH', 'Trattore stradale', 340000, 'Verona', 'Riga esempio: puoi cancellarla'],
     ['SR456EF', 'semirimorchio', 'Krone', 'Centinato', 0, 'Verona', ''],
     ['FG789HI', 'furgone', 'Iveco Daily', 'Furgone cassonato', 82000, 'Milano', ''],
   ],
   [16, 22, 24, 24, 12, 18, 34],
-  { tableName: 'VygoMezzi', textColumns: ['A'], validations: { B: ['furgone', 'motrice', 'trattore', 'semirimorchio'] } },
+  { requiredColumns: [0], tableName: 'VygoMezzi', textColumns: ['A'], validations: { B: ['furgone', 'motrice', 'trattore', 'semirimorchio'] } },
 )
 workbook.worksheets.getItem('Mezzi').getRange('E2:E40').format.numberFormat = '#,##0'
 
 addTable(
   workbook.worksheets.add('Attrezzature'),
-  ['Codice', 'Tipo attrezzatura', 'Modello', 'Matricola', 'Deposito / sede', 'Note'],
+  ['Codice *', 'Tipo attrezzatura', 'Modello', 'Matricola', 'Deposito / sede', 'Note'],
   [
     ['MUL-01', 'muletto', 'Toyota 8FB', 'MAT-987', 'Magazzino A', 'Riga esempio: puoi cancellarla'],
     ['TP-02', 'transpallet', 'BT Levio', 'TP-445', 'Magazzino A', ''],
   ],
   [16, 22, 24, 18, 20, 34],
-  { tableName: 'VygoAttrezzature', textColumns: ['A', 'D'], validations: { B: ['muletto', 'transpallet', 'attrezzatura', 'altro'] } },
+  { requiredColumns: [0], tableName: 'VygoAttrezzature', textColumns: ['A', 'D'], validations: { B: ['muletto', 'transpallet', 'attrezzatura', 'altro'] } },
 )
 
 addTable(
   workbook.worksheets.add('Documenti autisti'),
-  ['Username autista', 'Documento', 'Scadenza documento', 'Numero documento', 'Visibile in app', 'Responsabile', 'Note'],
+  ['Username autista *', 'Documento *', 'Scadenza documento *', 'Numero documento', 'Visibile in app', 'Responsabile', 'Note'],
   [
     ['mario.rossi', 'CQC', '2027-11-30', 'CQC9988', 'si', 'Ufficio personale', 'Riga esempio: puoi cancellarla'],
     ['anna.verdi', 'Visita medica', '2027-04-20', 'VM-ANNA', 'si', 'Ufficio personale', ''],
   ],
   [20, 24, 20, 20, 16, 24, 34],
-  { tableName: 'VygoDocumentiAutisti', textColumns: ['A', 'D'], validations: { E: ['si', 'no'] } },
+  { requiredColumns: [0, 1, 2], tableName: 'VygoDocumentiAutisti', textColumns: ['A', 'D'], validations: { E: ['si', 'no'] } },
 )
 
 addTable(
   workbook.worksheets.add('Scadenze'),
-  ['Ambito scadenza', 'Username o targa o codice', 'Tipo scadenza', 'Data scadenza', 'Numero documento', 'Responsabile', 'Visibile in app', 'Note'],
+  ['Ambito scadenza *', 'Username o targa o codice *', 'Tipo scadenza *', 'Data scadenza *', 'Numero documento', 'Responsabile', 'Visibile in app', 'Note'],
   [
     ['mezzo', 'AB123CD', 'Revisione mezzo', '2026-12-15', 'REV-AB123CD', 'Ufficio flotta', 'no', 'Riga esempio: puoi cancellarla'],
     ['attrezzatura', 'MUL-01', 'Verifica sicurezza muletto', '2026-10-10', 'CHK-MUL01', 'Responsabile magazzino', 'no', ''],
@@ -167,7 +177,7 @@ addTable(
     ['azienda', '', 'Polizza sede', '2027-01-31', 'POL-SEDE', 'Amministrazione', 'no', ''],
   ],
   [20, 28, 28, 18, 22, 24, 16, 36],
-  { tableName: 'VygoScadenze', textColumns: ['B', 'E'], validations: { A: ['autista', 'persona', 'mezzo', 'attrezzatura', 'azienda'], G: ['si', 'no'] } },
+  { requiredColumns: [0, 1, 2, 3], tableName: 'VygoScadenze', textColumns: ['B', 'E'], validations: { A: ['autista', 'persona', 'mezzo', 'attrezzatura', 'azienda'], G: ['si', 'no'] } },
 )
 
 workbook.worksheets.getItem('Autisti').getRange('I2:I40').format.numberFormat = 'yyyy-mm-dd'

@@ -31,6 +31,10 @@ Il modello Excel e diviso in fogli semplici:
 
 Il cliente deve cancellare o sostituire le righe esempio e compilare solo i fogli che servono.
 
+Nel modello i campi con `*` sono obbligatori. Gli altri sono facoltativi.
+
+Esempio: nel foglio `Autisti` sono obbligatori nome, username, password e telefono. Documento iniziale e scadenza possono restare vuoti: l'autista potra caricarli dopo dall'app.
+
 ## Colonne principali senza complicazioni
 
 Nel file Excel non serve scrivere `tipo_riga`: Vygo capisce cosa importare dal nome del foglio.
@@ -46,6 +50,8 @@ Nel foglio `Scadenze`, la colonna `Ambito scadenza` dice a cosa si riferisce la 
 `username` collega autisti e persone.
 
 `Username o targa o codice` collega la scadenza alla persona giusta, alla targa giusta o al muletto giusto.
+
+Nel foglio `Scadenze`, `Username o targa o codice` e obbligatorio per autista, persona, mezzo e attrezzatura. Puo restare vuoto solo se `Ambito scadenza` e `azienda`.
 
 Le date possono essere scritte come `2027-05-31` oppure `31/05/2027`.
 

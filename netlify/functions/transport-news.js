@@ -454,7 +454,7 @@ function buildOperationalSummary(category) {
   return summaries[category] ?? summaries.Logistica
 }
 
-function truncateText(value = '', maxLength = 320) {
+function truncateText(value = '', maxLength = 1100) {
   const cleanValue = String(value).replace(/\s+/g, ' ').trim()
   if (cleanValue.length <= maxLength) return cleanValue
   return `${cleanValue.slice(0, maxLength).replace(/\s+\S*$/, '')}...`
@@ -462,7 +462,7 @@ function truncateText(value = '', maxLength = 320) {
 
 function buildReadableSummary(category, description = '') {
   const operationalSummary = buildOperationalSummary(category)
-  const excerpt = truncateText(description, 300)
+  const excerpt = truncateText(description, 1100)
   if (!excerpt) return operationalSummary
   return `${excerpt} ${operationalSummary}`
 }

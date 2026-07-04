@@ -152,6 +152,58 @@ function getNewsSectionId(category = '') {
   return 'logistics'
 }
 
+function splitNewsText(value = '') {
+  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim()
+  if (!cleanValue) return []
+  const sentences = cleanValue.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [cleanValue]
+  const paragraphs = []
+
+  sentences.forEach((sentence) => {
+    const cleanSentence = sentence.trim()
+    if (!cleanSentence) return
+
+    const lastIndex = Math.max(0, paragraphs.length - 1)
+    if (!paragraphs.length || `${paragraphs[lastIndex]} ${cleanSentence}`.length > 260) {
+      paragraphs.push(cleanSentence)
+      return
+    }
+
+    paragraphs[lastIndex] = `${paragraphs[lastIndex]} ${cleanSentence}`
+  })
+
+  return paragraphs
+}
+
+function getNewsAdvice(category = '') {
+  const normalized = String(category).toLowerCase()
+  if (normalized.includes('norm')) {
+    return [
+      'Controlla se cambia una procedura, una scadenza o un documento.',
+      'Avvisa ufficio traffico o direzione se riguarda viaggi o mezzi.',
+      'Crea un promemoria operativo se serve un controllo successivo.',
+    ]
+  }
+  if (normalized.includes('viabil') || normalized.includes('scioper')) {
+    return [
+      'Verifica tratte, partenze e rientri previsti.',
+      'Avvisa gli autisti coinvolti prima di muovere i mezzi.',
+      'Apri la fonte se servono aggiornamenti in tempo reale.',
+    ]
+  }
+  if (normalized.includes('cost')) {
+    return [
+      'Valuta impatto su gasolio, pedaggi, manutenzioni o margini.',
+      'Aggiorna il centro costi se il dato diventa rilevante.',
+      'Confronta la notizia con i report mensili della flotta.',
+    ]
+  }
+  return [
+    'Valuta impatto su magazzino, flotta, clienti o reparto.',
+    'Condividi la notizia nella chat interessata se cambia il lavoro.',
+    'Apri la fonte solo se servono dettagli ufficiali o allegati.',
+  ]
+}
+
 export function TransportNewsScreen({ language = 'it', onBack }) {
   const [items, setItems] = useState([])
   const [activeSection, setActiveSection] = useState('all')
@@ -211,29 +263,45 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
 
   if (selectedItem) {
     const tone = getNewsTone(selectedItem.category)
+    const detailParagraphs = splitNewsText(selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.')
+    const adviceItems = getNewsAdvice(selectedItem.category)
 
     return (
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={[styles.detailCard, styles[`${tone}Card`]]}>
+        <View style={[styles.detailHero, styles[`${tone}Card`]]}>
           <Pressable onPress={() => setSelectedItem(null)} style={styles.backButton}>
             <Ionicons color={colors.ink} name="arrow-back" size={18} />
             <Text style={styles.backText}>Indietro</Text>
           </Pressable>
           <View style={styles.newsHead}>
             <Text style={styles.category}>{selectedItem.category || 'Logistica'}</Text>
-            <Text style={styles.date}>{formatDate(selectedItem.published_at || selectedItem.fetched_at)}</Text>
+            <Text style={styles.detailDate}>{formatDate(selectedItem.published_at || selectedItem.fetched_at)}</Text>
           </View>
           <Text style={styles.detailTitle}>{selectedItem.title}</Text>
-          <Text style={styles.detailSummary}>{selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.'}</Text>
-          <View style={styles.detailMeta}>
-            <Text style={styles.source}>{selectedItem.source_name || 'Fonte'}</Text>
-            <Text style={styles.statusMeta}>Conservata per circa {retentionDays} giorni.</Text>
-          </View>
-          <Pressable onPress={() => selectedItem.url && Linking.openURL(selectedItem.url)} style={styles.sourceButton}>
-            <Text style={styles.sourceButtonText}>Apri fonte originale</Text>
-            <Ionicons color={colors.white} name="open-outline" size={16} />
-          </Pressable>
+          <Text style={styles.detailSource}>{selectedItem.source_name || 'Fonte'} · conservata per circa {retentionDays} giorni</Text>
         </View>
+
+        <View style={styles.readerCard}>
+          <Text style={styles.readerTitle}>Leggi in Vygo</Text>
+          {detailParagraphs.map((paragraph, index) => (
+            <Text key={`${selectedItem.id || selectedItem.url}-paragraph-${index}`} style={styles.detailSummary}>{paragraph}</Text>
+          ))}
+        </View>
+
+        <View style={styles.adviceCard}>
+          <Text style={styles.readerTitle}>Cosa fare adesso</Text>
+          {adviceItems.map((advice) => (
+            <View key={advice} style={styles.adviceRow}>
+              <Ionicons color={colors.cyanDark} name="checkmark-circle" size={18} />
+              <Text style={styles.adviceText}>{advice}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Pressable onPress={() => selectedItem.url && Linking.openURL(selectedItem.url)} style={styles.sourceButton}>
+          <Text style={styles.sourceButtonText}>Apri fonte originale</Text>
+          <Ionicons color={colors.white} name="open-outline" size={16} />
+        </Pressable>
       </ScrollView>
     )
   }
@@ -388,7 +456,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
               <Text style={styles.date}>{formatDate(item.published_at || item.fetched_at)}</Text>
             </View>
             <Text style={styles.newsTitle}>{item.title}</Text>
-            <Text style={styles.summary}>{item.summary || 'Apri la fonte per leggere il dettaglio completo.'}</Text>
+            <Text numberOfLines={4} style={styles.summary}>{item.summary || 'Apri la fonte per leggere il dettaglio completo.'}</Text>
             <View style={styles.sourceRow}>
               <Text style={styles.source}>{item.source_name || 'Fonte'}</Text>
               <View style={styles.sourceAction}>
@@ -462,22 +530,44 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 16,
   },
+  detailHero: {
+    backgroundColor: colors.ink,
+    borderColor: 'rgba(18, 198, 223, 0.35)',
+    borderLeftColor: colors.cyan,
+    borderLeftWidth: 5,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 13,
+    overflow: 'hidden',
+    padding: 16,
+  },
+  detailDate: {
+    color: 'rgba(255, 255, 255, 0.72)',
+    fontSize: 12,
+    fontWeight: '900',
+  },
   detailMeta: {
     backgroundColor: colors.cyanSoft,
     borderRadius: 12,
     gap: 3,
     padding: 12,
   },
+  detailSource: {
+    color: 'rgba(255, 255, 255, 0.76)',
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
   detailSummary: {
-    color: '#334155',
+    color: '#243244',
     fontSize: 15,
-    lineHeight: 23,
+    lineHeight: 24,
   },
   detailTitle: {
-    color: colors.ink,
-    fontSize: 23,
+    color: colors.white,
+    fontSize: 25,
     fontWeight: '900',
-    lineHeight: 29,
+    lineHeight: 31,
   },
   emptyCard: {
     alignItems: 'flex-start',
@@ -568,6 +658,39 @@ const styles = StyleSheet.create({
   panelTitle: {
     color: colors.ink,
     fontSize: 18,
+    fontWeight: '900',
+  },
+  adviceCard: {
+    backgroundColor: '#f8fdff',
+    borderColor: 'rgba(18, 198, 223, 0.24)',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+    padding: 14,
+  },
+  adviceRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  adviceText: {
+    color: '#334155',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 19,
+  },
+  readerCard: {
+    backgroundColor: colors.white,
+    borderColor: 'rgba(18, 198, 223, 0.18)',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+    padding: 15,
+  },
+  readerTitle: {
+    color: colors.ink,
+    fontSize: 17,
     fontWeight: '900',
   },
   upcomingButton: {

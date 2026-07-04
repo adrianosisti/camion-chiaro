@@ -12065,6 +12065,58 @@ function getTransportNewsSectionId(category = '') {
   return 'logistics'
 }
 
+function splitTransportNewsText(value = '') {
+  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim()
+  if (!cleanValue) return []
+  const sentences = cleanValue.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [cleanValue]
+  const paragraphs = []
+
+  sentences.forEach((sentence) => {
+    const cleanSentence = sentence.trim()
+    if (!cleanSentence) return
+
+    const lastIndex = Math.max(0, paragraphs.length - 1)
+    if (!paragraphs.length || `${paragraphs[lastIndex]} ${cleanSentence}`.length > 360) {
+      paragraphs.push(cleanSentence)
+      return
+    }
+
+    paragraphs[lastIndex] = `${paragraphs[lastIndex]} ${cleanSentence}`
+  })
+
+  return paragraphs
+}
+
+function getTransportNewsAdvice(category = '') {
+  const normalized = String(category).toLowerCase()
+  if (normalized.includes('norm')) {
+    return [
+      'Controlla se cambia una procedura aziendale, una scadenza o un documento da tenere aggiornato.',
+      'Se riguarda autisti o mezzi, crea subito un promemoria operativo in Vygo.',
+      'Avvisa ufficio traffico o direzione prima di programmare viaggi interessati.',
+    ]
+  }
+  if (normalized.includes('viabil') || normalized.includes('scioper')) {
+    return [
+      'Verifica tratte, partenze e rientri previsti nelle prossime ore.',
+      'Avvisa gli autisti coinvolti e prepara un piano alternativo se la zona e critica.',
+      'Tieni aperta la fonte ufficiale se devi confermare dettagli in tempo reale.',
+    ]
+  }
+  if (normalized.includes('cost')) {
+    return [
+      'Valuta se il costo incide su gasolio, pedaggi, manutenzioni o margine viaggio.',
+      'Aggiorna il centro costi se la variazione diventa rilevante per la flotta.',
+      'Confronta il dato con spese e report mensili dell azienda.',
+    ]
+  }
+  return [
+    'Valuta se la notizia impatta magazzino, flotta, clienti o organizzazione interna.',
+    'Condividila in chat al reparto interessato se puo cambiare il lavoro del giorno.',
+    'Usa la fonte originale solo se servono dettagli completi, allegati o conferme ufficiali.',
+  ]
+}
+
 function TransportNewsWorkspace({
   isLoading = false,
   items = [],
@@ -12099,28 +12151,52 @@ function TransportNewsWorkspace({
     .slice(0, 8)
 
   if (selectedItem) {
+    const detailParagraphs = splitTransportNewsText(selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.')
+    const adviceItems = getTransportNewsAdvice(selectedItem.category)
+
     return (
       <section className="transport-news-workspace" aria-label="Dettaglio news e fermi">
-        <div className={`panel transport-news-detail tone-${getTransportNewsTone(selectedItem.category)}`}>
-          <button className="ghost-button compact-button" onClick={() => setSelectedItem(null)} type="button">
-            <ArrowLeft size={16} />
-            Indietro
-          </button>
-          <div className="transport-news-detail-head">
-            <span>{selectedItem.category || 'Logistica'}</span>
-            <small>{formatTransportNewsDate(selectedItem.published_at || selectedItem.fetched_at)}</small>
+        <article className={`panel transport-news-detail tone-${getTransportNewsTone(selectedItem.category)}`}>
+          <header className="transport-news-detail-hero">
+            <button className="ghost-button compact-button" onClick={() => setSelectedItem(null)} type="button">
+              <ArrowLeft size={16} />
+              Indietro
+            </button>
+            <div className="transport-news-detail-head">
+              <span>{selectedItem.category || 'Logistica'}</span>
+              <small>{formatTransportNewsDate(selectedItem.published_at || selectedItem.fetched_at)}</small>
+            </div>
+            <h2>{selectedItem.title}</h2>
+            <div className="transport-news-detail-source">
+              <strong>{selectedItem.source_name || 'Fonte'}</strong>
+              <span>{selectedItem.isFallback ? 'Canale operativo Vygo' : `Conservata per circa ${retentionDays} giorni`}</span>
+            </div>
+          </header>
+
+          <div className="transport-news-readable">
+            <h3>Leggi in Vygo</h3>
+            {detailParagraphs.map((paragraph, index) => (
+              <p key={`${selectedItem.id || selectedItem.url}-paragraph-${index}`}>{paragraph}</p>
+            ))}
           </div>
-          <h2>{selectedItem.title}</h2>
-          <p>{selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.'}</p>
-          <div className="transport-news-detail-meta">
-            <strong>{selectedItem.source_name || 'Fonte'}</strong>
-            <span>Conservata nel Radar per circa {retentionDays} giorni, cosi puo essere riletta anche nei giorni successivi.</span>
+
+          <div className="transport-news-actions-box">
+            <h3>Cosa fare adesso</h3>
+            <ul>
+              {adviceItems.map((advice) => (
+                <li key={advice}>
+                  <CheckCircle2 size={15} />
+                  <span>{advice}</span>
+                </li>
+              ))}
+            </ul>
           </div>
+
           <a className="primary-button compact-button transport-news-source-button" href={selectedItem.url} rel="noreferrer" target="_blank">
             Apri fonte originale
             <ExternalLink size={15} />
           </a>
-        </div>
+        </article>
       </section>
     )
   }

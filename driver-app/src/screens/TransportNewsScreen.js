@@ -47,6 +47,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   const [meta, setMeta] = useState(null)
   const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || items.some((item) => item.isFallback)
   const restrictions = meta?.restrictions ?? []
+  const restrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
   const retentionDays = meta?.retentionDays ?? 30
   const visibleItems = activeSection === 'all'
     ? items
@@ -55,7 +56,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
       : items.filter((item) => getNewsSectionId(item.category) === activeSection)
   const sectionCounts = newsSections.reduce((counts, section) => {
     if (section.id === 'all') return { ...counts, all: items.length }
-    if (section.id === 'restrictions') return { ...counts, restrictions: restrictions.length }
+    if (section.id === 'restrictions') return { ...counts, restrictions: restrictionSchedule.length || restrictions.length }
     return { ...counts, [section.id]: items.filter((item) => getNewsSectionId(item.category) === section.id).length }
   }, {})
 
@@ -143,7 +144,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         </Pressable>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectionTabs}>
+      <View style={styles.sectionTabs}>
         {newsSections.map((section) => (
           <Pressable
             key={section.id}
@@ -153,17 +154,20 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
             }}
             style={[styles.sectionTab, activeSection === section.id && styles.sectionTabActive]}
           >
-            <Ionicons color={activeSection === section.id ? colors.white : colors.cyanDark} name={section.icon} size={15} />
-            <Text style={[styles.sectionTabText, activeSection === section.id && styles.sectionTabTextActive]}>{section.label}</Text>
+            <View style={styles.sectionTabLabel}>
+              <Ionicons color={activeSection === section.id ? colors.white : colors.cyanDark} name={section.icon} size={15} />
+              <Text style={[styles.sectionTabText, activeSection === section.id && styles.sectionTabTextActive]}>{section.label}</Text>
+            </View>
             <Text style={[styles.sectionCount, activeSection === section.id && styles.sectionCountActive]}>{sectionCounts[section.id] ?? 0}</Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
 
       {activeSection === 'restrictions' ? (
         <View style={styles.restrictionsPanel}>
           <Text style={styles.panelKicker}>Fermi ministeriali</Text>
-          <Text style={styles.panelTitle}>Blocchi e fonti ufficiali sempre a portata</Text>
+          <Text style={styles.panelTitle}>Calendario divieti mezzi pesanti 2026</Text>
+          <Text style={styles.restrictionStatus}>Veicoli sopra 7,5 tonnellate fuori dai centri abitati. Verifica sempre deroghe e tratte speciali nella fonte ufficiale.</Text>
           {restrictions.map((restriction) => (
             <Pressable key={`${restriction.year}-${restriction.title}`} onPress={() => restriction.url && Linking.openURL(restriction.url)} style={styles.restrictionRow}>
               <View style={styles.restrictionYear}>
@@ -178,6 +182,23 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
               <Ionicons color={colors.cyanDark} name="open-outline" size={16} />
             </Pressable>
           ))}
+          {restrictionSchedule.length ? (
+            <View style={styles.schedulePanel}>
+              <Text style={styles.scheduleTitle}>{restrictionSchedule.length} giornate di divieto</Text>
+              {restrictionSchedule.map((restriction) => (
+                <View key={restriction.date} style={styles.scheduleRow}>
+                  <View style={styles.scheduleDate}>
+                    <Text style={styles.scheduleDay}>{formatDate(restriction.date)}</Text>
+                    <Text style={styles.restrictionArea}>{restriction.day}</Text>
+                  </View>
+                  <View style={styles.scheduleCopy}>
+                    <Text style={styles.restrictionTitle}>{restriction.month}</Text>
+                    <Text style={styles.restrictionStatus}>{restriction.start} - {restriction.end}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -428,6 +449,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
+  scheduleCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  scheduleDate: {
+    backgroundColor: colors.cyanSoft,
+    borderRadius: 12,
+    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    width: 104,
+  },
+  scheduleDay: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  schedulePanel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.66)',
+    borderColor: 'rgba(18, 198, 223, 0.25)',
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+    padding: 10,
+  },
+  scheduleRow: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 9,
+  },
+  scheduleTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
   sectionCount: {
     backgroundColor: 'rgba(18, 198, 223, 0.14)',
     borderRadius: 999,
@@ -448,20 +509,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderColor: 'rgba(18, 198, 223, 0.28)',
-    borderRadius: 999,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 6,
-    minHeight: 38,
-    paddingHorizontal: 10,
+    justifyContent: 'space-between',
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   sectionTabActive: {
     backgroundColor: colors.ink,
     borderColor: colors.cyan,
   },
+  sectionTabLabel: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
   sectionTabs: {
     gap: 8,
-    paddingRight: 8,
   },
   sectionTabText: {
     color: colors.cyanDark,

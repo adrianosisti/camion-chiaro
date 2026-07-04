@@ -5705,6 +5705,14 @@
   gap: 12px;
 }
 
+.transport-restrictions-heading p:not(.overline) {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
 .transport-restrictions-heading span {
   border-radius: 999px;
   background: #ecfeff;
@@ -5761,6 +5769,45 @@
   font-size: 0.78rem;
   font-weight: 900;
   text-decoration: none;
+}
+
+.transport-restrictions-table-wrap {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.transport-restrictions-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+}
+
+.transport-restrictions-table th,
+.transport-restrictions-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.transport-restrictions-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #ecfeff;
+  color: #075985;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.transport-restrictions-table td {
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 800;
 }
 
 .transport-news-empty {

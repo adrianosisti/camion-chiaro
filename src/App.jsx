@@ -11964,6 +11964,7 @@ function TransportNewsWorkspace({
   const safeItems = Array.isArray(items) ? items : []
   const issues = Array.isArray(meta?.issues) ? meta.issues : []
   const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
+  const restrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
   const retentionDays = Number.isFinite(Number(meta?.retentionDays)) ? Number(meta.retentionDays) : 30
   const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
   const visibleItems = activeSection === 'all'
@@ -11974,7 +11975,7 @@ function TransportNewsWorkspace({
 
   const sectionCounts = transportNewsSections.reduce((counts, section) => {
     if (section.id === 'all') return { ...counts, [section.id]: safeItems.length }
-    if (section.id === 'restrictions') return { ...counts, [section.id]: restrictions.length }
+    if (section.id === 'restrictions') return { ...counts, [section.id]: restrictionSchedule.length || restrictions.length }
     return { ...counts, [section.id]: safeItems.filter((item) => getTransportNewsSectionId(item.category) === section.id).length }
   }, {})
 
@@ -12029,10 +12030,10 @@ function TransportNewsWorkspace({
         {updatedAt ? <small>Ultimo controllo {updatedAt}</small> : null}
       </div>
 
-      {issues.length ? (
+      {issues.length && !visibleItems.length && activeSection !== 'restrictions' ? (
         <div className="transport-news-issues">
           <AlertTriangle size={16} />
-          <span>Alcune fonti non hanno risposto, ma il Radar continua con quelle disponibili.</span>
+          <span>Radar in aggiornamento: alcune fonti non sono disponibili in questo momento.</span>
         </div>
       ) : null}
 
@@ -12059,9 +12060,10 @@ function TransportNewsWorkspace({
           <div className="transport-restrictions-heading">
             <div>
               <p className="overline">Fermi ministeriali</p>
-              <h3>Blocchi e fonti ufficiali da tenere sempre a portata</h3>
+              <h3>Calendario divieti mezzi pesanti 2026</h3>
+              <p>Divieti nazionali per veicoli sopra 7,5 tonnellate fuori dai centri abitati. Verifica sempre eventuali deroghe e tratte speciali nella fonte ufficiale.</p>
             </div>
-            <span>Anno per anno</span>
+            <span>{restrictionSchedule.length} giornate</span>
           </div>
           <div className="transport-restrictions-list">
             {restrictions.map((restriction) => (
@@ -12082,6 +12084,30 @@ function TransportNewsWorkspace({
               </article>
             ))}
           </div>
+          {restrictionSchedule.length ? (
+            <div className="transport-restrictions-table-wrap">
+              <table className="transport-restrictions-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Giorno</th>
+                    <th>Mese</th>
+                    <th>Orario blocco</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {restrictionSchedule.map((restriction) => (
+                    <tr key={restriction.date}>
+                      <td>{formatTransportNewsDate(restriction.date)}</td>
+                      <td>{restriction.day}</td>
+                      <td>{restriction.month}</td>
+                      <td>{restriction.start} - {restriction.end}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

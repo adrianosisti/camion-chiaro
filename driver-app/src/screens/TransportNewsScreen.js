@@ -159,6 +159,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   const [status, setStatus] = useState('Caricamento news e fermi...')
   const [isLoading, setIsLoading] = useState(false)
   const [meta, setMeta] = useState(null)
+  const [isScheduleExpanded, setIsScheduleExpanded] = useState(false)
   const safeItems = Array.isArray(items) ? items : []
   const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
   const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
@@ -179,6 +180,12 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   const upcomingRestrictions = restrictionSchedule
     .filter((restriction) => restriction.date >= getLocalDateKey())
     .slice(0, 4)
+  const previewRestrictionSchedule = restrictionSchedule
+    .filter((restriction) => restriction.date >= getLocalDateKey())
+    .slice(0, 12)
+  const displayedRestrictionSchedule = isScheduleExpanded
+    ? restrictionSchedule
+    : (previewRestrictionSchedule.length ? previewRestrictionSchedule : restrictionSchedule.slice(0, 12))
 
   async function loadNews({ force = false } = {}) {
     setIsLoading(true)
@@ -271,6 +278,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
             onPress={() => {
               setActiveSection(section.id)
               setSelectedItem(null)
+              setIsScheduleExpanded(false)
             }}
             style={[styles.sectionTab, activeSection === section.id && styles.sectionTabActive]}
           >
@@ -290,7 +298,13 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
               <Text style={styles.panelKicker}>Fermi ministeriali</Text>
               <Text style={styles.upcomingTitle}>Prossimi blocchi</Text>
             </View>
-            <Pressable onPress={() => setActiveSection('restrictions')} style={styles.upcomingButton}>
+            <Pressable
+              onPress={() => {
+                setActiveSection('restrictions')
+                setIsScheduleExpanded(true)
+              }}
+              style={styles.upcomingButton}
+            >
               <Text style={styles.upcomingButtonText}>Tutto</Text>
               <Ionicons color={colors.white} name="chevron-forward" size={15} />
             </Pressable>
@@ -318,10 +332,13 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
                 <Text style={styles.restrictionInsightTitle}>{restrictionInsight.title}</Text>
                 <Text style={styles.restrictionInsightLabel}>{restrictionInsight.label}</Text>
                 <Text style={styles.restrictionStatus}>{restrictionInsight.body}</Text>
-                <View style={styles.restrictionSeeAll}>
-                  <Text style={styles.restrictionSeeAllText}>Vedi tutto il calendario</Text>
-                  <Ionicons color={colors.white} name="chevron-down" size={15} />
-                </View>
+                <Pressable
+                  onPress={() => setIsScheduleExpanded((value) => !value)}
+                  style={styles.restrictionSeeAll}
+                >
+                  <Text style={styles.restrictionSeeAllText}>{isScheduleExpanded ? 'Mostra meno' : 'Vedi tutto il calendario'}</Text>
+                  <Ionicons color={colors.white} name={isScheduleExpanded ? 'chevron-up' : 'chevron-down'} size={15} />
+                </Pressable>
               </View>
             </View>
           ) : null}
@@ -339,10 +356,12 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
               <Ionicons color={colors.cyanDark} name="open-outline" size={16} />
             </Pressable>
           ))}
-          {restrictionSchedule.length ? (
+          {displayedRestrictionSchedule.length ? (
             <View style={styles.schedulePanel}>
-              <Text style={styles.scheduleTitle}>{restrictionSchedule.length} giornate di divieto</Text>
-              {restrictionSchedule.map((restriction) => (
+              <Text style={styles.scheduleTitle}>
+                {isScheduleExpanded ? `${restrictionSchedule.length} giornate di divieto` : 'Prossimi fermi'}
+              </Text>
+              {displayedRestrictionSchedule.map((restriction) => (
                 <View key={restriction.date} style={styles.scheduleRow}>
                   <View style={styles.scheduleDate}>
                     <Text style={styles.scheduleDay}>{formatDate(restriction.date)}</Text>

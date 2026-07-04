@@ -84,11 +84,27 @@ const fallbackNewsItems = [
   },
   {
     category: 'Norme',
+    source_id: 'mit-decreti-fallback',
+    source_name: 'Ministero Infrastrutture e Trasporti',
+    summary: 'Area da tenere sotto controllo per decreti, divieti, circolazione mezzi pesanti e provvedimenti che possono cambiare l’operativita.',
+    title: 'Decreti e provvedimenti per autotrasporto',
+    url: 'https://www.mit.gov.it/documentazione',
+  },
+  {
+    category: 'Norme',
     source_id: 'albo-fallback',
     source_name: 'Albo Autotrasporto',
     summary: 'Canale utile per imprese di autotrasporto: contributi, comunicazioni, regole operative e aggiornamenti istituzionali.',
     title: 'Comunicazioni Albo Autotrasporto',
     url: 'https://www.alboautotrasporto.it/web/portale-albo',
+  },
+  {
+    category: 'Norme',
+    source_id: 'polizia-stradale-fallback',
+    source_name: 'Polizia di Stato',
+    summary: 'Riferimento utile per sicurezza stradale, controlli, campagne e aggiornamenti collegati alla circolazione.',
+    title: 'Sicurezza stradale e controlli su strada',
+    url: 'https://www.poliziadistato.it/articolo/50',
   },
   {
     category: 'Viabilità',
@@ -99,11 +115,35 @@ const fallbackNewsItems = [
     url: 'https://www.cciss.it/',
   },
   {
+    category: 'Viabilità',
+    source_id: 'autostrade-fallback',
+    source_name: 'Autostrade per l’Italia',
+    summary: 'Controllo operativo per traffico, cantieri, code e tratte autostradali da monitorare prima di assegnare viaggi.',
+    title: 'Traffico e cantieri sulle tratte autostradali',
+    url: 'https://www.autostrade.it/it/traffico-in-real-time',
+  },
+  {
+    category: 'Scioperi',
+    source_id: 'mit-scioperi-fallback',
+    source_name: 'Ministero Infrastrutture e Trasporti',
+    summary: 'Canale da consultare per scioperi e agitazioni che possono impattare consegne, ritiri, porti, interporti e viaggi.',
+    title: 'Scioperi e agitazioni nel trasporto',
+    url: 'https://scioperi.mit.gov.it/mit2/public/scioperi',
+  },
+  {
     category: 'Costi',
     source_id: 'mase-fallback',
     source_name: 'Ministero Ambiente e Sicurezza Energetica',
     summary: 'Riferimento pubblico per carburanti e prezzi energia: utile per controllare impatti su margini, rifornimenti e centro costi.',
     title: 'Prezzi carburanti e aggiornamenti energia',
+    url: 'https://carburanti.mise.gov.it/ospzSearch/home',
+  },
+  {
+    category: 'Costi',
+    source_id: 'mimit-carburanti-fallback',
+    source_name: 'Ministero Imprese e Made in Italy',
+    summary: 'Riferimento pubblico per controllare prezzi carburante e stimare impatto su tratte, margini e centro costi.',
+    title: 'Osservatorio prezzi carburanti',
     url: 'https://carburanti.mise.gov.it/ospzSearch/home',
   },
   {
@@ -113,6 +153,46 @@ const fallbackNewsItems = [
     summary: 'Fonte verticale di settore su trasporto, logistica, porti, autotrasporto e scenari operativi.',
     title: 'Notizie trasporto e logistica',
     url: 'https://www.trasportoeuropa.it/',
+  },
+  {
+    category: 'Logistica',
+    source_id: 'logistica-efficiente-fallback',
+    source_name: 'Logistica Efficiente',
+    summary: 'Fonte di settore su magazzino, supply chain, processi logistici e organizzazione aziendale.',
+    title: 'Processi logistici, magazzino e supply chain',
+    url: 'https://www.logisticaefficiente.it/',
+  },
+  {
+    category: 'Logistica',
+    source_id: 'supply-chain-italy-fallback',
+    source_name: 'Supply Chain Italy',
+    summary: 'Aggiornamenti su logistica, terminal, porti, spedizioni, intermodale e filiere operative.',
+    title: 'Supply chain, porti e intermodale',
+    url: 'https://www.supplychainitaly.it/',
+  },
+  {
+    category: 'Logistica',
+    source_id: 'il-giornale-logistica-fallback',
+    source_name: 'Il Giornale della Logistica',
+    summary: 'Canale verticale per innovazione, magazzino, flotte, outsourcing logistico e casi di settore.',
+    title: 'Innovazione e gestione logistica',
+    url: 'https://www.ilgiornaledellalogistica.it/',
+  },
+  {
+    category: 'Mercato',
+    source_id: 'trasporto-italia-fallback',
+    source_name: 'Trasporto Italia',
+    summary: 'Notizie su autotrasporto, operatori, mercato, imprese e temi operativi per aziende di trasporto.',
+    title: 'Mercato autotrasporto e imprese',
+    url: 'https://www.trasportoitalia.com/',
+  },
+  {
+    category: 'Mercato',
+    source_id: 'uomini-trasporti-fallback',
+    source_name: 'Uomini e Trasporti',
+    summary: 'Raccolta di notizie e approfondimenti su autotrasporto, veicoli, imprese, normative e vita operativa.',
+    title: 'Autotrasporto, flotte e vita aziendale',
+    url: 'https://www.uominietrasporti.it/',
   },
 ]
 
@@ -553,6 +633,39 @@ function mergeNewsItems(...groups) {
     })
 }
 
+function getNewsSectionId(category = '') {
+  const normalized = String(category).toLowerCase()
+  if (normalized.includes('norm')) return 'rules'
+  if (normalized.includes('viabil') || normalized.includes('scioper')) return 'roads'
+  return 'logistics'
+}
+
+function ensureMinimumSectionCoverage(items = [], language = defaultLanguage, issues = []) {
+  const mergedItems = mergeNewsItems(items)
+  const fallbackItems = buildFallbackItems(language, issues)
+  const minimums = {
+    logistics: 6,
+    roads: 3,
+    rules: 3,
+  }
+  const additions = []
+
+  Object.entries(minimums).forEach(([sectionId, minimum]) => {
+    const currentCount = mergedItems.filter((item) => getNewsSectionId(item.category) === sectionId).length
+    if (currentCount >= minimum) return
+
+    fallbackItems
+      .filter((item) => getNewsSectionId(item.category) === sectionId)
+      .slice(0, minimum - currentCount)
+      .forEach((item) => additions.push(item))
+  })
+
+  const coveredItems = mergeNewsItems(mergedItems, additions)
+  if (coveredItems.length >= 14) return coveredItems
+
+  return mergeNewsItems(coveredItems, fallbackItems).slice(0, Math.max(14, coveredItems.length))
+}
+
 function isCacheFresh(items = []) {
   const latestFetchedAt = items
     .map((item) => new Date(item.fetched_at).getTime())
@@ -581,9 +694,11 @@ export async function handler(event = {}) {
   const issues = cached.issue ? [cached.issue] : []
 
   if (!forceRefresh && isCacheFresh(cached.items)) {
+    const coveredItems = ensureMinimumSectionCoverage(cached.items, language, issues)
+
     return jsonResponse(200, {
       generatedAt: new Date().toISOString(),
-      items: cached.items.slice(0, maxItemsToReturn),
+      items: coveredItems.slice(0, maxItemsToReturn),
       mode: 'cache',
       nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
       retentionDays: newsRetentionDays,
@@ -605,10 +720,11 @@ export async function handler(event = {}) {
     const refreshedCache = await readCachedNews(serviceClient, language)
     if (refreshedCache.issue && refreshedCache.issue !== cached.issue) issues.push(refreshedCache.issue)
     const mergedItems = mergeNewsItems(collected.items, refreshedCache.items, cached.items)
+    const coveredItems = ensureMinimumSectionCoverage(mergedItems, language, issues)
 
     return jsonResponse(200, {
       generatedAt: new Date().toISOString(),
-      items: mergedItems.slice(0, maxItemsToReturn),
+      items: coveredItems.slice(0, maxItemsToReturn),
       mode: forceRefresh ? 'refresh' : 'live',
       nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
       retentionDays: newsRetentionDays,
@@ -620,7 +736,11 @@ export async function handler(event = {}) {
 
   return jsonResponse(200, {
     generatedAt: new Date().toISOString(),
-    items: cached.items.length ? cached.items.slice(0, maxItemsToReturn) : buildFallbackItems(language, issues).slice(0, maxItemsToReturn),
+    items: ensureMinimumSectionCoverage(
+      cached.items.length ? cached.items : buildFallbackItems(language, issues),
+      language,
+      issues,
+    ).slice(0, maxItemsToReturn),
     mode: 'cache-fallback',
     nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
     retentionDays: newsRetentionDays,

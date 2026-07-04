@@ -132,7 +132,7 @@ function isRecentActivity(value, days = 7) {
   return Date.now() - timestamp <= days * 86400000
 }
 
-function buildPilotChecklist({ company, compliance, costs, documents, drivers, faults, people, teamMessages, vehicles, checks }) {
+function buildUsageChecklist({ company, compliance, costs, documents, drivers, faults, people, teamMessages, vehicles, checks }) {
   const activeDrivers = drivers.filter((driver) => !isArchivedStatus(driver.status))
   const activePeople = people.filter((person) => !isArchivedStatus(person.status))
   const activeVehicles = vehicles.filter((vehicle) => !isArchivedStatus(vehicle.status))
@@ -156,6 +156,113 @@ function buildPilotChecklist({ company, compliance, costs, documents, drivers, f
   }
 }
 
+function addActivityEvent(events, { createdAt, detail, id, kind, title }) {
+  if (!createdAt) return
+
+  events.push({
+    createdAt,
+    detail,
+    id: id || `${kind}-${createdAt}-${events.length}`,
+    kind,
+    title,
+  })
+}
+
+function buildActivityTimeline({ assets, chatMessages, checks, compliance, costs, documents, drivers, faults, invoices, people, teamMessages, vehicles }) {
+  const events = []
+
+  drivers.forEach((driver, index) => addActivityEvent(events, {
+    createdAt: driver.created_at,
+    detail: driver.full_name || driver.username || 'Autista senza nome',
+    id: `driver-${driver.id || index}`,
+    kind: 'Anagrafica',
+    title: 'Autista creato',
+  }))
+  people.forEach((person, index) => addActivityEvent(events, {
+    createdAt: person.created_at,
+    detail: `${person.full_name || 'Persona aziendale'}${person.department ? ` · ${person.department}` : ''}`,
+    id: `person-${person.id || index}`,
+    kind: 'Anagrafica',
+    title: 'Persona creata',
+  }))
+  vehicles.forEach((vehicle, index) => addActivityEvent(events, {
+    createdAt: vehicle.created_at,
+    detail: `${vehicle.plate || 'Targa non indicata'}${vehicle.fleet_type ? ` · ${vehicle.fleet_type}` : ''}`,
+    id: `vehicle-${vehicle.id || index}`,
+    kind: 'Flotta',
+    title: 'Mezzo inserito',
+  }))
+  assets.forEach((asset, index) => addActivityEvent(events, {
+    createdAt: asset.created_at,
+    detail: `${asset.code || asset.model || 'Attrezzatura'}${asset.asset_type ? ` · ${asset.asset_type}` : ''}`,
+    id: `asset-${asset.id || index}`,
+    kind: 'Magazzino',
+    title: 'Attrezzatura inserita',
+  }))
+  compliance.forEach((item, index) => addActivityEvent(events, {
+    createdAt: item.updated_at || item.created_at || item.due_date,
+    detail: `${item.type || 'Scadenza'} · ${item.status || 'open'}${item.due_date ? ` · ${item.due_date}` : ''}`,
+    id: `deadline-${item.id || index}`,
+    kind: 'Scadenze',
+    title: 'Scadenza gestita',
+  }))
+  documents.forEach((document, index) => addActivityEvent(events, {
+    createdAt: document.updated_at || document.created_at || document.expires_at,
+    detail: `${document.type || 'Documento'} · ${document.status || 'caricato'}${document.expires_at ? ` · scade ${document.expires_at}` : ''}`,
+    id: `document-${document.id || index}`,
+    kind: 'Documenti',
+    title: 'Documento caricato',
+  }))
+  checks.forEach((check, index) => addActivityEvent(events, {
+    createdAt: check.created_at,
+    detail: check.lights_ok === false || check.tires_ok === false || check.documents_on_board === false
+      ? 'Check con anomalia'
+      : 'Check completato senza anomalie',
+    id: `check-${check.id || index}`,
+    kind: 'Check',
+    title: 'Check mattutino ricevuto',
+  }))
+  faults.forEach((fault, index) => addActivityEvent(events, {
+    createdAt: fault.updated_at || fault.created_at,
+    detail: `${fault.title || 'Segnalazione guasto'} · ${fault.status || 'open'}${Number(fault.repair_cost_cents ?? 0) > 0 ? ` · costo ${Math.round(Number(fault.repair_cost_cents) / 100)} ${fault.repair_cost_currency || 'EUR'}` : ''}`,
+    id: `fault-${fault.id || index}`,
+    kind: 'Guasti',
+    title: 'Guasto segnalato',
+  }))
+  costs.forEach((entry, index) => addActivityEvent(events, {
+    createdAt: entry.updated_at || entry.created_at || entry.spent_at,
+    detail: `${entry.title || entry.category || 'Spesa'} · ${Math.round(Number(entry.amount_cents ?? 0) / 100)} ${entry.currency || 'EUR'}`,
+    id: `cost-${entry.id || index}`,
+    kind: 'Costi',
+    title: 'Costo registrato',
+  }))
+  chatMessages.forEach((message, index) => addActivityEvent(events, {
+    createdAt: message.created_at,
+    detail: `${message.sender_role || 'utente'} · messaggio diretto`,
+    id: `chat-${message.id || index}`,
+    kind: 'Chat',
+    title: 'Messaggio diretto',
+  }))
+  teamMessages.forEach((message, index) => addActivityEvent(events, {
+    createdAt: message.created_at,
+    detail: 'Messaggio in gruppo o reparto',
+    id: `team-chat-${message.id || index}`,
+    kind: 'Chat gruppi',
+    title: 'Messaggio gruppo',
+  }))
+  invoices.forEach((invoice, index) => addActivityEvent(events, {
+    createdAt: invoice.paid_at || invoice.issued_at || invoice.created_at,
+    detail: `${invoice.invoice_number || 'Fattura'} · ${invoice.status || 'creata'}`,
+    id: `invoice-${invoice.id || index}`,
+    kind: 'Fatture',
+    title: invoice.paid_at ? 'Fattura pagata' : 'Fattura registrata',
+  }))
+
+  return events
+    .sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0))
+    .slice(0, 32)
+}
+
 function buildCompanySummary(company, collections, options = {}) {
   const companyId = company.id
   const isInternalAdminCompany =
@@ -172,7 +279,6 @@ function buildCompanySummary(company, collections, options = {}) {
   const costs = getCompanyRows(collections.costs, companyId)
   const invoices = getCompanyRows(collections.invoices, companyId)
   const control = getCompanyRows(collections.controls, companyId)[0] ?? {}
-  const pilotFeedback = getCompanyRows(collections.pilotFeedback, companyId)
   const chatMessages = getCompanyRows(collections.chatMessages, companyId)
   const teamMessages = getCompanyRows(collections.teamMessages, companyId)
   const storageFiles = getCompanyRows(collections.storageFiles, companyId).filter((file) => !file.deleted_at)
@@ -205,7 +311,7 @@ function buildCompanySummary(company, collections, options = {}) {
       .filter((fault) => Number(fault.repair_cost_cents ?? 0) > 0)
       .filter((fault) => isCurrentMonth(fault.repair_recorded_at || fault.updated_at || fault.created_at))
       .reduce((total, fault) => total + Number(fault.repair_cost_cents ?? 0), 0)
-  const pilotChecklist = buildPilotChecklist({
+  const usageChecklist = buildUsageChecklist({
     checks,
     company,
     compliance,
@@ -217,7 +323,21 @@ function buildCompanySummary(company, collections, options = {}) {
     teamMessages,
     vehicles,
   })
-  const pilotWeekActivityCount = [
+  const activityTimeline = buildActivityTimeline({
+    assets,
+    chatMessages,
+    checks,
+    compliance,
+    costs,
+    documents,
+    drivers,
+    faults,
+    invoices,
+    people,
+    teamMessages,
+    vehicles,
+  })
+  const weekActivityCount = [
     ...drivers.map((row) => row.created_at),
     ...vehicles.map((row) => row.created_at),
     ...people.map((row) => row.created_at),
@@ -227,22 +347,7 @@ function buildCompanySummary(company, collections, options = {}) {
     ...costs.map((row) => row.updated_at || row.created_at),
     ...chatMessages.map((row) => row.created_at),
     ...teamMessages.map((row) => row.created_at),
-    ...pilotFeedback.map((row) => row.created_at),
   ].filter((value) => isRecentActivity(value, 7)).length
-  const latestPilotFeedback = [...pilotFeedback]
-    .sort((first, second) => new Date(second.created_at || 0) - new Date(first.created_at || 0))[0]
-  const pilotFeedbackThread = [...pilotFeedback]
-    .sort((first, second) => new Date(first.created_at || 0) - new Date(second.created_at || 0))
-    .slice(-24)
-    .map((entry) => ({
-      actorRole: entry.actor_role ?? 'company',
-      category: entry.category ?? 'problem',
-      createdAt: entry.created_at ?? '',
-      id: entry.id ?? `${entry.company_id}-${entry.created_at}`,
-      message: entry.message ?? '',
-      screen: entry.screen ?? '',
-      status: entry.status ?? 'open',
-    }))
   const latestActivityAt = getLatestDate(
     company.updated_at,
     drivers.map((row) => row.created_at),
@@ -254,7 +359,6 @@ function buildCompanySummary(company, collections, options = {}) {
     costs.map((row) => row.updated_at || row.created_at),
     chatMessages.map((row) => row.created_at),
     teamMessages.map((row) => row.created_at),
-    pilotFeedback.map((row) => row.created_at),
   )
   const alertCount = openFaults.length + criticalChecks.length + urgentDeadlines.length + expiredDocuments.length
   const health =
@@ -270,6 +374,7 @@ function buildCompanySummary(company, collections, options = {}) {
 
   return {
     alertCount,
+    activityTimeline,
     adminNextFollowUp: control.next_follow_up ?? '',
     adminNotes: control.notes ?? '',
     adminOwnerName: control.owner_name ?? '',
@@ -296,21 +401,6 @@ function buildCompanySummary(company, collections, options = {}) {
     name: company.name ?? 'Azienda',
     openFaultCount: openFaults.length,
     peopleCount: people.filter((person) => !isArchivedStatus(person.status)).length,
-    pilotChecklist: pilotChecklist.checklist,
-    pilotDoneCount: pilotChecklist.doneCount,
-    pilotFeedbackCount: pilotFeedback.length,
-    pilotFeedbackThread,
-    pilotLatestFeedback: latestPilotFeedback ? {
-      category: latestPilotFeedback.category ?? 'problem',
-      createdAt: latestPilotFeedback.created_at ?? '',
-      message: latestPilotFeedback.message ?? '',
-      screen: latestPilotFeedback.screen ?? '',
-      status: latestPilotFeedback.status ?? 'open',
-    } : null,
-    pilotOpenFeedbackCount: pilotFeedback.filter((entry) => !['done', 'archived'].includes(entry.status)).length,
-    pilotScore: pilotChecklist.score,
-    pilotTotalCount: pilotChecklist.totalCount,
-    pilotWeekActivityCount,
     storageBytes,
     storageFileCount: storageFiles.length,
     storageLimitBytes,
@@ -319,7 +409,12 @@ function buildCompanySummary(company, collections, options = {}) {
     unreadChatCount: chatMessages.filter((message) => message.sender_role === 'driver' && !message.read_by_company_at).length,
     urgentCheckCount: criticalChecks.length,
     urgentDeadlineCount: urgentDeadlines.length,
+    usageChecklist: usageChecklist.checklist,
+    usageDoneCount: usageChecklist.doneCount,
+    usageScore: usageChecklist.score,
+    usageTotalCount: usageChecklist.totalCount,
     vatNumber: company.vat_number ?? '',
+    weekActivityCount,
   }
 }
 
@@ -423,23 +518,21 @@ export async function handler(event) {
       storageFiles,
       invoices,
       controls,
-      pilotFeedback,
     ] = await Promise.all([
-      safeSelect(serviceClient, 'drivers', 'company_id, status, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'vehicles', 'company_id, status, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'company_people', 'company_id, department, status, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'company_assets', 'company_id, status, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'compliance_items', 'company_id, status, due_date, scope, type', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'driver_documents', 'company_id, status, expires_at, file_path', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'vehicle_checks', 'company_id, status, lights_ok, tires_ok, documents_on_board, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'fault_reports', 'company_id, status, severity, repair_cost_cents, repair_recorded_at, updated_at, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'cost_entries', 'company_id, amount_cents, spent_at, category, currency, updated_at, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'chat_messages', 'company_id, sender_role, read_by_company_at, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'team_chat_messages', 'company_id, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'drivers', 'id, company_id, full_name, username, status, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'vehicles', 'id, company_id, plate, fleet_type, status, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'company_people', 'id, company_id, full_name, department, person_type, status, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'company_assets', 'id, company_id, asset_type, code, model, status, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'compliance_items', 'id, company_id, status, due_date, scope, type, created_at, updated_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'driver_documents', 'id, company_id, status, expires_at, type, file_path, created_at, updated_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'vehicle_checks', 'id, company_id, status, lights_ok, tires_ok, documents_on_board, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'fault_reports', 'id, company_id, status, severity, title, repair_cost_cents, repair_cost_currency, repair_recorded_at, updated_at, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'cost_entries', 'id, company_id, amount_cents, spent_at, category, title, currency, updated_at, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'chat_messages', 'id, company_id, sender_role, read_by_company_at, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'team_chat_messages', 'id, company_id, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'company_storage_files', 'company_id, size_bytes, category, deleted_at, created_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'company_invoices', 'company_id, invoice_number, issued_at, paid_at, amount_cents, currency, status, created_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'company_invoices', 'id, company_id, invoice_number, issued_at, paid_at, amount_cents, currency, status, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'admin_company_controls', 'company_id, sales_stage, priority, owner_name, next_follow_up, notes, updated_at', issues, { limit: 10000 }),
-      safeSelect(serviceClient, 'pilot_feedback', 'id, company_id, actor_role, category, screen, message, status, created_at, updated_at', issues, { limit: 10000 }),
     ])
 
     const collections = {
@@ -454,7 +547,6 @@ export async function handler(event) {
       faults,
       invoices,
       people,
-      pilotFeedback,
       storageFiles,
       teamMessages,
       vehicles,
@@ -474,10 +566,9 @@ export async function handler(event) {
         invoiceMonthCents: totals.invoiceMonthCents + company.invoiceMonthCents,
         lifetimeRevenueCents: totals.lifetimeRevenueCents + company.lifetimeRevenueCents,
         mrrCents: totals.mrrCents + company.monthlyPlanCents,
-        pilotOpenFeedbackCount: totals.pilotOpenFeedbackCount + company.pilotOpenFeedbackCount,
-        pilotReadyCompanyCount: totals.pilotReadyCompanyCount + (!company.isInternalAdminCompany && company.pilotScore >= 82 ? 1 : 0),
-        pilotWeekActivityCount: totals.pilotWeekActivityCount + company.pilotWeekActivityCount,
+        readyCompanyCount: totals.readyCompanyCount + (!company.isInternalAdminCompany && company.usageScore >= 82 ? 1 : 0),
         storageBytes: totals.storageBytes + company.storageBytes,
+        weekActivityCount: totals.weekActivityCount + company.weekActivityCount,
       }),
       {
         activeCompanies: 0,
@@ -489,10 +580,9 @@ export async function handler(event) {
         invoiceMonthCents: 0,
         lifetimeRevenueCents: 0,
         mrrCents: 0,
-        pilotOpenFeedbackCount: 0,
-        pilotReadyCompanyCount: 0,
-        pilotWeekActivityCount: 0,
+        readyCompanyCount: 0,
         storageBytes: 0,
+        weekActivityCount: 0,
       },
     )
 

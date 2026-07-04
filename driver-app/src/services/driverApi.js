@@ -118,23 +118,6 @@ const teamChatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, reactions, read_by_company_at, created_at'
 const teamChatMessageLegacySelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, created_at'
-const pilotFeedbackSelect =
-  'id, company_id, actor_role, category, screen, message, status, admin_notes, created_at, updated_at'
-
-function mapPilotFeedback(row = {}) {
-  return {
-    actorRole: row.actor_role ?? 'company',
-    adminNotes: row.admin_notes ?? '',
-    category: row.category ?? 'problem',
-    companyId: row.company_id,
-    createdAt: row.created_at,
-    id: row.id,
-    message: row.message ?? '',
-    screen: row.screen ?? '',
-    status: row.status ?? 'open',
-    updatedAt: row.updated_at,
-  }
-}
 const voiceCallSessionSelect =
   'id, company_id, thread_id, team_thread_id, caller_role, caller_user_id, caller_driver_id, caller_person_id, receiver_user_id, receiver_driver_id, receiver_person_id, call_type, status, started_at, answered_at, ended_at, duration_seconds, provider, provider_room_id, notes, created_at, updated_at'
 const vehicleCheckSelect =
@@ -1175,83 +1158,6 @@ async function fetchCompanyCostEntries(companyId) {
   return { data: (data ?? []).map(mapCostEntry), error }
 }
 
-async function fetchCompanyPilotFeedback(companyId) {
-  if (!companyId) return { data: [], error: null }
-
-  const { data, error } = await supabase
-    .from('pilot_feedback')
-    .select(pilotFeedbackSelect)
-    .eq('company_id', companyId)
-    .order('created_at', { ascending: false })
-    .limit(120)
-
-  if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
-
-  return { data: (data ?? []).map(mapPilotFeedback), error }
-}
-
-export async function createCompanyPilotFeedback({ category = 'problem', companyId, message = '', screen = 'dashboard' }) {
-  if (!isSupabaseConfigured || !companyId || !message.trim()) return notConfiguredError()
-
-  const sessionResult = await supabase.auth.getSession()
-  const userId = sessionResult.data?.session?.user?.id
-  const accessToken = sessionResult.data?.session?.access_token
-
-  if (!userId || !accessToken) {
-    return { data: null, error: { message: 'Sessione scaduta. Fai login e riprova.' } }
-  }
-
-  if (apiBaseUrl) {
-    try {
-      const response = await fetch(`${apiBaseUrl}/.netlify/functions/create-pilot-feedback`, {
-        body: JSON.stringify({
-          actorRole: 'company',
-          category,
-          companyId,
-          message: message.trim(),
-          screen,
-        }),
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-      })
-      const payload = await response.json().catch(() => ({}))
-
-      if (response.ok) {
-        return { data: payload.feedback ? mapPilotFeedback(payload.feedback) : null, error: null }
-      }
-
-      if (response.status !== 404) {
-        return { data: null, error: { message: payload.error || serviceUnavailableMessage } }
-      }
-    } catch (error) {
-      return { data: null, error: { message: error.message || serviceUnavailableMessage } }
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('pilot_feedback')
-    .insert({
-      actor_user_id: userId,
-      actor_role: 'company',
-      category,
-      company_id: companyId,
-      message: message.trim(),
-      screen,
-      status: 'open',
-    })
-    .select(pilotFeedbackSelect)
-    .single()
-
-  if (isMissingWorkforceSchemaError(error)) {
-    return { data: null, error: { message: 'Area test non ancora attiva. Esegui il file 53 su Supabase.' } }
-  }
-
-  return { data: data ? mapPilotFeedback(data) : null, error }
-}
-
 export async function fetchCompanyContext() {
   if (!isSupabaseConfigured) return notConfiguredError()
 
@@ -1295,7 +1201,6 @@ export async function fetchCompanyContext() {
     chatMessagesResult,
     teamChatMessagesResult,
     teamUnreadCountsResult,
-    pilotFeedbackResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -1356,7 +1261,6 @@ export async function fetchCompanyContext() {
       .order('created_at', { ascending: false })
       .limit(120),
     fetchTeamUnreadCounts(companyId),
-    fetchCompanyPilotFeedback(companyId),
   ])
 
   const firstError = [
@@ -1374,7 +1278,6 @@ export async function fetchCompanyContext() {
     chatThreadsResult.error,
     chatMessagesResult.error,
     teamUnreadCountsResult.error,
-    pilotFeedbackResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -1406,7 +1309,6 @@ export async function fetchCompanyContext() {
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       membership: membershipResult.data,
       people: companyPeopleRows.map(mapCompanyPerson),
-      pilotFeedback: pilotFeedbackResult.data ?? [],
       teamChatMessages: teamChatMessagesResult.error
         ? []
         : (teamChatMessagesResult.data ?? []).map(mapTeamChatMessage),

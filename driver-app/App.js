@@ -30,7 +30,6 @@ import { DocumentsScreen } from './src/screens/DocumentsScreen'
 import { DriverChatHubScreen } from './src/screens/DriverChatHubScreen'
 import { HomeScreen } from './src/screens/HomeScreen'
 import { OperationsScreen } from './src/screens/OperationsScreen'
-import { PilotAreaScreen } from './src/screens/PilotAreaScreen'
 import { SettingsScreen } from './src/screens/SettingsScreen'
 import { WorkforceHomeScreen } from './src/screens/WorkforceHomeScreen'
 import {
@@ -38,7 +37,6 @@ import {
   createCompanyComplianceItem,
   createCompanyCostEntry,
   createCompanyDriverAccount,
-  createCompanyPilotFeedback,
   createCompanyPerson,
   createCompanyVehicle,
   createCompanyWarehouseAsset,
@@ -890,8 +888,6 @@ function CamionChiaroApp() {
   const [nativePushStatus, setNativePushStatus] = useState('')
   const [onlineDriverIds, setOnlineDriverIds] = useState([])
   const [onlinePersonIds, setOnlinePersonIds] = useState([])
-  const [pilotFeedbackStatus, setPilotFeedbackStatus] = useState('')
-  const [isPilotFeedbackSubmitting, setIsPilotFeedbackSubmitting] = useState(false)
   const [session, setSession] = useState(null)
   const [selectedCompanyDriverId, setSelectedCompanyDriverId] = useState('')
   const [selectedCompanyTeamThreadId, setSelectedCompanyTeamThreadId] = useState('')
@@ -1939,7 +1935,7 @@ function CamionChiaroApp() {
   }, [accountType, driver?.id])
 
   useEffect(() => {
-    if (accountType === 'company' && ['settings', 'pilot'].includes(activeTab)) return
+    if (accountType === 'company' && activeTab === 'settings') return
 
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab('home')
@@ -3841,11 +3837,6 @@ function CamionChiaroApp() {
       return
     }
 
-    if (target === 'pilot') {
-      setActiveTab('pilot')
-      return
-    }
-
     if (target === 'operations') {
       openCompanyManagement('faults')
       return
@@ -3876,39 +3867,6 @@ function CamionChiaroApp() {
     if (target === 'chat') {
       openNativeChatTab()
     }
-  }
-
-  async function handleCreateCompanyPilotFeedback(feedback) {
-    const companyId = companyContext?.companyProfile?.id
-
-    if (!companyId) {
-      const error = { message: 'Azienda non collegata. Aggiorna e riprova.' }
-      setPilotFeedbackStatus(error.message)
-      return { error }
-    }
-
-    setIsPilotFeedbackSubmitting(true)
-    setPilotFeedbackStatus('Invio feedback...')
-    const result = await createCompanyPilotFeedback({ ...feedback, companyId })
-    setIsPilotFeedbackSubmitting(false)
-
-    if (result.error) {
-      setPilotFeedbackStatus(result.error.message)
-      return result
-    }
-
-    if (result.data) {
-      setCompanyContext((currentContext) => {
-        if (!currentContext) return currentContext
-        return {
-          ...currentContext,
-          pilotFeedback: [result.data, ...(currentContext.pilotFeedback ?? [])],
-        }
-      })
-    }
-
-    setPilotFeedbackStatus('Feedback inviato a Vygo.')
-    return result
   }
 
   function handleIncomingShareConsumed() {
@@ -3982,17 +3940,6 @@ function CamionChiaroApp() {
             onLanguageChange={setLanguage}
             onRefresh={() => loadCompanyData()}
             onSignOut={handleSignOut}
-          />
-        )
-      }
-
-      if (activeTab === 'pilot') {
-        return (
-          <PilotAreaScreen
-            context={companyContext}
-            isSubmitting={isPilotFeedbackSubmitting}
-            onCreateFeedback={handleCreateCompanyPilotFeedback}
-            statusMessage={pilotFeedbackStatus}
           />
         )
       }
@@ -4191,7 +4138,6 @@ function CamionChiaroApp() {
     driverProfileUrl,
     isCompanyOnline,
     isCompanyTyping,
-    isPilotFeedbackSubmitting,
     isSelectedDriverTyping,
     isWorkforcePerson,
     isRefreshing,
@@ -4202,7 +4148,6 @@ function CamionChiaroApp() {
     nativePushStatus,
     onlineDriverIds,
     onlinePersonIds,
-    pilotFeedbackStatus,
     selectedCompanyDriver,
     selectedCompanyDriverId,
     selectedCompanyDriverOnline,

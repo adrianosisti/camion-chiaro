@@ -69,8 +69,6 @@ import {
   createCompanyInvoiceSignedUrl,
   createComplianceItemRecord as createSupabaseComplianceItem,
   createCostEntryRecord as createSupabaseCostEntry,
-  createPilotFeedbackRecord as createSupabasePilotFeedback,
-  createAdminPilotFeedbackReply,
   fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
   createTeamChatMessageRecord as createSupabaseTeamChatMessage,
@@ -99,7 +97,6 @@ import {
   fetchCompanyInvoices,
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
-  fetchPilotFeedback,
   fetchLegalAcceptanceStatus,
   fetchAdminOverview,
   updateAdminCompanyControl,
@@ -614,7 +611,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'deadlines', 'documents', 'drivers', 'fleet', 'notifications', 'pilot', 'records', 'reports', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'deadlines', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'reports', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -6726,7 +6723,6 @@ function App() {
   const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [costEntryRecords, setCostEntryRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
-  const [pilotFeedbackRecords, setPilotFeedbackRecords] = useState([])
   const [companyStorageSummary, setCompanyStorageSummary] = useState(emptyCompanyStorageSummary)
   const [adminOverview, setAdminOverview] = useState(null)
   const [adminOverviewStatus, setAdminOverviewStatus] = useState('')
@@ -6755,7 +6751,6 @@ function App() {
   const [peopleSyncStatus, setPeopleSyncStatus] = useState('')
   const [operationsSyncStatus, setOperationsSyncStatus] = useState('')
   const [companySettingsStatus, setCompanySettingsStatus] = useState('')
-  const [pilotFeedbackStatus, setPilotFeedbackStatus] = useState('')
   const [billingCheckoutStatus, setBillingCheckoutStatus] = useState('')
   const [isBillingCheckoutLoading, setIsBillingCheckoutLoading] = useState(false)
   const [legalAcceptanceStatus, setLegalAcceptanceStatus] = useState({
@@ -6802,32 +6797,6 @@ function App() {
         archivedFaultOverrideIds.includes(report.id) ? { ...report, status: 'closed' } : report,
       ),
     [archivedFaultOverrideIds, faultReportRecords],
-  )
-  const pilotChecklistSummary = useMemo(
-    () => buildPilotChecklist({
-      companyProfile,
-      complianceItems: decoratedItems,
-      costEntryRecords,
-      documentRecords,
-      driverRecords,
-      faultReportRecords: visibleFaultReportRecords,
-      personRecords,
-      teamChatMessageRecords,
-      vehicleCheckRecords,
-      vehicleRecords,
-    }),
-    [
-      companyProfile,
-      costEntryRecords,
-      decoratedItems,
-      documentRecords,
-      driverRecords,
-      personRecords,
-      teamChatMessageRecords,
-      vehicleCheckRecords,
-      vehicleRecords,
-      visibleFaultReportRecords,
-    ],
   )
   const assetPaths = useMemo(
     () =>
@@ -7645,7 +7614,6 @@ function App() {
         documentEventsResult,
         companyInvoicesResult,
         costEntriesResult,
-        pilotFeedbackResult,
         checksResult,
         faultsResult,
         chatThreadsResult,
@@ -7663,7 +7631,6 @@ function App() {
         fetchDriverDocumentEvents(companyId),
         fetchCompanyInvoices(companyId),
         fetchCompanyCostEntries(companyId),
-        fetchPilotFeedback(companyId),
         fetchVehicleChecks(companyId),
         fetchFaultReports(companyId),
         fetchChatThreads(companyId),
@@ -7693,7 +7660,6 @@ function App() {
       if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
       if (companyInvoicesResult.data) setCompanyInvoiceRecords(companyInvoicesResult.data)
       if (costEntriesResult.data) setCostEntryRecords(costEntriesResult.data)
-      if (pilotFeedbackResult.data) setPilotFeedbackRecords(pilotFeedbackResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
@@ -9890,29 +9856,6 @@ function App() {
     return true
   }
 
-  async function addPilotFeedbackRecord(feedback) {
-    if (!activeCompanyId) {
-      const error = { message: 'Azienda non collegata. Aggiorna e riprova.' }
-      setPilotFeedbackStatus(error.message)
-      return { error }
-    }
-
-    setPilotFeedbackStatus('Invio feedback...')
-    const result = await createSupabasePilotFeedback(feedback, activeCompanyId)
-
-    if (result.error) {
-      setPilotFeedbackStatus(result.error.message)
-      return result
-    }
-
-    if (result.data) {
-      setPilotFeedbackRecords((currentRecords) => [result.data, ...currentRecords])
-    }
-
-    setPilotFeedbackStatus('Feedback inviato. Lo vedrai anche nel pannello admin Vygo.')
-    return result
-  }
-
   const unreadCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds)).length
   const openFaultCount = visibleFaultReportRecords.filter(isFaultUnread).length
   const criticalCheckCount = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check, acknowledgedCheckIds) && hasCheckIssues(check)).length
@@ -10025,26 +9968,6 @@ function App() {
 
     await refreshAdminOverview()
     setAdminOverviewStatus('Gestione cliente salvata.')
-    return result
-  }, [isAdminSession, refreshAdminOverview])
-
-  const handleCreateAdminPilotReply = useCallback(async (companyId, message) => {
-    if (!isAdminSession) {
-      return { error: { message: 'Account non autorizzato al Pannello Admin.' } }
-    }
-
-    setIsAdminOverviewLoading(true)
-    setAdminOverviewStatus('Invio risposta Area test...')
-    const result = await createAdminPilotFeedbackReply(companyId, message)
-
-    if (result.error) {
-      setIsAdminOverviewLoading(false)
-      setAdminOverviewStatus(result.error.message)
-      return result
-    }
-
-    await refreshAdminOverview()
-    setAdminOverviewStatus('Risposta Area test inviata.')
     return result
   }, [isAdminSession, refreshAdminOverview])
 
@@ -10569,7 +10492,6 @@ function App() {
           <AdminWorkspace
             isAdminSession={isAdminSession}
             isLoading={isAdminOverviewLoading}
-            onCreatePilotReply={handleCreateAdminPilotReply}
             onRefresh={refreshAdminOverview}
             onUpdateCompany={handleUpdateAdminCompany}
             overview={adminOverview}
@@ -10688,14 +10610,6 @@ function App() {
           )
         ) : activeView === 'support' ? (
           <SupportWorkspace t={t} />
-        ) : activeView === 'pilot' ? (
-          <PilotWorkspace
-            checklistSummary={pilotChecklistSummary}
-            companyName={companyName}
-            feedbackRecords={pilotFeedbackRecords}
-            onCreateFeedback={addPilotFeedbackRecord}
-            statusMessage={pilotFeedbackStatus}
-          />
         ) : activeView === 'settings' ? (
           <SettingsWorkspace
             key={`${companyProfile.name}-${companyProfile.vatNumber}-${companyProfile.headquarters}`}
@@ -11903,7 +11817,6 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
     { id: 'reports', label: t('nav.reports'), icon: FileText },
     { id: 'costs', label: t('nav.costs'), icon: Banknote },
     { id: 'newCost', label: t('nav.newCost'), icon: Plus },
-    { id: 'pilot', label: 'Area test', icon: ClipboardCheck },
     { id: 'support', label: t('nav.support'), icon: BookOpen },
     { id: 'settings', label: t('nav.settings'), icon: SettingsIcon },
     ...(isAdminSession ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck }] : []),
@@ -12371,7 +12284,6 @@ function PhotoPreviewModal({ imageUrl, name, onClose }) {
 function AdminWorkspace({
   isAdminSession,
   isLoading,
-  onCreatePilotReply,
   onRefresh,
   onUpdateCompany,
   overview,
@@ -12382,8 +12294,6 @@ function AdminWorkspace({
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
   const [adminCopyStatus, setAdminCopyStatus] = useState('')
-  const [adminPilotReply, setAdminPilotReply] = useState('')
-  const [adminPilotReplyStatus, setAdminPilotReplyStatus] = useState('')
   const [adminSaveStatus, setAdminSaveStatus] = useState('')
   const [adminForm, setAdminForm] = useState({
     adminNextFollowUp: '',
@@ -12405,9 +12315,8 @@ function AdminWorkspace({
     invoiceMonthCents: 0,
     lifetimeRevenueCents: 0,
     mrrCents: 0,
-    pilotOpenFeedbackCount: 0,
-    pilotReadyCompanyCount: 0,
-    pilotWeekActivityCount: 0,
+    readyCompanyCount: 0,
+    weekActivityCount: 0,
     storageBytes: 0,
   }
   const healthLabels = {
@@ -12520,8 +12429,6 @@ function AdminWorkspace({
       billingStatus: selectedCompany.isInternalAdminCompany ? 'active' : selectedCompany.billingStatus ?? 'pending',
       })
       setAdminSaveStatus('')
-      setAdminPilotReply('')
-      setAdminPilotReplyStatus('')
     }, 0)
 
     return () => window.clearTimeout(timerId)
@@ -12541,8 +12448,7 @@ function AdminWorkspace({
     if (company.adminPriority === 'urgent') return 'Priorita urgente: contatta il cliente e aggiorna note e prossimo follow-up.'
     if (company.adminSalesStage === 'risk') return 'Cliente a rischio: verifica motivazione, pagamento, uso reale e blocchi operativi.'
     if (company.health === 'billing') return 'Verifica pagamento, piano e periodo: questo cliente non deve restare bloccato per errore.'
-    if (company.pilotOpenFeedbackCount > 0) return 'Leggi i feedback pilota: il cliente ti sta dicendo dove Vygo va migliorato o spiegato meglio.'
-    if (company.pilotScore < 58) return 'Pilota ancora fragile: aiuta il cliente a caricare anagrafiche, mezzi, documenti e primo giro operativo.'
+    if (company.usageScore < 58) return 'Utilizzo ancora basso: aiuta il cliente a caricare anagrafiche, mezzi, documenti e primo giro operativo.'
     if (company.health === 'attention') return 'Apri un contatto operativo: ci sono guasti, check, scadenze o documenti da far sistemare.'
     if (company.health === 'storage') return 'Proponi upgrade spazio o pulizia allegati prima che arrivi al limite.'
     return 'Cliente regolare: controlla ultimo utilizzo e valuta storage extra, avviamento guidato o supporto dedicato.'
@@ -12569,22 +12475,6 @@ function AdminWorkspace({
     }
 
     setAdminSaveStatus('Cliente aggiornato.')
-  }
-
-  async function handleSendAdminPilotReply(event) {
-    event.preventDefault()
-    if (!selectedCompany || !onCreatePilotReply || !adminPilotReply.trim()) return
-
-    setAdminPilotReplyStatus('Invio risposta...')
-    const result = await onCreatePilotReply(selectedCompany.id, adminPilotReply)
-
-    if (result?.error) {
-      setAdminPilotReplyStatus(result.error.message)
-      return
-    }
-
-    setAdminPilotReply('')
-    setAdminPilotReplyStatus('Risposta inviata nell Area test.')
   }
 
   if (!isAdminSession) {
@@ -12636,15 +12526,15 @@ function AdminWorkspace({
           <strong>{firstSalesTargetGap ? `${firstSalesTargetGap} mancanti` : 'Raggiunto'}</strong>
           <span>Obiettivo 10 clienti · {formatMoneyCents(firstSalesTargetMrrCents, 'EUR')} MRR</span>
         </article>
-        <article className={summary.pilotOpenFeedbackCount ? 'is-warning' : 'is-money'}>
+        <article className={summary.weekActivityCount ? 'is-money' : 'is-warning'}>
           <ClipboardCheck size={20} />
-          <strong>{summary.pilotOpenFeedbackCount}</strong>
-          <span>Feedback pilota aperti</span>
+          <strong>{summary.weekActivityCount ?? 0}</strong>
+          <span>Attività ultimi 7 giorni</span>
         </article>
         <article>
           <CheckCircle2 size={20} />
-          <strong>{summary.pilotReadyCompanyCount}</strong>
-          <span>Aziende pronte al test reale</span>
+          <strong>{summary.readyCompanyCount ?? 0}</strong>
+          <span>Aziende ben configurate</span>
         </article>
         <article className={attentionCompanyCount ? 'is-warning' : ''}>
           <AlertTriangle size={20} />
@@ -12659,7 +12549,7 @@ function AdminWorkspace({
       </div>
 
       <p className="admin-status-line">
-        {statusMessage || 'Pannello aggiornato.'} · Fatture incassate questo mese: {formatMoneyCents(summary.invoiceMonthCents, 'EUR')} · Aziende attive: {summary.activeCompanies} · Attivita pilota 7 giorni: {summary.pilotWeekActivityCount}
+        {statusMessage || 'Pannello aggiornato.'} · Fatture incassate questo mese: {formatMoneyCents(summary.invoiceMonthCents, 'EUR')} · Aziende attive: {summary.activeCompanies} · Attività 7 giorni: {summary.weekActivityCount ?? 0}
       </p>
 
       <section className="admin-economy-panel" aria-label="Andamento economico Vygo">
@@ -12759,7 +12649,7 @@ function AdminWorkspace({
                   <th>Canone</th>
                   <th>Flotta</th>
                   <th>Alert</th>
-                  <th>Pilota</th>
+                  <th>Utilizzo</th>
                   <th>Spazio</th>
                   <th>Ultima attività</th>
                 </tr>
@@ -12792,8 +12682,8 @@ function AdminWorkspace({
                     </td>
                     <td>{company.alertCount}</td>
                     <td>
-                      <strong>{company.pilotScore ?? 0}%</strong>
-                      <span>{company.pilotOpenFeedbackCount ?? 0} feedback aperti</span>
+                      <strong>{company.usageScore ?? 0}%</strong>
+                      <span>{company.weekActivityCount ?? 0} eventi 7g</span>
                     </td>
                     <td>
                       <strong>{company.storageUsagePercent}%</strong>
@@ -12867,12 +12757,12 @@ function AdminWorkspace({
                   <strong>{selectedCompany.storageUsagePercent}%</strong>
                 </div>
                 <div>
-                  <span>Pilota</span>
-                  <strong>{selectedCompany.pilotScore ?? 0}%</strong>
+                  <span>Indice utilizzo</span>
+                  <strong>{selectedCompany.usageScore ?? 0}%</strong>
                 </div>
                 <div>
-                  <span>Feedback aperti</span>
-                  <strong>{selectedCompany.pilotOpenFeedbackCount ?? 0}</strong>
+                  <span>Eventi 7 giorni</span>
+                  <strong>{selectedCompany.weekActivityCount ?? 0}</strong>
                 </div>
               </div>
 
@@ -12972,51 +12862,38 @@ function AdminWorkspace({
                 <span>Chat non lette: {selectedCompany.unreadChatCount}</span>
               </div>
 
-              <div className={`admin-pilot-card tone-${getPilotReadinessTone(selectedCompany.pilotScore ?? 0)}`}>
-                <div className="admin-pilot-head">
+              <div className={`admin-activity-card tone-${getUsageReadinessTone(selectedCompany.usageScore ?? 0)}`}>
+                <div className="admin-activity-head">
                   <div>
-                    <strong>Leggi i messaggi dell'azienda pilota</strong>
-                    <span>Ogni messaggio mostra tipo richiesta e area scelta dal cliente.</span>
+                    <strong>Storico attività azienda</strong>
+                    <span>Solo dati reali: cosa ha creato, inviato, caricato o gestito il cliente.</span>
                   </div>
-                  <b>{selectedCompany.pilotScore ?? 0}%</b>
+                  <b>{selectedCompany.usageScore ?? 0}%</b>
                 </div>
-                <div className="admin-pilot-checks">
-                  {(selectedCompany.pilotChecklist ?? []).map((item) => (
+                <div className="admin-activity-checks">
+                  {(selectedCompany.usageChecklist ?? []).map((item) => (
                     <span className={item.done ? 'is-done' : 'is-missing'} key={item.id}>
                       {item.done ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
                       {item.label}
                     </span>
                   ))}
                 </div>
-                {selectedCompany.pilotFeedbackThread?.length ? (
-                  <div className="admin-pilot-thread">
-                    {selectedCompany.pilotFeedbackThread.map((entry) => (
-                      <article className={entry.actorRole === 'admin' ? 'is-vygo' : 'is-client'} key={entry.id}>
-                        <strong>{entry.actorRole === 'admin' ? 'Vygo' : selectedCompany.name}</strong>
-                        <div className="admin-pilot-thread-tags">
-                          <span>{getOptionLabel(pilotFeedbackCategoryOptions, entry.category, 'Feedback')}</span>
-                          <span>{getOptionLabel(pilotFeedbackScreenOptions, entry.screen, 'Area test')}</span>
+                {selectedCompany.activityTimeline?.length ? (
+                  <div className="admin-activity-thread">
+                    {selectedCompany.activityTimeline.map((entry) => (
+                      <article className="is-client" key={entry.id}>
+                        <strong>{entry.title}</strong>
+                        <div className="admin-activity-thread-tags">
+                          <span>{entry.kind}</span>
                           <small>{entry.createdAt ? formatShortDateTime(entry.createdAt) : 'Ora'}</small>
                         </div>
-                        <p>{entry.message}</p>
+                        <p>{entry.detail}</p>
                       </article>
                     ))}
                   </div>
                 ) : (
-                  <p>Nessun feedback ancora lasciato dal cliente.</p>
+                  <p>Nessuna attività ancora registrata per questo cliente.</p>
                 )}
-                <form className="admin-pilot-reply-form" onSubmit={handleSendAdminPilotReply}>
-                  <textarea
-                    onChange={(event) => setAdminPilotReply(event.target.value)}
-                    placeholder="Rispondi all'azienda pilota..."
-                    value={adminPilotReply}
-                  />
-                  <button className="primary-button compact-button" disabled={isLoading || !adminPilotReply.trim()} type="submit">
-                    <Send size={14} />
-                    Rispondi
-                  </button>
-                </form>
-                {adminPilotReplyStatus ? <p>{adminPilotReplyStatus}</p> : null}
               </div>
 
               <div className="admin-next-action">
@@ -13515,261 +13392,10 @@ function DailyMotivation({ role, t }) {
   )
 }
 
-const pilotFeedbackCategoryOptions = [
-  { label: 'Problema', value: 'problem' },
-  { label: 'Idea', value: 'idea' },
-  { label: 'Domanda', value: 'question' },
-  { label: 'Formazione', value: 'training' },
-  { label: 'Funziona bene', value: 'praise' },
-]
-
-const pilotFeedbackScreenOptions = [
-  { label: 'Dashboard', value: 'dashboard' },
-  { label: 'Chat', value: 'chat' },
-  { label: 'Anagrafiche', value: 'records' },
-  { label: 'Documenti e scadenze', value: 'documents' },
-  { label: 'Check e guasti', value: 'operations' },
-  { label: 'Report e costi', value: 'reports' },
-  { label: 'App telefono', value: 'mobile' },
-  { label: 'Altro', value: 'other' },
-]
-
-function getPilotReadinessTone(score = 0) {
+function getUsageReadinessTone(score = 0) {
   if (score >= 82) return 'success'
   if (score >= 58) return 'warning'
   return 'danger'
-}
-
-function buildPilotChecklist({
-  companyProfile,
-  complianceItems = [],
-  costEntryRecords = [],
-  documentRecords = [],
-  driverRecords = [],
-  faultReportRecords = [],
-  personRecords = [],
-  teamChatMessageRecords = [],
-  vehicleCheckRecords = [],
-  vehicleRecords = [],
-}) {
-  const activeDrivers = driverRecords.filter((driver) => !isArchivedStatus(driver.status))
-  const activePeople = personRecords.filter((person) => !isArchivedStatus(person.status))
-  const activeVehicles = vehicleRecords.filter((vehicle) => !isArchivedStatus(vehicle.status))
-  const openOperationalItems = [
-    ...complianceItems.filter(isComplianceActionRequired),
-    ...faultReportRecords.filter(isFaultUnread),
-    ...vehicleCheckRecords.filter((check) => hasCheckIssues(check) && !isVehicleCheckArchived(check, [])),
-  ]
-  const checklist = [
-    {
-      detail: companyProfile?.name ? companyProfile.name : 'Inserisci nome azienda e dati principali.',
-      done: Boolean(companyProfile?.name),
-      id: 'profile',
-      label: 'Azienda configurata',
-    },
-    {
-      detail: activeDrivers.length + activePeople.length > 0 ? `${activeDrivers.length + activePeople.length} persone attive` : 'Crea almeno un autista o una persona aziendale.',
-      done: activeDrivers.length + activePeople.length > 0,
-      id: 'people',
-      label: 'Persone create',
-    },
-    {
-      detail: activeVehicles.length > 0 ? `${activeVehicles.length} mezzi in flotta` : 'Carica almeno un mezzo reale.',
-      done: activeVehicles.length > 0,
-      id: 'fleet',
-      label: 'Flotta inserita',
-    },
-    {
-      detail: documentRecords.length + complianceItems.length > 0 ? `${documentRecords.length + complianceItems.length} documenti o scadenze` : 'Aggiungi documenti, revisioni, assicurazioni o visite.',
-      done: documentRecords.length + complianceItems.length > 0,
-      id: 'documents',
-      label: 'Documenti e scadenze',
-    },
-    {
-      detail: vehicleCheckRecords.length > 0 ? `${vehicleCheckRecords.length} check ricevuti` : 'Fai fare un primo check mattutino.',
-      done: vehicleCheckRecords.length > 0,
-      id: 'checks',
-      label: 'Check provato',
-    },
-    {
-      detail: faultReportRecords.length > 0 ? `${faultReportRecords.length} segnalazioni presenti` : 'Fai una prova di segnalazione guasto.',
-      done: faultReportRecords.length > 0,
-      id: 'faults',
-      label: 'Guasti provati',
-    },
-    {
-      detail: teamChatMessageRecords.length > 0 ? `${teamChatMessageRecords.length} messaggi aziendali` : 'Scambia almeno un messaggio in chat.',
-      done: teamChatMessageRecords.length > 0,
-      id: 'chat',
-      label: 'Chat usata',
-    },
-    {
-      detail: costEntryRecords.length > 0 ? `${costEntryRecords.length} costi registrati` : 'Registra una spesa, manutenzione o sanzione.',
-      done: costEntryRecords.length > 0,
-      id: 'costs',
-      label: 'Centro costi provato',
-    },
-  ]
-  const doneCount = checklist.filter((item) => item.done).length
-
-  return {
-    checklist,
-    doneCount,
-    openOperationalCount: openOperationalItems.length,
-    score: checklist.length ? Math.round((doneCount / checklist.length) * 100) : 0,
-    totalCount: checklist.length,
-  }
-}
-
-function PilotWorkspace({
-  checklistSummary,
-  companyName = 'Azienda',
-  feedbackRecords = [],
-  onCreateFeedback,
-  statusMessage = '',
-}) {
-  const [form, setForm] = useState({
-    category: 'problem',
-    message: '',
-    screen: 'dashboard',
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const scoreTone = getPilotReadinessTone(checklistSummary.score)
-  const openFeedbackRecords = feedbackRecords.filter((entry) => !['done', 'archived'].includes(entry.status))
-  const latestFeedbackRecords = [...feedbackRecords]
-    .sort((first, second) => new Date(first.createdAt || 0) - new Date(second.createdAt || 0))
-    .slice(-18)
-
-  function updateField(field, value) {
-    setForm((currentForm) => ({ ...currentForm, [field]: value }))
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault()
-    if (!form.message.trim() || isSubmitting) return
-
-    setIsSubmitting(true)
-    const result = await onCreateFeedback?.({
-      actorRole: 'company',
-      category: form.category,
-      message: form.message,
-      screen: form.screen,
-    })
-    setIsSubmitting(false)
-
-    if (!result?.error) {
-      setForm((currentForm) => ({ ...currentForm, message: '' }))
-    }
-  }
-
-  return (
-    <section className="pilot-workspace" aria-label="Area test Vygo">
-      <div className={`panel pilot-hero-panel tone-${scoreTone}`}>
-        <div>
-          <p className="overline">Area test</p>
-          <h2>{companyName}</h2>
-          <span>Uno spazio riservato per provare Vygo con noi, lasciare feedback e sistemare subito cio che non torna.</span>
-        </div>
-        <div className="pilot-score">
-          <strong>{checklistSummary.doneCount}/{checklistSummary.totalCount}</strong>
-          <span>passaggi pronti</span>
-        </div>
-      </div>
-
-      <div className="pilot-layout">
-        <section className="panel pilot-checklist-panel">
-          <div className="panel-header compact">
-            <div>
-              <p className="overline">Avviamento</p>
-              <h2>Passaggi prova reale</h2>
-            </div>
-            <ClipboardCheck size={20} />
-          </div>
-          <div className="pilot-checklist">
-            {checklistSummary.checklist.map((item) => (
-              <article className={item.done ? 'is-done' : 'is-missing'} key={item.id}>
-                {item.done ? <CheckCircle2 size={18} /> : <Clock3 size={18} />}
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.detail}</small>
-                </span>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel pilot-feedback-panel">
-          <div className="panel-header compact">
-            <div>
-              <p className="overline">Feedback pilota</p>
-              <h2>Scrivi a Vygo</h2>
-            </div>
-            <Mail size={20} />
-          </div>
-          <form className="pilot-feedback-form" onSubmit={handleSubmit}>
-            <div className="pilot-feedback-grid">
-              <label>
-                Tipo
-                <select value={form.category} onChange={(event) => updateField('category', event.target.value)}>
-                  {pilotFeedbackCategoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Area
-                <select value={form.screen} onChange={(event) => updateField('screen', event.target.value)}>
-                  {pilotFeedbackScreenOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              Messaggio
-              <textarea
-                onChange={(event) => updateField('message', event.target.value)}
-                placeholder="Scrivi cosa non e chiaro, cosa manca o cosa migliorare durante il test..."
-                required
-                value={form.message}
-              />
-            </label>
-            <button className="primary-button full-button" disabled={isSubmitting || !form.message.trim()} type="submit">
-              <Send size={17} />
-              {isSubmitting ? 'Invio...' : 'Invia feedback'}
-            </button>
-            {statusMessage ? <p className="sync-status-line">{statusMessage}</p> : null}
-          </form>
-        </section>
-
-        <section className="panel pilot-history-panel">
-          <div className="panel-header compact">
-            <div>
-              <p className="overline">Storico</p>
-              <h2>Conversazione test</h2>
-              <span>{openFeedbackRecords.length} messaggi da seguire</span>
-            </div>
-            <Bell size={20} />
-          </div>
-          {latestFeedbackRecords.length ? (
-            <div className="pilot-feedback-list is-chat">
-              {latestFeedbackRecords.map((entry) => (
-                <article className={`tone-${entry.status} is-${entry.actorRole === 'admin' ? 'vygo' : 'company'}`} key={entry.id}>
-                  <span>
-                    <strong>{entry.actorRole === 'admin' ? 'Vygo' : companyName}</strong>
-                    <small>{getOptionLabel(pilotFeedbackScreenOptions, entry.screen, 'Area test')} · {entry.createdAt ? formatShortDateTime(entry.createdAt) : ''}</small>
-                  </span>
-                  <p>{entry.message}</p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="archive-note">Nessun messaggio ancora. Durante il test usa questa pagina per segnare problemi, idee e dubbi.</p>
-          )}
-        </section>
-      </div>
-    </section>
-  )
 }
 
 function HeroPanel({

@@ -835,6 +835,140 @@ function buildDailyDigestItems(items = [], language = defaultLanguage) {
   }]
 }
 
+function getUpcomingRestriction(schedule = transportRestrictionSchedule2026, now = new Date()) {
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const todayKey = `${year}-${month}-${day}`
+
+  return [...schedule]
+    .sort((first, second) => first.date.localeCompare(second.date))
+    .find((restriction) => restriction.date >= todayKey) ?? null
+}
+
+function buildRadarFallbackItem({
+  category,
+  id,
+  importance,
+  language,
+  sources,
+  summary,
+  title,
+}) {
+  const now = new Date().toISOString()
+
+  return {
+    category,
+    fetched_at: now,
+    id: getNewsId(`vygo-radar-${id}`, sources.map((source) => source.url).join('|'), now.slice(0, 10)),
+    importance,
+    isDigest: true,
+    is_active: true,
+    language,
+    published_at: now,
+    source_id: `vygo-radar-${id}`,
+    source_name: 'Radar Vygo',
+    sources,
+    summary,
+    tags: [id, 'radar-vygo', 'daily-brief'],
+    title,
+    url: sources[0]?.url || 'https://vy-go.com',
+  }
+}
+
+function buildOperationalRadarFallbackItems(language = defaultLanguage) {
+  const nextRestriction = getUpcomingRestriction()
+  const restrictionText = nextRestriction
+    ? `Il prossimo blocco nazionale caricato in Vygo e ${nextRestriction.day} ${nextRestriction.date}, dalle ${nextRestriction.start} alle ${nextRestriction.end}.`
+    : 'Il calendario caricato non segnala altri blocchi futuri, ma le aziende devono comunque verificare eventuali deroghe e aggiornamenti ufficiali.'
+
+  return [
+    buildRadarFallbackItem({
+      category: 'Norme',
+      id: 'rules-daily',
+      importance: 82,
+      language,
+      sources: [
+        { sourceName: 'Ministero Infrastrutture e Trasporti', title: 'Comunicati e news MIT', url: 'https://www.mit.gov.it/comunicazione/news' },
+        { sourceName: 'Albo Autotrasporto', title: 'Portale Albo Autotrasporto', url: 'https://www.alboautotrasporto.it/web/portale-albo' },
+        { sourceName: 'Polizia di Stato', title: 'Sicurezza stradale e controlli', url: 'https://www.poliziadistato.it/articolo/50' },
+      ],
+      summary: [
+        'Il controllo normativo del giorno parte da documenti, scadenze, abilitazioni e comunicazioni istituzionali. Per una direzione trasporti la priorita e capire se ci sono novita che possono cambiare procedure interne, controlli su strada o responsabilita operative.',
+        'Vygo consiglia di verificare patente, CQC, visite mediche, revisioni mezzo, assicurazioni e documenti di bordo quando arrivano comunicazioni da MIT, Albo o organi di controllo. Se una comunicazione riguarda autisti o flotta, va trasformata subito in promemoria operativo.',
+        'Le fonti collegate sotto permettono di aprire il dettaglio ufficiale e confrontarlo con anagrafiche, scadenze e documenti gia presenti in Vygo.',
+      ].join('\n\n'),
+      title: 'Radar Vygo: controllo norme e documenti del giorno',
+    }),
+    buildRadarFallbackItem({
+      category: 'Viabilità',
+      id: 'roads-daily',
+      importance: 86,
+      language,
+      sources: [
+        { sourceName: 'MIT', title: 'Calendario e comunicazioni su divieti mezzi pesanti', url: 'https://www.mit.gov.it/comunicazione/news' },
+        { sourceName: 'CCISS Viaggiare Informati', title: 'Traffico e viabilita in tempo reale', url: 'https://www.cciss.it/' },
+      ],
+      summary: [
+        `${restrictionText} Questo dato va usato per pianificare partenze, rientri, viaggi lunghi e comunicazioni agli autisti.`,
+        'Quando ci sono fermi, traffico intenso o finestre di blocco, l’azienda deve decidere prima quali mezzi far partire, quali tratte spostare e quali clienti avvisare. Il valore operativo non e solo sapere il divieto, ma trasformarlo in una scelta chiara prima che il mezzo sia gia in strada.',
+        'Le fonti sotto servono per aprire il calendario ufficiale e controllare eventuali aggiornamenti su tratte, deroghe o criticita live.',
+      ].join('\n\n'),
+      title: 'Radar Vygo: fermi, viabilita e partenze da pianificare',
+    }),
+    buildRadarFallbackItem({
+      category: 'Logistica',
+      id: 'logistics-daily',
+      importance: 76,
+      language,
+      sources: [
+        { sourceName: 'Logistica Efficiente', title: 'Magazzino, supply chain e processi logistici', url: 'https://www.logisticaefficiente.it/' },
+        { sourceName: 'Supply Chain Italy', title: 'Porti, spedizioni e filiere operative', url: 'https://www.supplychainitaly.it/' },
+        { sourceName: 'Il Giornale della Logistica', title: 'Innovazione e gestione logistica', url: 'https://www.ilgiornaledellalogistica.it/' },
+      ],
+      summary: [
+        'Il radar logistico guarda a magazzino, ribalte, pallet, hub, porti e flussi di consegna. Anche quando non c’e una singola notizia urgente, questi segnali aiutano a capire dove possono nascere ritardi, extra costi o problemi di comunicazione tra ufficio traffico e personale operativo.',
+        'Per le aziende con magazzino o carrellisti, la lettura quotidiana va collegata a check attrezzature, documenti del personale, manutenzioni e comunicazioni interne. Una procedura chiara evita telefonate, fogli sparsi e responsabilita non tracciate.',
+        'Le fonti collegate sotto aprono approfondimenti verticali su logistica e supply chain.',
+      ].join('\n\n'),
+      title: 'Radar Vygo: logistica, magazzino e flussi operativi',
+    }),
+    buildRadarFallbackItem({
+      category: 'Costi',
+      id: 'costs-daily',
+      importance: 74,
+      language,
+      sources: [
+        { sourceName: 'Osservatorio Prezzi Carburanti', title: 'Prezzi carburanti', url: 'https://carburanti.mise.gov.it/ospzSearch/home' },
+        { sourceName: 'MIT', title: 'News e provvedimenti trasporto', url: 'https://www.mit.gov.it/comunicazione/news' },
+      ],
+      summary: [
+        'Il controllo economico giornaliero deve guardare carburanti, pedaggi, manutenzioni, sanzioni e riparazioni. Nel trasporto anche piccoli scostamenti diventano margine perso se non vengono registrati per targa, mezzo, periodo e causale.',
+        'Vygo collega questa area al centro costi: ogni spesa inserita correttamente permette report piu chiari su mezzi, autisti, attrezzature e manutenzioni. Il titolare puo cosi vedere dove il costo nasce e se si ripete.',
+        'Le fonti sotto aiutano a verificare carburanti e provvedimenti che possono incidere sui costi operativi.',
+      ].join('\n\n'),
+      title: 'Radar Vygo: costi, carburanti e margini da controllare',
+    }),
+    buildRadarFallbackItem({
+      category: 'Mercato',
+      id: 'market-daily',
+      importance: 70,
+      language,
+      sources: [
+        { sourceName: 'Uomini e Trasporti', title: 'Autotrasporto, veicoli e flotte', url: 'https://www.uominietrasporti.it/' },
+        { sourceName: 'Trasporto Europa', title: 'Trasporto e logistica', url: 'https://www.trasportoeuropa.it/' },
+        { sourceName: 'Trasporto Italia', title: 'Mercato autotrasporto e imprese', url: 'https://www.trasportoitalia.com/' },
+      ],
+      summary: [
+        'Il mercato del trasporto cambia attraverso veicoli, servizi, officine, pneumatici, assistenza e tecnologie di gestione. Per un’azienda con flotta, questi segnali servono a decidere quando rinnovare, quando riparare e quando misurare meglio i costi.',
+        'La lettura quotidiana non deve restare teoria: se una notizia riguarda mezzi, manutenzione o fornitori, puo diventare una nota interna, una scadenza da controllare o una voce nel centro costi.',
+        'Le fonti collegate permettono di aprire approfondimenti sul mercato e confrontarli con la situazione reale della propria flotta.',
+      ].join('\n\n'),
+      title: 'Radar Vygo: flotte, fornitori e mercato trasporto',
+    }),
+  ]
+}
+
 function isCacheFresh(items = []) {
   const latestFetchedAt = items
     .map((item) => new Date(item.fetched_at).getTime())
@@ -903,10 +1037,11 @@ export async function handler(event = {}) {
     const mergedItems = mergeNewsItems(collected.items, refreshedCache.items, cached.items)
     const coveredItems = ensureMinimumSectionCoverage(mergedItems, language, issues)
     const outputItems = buildDailyDigestItems(coveredItems, language)
+    const finalOutputItems = outputItems.length ? outputItems : buildOperationalRadarFallbackItems(language)
 
     return jsonResponse(200, {
       generatedAt: new Date().toISOString(),
-      items: outputItems.slice(0, maxItemsToReturn),
+      items: finalOutputItems.slice(0, maxItemsToReturn),
       mode: forceRefresh ? 'refresh' : 'live',
       nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
       retentionDays: newsRetentionDays,
@@ -916,9 +1051,12 @@ export async function handler(event = {}) {
     })
   }
 
+  const cachedFallbackItems = buildDailyDigestItems(ensureMinimumSectionCoverage(cached.items, language, issues), language)
+  const finalFallbackItems = cachedFallbackItems.length ? cachedFallbackItems : buildOperationalRadarFallbackItems(language)
+
   return jsonResponse(200, {
     generatedAt: new Date().toISOString(),
-    items: buildDailyDigestItems(ensureMinimumSectionCoverage(cached.items, language, issues), language).slice(0, maxItemsToReturn),
+    items: finalFallbackItems.slice(0, maxItemsToReturn),
     mode: 'cache-fallback',
     nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
     retentionDays: newsRetentionDays,

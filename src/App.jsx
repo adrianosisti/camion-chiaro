@@ -333,6 +333,7 @@ const vygoBaseMonthlyCostItems = [
 const vygoBaseMonthlyCostCents = vygoBaseMonthlyCostItems.reduce((total, item) => total + item.cents, 0)
 const vygoSupportCostPerCompanyCents = 1200
 const vygoFleet10MonthlyPriceCents = 45000
+const vygoEstimatedVatRate = 0.22
 const vygoEstimatedTaxReserveRate = 0.35
 const vygoEconomyScenarios = [1, 2, 5, 10]
 const vygoFirstSalesTarget = 10
@@ -12364,10 +12365,13 @@ function AdminWorkspace({
     && company.billingStatus === 'active'
     && Number(company.monthlyPlanCents ?? 0) > 0
   )).length
-  const estimatedStripeCostCents = Math.round(Number(summary.mrrCents ?? 0) * 0.018) + activePayingCompanyCount * 25
+  const estimatedRevenueNetCents = Number(summary.mrrCents ?? 0)
+  const estimatedVatCents = Math.max(0, Math.round(estimatedRevenueNetCents * vygoEstimatedVatRate))
+  const estimatedGrossCollectedCents = estimatedRevenueNetCents + estimatedVatCents
+  const estimatedStripeCostCents = Math.round(estimatedGrossCollectedCents * 0.018) + activePayingCompanyCount * 25
   const estimatedSupportCostCents = activePayingCompanyCount * vygoSupportCostPerCompanyCents
   const estimatedMonthlyCostCents = vygoBaseMonthlyCostCents + estimatedStripeCostCents + estimatedSupportCostCents
-  const estimatedMonthlyMarginCents = Number(summary.mrrCents ?? 0) - estimatedMonthlyCostCents
+  const estimatedMonthlyMarginCents = estimatedRevenueNetCents - estimatedMonthlyCostCents
   const estimatedTaxReserveCents = Math.max(0, Math.round(estimatedMonthlyMarginCents * vygoEstimatedTaxReserveRate))
   const estimatedNetAfterTaxCents = estimatedMonthlyMarginCents - estimatedTaxReserveCents
   const firstSalesTargetGap = Math.max(0, vygoFirstSalesTarget - activePayingCompanyCount)
@@ -12378,9 +12382,11 @@ function AdminWorkspace({
   )
   const economyScenarios = vygoEconomyScenarios.map((clientCount) => {
     const revenueCents = clientCount * vygoFleet10MonthlyPriceCents
+    const vatCents = Math.max(0, Math.round(revenueCents * vygoEstimatedVatRate))
+    const grossCollectedCents = revenueCents + vatCents
     const costsCents =
       vygoBaseMonthlyCostCents
-      + Math.round(revenueCents * 0.018)
+      + Math.round(grossCollectedCents * 0.018)
       + clientCount * 25
       + clientCount * vygoSupportCostPerCompanyCents
     const marginCents = revenueCents - costsCents
@@ -12388,10 +12394,12 @@ function AdminWorkspace({
     return {
       clientCount,
       costsCents,
+      grossCollectedCents,
       marginCents,
       netAfterTaxCents: marginCents - taxReserveCents,
       revenueCents,
       taxReserveCents,
+      vatCents,
     }
   })
   const selectedCompany =
@@ -12564,8 +12572,16 @@ function AdminWorkspace({
         </div>
         <div className="admin-economy-metrics">
           <article>
-            <span>MRR attuale</span>
-            <strong>{formatMoneyCents(summary.mrrCents, 'EUR')}</strong>
+            <span>MRR imponibile</span>
+            <strong>{formatMoneyCents(estimatedRevenueNetCents, 'EUR')}</strong>
+          </article>
+          <article>
+            <span>IVA 22% da accantonare</span>
+            <strong>{formatMoneyCents(estimatedVatCents, 'EUR')}</strong>
+          </article>
+          <article>
+            <span>Incasso lordo stimato</span>
+            <strong>{formatMoneyCents(estimatedGrossCollectedCents, 'EUR')}</strong>
           </article>
           <article>
             <span>Costi stimati mese</span>
@@ -12611,7 +12627,7 @@ function AdminWorkspace({
           </div>
         </div>
         <p className="admin-economy-note">
-          Stima interna: IVA esclusa dai ricavi, tasse calcolate come riserva prudente sul margine positivo. Il commercialista dovra confermare regime, IRES, IRAP, eventuali compensi e dividendi.
+          Stima interna: i prezzi Vygo sono trattati come imponibile, l IVA 22% e separata perche non e utile, e la riserva tasse e calcolata prudenzialmente sul margine positivo. Il commercialista dovra confermare regime, IVA, IRES, IRAP, eventuali compensi e dividendi.
         </p>
       </section>
 

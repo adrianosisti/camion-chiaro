@@ -1209,8 +1209,9 @@
 }
 
 .workspace.is-admin-workspace {
-  height: 100svh;
-  overflow: hidden;
+  min-height: 100svh;
+  height: auto;
+  overflow: auto;
   padding: 14px 16px;
   background:
     linear-gradient(180deg, #061321 0 122px, #e8fbff 122px 50%, #f8fbff 76%, #ffffff 100%);
@@ -5401,10 +5402,10 @@
 
 .admin-workspace {
   display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto;
   gap: 10px;
-  min-height: 0;
-  height: 100%;
+  min-height: 100%;
+  height: auto;
 }
 
 .admin-hero-panel,
@@ -5614,7 +5615,7 @@
 
 .admin-economy-metrics {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -5726,8 +5727,8 @@
   grid-template-columns: minmax(560px, 1.15fr) minmax(420px, 0.85fr);
   gap: 12px;
   align-items: stretch;
-  min-height: 0;
-  overflow: hidden;
+  min-height: 560px;
+  overflow: visible;
 }
 
 .admin-client-panel,
@@ -5748,11 +5749,12 @@
 .admin-detail-panel {
   align-content: start;
   grid-auto-rows: max-content;
-  overflow: auto;
+  overflow: visible;
 }
 
 .admin-table-wrap {
-  min-height: 0;
+  min-height: 460px;
+  max-height: 72svh;
   overflow: auto;
   border: 1px solid #e4f3f7;
   border-radius: 8px;

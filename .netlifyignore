@@ -1,0 +1,10 @@
+output/
+tmp/
+global_hit_dance_126_fl/
+royalty_free_tropical_dance_fl/
+driver-app/.expo/
+driver-app/dist/
+driver-app/node_modules/
+*.log
+.env
+.env.*

@@ -93,6 +93,12 @@ const settingsStorageKey = 'camion-chiaro-native-settings'
 const nativePushTokenStorageKey = 'vygo-native-push-token'
 const voiceCallsLaunchReady = false
 const incomingCallSound = require('./assets/sounds/chat-receive.wav')
+const DRIVER_HOME_FALLBACK_REFRESH_MS = 45000
+const DRIVER_CHAT_LIST_FALLBACK_REFRESH_MS = 20000
+const DRIVER_CHAT_THREAD_FALLBACK_REFRESH_MS = 30000
+const DRIVER_TEAM_CHAT_FALLBACK_REFRESH_MS = 15000
+const COMPANY_CHAT_FALLBACK_REFRESH_MS = 20000
+const COMPANY_HOME_FALLBACK_REFRESH_MS = 60000
 
 const nativeLegalDocuments = {
   dpa: {
@@ -1989,8 +1995,8 @@ function CamionChiaroApp() {
     if (accountType !== 'driver' || !session || activeTab === 'chat') return undefined
 
     const refreshInterval = setInterval(() => {
-      void loadDriverData({ silent: true })
-    }, 5000)
+      if (AppState.currentState === 'active') void loadDriverData({ silent: true })
+    }, DRIVER_HOME_FALLBACK_REFRESH_MS)
 
     return () => {
       clearInterval(refreshInterval)
@@ -2001,8 +2007,8 @@ function CamionChiaroApp() {
     if (accountType !== 'driver' || !session || activeTab !== 'chat') return undefined
 
     const refreshInterval = setInterval(() => {
-      void loadDriverData({ silent: true })
-    }, driverChatMode === 'list' ? 1800 : 3000)
+      if (AppState.currentState === 'active') void loadDriverData({ silent: true })
+    }, driverChatMode === 'list' ? DRIVER_CHAT_LIST_FALLBACK_REFRESH_MS : DRIVER_CHAT_THREAD_FALLBACK_REFRESH_MS)
 
     return () => {
       clearInterval(refreshInterval)
@@ -2017,8 +2023,15 @@ function CamionChiaroApp() {
     let isActive = true
     const unsubscribe = subscribeToTeamChatMessages({
       companyId,
-      onMessage: async (message) => {
+      onMessage: async (message, payload) => {
         if (!isActive) return
+
+        if (!message?.id) {
+          if (payload?.table === 'team_chat_threads') {
+            await loadDriverData({ silent: true })
+          }
+          return
+        }
 
         const isOpenSelectedThread = activeTab === 'chat' && driverChatMode === 'team' && selectedDriverTeamThreadId && message?.threadId === selectedDriverTeamThreadId
         const isIncomingTeamMessage = message?.senderRole === 'company' || Boolean(message?.senderPersonId && message.senderPersonId !== actorPersonId)
@@ -2189,8 +2202,15 @@ function CamionChiaroApp() {
     let isActive = true
     const unsubscribe = subscribeToTeamChatMessages({
       companyId,
-      onMessage: async (message) => {
+      onMessage: async (message, payload) => {
         if (!isActive) return
+
+        if (!message?.id) {
+          if (payload?.table === 'team_chat_threads') {
+            await loadCompanyData({ silent: true })
+          }
+          return
+        }
 
         if (activeTab === 'chat' && selectedCompanyTeamThreadId && message?.threadId === selectedCompanyTeamThreadId) {
           if (isIncomingTeamMessageForCompany(message)) {
@@ -2278,7 +2298,7 @@ function CamionChiaroApp() {
     const companyId = companyContext?.companyProfile?.id
     if (accountType !== 'company' || !companyId) return undefined
 
-    const intervalMs = activeTab === 'chat' ? 3000 : 4500
+    const intervalMs = activeTab === 'chat' ? COMPANY_CHAT_FALLBACK_REFRESH_MS : COMPANY_HOME_FALLBACK_REFRESH_MS
     const refreshCompanySilently = async () => {
       if (companyRefreshInFlightRef.current) return
 
@@ -2290,7 +2310,7 @@ function CamionChiaroApp() {
       }
     }
     const refreshInterval = setInterval(() => {
-      void refreshCompanySilently()
+      if (AppState.currentState === 'active') void refreshCompanySilently()
     }, intervalMs)
 
     return () => {
@@ -2323,8 +2343,10 @@ function CamionChiaroApp() {
     if (accountType !== 'driver' || activeTab !== 'chat' || driverChatMode !== 'team' || !selectedDriverTeamThreadId) return undefined
 
     const interval = setInterval(() => {
-      void loadDriverTeamChatData(selectedDriverTeamThread ?? { id: selectedDriverTeamThreadId })
-    }, 1400)
+      if (AppState.currentState === 'active') {
+        void loadDriverTeamChatData(selectedDriverTeamThread ?? { id: selectedDriverTeamThreadId })
+      }
+    }, DRIVER_TEAM_CHAT_FALLBACK_REFRESH_MS)
 
     return () => {
       clearInterval(interval)

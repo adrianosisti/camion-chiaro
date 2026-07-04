@@ -495,7 +495,24 @@ function isGenericOperationalSummary(value = '') {
     'aggiornamento di settore',
     'tema utile',
     'lettura vygo',
+    'scheda operativa',
+    'per leggere l\'articolo completo',
+    'usa la fonte originale',
+    'notizia di mercato',
   ].some((pattern) => cleanValue.includes(pattern))
+}
+
+function hasReadableNewsSummary(value = '', { allowShort = false } = {}) {
+  const cleanValue = String(value ?? '').replace(/\s+/g, ' ').trim()
+  if (!cleanValue) return false
+  if (isBlockedArticleText(cleanValue) || isGenericOperationalSummary(cleanValue)) return false
+  if (cleanValue.length < (allowShort ? 45 : 90)) return false
+  return /[a-zàèéìòù]/i.test(cleanValue)
+}
+
+function isReadableNewsItem(item = {}) {
+  if (!item?.title || !String(item.url ?? '').startsWith('http')) return false
+  return hasReadableNewsSummary(item.summary, { allowShort: Boolean(item.isFallback) })
 }
 
 function buildReadableSummary(category, description = '', title = '') {
@@ -612,6 +629,7 @@ async function enrichNewsItemsWithArticleMetadata(items = [], language = default
 
 function getPersistableNewsItems(items = []) {
   return items
+    .filter(isReadableNewsItem)
     .filter((item) => item && !item.isFallback)
     .map(({ isFallback, ...item }) => item)
 }
@@ -715,19 +733,7 @@ async function fetchSource(source, language) {
 async function collectTransportNews(language) {
   const sourceResults = await Promise.all(getConfiguredSources().map((source) => fetchSource(source, language)))
   const issues = sourceResults.map((result) => result.issue).filter(Boolean)
-  const seenUrls = new Set()
-  const items = sourceResults
-    .flatMap((result) => result.items)
-    .filter((item) => {
-      const key = normalizeUrl(item.url)
-      if (seenUrls.has(key)) return false
-      seenUrls.add(key)
-      return true
-    })
-    .sort((first, second) => {
-      if (second.importance !== first.importance) return second.importance - first.importance
-      return new Date(second.published_at || second.fetched_at) - new Date(first.published_at || first.fetched_at)
-    })
+  const items = mergeNewsItems(sourceResults.flatMap((result) => result.items))
 
   return { issues, items }
 }
@@ -772,6 +778,7 @@ function mergeNewsItems(...groups) {
   return groups
     .flat()
     .filter(Boolean)
+    .filter(isReadableNewsItem)
     .filter((item) => {
       const key = item.id || normalizeUrl(item.url)
       if (!key || seen.has(key)) return false

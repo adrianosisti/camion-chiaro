@@ -189,6 +189,10 @@ function isGenericNewsSummary(value = '') {
     'possibile impatto su tratte',
     'tema utile',
     'tema utile per ufficio traffico',
+    'scheda operativa',
+    'per leggere l\'articolo completo',
+    'usa la fonte originale',
+    'notizia di mercato',
   ].some((pattern) => cleanValue.includes(pattern))
 }
 
@@ -228,6 +232,10 @@ function splitNewsText(value = '') {
   return paragraphs
 }
 
+function hasDisplayNewsText(item = {}) {
+  return splitNewsText(getDisplayNewsItem(item).summary).length > 0
+}
+
 export function TransportNewsScreen({ language = 'it', onBack }) {
   const [items, setItems] = useState([])
   const [activeSection, setActiveSection] = useState('all')
@@ -236,7 +244,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   const [isLoading, setIsLoading] = useState(false)
   const [meta, setMeta] = useState(null)
   const [isScheduleExpanded, setIsScheduleExpanded] = useState(false)
-  const safeItems = Array.isArray(items) ? items : []
+  const safeItems = (Array.isArray(items) ? items : []).filter(hasDisplayNewsText)
   const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
   const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
   const apiRestrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
@@ -276,9 +284,10 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
     }
 
     const nextItems = Array.isArray(result.data?.items) ? result.data.items : []
+    const readableCount = nextItems.filter(hasDisplayNewsText).length
     setItems(nextItems)
     setMeta(result.data && typeof result.data === 'object' ? result.data : null)
-    setStatus(nextItems.length ? `${nextItems.length} notizie operative caricate.` : 'Nessuna notizia operativa disponibile ora.')
+    setStatus(readableCount ? `${readableCount} notizie operative caricate.` : 'Nessuna notizia leggibile disponibile ora.')
   }
 
   useEffect(() => {
@@ -305,14 +314,14 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
           <Text style={styles.detailSource}>{displayItem.source_name || 'Fonte'} · disponibile per circa {retentionDays} giorni</Text>
         </View>
 
-        <View style={styles.readerCard}>
-          <Text style={styles.readerTitle}>Dalla fonte</Text>
-          {detailParagraphs.length ? detailParagraphs.map((paragraph, index) => (
-            <Text key={`${displayItem.id || displayItem.url}-paragraph-${index}`} style={styles.detailSummary}>{paragraph}</Text>
-          )) : (
-            <Text style={styles.detailSummary}>La fonte non rende disponibile un testo leggibile in anteprima. Apri la fonte originale per leggere la notizia completa.</Text>
-          )}
-        </View>
+        {detailParagraphs.length ? (
+          <View style={styles.readerCard}>
+            <Text style={styles.readerTitle}>Dalla fonte</Text>
+            {detailParagraphs.map((paragraph, index) => (
+              <Text key={`${displayItem.id || displayItem.url}-paragraph-${index}`} style={styles.detailSummary}>{paragraph}</Text>
+            ))}
+          </View>
+        ) : null}
 
         <Pressable onPress={() => displayItem.url && Linking.openURL(displayItem.url)} style={styles.sourceButton}>
           <Text style={styles.sourceButtonText}>Apri fonte originale</Text>
@@ -473,7 +482,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
               <Text style={styles.date}>{formatDate(displayItem.published_at || displayItem.fetched_at)}</Text>
             </View>
             <Text style={styles.newsTitle}>{displayItem.title}</Text>
-            <Text numberOfLines={4} style={styles.summary}>{displayItem.summary || 'Apri la fonte per leggere il dettaglio completo.'}</Text>
+            <Text numberOfLines={4} style={styles.summary}>{displayItem.summary}</Text>
             <View style={styles.sourceRow}>
               <Text style={styles.source}>{displayItem.source_name || 'Fonte'}</Text>
               <View style={styles.sourceAction}>

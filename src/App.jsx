@@ -154,6 +154,11 @@ import {
 } from './lib/pwa'
 import './App.css'
 
+const WEB_CHAT_FALLBACK_REFRESH_MS = 60000
+const WEB_DOCUMENTS_FALLBACK_REFRESH_MS = 120000
+const WEB_STORAGE_FALLBACK_REFRESH_MS = 300000
+const WEB_ADMIN_FALLBACK_REFRESH_MS = 60000
+
 const filters = [
   { id: 'all', label: 'Tutte' },
   { id: 'urgent', label: 'Critiche' },
@@ -7880,7 +7885,7 @@ function App() {
       if (!isMounted) return
 
       if (!message?.id) {
-        scheduleChatRecordsRefresh()
+        if (payload?.table === 'team_chat_threads') scheduleChatRecordsRefresh()
         return
       }
 
@@ -7939,9 +7944,15 @@ function App() {
     void refreshChatRecords()
     void refreshDriverDocuments()
     void refreshCompanyStorageRecords()
-    chatRefreshTimer = window.setInterval(refreshChatRecords, 4000)
-    documentsRefreshTimer = window.setInterval(refreshDriverDocuments, 8000)
-    storageRefreshTimer = window.setInterval(refreshCompanyStorageRecords, 15000)
+    chatRefreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshChatRecords()
+    }, WEB_CHAT_FALLBACK_REFRESH_MS)
+    documentsRefreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshDriverDocuments()
+    }, WEB_DOCUMENTS_FALLBACK_REFRESH_MS)
+    storageRefreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshCompanyStorageRecords()
+    }, WEB_STORAGE_FALLBACK_REFRESH_MS)
 
     return () => {
       isMounted = false
@@ -9979,12 +9990,13 @@ function App() {
     }
 
     const items = Array.isArray(result.data?.items) ? result.data.items : []
+    const readableCount = items.filter(hasTransportNewsDisplayText).length
     setTransportNews(items)
     setTransportNewsMeta(result.data && typeof result.data === 'object' ? result.data : null)
     setTransportNewsStatus(
-      items.length
-        ? `News aggiornate: ${items.length} contenuti operativi. Prossimo aggiornamento automatico: ${result.data?.nextAutomaticUpdate ?? 'giornaliero'}.`
-        : 'Nessuna notizia operativa disponibile in questo momento.',
+      readableCount
+        ? `News aggiornate: ${readableCount} contenuti leggibili. Prossimo aggiornamento automatico: ${result.data?.nextAutomaticUpdate ?? 'giornaliero'}.`
+        : 'Nessuna notizia leggibile disponibile in questo momento.',
     )
   }, [])
 
@@ -10023,7 +10035,7 @@ function App() {
       if (document.visibilityState === 'visible') {
         void refreshAdminOverview()
       }
-    }, 12000)
+    }, WEB_ADMIN_FALLBACK_REFRESH_MS)
 
     return () => window.clearInterval(timerId)
   }, [activeView, refreshAdminOverview])
@@ -12102,6 +12114,10 @@ function isTransportNewsGenericSummary(value = '') {
     'possibile impatto su tratte',
     'tema utile',
     'tema utile per ufficio traffico',
+    'scheda operativa',
+    'per leggere l\'articolo completo',
+    'usa la fonte originale',
+    'notizia di mercato',
   ].some((pattern) => cleanValue.includes(pattern))
 }
 
@@ -12141,6 +12157,10 @@ function splitTransportNewsText(value = '') {
   return paragraphs
 }
 
+function hasTransportNewsDisplayText(item = {}) {
+  return splitTransportNewsText(getTransportNewsDisplayItem(item).summary).length > 0
+}
+
 function TransportNewsWorkspace({
   isLoading = false,
   items = [],
@@ -12151,7 +12171,7 @@ function TransportNewsWorkspace({
   const [activeSection, setActiveSection] = useState('all')
   const [selectedItem, setSelectedItem] = useState(null)
   const updatedAt = meta?.generatedAt ? formatShortDateTime(meta.generatedAt) : ''
-  const safeItems = Array.isArray(items) ? items : []
+  const safeItems = (Array.isArray(items) ? items : []).filter(hasTransportNewsDisplayText)
   const issues = Array.isArray(meta?.issues) ? meta.issues : []
   const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
   const apiRestrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
@@ -12197,14 +12217,14 @@ function TransportNewsWorkspace({
             </div>
           </header>
 
-          <div className="transport-news-readable">
-            <h3>Dalla fonte</h3>
-            {detailParagraphs.length ? detailParagraphs.map((paragraph, index) => (
-              <p key={`${displayItem.id || displayItem.url}-paragraph-${index}`}>{paragraph}</p>
-            )) : (
-              <p>La fonte non rende disponibile un testo leggibile in anteprima. Apri la fonte originale per leggere la notizia completa.</p>
-            )}
-          </div>
+          {detailParagraphs.length ? (
+            <div className="transport-news-readable">
+              <h3>Dalla fonte</h3>
+              {detailParagraphs.map((paragraph, index) => (
+                <p key={`${displayItem.id || displayItem.url}-paragraph-${index}`}>{paragraph}</p>
+              ))}
+            </div>
+          ) : null}
 
           <a className="primary-button compact-button transport-news-source-button" href={displayItem.url} rel="noreferrer" target="_blank">
             Apri fonte originale
@@ -12386,7 +12406,7 @@ function TransportNewsWorkspace({
                 <small>{formatTransportNewsDate(displayItem.published_at || displayItem.fetched_at)}</small>
               </div>
               <h3>{displayItem.title}</h3>
-              <p>{displayItem.summary || 'Apri la fonte per leggere il dettaglio completo.'}</p>
+              <p>{displayItem.summary}</p>
               <div className="transport-news-card-foot">
                 <strong>{displayItem.source_name || 'Fonte'}</strong>
                 <span>{displayItem.isFallback ? 'Apri canale' : 'Leggi'}</span>

@@ -42,7 +42,8 @@ function getAdminEmails() {
 }
 
 function isMissingRelation(error) {
-  return ['42P01', '42703', '42883'].includes(error?.code)
+  return ['42P01', '42703', '42883', 'PGRST204', 'PGRST205'].includes(error?.code)
+    || String(error?.message ?? '').toLowerCase().includes('could not find')
 }
 
 async function safeSelect(serviceClient, tableName, columns, issues, options = {}) {
@@ -66,6 +67,27 @@ async function safeSelect(serviceClient, tableName, columns, issues, options = {
   }
 
   throw error
+}
+
+async function fetchCompanies(serviceClient, issues) {
+  const baseColumns = 'id, name, vat_number, headquarters, created_at, updated_at'
+  const fullColumns = `${baseColumns}, billing_plan, billing_status, billing_email, billing_provider, billing_current_period_end`
+  const options = { orderBy: 'created_at', limit: 500 }
+  const companies = await safeSelect(serviceClient, 'companies', fullColumns, issues, options)
+
+  if (companies.length || !issues.some((issue) => issue.startsWith('companies:'))) {
+    return companies
+  }
+
+  const fallbackCompanies = await safeSelect(serviceClient, 'companies', baseColumns, issues, options)
+
+  return fallbackCompanies.map((company) => ({
+    ...company,
+    billing_email: '',
+    billing_plan: 'starter',
+    billing_provider: 'manual',
+    billing_status: 'active',
+  }))
 }
 
 function isArchivedStatus(value) {
@@ -470,23 +492,7 @@ export async function handler(event) {
   const issues = []
 
   try {
-    let companies = await safeSelect(
-      serviceClient,
-      'companies',
-      'id, name, vat_number, headquarters, created_at, updated_at, billing_plan, billing_status, billing_email, billing_provider, billing_current_period_end',
-      issues,
-      { orderBy: 'created_at', limit: 500 },
-    )
-
-    if (!companies.length && issues.some((issue) => issue.includes('billing_'))) {
-      companies = await safeSelect(
-        serviceClient,
-        'companies',
-        'id, name, vat_number, headquarters, created_at, updated_at',
-        issues,
-        { orderBy: 'created_at', limit: 500 },
-      )
-    }
+    const companies = await fetchCompanies(serviceClient, issues)
 
     const { data: adminMembershipRows, error: adminMembershipError } = await serviceClient
       .from('company_members')
@@ -589,6 +595,10 @@ export async function handler(event) {
     return jsonResponse(200, {
       generatedAt: new Date().toISOString(),
       issues,
+      diagnostics: {
+        companyRows: companies.length,
+        issueCount: issues.length,
+      },
       overview: {
         companies: companySummaries.sort((first, second) => {
           if (first.health !== second.health) {

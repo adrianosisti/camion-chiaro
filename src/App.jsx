@@ -9944,10 +9944,11 @@ function App() {
     }
 
     setAdminOverview(result.data?.overview ?? null)
+    const companyRows = Number(result.data?.diagnostics?.companyRows ?? result.data?.overview?.companies?.length ?? 0)
     setAdminOverviewStatus(
       result.data?.issues?.length
-        ? `Pannello caricato. Tabelle opzionali mancanti: ${result.data.issues.length}.`
-        : `Pannello aggiornato alle ${formatShortDateTime(result.data?.generatedAt)}.`,
+        ? `Pannello caricato: ${companyRows} aziende lette. Tabelle opzionali mancanti: ${result.data.issues.length}.`
+        : `Pannello aggiornato alle ${formatShortDateTime(result.data?.generatedAt)}: ${companyRows} aziende lette.`,
     )
   }, [isAdminSession])
 
@@ -12426,7 +12427,7 @@ function AdminWorkspace({
         adminPriority: selectedCompany.adminPriority ?? 'normal',
         adminSalesStage: selectedCompany.adminSalesStage ?? 'active',
         billingPlan: selectedCompany.billingPlan ?? 'starter',
-      billingStatus: selectedCompany.isInternalAdminCompany ? 'active' : selectedCompany.billingStatus ?? 'pending',
+        billingStatus: selectedCompany.isInternalAdminCompany ? 'active' : selectedCompany.billingStatus ?? 'pending',
       })
       setAdminSaveStatus('')
     }, 0)
@@ -12493,11 +12494,12 @@ function AdminWorkspace({
   }
 
   return (
-    <section className="admin-workspace" aria-label="Pannello admin Vygo">
+    <section className="admin-workspace" aria-label="Osservatorio interno Vygo">
       <div className="panel admin-hero-panel">
         <div>
-          <h2>Controllo clienti</h2>
-          <span>Ricavi, aziende attive, utilizzo e criticita operative in una sola schermata.</span>
+          <p className="overline">Vygo interno</p>
+          <h2>Osservatorio aziende</h2>
+          <span>Clienti, piani, ricavi, uso reale e criticita operative da seguire.</span>
         </div>
         <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
           <RadioTower size={16} />
@@ -12698,7 +12700,7 @@ function AdminWorkspace({
               <div className="admin-empty-panel">
                 <ShieldCheck size={24} />
                 <strong>{companies.length ? 'Nessun risultato con questi filtri' : 'Nessuna azienda caricata'}</strong>
-                <span>{companies.length ? 'Svuota ricerca o torna alla lista completa.' : statusMessage || 'Premi aggiorna. Se resta vuoto, controlla che Netlify punti al Supabase giusto.'}</span>
+                <span>{companies.length ? 'Svuota ricerca o torna alla lista completa.' : statusMessage || 'Premi aggiorna. Se resta vuoto, controlla che Netlify punti al progetto Supabase giusto.'}</span>
                 {companies.length ? (
                   <button
                     className="secondary-button compact-button"

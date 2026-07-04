@@ -5401,7 +5401,7 @@
 
 .admin-workspace {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   gap: 10px;
   min-height: 0;
   height: 100%;
@@ -5418,6 +5418,17 @@
     linear-gradient(135deg, rgba(19, 197, 223, 0.24), rgba(255, 255, 255, 0) 50%),
     #f8fdff;
   padding: 12px 14px;
+}
+
+.admin-hero-panel > div,
+.admin-locked-panel > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-hero-panel .overline {
+  margin: 0;
 }
 
 .admin-hero-panel .compact-button,
@@ -5443,7 +5454,7 @@
 
 .admin-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -5559,7 +5570,9 @@
 
 .admin-economy-panel {
   display: grid;
+  grid-template-columns: minmax(180px, 0.42fr) minmax(0, 1fr);
   gap: 10px;
+  align-items: start;
   border: 1px solid #bae6fd;
   border-radius: 8px;
   background:
@@ -5570,10 +5583,9 @@
 }
 
 .admin-economy-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  gap: 6px;
+  align-self: stretch;
 }
 
 .admin-economy-head h3,
@@ -5589,6 +5601,7 @@
 .admin-economy-head > span {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 28px;
   border-radius: 8px;
   background: #022c22;
@@ -5640,6 +5653,7 @@
 
 .admin-economy-grid {
   display: grid;
+  grid-column: 1 / -1;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
   gap: 10px;
 }
@@ -5700,6 +5714,7 @@
 }
 
 .admin-economy-note {
+  grid-column: 1 / -1;
   margin: 0;
   color: #475569;
   font-size: 0.72rem;
@@ -5708,8 +5723,8 @@
 
 .admin-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
-  gap: 10px;
+  grid-template-columns: minmax(560px, 1.15fr) minmax(420px, 0.85fr);
+  gap: 12px;
   align-items: stretch;
   min-height: 0;
   overflow: hidden;
@@ -5732,7 +5747,8 @@
 
 .admin-detail-panel {
   align-content: start;
-  overflow: hidden;
+  grid-auto-rows: max-content;
+  overflow: auto;
 }
 
 .admin-table-wrap {
@@ -5740,11 +5756,12 @@
   overflow: auto;
   border: 1px solid #e4f3f7;
   border-radius: 8px;
+  background: #ffffff;
 }
 
 .admin-client-table {
   width: 100%;
-  min-width: 920px;
+  min-width: 1060px;
   border-collapse: collapse;
 }
 
@@ -6279,9 +6296,23 @@
 }
 
 .admin-empty-panel {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  border: 1px dashed #bae6fd;
+  border-radius: 8px;
+  background: #f8fdff;
+  color: var(--ink);
+  margin: 10px;
+  padding: 14px;
+  text-align: left;
+}
+
+.admin-empty-panel span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1.35;
 }
 
 .fault-cost-report.is-report-workspace {
@@ -11876,6 +11907,10 @@
 
   .admin-workspace {
     height: auto;
+  }
+
+  .admin-economy-panel {
+    grid-template-columns: 1fr;
   }
 
   .admin-layout {

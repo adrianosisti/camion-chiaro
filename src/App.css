@@ -5830,6 +5830,18 @@
   line-height: 1.4;
 }
 
+.transport-restriction-insight a {
+  justify-self: start;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 7px 10px;
+  text-decoration: none;
+}
+
 .transport-restriction-insight.is-danger {
   border-color: #fecdd3;
   background: linear-gradient(135deg, #fff1f2, #ffffff);

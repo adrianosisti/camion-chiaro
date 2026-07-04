@@ -13,9 +13,16 @@ const defaultLanguage = 'it'
 const cacheFreshHours = 20
 const newsRetentionDays = 30
 const cleanupRetentionDays = 45
-const maxItemsToReturn = 36
+const maxItemsPerSource = 8
+const maxItemsToReturn = 64
 const sourceTimeoutMs = 7500
 const newsSources = [
+  {
+    id: 'mit-news',
+    name: 'Ministero Infrastrutture e Trasporti',
+    url: 'https://www.mit.gov.it/comunicazione/news/rss.xml',
+    priority: 95,
+  },
   {
     id: 'trasporto-europa',
     name: 'Trasporto Europa',
@@ -29,6 +36,30 @@ const newsSources = [
     priority: 82,
   },
   {
+    id: 'trasporto-italia',
+    name: 'Trasporto Italia',
+    url: 'https://www.trasportoitalia.com/feed/',
+    priority: 76,
+  },
+  {
+    id: 'logistica-efficiente',
+    name: 'Logistica Efficiente',
+    url: 'https://www.logisticaefficiente.it/feed/',
+    priority: 74,
+  },
+  {
+    id: 'trasporto-merci',
+    name: 'TrasportoMerci',
+    url: 'https://www.trasportomerci.it/feed/',
+    priority: 72,
+  },
+  {
+    id: 'supply-chain-italy',
+    name: 'Supply Chain Italy',
+    url: 'https://www.supplychainitaly.it/feed/',
+    priority: 70,
+  },
+  {
     id: 'camionisti-web',
     name: 'Camionisti Web',
     url: 'https://www.camionistiweb.com/feed/',
@@ -39,12 +70,6 @@ const newsSources = [
     name: 'Conftrasporto',
     url: 'https://www.conftrasporto.it/feed/',
     priority: 78,
-  },
-  {
-    id: 'mit-news',
-    name: 'Ministero Infrastrutture e Trasporti',
-    url: 'https://www.mit.gov.it/comunicazione/news/rss.xml',
-    priority: 95,
   },
 ]
 
@@ -448,7 +473,7 @@ async function fetchSource(source, language) {
     }
 
     const xml = await response.text()
-    return { items: parseFeed(xml, source, language).slice(0, 5), issue: '' }
+    return { items: parseFeed(xml, source, language).slice(0, maxItemsPerSource), issue: '' }
   } catch (error) {
     return { items: [], issue: `${source.name}: ${error.name === 'AbortError' ? 'tempo scaduto' : 'fonte non raggiungibile'}` }
   } finally {
@@ -489,7 +514,7 @@ async function readCachedNews(serviceClient, language) {
     .gte('fetched_at', retentionCutoff)
     .order('importance', { ascending: false })
     .order('published_at', { ascending: false, nullsFirst: false })
-    .limit(80)
+    .limit(160)
 
   if (error) {
     return { items: [], issue: `Cache news non pronta: ${error.message}` }

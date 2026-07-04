@@ -74,6 +74,60 @@ function getRestrictionInsight(schedule = [], now = new Date()) {
   }
 }
 
+function buildItalianHeavyVehicleRestrictionSchedule2026() {
+  const dayLabels = ['Domenica', 'Lunedi', 'Martedi', 'Mercoledi', 'Giovedi', 'Venerdi', 'Sabato']
+  const monthLabels = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
+  const rows = new Map()
+  const addRow = (dateKey, start, end) => {
+    const date = new Date(`${dateKey}T12:00:00`)
+    rows.set(dateKey, {
+      date: dateKey,
+      day: dayLabels[date.getDay()],
+      month: monthLabels[date.getMonth()],
+      start,
+      end,
+    })
+  }
+
+  for (let date = new Date('2026-01-01T12:00:00'); date.getFullYear() === 2026; date.setDate(date.getDate() + 1)) {
+    if (date.getDay() === 0) {
+      const month = date.getMonth() + 1
+      addRow(getLocalDateKey(date), month >= 6 && month <= 9 ? '07:00' : '09:00', '22:00')
+    }
+  }
+
+  [
+    ['2026-01-01', '09:00', '22:00'],
+    ['2026-01-06', '09:00', '22:00'],
+    ['2026-04-03', '14:00', '22:00'],
+    ['2026-04-04', '09:00', '16:00'],
+    ['2026-04-06', '09:00', '22:00'],
+    ['2026-04-07', '09:00', '14:00'],
+    ['2026-04-25', '09:00', '22:00'],
+    ['2026-05-01', '09:00', '22:00'],
+    ['2026-06-02', '07:00', '22:00'],
+    ['2026-07-04', '08:00', '16:00'],
+    ['2026-07-11', '08:00', '16:00'],
+    ['2026-07-18', '08:00', '16:00'],
+    ['2026-07-24', '16:00', '22:00'],
+    ['2026-07-25', '08:00', '16:00'],
+    ['2026-07-31', '16:00', '22:00'],
+    ['2026-08-01', '08:00', '22:00'],
+    ['2026-08-07', '16:00', '22:00'],
+    ['2026-08-08', '08:00', '22:00'],
+    ['2026-08-15', '07:00', '22:00'],
+    ['2026-08-22', '08:00', '16:00'],
+    ['2026-08-29', '08:00', '16:00'],
+    ['2026-12-08', '09:00', '22:00'],
+    ['2026-12-25', '09:00', '22:00'],
+    ['2026-12-26', '09:00', '22:00'],
+  ].forEach(([date, start, end]) => addRow(date, start, end))
+
+  return [...rows.values()].sort((first, second) => first.date.localeCompare(second.date))
+}
+
+const fallbackRestrictionSchedule2026 = buildItalianHeavyVehicleRestrictionSchedule2026()
+
 function getNewsTone(category = '') {
   const normalized = String(category).toLowerCase()
   if (normalized.includes('norm')) return 'rules'
@@ -108,7 +162,8 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   const safeItems = Array.isArray(items) ? items : []
   const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
   const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
-  const restrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
+  const apiRestrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
+  const restrictionSchedule = apiRestrictionSchedule.length ? apiRestrictionSchedule : fallbackRestrictionSchedule2026
   const restrictionInsight = getRestrictionInsight(restrictionSchedule)
   const retentionDays = meta?.retentionDays ?? 30
   const visibleItems = activeSection === 'all'
@@ -263,6 +318,10 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
                 <Text style={styles.restrictionInsightTitle}>{restrictionInsight.title}</Text>
                 <Text style={styles.restrictionInsightLabel}>{restrictionInsight.label}</Text>
                 <Text style={styles.restrictionStatus}>{restrictionInsight.body}</Text>
+                <View style={styles.restrictionSeeAll}>
+                  <Text style={styles.restrictionSeeAllText}>Vedi tutto il calendario</Text>
+                  <Ionicons color={colors.white} name="chevron-down" size={15} />
+                </View>
               </View>
             </View>
           ) : null}
@@ -611,6 +670,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     padding: 12,
+  },
+  restrictionSeeAll: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  restrictionSeeAllText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '900',
   },
   restrictionsPanel: {
     backgroundColor: '#eafdff',

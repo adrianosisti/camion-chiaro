@@ -11,7 +11,9 @@ const jsonHeaders = {
 
 const defaultLanguage = 'it'
 const cacheFreshHours = 20
-const maxItemsToReturn = 8
+const newsRetentionDays = 30
+const cleanupRetentionDays = 45
+const maxItemsToReturn = 36
 const sourceTimeoutMs = 7500
 const newsSources = [
   {
@@ -43,6 +45,82 @@ const newsSources = [
     name: 'Ministero Infrastrutture e Trasporti',
     url: 'https://www.mit.gov.it/comunicazione/news/rss.xml',
     priority: 95,
+  },
+]
+
+const fallbackNewsItems = [
+  {
+    category: 'Norme',
+    source_id: 'mit-fallback',
+    source_name: 'Ministero Infrastrutture e Trasporti',
+    summary: 'Canale istituzionale da controllare per norme, comunicati e aggiornamenti che possono impattare autotrasporto, documenti e viaggi.',
+    title: 'Aggiornamenti MIT per trasporto e infrastrutture',
+    url: 'https://www.mit.gov.it/comunicazione/news',
+  },
+  {
+    category: 'Norme',
+    source_id: 'albo-fallback',
+    source_name: 'Albo Autotrasporto',
+    summary: 'Canale utile per imprese di autotrasporto: contributi, comunicazioni, regole operative e aggiornamenti istituzionali.',
+    title: 'Comunicazioni Albo Autotrasporto',
+    url: 'https://www.alboautotrasporto.it/web/portale-albo',
+  },
+  {
+    category: 'Viabilità',
+    source_id: 'cciss-fallback',
+    source_name: 'CCISS Viaggiare Informati',
+    summary: 'Canale operativo per traffico, blocchi, viabilità e criticità sulle principali tratte: utile per ufficio traffico e autisti.',
+    title: 'Viabilità e traffico in tempo reale',
+    url: 'https://www.cciss.it/',
+  },
+  {
+    category: 'Costi',
+    source_id: 'mase-fallback',
+    source_name: 'Ministero Ambiente e Sicurezza Energetica',
+    summary: 'Riferimento pubblico per carburanti e prezzi energia: utile per controllare impatti su margini, rifornimenti e centro costi.',
+    title: 'Prezzi carburanti e aggiornamenti energia',
+    url: 'https://carburanti.mise.gov.it/ospzSearch/home',
+  },
+  {
+    category: 'Logistica',
+    source_id: 'trasporto-europa-fallback',
+    source_name: 'Trasporto Europa',
+    summary: 'Fonte verticale di settore su trasporto, logistica, porti, autotrasporto e scenari operativi.',
+    title: 'Notizie trasporto e logistica',
+    url: 'https://www.trasportoeuropa.it/',
+  },
+]
+
+const transportRestrictionResources = [
+  {
+    actionLabel: 'Apri fonte MIT',
+    area: 'Italia',
+    cadence: 'Annuale',
+    sourceName: 'Ministero Infrastrutture e Trasporti',
+    status: 'Fonte ufficiale da consultare per calendario, decreto e PDF dell’anno in corso.',
+    title: 'Calendario divieti circolazione mezzi pesanti',
+    url: 'https://www.mit.gov.it/comunicazione/news',
+    year: '2026',
+  },
+  {
+    actionLabel: 'Apri CCISS',
+    area: 'Italia',
+    cadence: 'Tempo reale',
+    sourceName: 'CCISS Viaggiare Informati',
+    status: 'Canale operativo per viabilità, traffico, blocchi e aggiornamenti sulle tratte.',
+    title: 'Viabilità e blocchi traffico pesante',
+    url: 'https://www.cciss.it/',
+    year: 'Live',
+  },
+  {
+    actionLabel: 'Apri Albo',
+    area: 'Italia',
+    cadence: 'Continuo',
+    sourceName: 'Albo Autotrasporto',
+    status: 'Comunicazioni istituzionali per imprese di autotrasporto, contributi e regole operative.',
+    title: 'Comunicazioni autotrasporto merci',
+    url: 'https://www.alboautotrasporto.it/web/portale-albo',
+    year: 'Archivio',
   },
 ]
 
@@ -192,10 +270,40 @@ function buildOperationalSummary(category) {
   return summaries[category] ?? summaries.Logistica
 }
 
+function truncateText(value = '', maxLength = 320) {
+  const cleanValue = String(value).replace(/\s+/g, ' ').trim()
+  if (cleanValue.length <= maxLength) return cleanValue
+  return `${cleanValue.slice(0, maxLength).replace(/\s+\S*$/, '')}...`
+}
+
+function buildReadableSummary(category, description = '') {
+  const operationalSummary = buildOperationalSummary(category)
+  const excerpt = truncateText(description, 300)
+  if (!excerpt) return operationalSummary
+  return `${excerpt} ${operationalSummary}`
+}
+
 function getNewsId(sourceId, url, title) {
   return createHash('sha1')
     .update(`${sourceId}|${normalizeUrl(url)}|${title}`)
     .digest('hex')
+}
+
+function buildFallbackItems(language, issues = []) {
+  const now = new Date().toISOString()
+
+  return fallbackNewsItems.map((item, index) => ({
+    ...item,
+    fetched_at: now,
+    id: getNewsId(item.source_id, item.url, item.title),
+    importance: 65 - index,
+    isFallback: true,
+    is_active: true,
+    language,
+    published_at: now,
+    tags: [item.category.toLowerCase(), item.source_id, 'fallback'],
+    summary: `${item.summary}${issues.length ? ' Radar automatico in attesa di nuove notizie dai feed.' : ''}`,
+  }))
 }
 
 function parseFeed(xml, source, language) {
@@ -234,7 +342,7 @@ function parseFeed(xml, source, language) {
         published_at: publishedAt || null,
         source_id: source.id,
         source_name: source.name,
-        summary: buildOperationalSummary(category),
+        summary: buildReadableSummary(category, description),
         tags: [category.toLowerCase(), source.id],
         title,
         url: link,
@@ -292,20 +400,53 @@ async function collectTransportNews(language) {
 async function readCachedNews(serviceClient, language) {
   if (!serviceClient) return { items: [], issue: 'Supabase service role non configurata per cache Radar Trasporti.' }
 
+  const retentionCutoff = new Date(Date.now() - newsRetentionDays * 24 * 3600000).toISOString()
+
   const { data, error } = await serviceClient
     .from('transport_news_items')
     .select('id, source_id, source_name, title, summary, url, category, language, published_at, fetched_at, importance, tags')
     .eq('language', language)
     .eq('is_active', true)
+    .gte('fetched_at', retentionCutoff)
     .order('importance', { ascending: false })
     .order('published_at', { ascending: false, nullsFirst: false })
-    .limit(24)
+    .limit(80)
 
   if (error) {
     return { items: [], issue: `Cache news non pronta: ${error.message}` }
   }
 
   return { items: data ?? [], issue: '' }
+}
+
+async function deleteOldNews(serviceClient) {
+  if (!serviceClient) return ''
+
+  const cleanupCutoff = new Date(Date.now() - cleanupRetentionDays * 24 * 3600000).toISOString()
+  const { error } = await serviceClient
+    .from('transport_news_items')
+    .delete()
+    .lt('fetched_at', cleanupCutoff)
+
+  return error ? `Pulizia cache news non riuscita: ${error.message}` : ''
+}
+
+function mergeNewsItems(...groups) {
+  const seen = new Set()
+
+  return groups
+    .flat()
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.id || normalizeUrl(item.url)
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .sort((first, second) => {
+      if ((second.importance ?? 0) !== (first.importance ?? 0)) return (second.importance ?? 0) - (first.importance ?? 0)
+      return new Date(second.published_at || second.fetched_at) - new Date(first.published_at || first.fetched_at)
+    })
 }
 
 function isCacheFresh(items = []) {
@@ -341,9 +482,14 @@ export async function handler(event = {}) {
       items: cached.items.slice(0, maxItemsToReturn),
       mode: 'cache',
       nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
+      retentionDays: newsRetentionDays,
+      restrictions: transportRestrictionResources,
       issues,
     })
   }
+
+  const cleanupIssue = await deleteOldNews(serviceClient)
+  if (cleanupIssue) issues.push(cleanupIssue)
 
   const collected = await collectTransportNews(language)
   issues.push(...collected.issues)
@@ -351,21 +497,28 @@ export async function handler(event = {}) {
   if (collected.items.length) {
     const saveIssue = await saveNews(serviceClient, collected.items)
     if (saveIssue) issues.push(saveIssue)
+    const refreshedCache = await readCachedNews(serviceClient, language)
+    if (refreshedCache.issue && refreshedCache.issue !== cached.issue) issues.push(refreshedCache.issue)
+    const mergedItems = mergeNewsItems(collected.items, refreshedCache.items, cached.items)
 
     return jsonResponse(200, {
       generatedAt: new Date().toISOString(),
-      items: collected.items.slice(0, maxItemsToReturn),
+      items: mergedItems.slice(0, maxItemsToReturn),
       mode: forceRefresh ? 'refresh' : 'live',
       nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
+      retentionDays: newsRetentionDays,
+      restrictions: transportRestrictionResources,
       issues,
     })
   }
 
   return jsonResponse(200, {
     generatedAt: new Date().toISOString(),
-    items: cached.items.slice(0, maxItemsToReturn),
+    items: cached.items.length ? cached.items.slice(0, maxItemsToReturn) : buildFallbackItems(language, issues).slice(0, maxItemsToReturn),
     mode: 'cache-fallback',
     nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
+    retentionDays: newsRetentionDays,
+    restrictions: transportRestrictionResources,
     issues: issues.length ? issues : ['Nessuna fonte ha restituito notizie aggiornate.'],
   })
 }

@@ -5485,6 +5485,50 @@
   gap: 12px;
 }
 
+.transport-news-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.transport-news-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #075985;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 9px 11px;
+}
+
+.transport-news-tabs button.is-active {
+  border-color: rgba(19, 197, 223, 0.74);
+  background: linear-gradient(135deg, #0f172a, #0e7490);
+  color: #ffffff;
+}
+
+.transport-news-tabs strong {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(19, 197, 223, 0.16);
+  font-size: 0.72rem;
+}
+
+.transport-news-tabs button.is-active strong {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 .transport-news-card {
   display: grid;
   gap: 10px;
@@ -5492,8 +5536,17 @@
   border-left: 5px solid #0891b2;
   border-radius: 8px;
   background: #ffffff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
   padding: 14px;
+  text-align: left;
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
+}
+
+.transport-news-card:hover {
+  border-color: rgba(8, 145, 178, 0.45);
+  transform: translateY(-1px);
 }
 
 .transport-news-card.tone-rules {
@@ -5551,7 +5604,156 @@
   line-height: 1.45;
 }
 
+.transport-news-card-foot span,
 .transport-news-card a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0891b2;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.transport-news-detail {
+  display: grid;
+  gap: 14px;
+  border-left: 6px solid #0891b2;
+}
+
+.transport-news-detail.tone-rules {
+  border-left-color: #7c3aed;
+}
+
+.transport-news-detail.tone-roads {
+  border-left-color: #f97316;
+}
+
+.transport-news-detail.tone-strike {
+  border-left-color: #e11d48;
+}
+
+.transport-news-detail.tone-costs {
+  border-left-color: #0f766e;
+}
+
+.transport-news-detail-head,
+.transport-news-detail-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.transport-news-detail-head span {
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #075985;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 6px 9px;
+  text-transform: uppercase;
+}
+
+.transport-news-detail h2,
+.transport-restrictions-heading h3,
+.transport-restrictions-list h4 {
+  margin: 0;
+  color: var(--ink);
+}
+
+.transport-news-detail p {
+  max-width: 820px;
+  margin: 0;
+  color: #334155;
+  font-size: 1rem;
+  line-height: 1.58;
+}
+
+.transport-news-detail-meta {
+  align-items: flex-start;
+  flex-direction: column;
+  border-radius: 8px;
+  background: #f8fdff;
+  color: var(--muted);
+  padding: 12px;
+}
+
+.transport-news-detail-meta strong {
+  color: var(--ink);
+}
+
+.transport-news-source-button {
+  justify-self: start;
+}
+
+.transport-restrictions-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(19, 197, 223, 0.34);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(19, 197, 223, 0.13), rgba(255, 255, 255, 0) 58%),
+    #ffffff;
+  padding: 14px;
+}
+
+.transport-restrictions-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.transport-restrictions-heading span {
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #075985;
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.transport-restrictions-list {
+  display: grid;
+  gap: 10px;
+}
+
+.transport-restrictions-list article {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fdff;
+  padding: 12px;
+}
+
+.transport-restrictions-list article > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.transport-restrictions-list article > div:first-child strong {
+  color: #075985;
+  font-size: 1.05rem;
+}
+
+.transport-restrictions-list article > div:first-child span,
+.transport-restrictions-list small,
+.transport-restrictions-list p {
+  color: var(--muted);
+}
+
+.transport-restrictions-list p {
+  margin: 4px 0;
+  font-size: 0.84rem;
+  line-height: 1.38;
+}
+
+.transport-restrictions-list a {
   display: inline-flex;
   align-items: center;
   gap: 6px;

@@ -11922,6 +11922,22 @@ function getTransportNewsTone(category = '') {
   return 'market'
 }
 
+const transportNewsSections = [
+  { id: 'all', label: 'Tutto' },
+  { id: 'rules', label: 'Norme' },
+  { id: 'restrictions', label: 'Fermi ministeriali' },
+  { id: 'logistics', label: 'Logistica' },
+  { id: 'roads', label: 'Trasporti e viabilita' },
+]
+
+function getTransportNewsSectionId(category = '') {
+  const normalized = String(category).toLowerCase()
+  if (normalized.includes('norm')) return 'rules'
+  if (normalized.includes('viabil') || normalized.includes('scioper')) return 'roads'
+  if (normalized.includes('cost') || normalized.includes('mercato') || normalized.includes('logistica')) return 'logistics'
+  return 'logistics'
+}
+
 function TransportNewsWorkspace({
   isLoading = false,
   items = [],
@@ -11929,16 +11945,59 @@ function TransportNewsWorkspace({
   onRefresh,
   statusMessage = '',
 }) {
+  const [activeSection, setActiveSection] = useState('all')
+  const [selectedItem, setSelectedItem] = useState(null)
   const updatedAt = meta?.generatedAt ? formatShortDateTime(meta.generatedAt) : ''
   const issues = meta?.issues ?? []
+  const restrictions = meta?.restrictions ?? []
+  const retentionDays = meta?.retentionDays ?? 30
+  const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || items.some((item) => item.isFallback)
+  const visibleItems = activeSection === 'all'
+    ? items
+    : activeSection === 'restrictions'
+      ? []
+      : items.filter((item) => getTransportNewsSectionId(item.category) === activeSection)
+
+  const sectionCounts = transportNewsSections.reduce((counts, section) => {
+    if (section.id === 'all') return { ...counts, [section.id]: items.length }
+    if (section.id === 'restrictions') return { ...counts, [section.id]: restrictions.length }
+    return { ...counts, [section.id]: items.filter((item) => getTransportNewsSectionId(item.category) === section.id).length }
+  }, {})
+
+  if (selectedItem) {
+    return (
+      <section className="transport-news-workspace" aria-label="Dettaglio Radar Trasporti">
+        <div className={`panel transport-news-detail tone-${getTransportNewsTone(selectedItem.category)}`}>
+          <button className="ghost-button compact-button" onClick={() => setSelectedItem(null)} type="button">
+            <ArrowLeft size={16} />
+            Indietro
+          </button>
+          <div className="transport-news-detail-head">
+            <span>{selectedItem.category || 'Logistica'}</span>
+            <small>{selectedItem.published_at ? formatDate(selectedItem.published_at) : selectedItem.fetched_at ? formatDate(selectedItem.fetched_at) : 'Oggi'}</small>
+          </div>
+          <h2>{selectedItem.title}</h2>
+          <p>{selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.'}</p>
+          <div className="transport-news-detail-meta">
+            <strong>{selectedItem.source_name || 'Fonte'}</strong>
+            <span>Conservata nel Radar per circa {retentionDays} giorni, cosi puo essere riletta anche nei giorni successivi.</span>
+          </div>
+          <a className="primary-button compact-button transport-news-source-button" href={selectedItem.url} rel="noreferrer" target="_blank">
+            Apri fonte originale
+            <ExternalLink size={15} />
+          </a>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="transport-news-workspace" aria-label="Radar Trasporti">
       <div className="panel transport-news-hero">
         <div>
           <p className="overline">Radar Trasporti</p>
-          <h2>Le notizie che contano oggi</h2>
-          <span>3-8 aggiornamenti operativi da fonti pubbliche: norme, viabilità, scioperi, costi e logistica. Titolo, sintesi Vygo e link alla fonte originale.</span>
+          <h2>Le notizie che contano</h2>
+          <span>Norme, fermi ministeriali, logistica e viabilità divise per area. Le notizie restano consultabili per circa {retentionDays} giorni.</span>
         </div>
         <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
           <RadioTower size={16} />
@@ -11949,7 +12008,9 @@ function TransportNewsWorkspace({
       <div className="transport-news-status">
         <span>
           <Newspaper size={16} />
-          {statusMessage || 'Si aggiorna automaticamente ogni giorno intorno alle 10:00 ora italiana.'}
+          {isFallbackMode
+            ? 'Radar in modalità sicurezza: mostro le fonti operative principali mentre attendo nuove notizie dai feed.'
+            : statusMessage || 'Si aggiorna automaticamente ogni giorno intorno alle 10:00 ora italiana.'}
         </span>
         {updatedAt ? <small>Ultimo controllo {updatedAt}</small> : null}
       </div>
@@ -11961,12 +12022,61 @@ function TransportNewsWorkspace({
         </div>
       ) : null}
 
+      <div className="transport-news-tabs" aria-label="Sezioni Radar Trasporti">
+        {transportNewsSections.map((section) => (
+          <button
+            className={activeSection === section.id ? 'is-active' : ''}
+            key={section.id}
+            onClick={() => {
+              setActiveSection(section.id)
+              setSelectedItem(null)
+            }}
+            type="button"
+          >
+            {section.id === 'restrictions' ? <CalendarClock size={15} /> : <Newspaper size={15} />}
+            <span>{section.label}</span>
+            <strong>{sectionCounts[section.id] ?? 0}</strong>
+          </button>
+        ))}
+      </div>
+
+      {activeSection === 'restrictions' ? (
+        <div className="transport-restrictions-panel">
+          <div className="transport-restrictions-heading">
+            <div>
+              <p className="overline">Fermi ministeriali</p>
+              <h3>Blocchi e fonti ufficiali da tenere sempre a portata</h3>
+            </div>
+            <span>Anno per anno</span>
+          </div>
+          <div className="transport-restrictions-list">
+            {restrictions.map((restriction) => (
+              <article key={`${restriction.year}-${restriction.title}`}>
+                <div>
+                  <strong>{restriction.year}</strong>
+                  <span>{restriction.area}</span>
+                </div>
+                <div>
+                  <h4>{restriction.title}</h4>
+                  <p>{restriction.status}</p>
+                  <small>{restriction.sourceName} · {restriction.cadence}</small>
+                </div>
+                <a href={restriction.url} rel="noreferrer" target="_blank">
+                  {restriction.actionLabel || 'Apri'}
+                  <ExternalLink size={14} />
+                </a>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="transport-news-grid">
-        {items.length ? items.map((item) => {
+        {activeSection !== 'restrictions' && visibleItems.length ? visibleItems.map((item) => {
           const tone = getTransportNewsTone(item.category)
 
           return (
-            <article className={`transport-news-card tone-${tone}`} key={item.id || item.url}>
+            <button className={`transport-news-card tone-${tone}`} key={item.id || item.url} onClick={() => setSelectedItem(item)} type="button">
               <div className="transport-news-card-head">
                 <span>{item.category || 'Logistica'}</span>
                 <small>{item.published_at ? formatDate(item.published_at) : item.fetched_at ? formatDate(item.fetched_at) : 'Oggi'}</small>
@@ -11975,20 +12085,17 @@ function TransportNewsWorkspace({
               <p>{item.summary || 'Apri la fonte per leggere il dettaglio completo.'}</p>
               <div className="transport-news-card-foot">
                 <strong>{item.source_name || 'Fonte'}</strong>
-                <a href={item.url} rel="noreferrer" target="_blank">
-                  Fonte
-                  <ExternalLink size={14} />
-                </a>
+                <span>{item.isFallback ? 'Apri canale' : 'Leggi'}</span>
               </div>
-            </article>
+            </button>
           )
-        }) : (
+        }) : activeSection !== 'restrictions' ? (
           <div className="transport-news-empty">
             <Newspaper size={24} />
             <strong>Nessuna notizia caricata</strong>
             <span>Premi Aggiorna ora. Se resta vuoto, una o più fonti RSS potrebbero non essere raggiungibili o la tabella Supabase non è ancora installata.</span>
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   )

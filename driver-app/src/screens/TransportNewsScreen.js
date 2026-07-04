@@ -23,11 +23,41 @@ function getNewsTone(category = '') {
   return 'market'
 }
 
+const newsSections = [
+  { id: 'all', icon: 'newspaper-outline', label: 'Tutto' },
+  { id: 'rules', icon: 'scale-outline', label: 'Norme' },
+  { id: 'restrictions', icon: 'calendar-outline', label: 'Fermi' },
+  { id: 'logistics', icon: 'cube-outline', label: 'Logistica' },
+  { id: 'roads', icon: 'trail-sign-outline', label: 'Trasporti' },
+]
+
+function getNewsSectionId(category = '') {
+  const normalized = String(category).toLowerCase()
+  if (normalized.includes('norm')) return 'rules'
+  if (normalized.includes('viabil') || normalized.includes('scioper')) return 'roads'
+  return 'logistics'
+}
+
 export function TransportNewsScreen({ language = 'it', onBack }) {
   const [items, setItems] = useState([])
+  const [activeSection, setActiveSection] = useState('all')
+  const [selectedItem, setSelectedItem] = useState(null)
   const [status, setStatus] = useState('Caricamento Radar Trasporti...')
   const [isLoading, setIsLoading] = useState(false)
   const [meta, setMeta] = useState(null)
+  const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || items.some((item) => item.isFallback)
+  const restrictions = meta?.restrictions ?? []
+  const retentionDays = meta?.retentionDays ?? 30
+  const visibleItems = activeSection === 'all'
+    ? items
+    : activeSection === 'restrictions'
+      ? []
+      : items.filter((item) => getNewsSectionId(item.category) === activeSection)
+  const sectionCounts = newsSections.reduce((counts, section) => {
+    if (section.id === 'all') return { ...counts, all: items.length }
+    if (section.id === 'restrictions') return { ...counts, restrictions: restrictions.length }
+    return { ...counts, [section.id]: items.filter((item) => getNewsSectionId(item.category) === section.id).length }
+  }, {})
 
   async function loadNews({ force = false } = {}) {
     setIsLoading(true)
@@ -51,6 +81,35 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
     void loadNews()
   }, [])
 
+  if (selectedItem) {
+    const tone = getNewsTone(selectedItem.category)
+
+    return (
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={[styles.detailCard, styles[`${tone}Card`]]}>
+          <Pressable onPress={() => setSelectedItem(null)} style={styles.backButton}>
+            <Ionicons color={colors.ink} name="arrow-back" size={18} />
+            <Text style={styles.backText}>Indietro</Text>
+          </Pressable>
+          <View style={styles.newsHead}>
+            <Text style={styles.category}>{selectedItem.category || 'Logistica'}</Text>
+            <Text style={styles.date}>{formatDate(selectedItem.published_at || selectedItem.fetched_at)}</Text>
+          </View>
+          <Text style={styles.detailTitle}>{selectedItem.title}</Text>
+          <Text style={styles.detailSummary}>{selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.'}</Text>
+          <View style={styles.detailMeta}>
+            <Text style={styles.source}>{selectedItem.source_name || 'Fonte'}</Text>
+            <Text style={styles.statusMeta}>Conservata nel Radar per circa {retentionDays} giorni.</Text>
+          </View>
+          <Pressable onPress={() => selectedItem.url && Linking.openURL(selectedItem.url)} style={styles.sourceButton}>
+            <Text style={styles.sourceButtonText}>Apri fonte originale</Text>
+            <Ionicons color={colors.white} name="open-outline" size={16} />
+          </Pressable>
+        </View>
+      </ScrollView>
+    )
+  }
+
   return (
     <ScrollView
       contentContainerStyle={styles.content}
@@ -65,16 +124,18 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
           <Ionicons color={colors.white} name="newspaper-outline" size={24} />
         </View>
         <Text style={styles.kicker}>Radar Trasporti</Text>
-        <Text style={styles.title}>Le notizie che contano oggi</Text>
+        <Text style={styles.title}>Le notizie che contano</Text>
         <Text style={styles.subtitle}>
-          Aggiornamento operativo quotidiano: norme, viabilita, scioperi, costi e logistica. Apri sempre la fonte per il dettaglio completo.
+          Norme, fermi ministeriali, logistica e viabilita divise per area. Restano consultabili per circa {retentionDays} giorni.
         </Text>
       </View>
 
       <View style={styles.statusCard}>
         <Ionicons color={colors.cyanDark} name="radio-outline" size={18} />
         <View style={styles.statusCopy}>
-          <Text style={styles.statusText}>{status}</Text>
+          <Text style={styles.statusText}>
+            {isFallbackMode ? 'Radar in modalita sicurezza: fonti operative principali disponibili.' : status}
+          </Text>
           <Text style={styles.statusMeta}>{meta?.nextAutomaticUpdate ?? 'Aggiornamento automatico ogni giorno intorno alle 10:00 ora italiana.'}</Text>
         </View>
         <Pressable disabled={isLoading} onPress={() => loadNews({ force: true })} style={styles.refreshButton}>
@@ -82,11 +143,49 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         </Pressable>
       </View>
 
-      {items.map((item) => {
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectionTabs}>
+        {newsSections.map((section) => (
+          <Pressable
+            key={section.id}
+            onPress={() => {
+              setActiveSection(section.id)
+              setSelectedItem(null)
+            }}
+            style={[styles.sectionTab, activeSection === section.id && styles.sectionTabActive]}
+          >
+            <Ionicons color={activeSection === section.id ? colors.white : colors.cyanDark} name={section.icon} size={15} />
+            <Text style={[styles.sectionTabText, activeSection === section.id && styles.sectionTabTextActive]}>{section.label}</Text>
+            <Text style={[styles.sectionCount, activeSection === section.id && styles.sectionCountActive]}>{sectionCounts[section.id] ?? 0}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {activeSection === 'restrictions' ? (
+        <View style={styles.restrictionsPanel}>
+          <Text style={styles.panelKicker}>Fermi ministeriali</Text>
+          <Text style={styles.panelTitle}>Blocchi e fonti ufficiali sempre a portata</Text>
+          {restrictions.map((restriction) => (
+            <Pressable key={`${restriction.year}-${restriction.title}`} onPress={() => restriction.url && Linking.openURL(restriction.url)} style={styles.restrictionRow}>
+              <View style={styles.restrictionYear}>
+                <Text style={styles.restrictionYearText}>{restriction.year}</Text>
+                <Text style={styles.restrictionArea}>{restriction.area}</Text>
+              </View>
+              <View style={styles.restrictionCopy}>
+                <Text style={styles.restrictionTitle}>{restriction.title}</Text>
+                <Text style={styles.restrictionStatus}>{restriction.status}</Text>
+                <Text style={styles.restrictionSource}>{restriction.sourceName} · {restriction.cadence}</Text>
+              </View>
+              <Ionicons color={colors.cyanDark} name="open-outline" size={16} />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      {activeSection !== 'restrictions' && visibleItems.map((item) => {
         const tone = getNewsTone(item.category)
 
         return (
-          <Pressable key={item.id || item.url} onPress={() => item.url && Linking.openURL(item.url)} style={[styles.newsCard, styles[`${tone}Card`]]}>
+          <Pressable key={item.id || item.url} onPress={() => setSelectedItem(item)} style={[styles.newsCard, styles[`${tone}Card`]]}>
             <View style={styles.newsHead}>
               <Text style={styles.category}>{item.category || 'Logistica'}</Text>
               <Text style={styles.date}>{formatDate(item.published_at || item.fetched_at)}</Text>
@@ -96,7 +195,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
             <View style={styles.sourceRow}>
               <Text style={styles.source}>{item.source_name || 'Fonte'}</Text>
               <View style={styles.sourceAction}>
-                <Text style={styles.sourceActionText}>Fonte</Text>
+                <Text style={styles.sourceActionText}>{item.isFallback ? 'Canale' : 'Fonte'}</Text>
                 <Ionicons color={colors.cyanDark} name="open-outline" size={15} />
               </View>
             </View>
@@ -104,7 +203,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         )
       })}
 
-      {!items.length && !isLoading ? (
+      {activeSection !== 'restrictions' && !visibleItems.length && !isLoading ? (
         <View style={styles.emptyCard}>
           <Ionicons color={colors.cyanDark} name="newspaper-outline" size={28} />
           <Text style={styles.emptyTitle}>Radar vuoto</Text>
@@ -155,6 +254,33 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 12,
     fontWeight: '800',
+  },
+  detailCard: {
+    backgroundColor: colors.white,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+    borderLeftColor: colors.cyanDark,
+    borderLeftWidth: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 14,
+    padding: 16,
+  },
+  detailMeta: {
+    backgroundColor: colors.cyanSoft,
+    borderRadius: 12,
+    gap: 3,
+    padding: 12,
+  },
+  detailSummary: {
+    color: '#334155',
+    fontSize: 15,
+    lineHeight: 23,
+  },
+  detailTitle: {
+    color: colors.ink,
+    fontSize: 23,
+    fontWeight: '900',
+    lineHeight: 29,
   },
   emptyCard: {
     alignItems: 'flex-start',
@@ -236,6 +362,115 @@ const styles = StyleSheet.create({
   rulesCard: {
     borderLeftColor: '#7c3aed',
   },
+  panelKicker: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  panelTitle: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  restrictionArea: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  restrictionCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  restrictionRow: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: 'rgba(18, 198, 223, 0.22)',
+    borderRadius: 13,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  restrictionsPanel: {
+    backgroundColor: '#eafdff',
+    borderColor: 'rgba(18, 198, 223, 0.35)',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+    padding: 14,
+  },
+  restrictionSource: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  restrictionStatus: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  restrictionTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  restrictionYear: {
+    alignItems: 'center',
+    backgroundColor: colors.cyanSoft,
+    borderRadius: 12,
+    justifyContent: 'center',
+    minHeight: 56,
+    width: 64,
+  },
+  restrictionYearText: {
+    color: colors.cyanDark,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  sectionCount: {
+    backgroundColor: 'rgba(18, 198, 223, 0.14)',
+    borderRadius: 999,
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    minWidth: 22,
+    overflow: 'hidden',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    textAlign: 'center',
+  },
+  sectionCountActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    color: colors.white,
+  },
+  sectionTab: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: 'rgba(18, 198, 223, 0.28)',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 38,
+    paddingHorizontal: 10,
+  },
+  sectionTabActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.cyan,
+  },
+  sectionTabs: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  sectionTabText: {
+    color: colors.cyanDark,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  sectionTabTextActive: {
+    color: colors.white,
+  },
   source: {
     color: colors.muted,
     flex: 1,
@@ -250,6 +485,21 @@ const styles = StyleSheet.create({
   sourceActionText: {
     color: colors.cyanDark,
     fontSize: 12,
+    fontWeight: '900',
+  },
+  sourceButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.cyanDark,
+    borderRadius: 13,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 42,
+    paddingHorizontal: 14,
+  },
+  sourceButtonText: {
+    color: colors.white,
+    fontSize: 13,
     fontWeight: '900',
   },
   sourceRow: {

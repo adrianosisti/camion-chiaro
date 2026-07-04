@@ -29,6 +29,7 @@ import LockKeyhole from 'lucide-react/dist/esm/icons/lock-keyhole.mjs'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.mjs'
 import Mail from 'lucide-react/dist/esm/icons/mail.mjs'
 import Mic from 'lucide-react/dist/esm/icons/mic.mjs'
+import Newspaper from 'lucide-react/dist/esm/icons/newspaper.mjs'
 import Paperclip from 'lucide-react/dist/esm/icons/paperclip.mjs'
 import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
 import PhoneCall from 'lucide-react/dist/esm/icons/phone-call.mjs'
@@ -97,6 +98,7 @@ import {
   fetchCompanyInvoices,
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
+  fetchTransportNews,
   fetchLegalAcceptanceStatus,
   fetchAdminOverview,
   updateAdminCompanyControl,
@@ -612,7 +614,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'deadlines', 'documents', 'drivers', 'fleet', 'notifications', 'records', 'reports', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'deadlines', 'documents', 'drivers', 'fleet', 'news', 'notifications', 'records', 'reports', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -821,6 +823,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Scadenze',
+    'nav.news': 'Radar',
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
     'nav.reports': 'Report',
@@ -1040,6 +1043,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Deadlines',
+    'nav.news': 'Radar',
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
     'nav.reports': 'Reports',
@@ -1180,6 +1184,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Panel',
     'nav.deadlines': 'Vencimientos',
+    'nav.news': 'Radar',
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
     'nav.reports': 'Informes',
@@ -1320,6 +1325,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Tableau',
     'nav.deadlines': 'Echeances',
+    'nav.news': 'Radar',
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
     'nav.reports': 'Rapports',
@@ -1460,6 +1466,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Fristen',
+    'nav.news': 'Radar',
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
     'nav.reports': 'Berichte',
@@ -4079,6 +4086,7 @@ const regionalTranslations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Scadente',
+    'nav.news': 'Radar',
     'nav.notifications': 'Notificari',
     'nav.records': 'Date',
     'nav.reports': 'Rapoarte',
@@ -4140,6 +4148,7 @@ const regionalTranslations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Terminy',
+    'nav.news': 'Radar',
     'nav.notifications': 'Powiadomienia',
     'nav.records': 'Kartoteki',
     'nav.reports': 'Raporty',
@@ -6728,6 +6737,10 @@ function App() {
   const [adminOverview, setAdminOverview] = useState(null)
   const [adminOverviewStatus, setAdminOverviewStatus] = useState('')
   const [isAdminOverviewLoading, setIsAdminOverviewLoading] = useState(false)
+  const [transportNews, setTransportNews] = useState([])
+  const [transportNewsStatus, setTransportNewsStatus] = useState('')
+  const [transportNewsMeta, setTransportNewsMeta] = useState(null)
+  const [isTransportNewsLoading, setIsTransportNewsLoading] = useState(false)
   const [isPasswordRecoveryMode, setIsPasswordRecoveryMode] = useState(hasPasswordRecoveryUrlParams)
   const [activeCompanyId, setActiveCompanyId] = useState('')
   const [companyProfile, setCompanyProfile] = useState(getInitialCompanyProfile)
@@ -9953,6 +9966,28 @@ function App() {
     )
   }, [isAdminSession])
 
+  const refreshTransportNews = useCallback(async ({ force = false } = {}) => {
+    setIsTransportNewsLoading(true)
+    setTransportNewsStatus(force ? 'Aggiornamento Radar Trasporti in corso...' : 'Caricamento Radar Trasporti...')
+
+    const result = await fetchTransportNews({ language: 'it', refresh: force })
+    setIsTransportNewsLoading(false)
+
+    if (result.error) {
+      setTransportNewsStatus(result.error.message)
+      return
+    }
+
+    const items = result.data?.items ?? []
+    setTransportNews(items)
+    setTransportNewsMeta(result.data ?? null)
+    setTransportNewsStatus(
+      items.length
+        ? `Radar aggiornato: ${items.length} notizie operative. Prossimo aggiornamento automatico: ${result.data?.nextAutomaticUpdate ?? 'giornaliero'}.`
+        : 'Nessuna notizia operativa disponibile in questo momento.',
+    )
+  }, [])
+
   const handleUpdateAdminCompany = useCallback(async (companyId, updates) => {
     if (!isAdminSession) {
       return { error: { message: 'Account non autorizzato al Pannello Admin.' } }
@@ -9992,6 +10027,11 @@ function App() {
 
     return () => window.clearInterval(timerId)
   }, [activeView, refreshAdminOverview])
+
+  useEffect(() => {
+    if (activeView !== 'news') return
+    void refreshTransportNews()
+  }, [activeView, refreshTransportNews])
 
   if (isPasswordRecoveryMode) {
     return (
@@ -10499,6 +10539,14 @@ function App() {
             overview={adminOverview}
             sessionEmail={session.email}
             statusMessage={adminOverviewStatus}
+          />
+        ) : activeView === 'news' ? (
+          <TransportNewsWorkspace
+            isLoading={isTransportNewsLoading}
+            items={transportNews}
+            meta={transportNewsMeta}
+            onRefresh={() => refreshTransportNews({ force: true })}
+            statusMessage={transportNewsStatus}
           />
         ) : activeView === 'records' ? (
           <RecordsWorkspace
@@ -11813,6 +11861,7 @@ function AuthScreen({ isPasswordRecoveryMode = false, language, onAuthenticated,
 function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false, notificationCount, onHome, onNavigate, onSignOut, session, t }) {
   const navItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { id: 'news', label: t('nav.news'), icon: Newspaper },
     { id: 'records', label: t('nav.records'), icon: Users },
     { id: 'notifications', label: t('nav.notifications'), icon: Bell },
     { id: 'chat', label: t('nav.chat'), icon: Mail },
@@ -11861,6 +11910,87 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
         {t('session.signOut')}
       </button>
     </aside>
+  )
+}
+
+function getTransportNewsTone(category = '') {
+  const normalized = String(category).toLowerCase()
+  if (normalized.includes('norm')) return 'rules'
+  if (normalized.includes('viabil')) return 'roads'
+  if (normalized.includes('scioper')) return 'strike'
+  if (normalized.includes('cost')) return 'costs'
+  return 'market'
+}
+
+function TransportNewsWorkspace({
+  isLoading = false,
+  items = [],
+  meta = null,
+  onRefresh,
+  statusMessage = '',
+}) {
+  const updatedAt = meta?.generatedAt ? formatShortDateTime(meta.generatedAt) : ''
+  const issues = meta?.issues ?? []
+
+  return (
+    <section className="transport-news-workspace" aria-label="Radar Trasporti">
+      <div className="panel transport-news-hero">
+        <div>
+          <p className="overline">Radar Trasporti</p>
+          <h2>Le notizie che contano oggi</h2>
+          <span>3-8 aggiornamenti operativi da fonti pubbliche: norme, viabilità, scioperi, costi e logistica. Titolo, sintesi Vygo e link alla fonte originale.</span>
+        </div>
+        <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
+          <RadioTower size={16} />
+          {isLoading ? 'Aggiorno...' : 'Aggiorna ora'}
+        </button>
+      </div>
+
+      <div className="transport-news-status">
+        <span>
+          <Newspaper size={16} />
+          {statusMessage || 'Si aggiorna automaticamente ogni giorno intorno alle 10:00 ora italiana.'}
+        </span>
+        {updatedAt ? <small>Ultimo controllo {updatedAt}</small> : null}
+      </div>
+
+      {issues.length ? (
+        <div className="transport-news-issues">
+          <AlertTriangle size={16} />
+          <span>Alcune fonti non hanno risposto, ma il Radar continua con quelle disponibili.</span>
+        </div>
+      ) : null}
+
+      <div className="transport-news-grid">
+        {items.length ? items.map((item) => {
+          const tone = getTransportNewsTone(item.category)
+
+          return (
+            <article className={`transport-news-card tone-${tone}`} key={item.id || item.url}>
+              <div className="transport-news-card-head">
+                <span>{item.category || 'Logistica'}</span>
+                <small>{item.published_at ? formatDate(item.published_at) : item.fetched_at ? formatDate(item.fetched_at) : 'Oggi'}</small>
+              </div>
+              <h3>{item.title}</h3>
+              <p>{item.summary || 'Apri la fonte per leggere il dettaglio completo.'}</p>
+              <div className="transport-news-card-foot">
+                <strong>{item.source_name || 'Fonte'}</strong>
+                <a href={item.url} rel="noreferrer" target="_blank">
+                  Fonte
+                  <ExternalLink size={14} />
+                </a>
+              </div>
+            </article>
+          )
+        }) : (
+          <div className="transport-news-empty">
+            <Newspaper size={24} />
+            <strong>Nessuna notizia caricata</strong>
+            <span>Premi Aggiorna ora. Se resta vuoto, una o più fonti RSS potrebbero non essere raggiungibili o la tabella Supabase non è ancora installata.</span>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 

@@ -31,6 +31,7 @@ import { DriverChatHubScreen } from './src/screens/DriverChatHubScreen'
 import { HomeScreen } from './src/screens/HomeScreen'
 import { OperationsScreen } from './src/screens/OperationsScreen'
 import { SettingsScreen } from './src/screens/SettingsScreen'
+import { TransportNewsScreen } from './src/screens/TransportNewsScreen'
 import { WorkforceHomeScreen } from './src/screens/WorkforceHomeScreen'
 import {
   createCompanyAssetSignedUrl,
@@ -1935,7 +1936,7 @@ function CamionChiaroApp() {
   }, [accountType, driver?.id])
 
   useEffect(() => {
-    if (accountType === 'company' && activeTab === 'settings') return
+    if (accountType === 'company' && ['news', 'settings'].includes(activeTab)) return
 
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab('home')
@@ -3837,6 +3838,11 @@ function CamionChiaroApp() {
       return
     }
 
+    if (target === 'news') {
+      setActiveTab('news')
+      return
+    }
+
     if (target === 'operations') {
       openCompanyManagement('faults')
       return
@@ -3940,6 +3946,15 @@ function CamionChiaroApp() {
             onLanguageChange={setLanguage}
             onRefresh={() => loadCompanyData()}
             onSignOut={handleSignOut}
+          />
+        )
+      }
+
+      if (activeTab === 'news') {
+        return (
+          <TransportNewsScreen
+            language={language}
+            onBack={() => setActiveTab('settings')}
           />
         )
       }

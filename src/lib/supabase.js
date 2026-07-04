@@ -1183,6 +1183,32 @@ export async function fetchAdminOverview() {
   }
 }
 
+export async function fetchTransportNews({ language = 'it', refresh = false } = {}) {
+  try {
+    const params = new URLSearchParams({ language })
+    if (refresh) params.set('refresh', '1')
+
+    const response = await fetch(`/.netlify/functions/transport-news?${params.toString()}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'GET',
+    })
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: payload.error ?? 'Radar Trasporti non disponibile.' } }
+    }
+
+    return { data: payload, error: null }
+  } catch {
+    return {
+      data: null,
+      error: { message: 'Radar Trasporti non raggiungibile. Riprova piu tardi.' },
+    }
+  }
+}
+
 export async function updateAdminCompanyControl(companyId, updates = {}) {
   const supabase = await getSupabaseClient()
 

@@ -829,6 +829,29 @@ export async function sendPushNotification(payload) {
   }
 }
 
+export async function fetchTransportNews({ language = 'it', refresh = false } = {}) {
+  if (!apiBaseUrl) return { data: null, error: { message: serviceUnavailableMessage } }
+
+  try {
+    const params = new URLSearchParams({ language })
+    if (refresh) params.set('refresh', '1')
+
+    const response = await fetch(`${apiBaseUrl}/.netlify/functions/transport-news?${params.toString()}`, {
+      headers: { 'Content-Type': 'application/json' },
+      method: 'GET',
+    })
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: data.error ?? 'Radar Trasporti non disponibile.' } }
+    }
+
+    return { data, error: null }
+  } catch {
+    return { data: null, error: { message: 'Radar Trasporti non raggiungibile.' } }
+  }
+}
+
 export async function getSessionAccountType() {
   if (!isSupabaseConfigured) return { data: 'driver', error: null }
 

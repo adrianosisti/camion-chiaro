@@ -59,6 +59,12 @@ const companyMenuItems = [
     title: 'Dashboard',
   },
   {
+    body: 'Notizie operative su trasporti, norme, viabilita, scioperi, costi e logistica.',
+    icon: 'newspaper-outline',
+    id: 'news',
+    title: 'Radar Trasporti',
+  },
+  {
     body: 'Check, guasti, pratiche aperte e cose da lavorare.',
     icon: 'clipboard-outline',
     id: 'operations',

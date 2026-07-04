@@ -5408,6 +5408,177 @@
   height: auto;
 }
 
+.transport-news-workspace {
+  display: grid;
+  gap: 14px;
+}
+
+.transport-news-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(19, 197, 223, 0.38);
+  background:
+    linear-gradient(135deg, rgba(19, 197, 223, 0.22), rgba(255, 255, 255, 0) 54%),
+    #f8fdff;
+}
+
+.transport-news-hero > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.transport-news-hero h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+}
+
+.transport-news-hero span {
+  max-width: 850px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.transport-news-status,
+.transport-news-issues {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #ecfeff;
+  color: #075985;
+  padding: 10px 12px;
+}
+
+.transport-news-status span,
+.transport-news-issues span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.transport-news-status small {
+  color: #0f766e;
+  font-size: 0.74rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.transport-news-issues {
+  justify-content: flex-start;
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.transport-news-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.transport-news-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #dbeafe;
+  border-left: 5px solid #0891b2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
+}
+
+.transport-news-card.tone-rules {
+  border-left-color: #7c3aed;
+}
+
+.transport-news-card.tone-roads {
+  border-left-color: #f97316;
+}
+
+.transport-news-card.tone-strike {
+  border-left-color: #e11d48;
+}
+
+.transport-news-card.tone-costs {
+  border-left-color: #0f766e;
+}
+
+.transport-news-card-head,
+.transport-news-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.transport-news-card-head span {
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #075985;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.transport-news-card-head small,
+.transport-news-card-foot strong {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.transport-news-card h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.02rem;
+  line-height: 1.28;
+}
+
+.transport-news-card p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.transport-news-card a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0891b2;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.transport-news-empty {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  grid-column: 1 / -1;
+  border: 1px dashed #bae6fd;
+  border-radius: 8px;
+  background: #f8fdff;
+  color: var(--ink);
+  padding: 18px;
+}
+
+.transport-news-empty span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
 .admin-hero-panel,
 .admin-locked-panel {
   display: flex;
@@ -11957,6 +12128,16 @@
 
   .admin-economy-panel {
     grid-template-columns: 1fr;
+  }
+
+  .transport-news-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .transport-news-hero,
+  .transport-news-status {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .admin-layout {

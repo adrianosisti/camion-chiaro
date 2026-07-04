@@ -12374,6 +12374,14 @@ function AdminWorkspace({
   const estimatedMonthlyMarginCents = estimatedRevenueNetCents - estimatedMonthlyCostCents
   const estimatedTaxReserveCents = Math.max(0, Math.round(estimatedMonthlyMarginCents * vygoEstimatedTaxReserveRate))
   const estimatedNetAfterTaxCents = estimatedMonthlyMarginCents - estimatedTaxReserveCents
+  const estimatedAverageClientRevenueCents = activePayingCompanyCount
+    ? Math.round(estimatedRevenueNetCents / activePayingCompanyCount)
+    : 0
+  const estimatedAverageClientVatCents = activePayingCompanyCount
+    ? Math.round(estimatedVatCents / activePayingCompanyCount)
+    : 0
+  const estimatedAverageClientGrossCents = estimatedAverageClientRevenueCents + estimatedAverageClientVatCents
+  const estimatedTotalTaxReserveCents = estimatedVatCents + estimatedTaxReserveCents
   const firstSalesTargetGap = Math.max(0, vygoFirstSalesTarget - activePayingCompanyCount)
   const firstSalesTargetMrrCents = vygoFirstSalesTarget * vygoFleet10MonthlyPriceCents
   const breakEvenFleet10Clients = Math.max(
@@ -12566,69 +12574,85 @@ function AdminWorkspace({
         <div className="admin-economy-head">
           <div>
             <p className="overline">Vygo azienda</p>
-            <h3>Andamento economico</h3>
+            <h3>Soldi veri del mese</h3>
           </div>
-          <span>{estimatedMonthlyMarginCents >= 0 ? 'Sopra pareggio stimato' : 'Sotto pareggio stimato'}</span>
+          <span>{estimatedMonthlyMarginCents >= 0 ? 'Ti resta margine' : 'Stai pagando piu di quanto incassi'}</span>
         </div>
         <div className="admin-economy-metrics">
-          <article>
-            <span>MRR imponibile</span>
-            <strong>{formatMoneyCents(estimatedRevenueNetCents, 'EUR')}</strong>
+          <article className="is-money">
+            <span>Incasso medio cliente</span>
+            <strong>{formatMoneyCents(estimatedAverageClientGrossCents, 'EUR')}</strong>
+            <small>{activePayingCompanyCount ? 'IVA compresa' : 'Nessun cliente pagante'}</small>
           </article>
           <article>
-            <span>IVA 22% da accantonare</span>
-            <strong>{formatMoneyCents(estimatedVatCents, 'EUR')}</strong>
-          </article>
-          <article>
-            <span>Incasso lordo stimato</span>
+            <span>Incasso totale mese</span>
             <strong>{formatMoneyCents(estimatedGrossCollectedCents, 'EUR')}</strong>
+            <small>{formatMoneyCents(estimatedRevenueNetCents, 'EUR')} imponibile</small>
           </article>
           <article>
-            <span>Costi stimati mese</span>
+            <span>Costi che paghi</span>
             <strong>{formatMoneyCents(estimatedMonthlyCostCents, 'EUR')}</strong>
+            <small>Cloud, strumenti, supporto</small>
+          </article>
+          <article className="is-warning">
+            <span>IVA + tasse da tenere</span>
+            <strong>{formatMoneyCents(estimatedTotalTaxReserveCents, 'EUR')}</strong>
+            <small>{formatMoneyCents(estimatedVatCents, 'EUR')} IVA + {formatMoneyCents(estimatedTaxReserveCents, 'EUR')} tasse</small>
           </article>
           <article className={estimatedMonthlyMarginCents >= 0 ? 'is-positive' : 'is-negative'}>
-            <span>Margine stimato</span>
+            <span>Ti resta lordo</span>
             <strong>{formatMoneyCents(estimatedMonthlyMarginCents, 'EUR')}</strong>
-          </article>
-          <article>
-            <span>Riserva tasse 35%</span>
-            <strong>{formatMoneyCents(estimatedTaxReserveCents, 'EUR')}</strong>
+            <small>Prima delle tasse</small>
           </article>
           <article className={estimatedNetAfterTaxCents >= 0 ? 'is-positive' : 'is-negative'}>
-            <span>Netto prudente</span>
+            <span>Ti resta netto</span>
             <strong>{formatMoneyCents(estimatedNetAfterTaxCents, 'EUR')}</strong>
-          </article>
-          <article>
-            <span>Pareggio Fleet 10</span>
-            <strong>{breakEvenFleet10Clients} clienti</strong>
+            <small>Dopo costi, IVA e riserva tasse</small>
           </article>
         </div>
-        <div className="admin-economy-grid">
-          <div className="admin-cost-list">
-            <strong>Costi fissi inseriti</strong>
-            {vygoBaseMonthlyCostItems.map((item) => (
-              <span key={`${item.category}-${item.label}`}>
-                <small>{item.category}</small>
-                <b>{item.label}</b>
-                <em>{formatMoneyCents(item.cents, 'EUR')}</em>
+        <details className="admin-economy-details">
+          <summary>Vedi dettagli dei conti</summary>
+          <div className="admin-economy-grid">
+            <div className="admin-cost-list">
+              <strong>Costi fissi inseriti</strong>
+              {vygoBaseMonthlyCostItems.map((item) => (
+                <span key={`${item.category}-${item.label}`}>
+                  <small>{item.category}</small>
+                  <b>{item.label}</b>
+                  <em>{formatMoneyCents(item.cents, 'EUR')}</em>
+                </span>
+              ))}
+              <span>
+                <small>Pagamenti</small>
+                <b>Commissioni stimate</b>
+                <em>{formatMoneyCents(estimatedStripeCostCents, 'EUR')}</em>
               </span>
-            ))}
-          </div>
-          <div className="admin-scenario-list">
-            <strong>Scenari Fleet 10</strong>
-            {economyScenarios.map((scenario) => (
-              <span key={scenario.clientCount}>
-                <b>{scenario.clientCount} clienti</b>
-                <small>{formatMoneyCents(scenario.revenueCents, 'EUR')} MRR</small>
-                <em>{formatMoneyCents(scenario.netAfterTaxCents, 'EUR')} netto stimato</em>
+              <span>
+                <small>Assistenza</small>
+                <b>Supporto clienti stimato</b>
+                <em>{formatMoneyCents(estimatedSupportCostCents, 'EUR')}</em>
               </span>
-            ))}
+              <span>
+                <small>Obiettivo</small>
+                <b>Pareggio Fleet 10</b>
+                <em>{breakEvenFleet10Clients} clienti</em>
+              </span>
+            </div>
+            <div className="admin-scenario-list">
+              <strong>Scenari Fleet 10</strong>
+              {economyScenarios.map((scenario) => (
+                <span key={scenario.clientCount}>
+                  <b>{scenario.clientCount} clienti</b>
+                  <small>{formatMoneyCents(scenario.grossCollectedCents, 'EUR')} incasso lordo</small>
+                  <em>{formatMoneyCents(scenario.netAfterTaxCents, 'EUR')} netto stimato</em>
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-        <p className="admin-economy-note">
-          Stima interna: i prezzi Vygo sono trattati come imponibile, l IVA 22% e separata perche non e utile, e la riserva tasse e calcolata prudenzialmente sul margine positivo. Il commercialista dovra confermare regime, IVA, IRES, IRAP, eventuali compensi e dividendi.
-        </p>
+          <p className="admin-economy-note">
+            Stima interna: i prezzi Vygo sono trattati come imponibile, l IVA 22% e separata perche non e utile, e la riserva tasse e calcolata prudenzialmente sul margine positivo. Il commercialista dovra confermare regime, IVA, IRES, IRAP, eventuali compensi e dividendi.
+          </p>
+        </details>
       </section>
 
       <div className="admin-layout">

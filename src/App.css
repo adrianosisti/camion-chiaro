@@ -5615,7 +5615,7 @@
 
 .admin-economy-metrics {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -5647,9 +5647,53 @@
   background: #f0fdf4;
 }
 
+.admin-economy-metrics .is-money {
+  border-color: rgba(19, 197, 223, 0.52);
+  background: #ecfeff;
+}
+
+.admin-economy-metrics .is-warning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
 .admin-economy-metrics .is-negative {
   border-color: #fecaca;
   background: #fef2f2;
+}
+
+.admin-economy-metrics small {
+  color: #64748b;
+  font-size: 0.62rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.admin-economy-details {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+}
+
+.admin-economy-details summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  min-height: 34px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #f8fdff;
+  color: #075985;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 900;
+  list-style: none;
+  padding: 0 12px;
+}
+
+.admin-economy-details summary::-webkit-details-marker {
+  display: none;
 }
 
 .admin-economy-grid {

@@ -56,7 +56,7 @@ const maxChatAttachmentSizeByKind = {
   audio: 8 * oneMegabyte,
   file: 10 * oneMegabyte,
   image: 5 * oneMegabyte,
-  video: 25 * oneMegabyte,
+  video: 12 * oneMegabyte,
 }
 
 function getMessageText(message) {
@@ -1066,7 +1066,7 @@ export function ChatScreen({
         .join(', ')
       Alert.alert(
         'File troppo pesante',
-        `Per tenere Vygo veloce e leggera, invia foto fino a 5 MB, video fino a 25 MB e audio fino a 8 MB.${rejectedSummary ? ` Scartati: ${rejectedSummary}.` : ''}`,
+        `Per tenere Vygo veloce e leggera, invia foto fino a 5 MB, video fino a 12 MB e audio fino a 8 MB.${rejectedSummary ? ` Scartati: ${rejectedSummary}.` : ''}`,
       )
     }
 

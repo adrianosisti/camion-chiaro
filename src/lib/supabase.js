@@ -7,12 +7,32 @@ export const isCompanyDataConfigured = Boolean(isSupabaseConfigured && configure
 export const driverDocumentsBucket = 'driver-documents'
 export const companyAssetsBucket = 'company-assets'
 export const companyInvoicesBucket = 'company-invoices'
+const signedUrlCache = new Map()
 export const legalDocumentVersions = {
   dpa: 'vygo-dpa-2026-07-03',
   marketing: 'vygo-marketing-2026-07-03',
   privacy: 'vygo-privacy-2026-07-03',
   staffTerms: 'vygo-staff-terms-2026-07-03',
   terms: 'vygo-terms-2026-07-03',
+}
+
+function getCachedSignedUrl(cacheKey) {
+  const cached = signedUrlCache.get(cacheKey)
+  if (!cached || cached.expiresAt <= Date.now()) {
+    signedUrlCache.delete(cacheKey)
+    return ''
+  }
+
+  return cached.signedUrl
+}
+
+function rememberSignedUrl(cacheKey, signedUrl, ttlSeconds) {
+  if (!signedUrl) return
+  const safetyWindowMs = 60 * 1000
+  signedUrlCache.set(cacheKey, {
+    expiresAt: Date.now() + Math.max(30, ttlSeconds - 60) * 1000 - safetyWindowMs,
+    signedUrl,
+  })
 }
 
 function getRequiredLegalDocuments(accountRole = 'company') {
@@ -3234,7 +3254,14 @@ export async function createDriverDocumentSignedUrl(filePath) {
     return { data: null, error: null }
   }
 
-  return supabase.storage.from(driverDocumentsBucket).createSignedUrl(filePath, 600)
+  const ttlSeconds = 600
+  const cacheKey = `${driverDocumentsBucket}:${filePath}`
+  const cachedSignedUrl = getCachedSignedUrl(cacheKey)
+  if (cachedSignedUrl) return { data: { signedUrl: cachedSignedUrl }, error: null }
+
+  const result = await supabase.storage.from(driverDocumentsBucket).createSignedUrl(filePath, ttlSeconds)
+  rememberSignedUrl(cacheKey, result.data?.signedUrl, ttlSeconds)
+  return result
 }
 
 export async function createCompanyAssetSignedUrl(filePath) {
@@ -3244,7 +3271,14 @@ export async function createCompanyAssetSignedUrl(filePath) {
     return { data: null, error: null }
   }
 
-  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 86400)
+  const ttlSeconds = 86400
+  const cacheKey = `${companyAssetsBucket}:${filePath}`
+  const cachedSignedUrl = getCachedSignedUrl(cacheKey)
+  if (cachedSignedUrl) return { data: { signedUrl: cachedSignedUrl }, error: null }
+
+  const result = await supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, ttlSeconds)
+  rememberSignedUrl(cacheKey, result.data?.signedUrl, ttlSeconds)
+  return result
 }
 
 export async function createCompanyInvoiceSignedUrl(filePath) {
@@ -3254,7 +3288,14 @@ export async function createCompanyInvoiceSignedUrl(filePath) {
     return { data: null, error: null }
   }
 
-  return supabase.storage.from(companyInvoicesBucket).createSignedUrl(filePath, 600)
+  const ttlSeconds = 600
+  const cacheKey = `${companyInvoicesBucket}:${filePath}`
+  const cachedSignedUrl = getCachedSignedUrl(cacheKey)
+  if (cachedSignedUrl) return { data: { signedUrl: cachedSignedUrl }, error: null }
+
+  const result = await supabase.storage.from(companyInvoicesBucket).createSignedUrl(filePath, ttlSeconds)
+  rememberSignedUrl(cacheKey, result.data?.signedUrl, ttlSeconds)
+  return result
 }
 
 export async function createBillingCheckoutSession({ billingProfile, companyId = configuredCompanyId, plan }) {

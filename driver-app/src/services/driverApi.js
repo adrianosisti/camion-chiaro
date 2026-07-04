@@ -18,8 +18,28 @@ import {
 
 const companyAssetsBucket = 'company-assets'
 const driverDocumentsBucket = 'driver-documents'
+const signedUrlCache = new Map()
 const featureNotReadyMessage = 'Funzione non ancora attiva per questa azienda. Contatta l assistenza Vygo.'
 const serviceUnavailableMessage = 'Servizio Vygo non disponibile. Riprova tra poco o contatta l assistenza.'
+
+function getCachedSignedUrl(cacheKey) {
+  const cached = signedUrlCache.get(cacheKey)
+  if (!cached || cached.expiresAt <= Date.now()) {
+    signedUrlCache.delete(cacheKey)
+    return ''
+  }
+
+  return cached.signedUrl
+}
+
+function rememberSignedUrl(cacheKey, signedUrl, ttlSeconds) {
+  if (!signedUrl) return
+  const safetyWindowMs = 60 * 1000
+  signedUrlCache.set(cacheKey, {
+    expiresAt: Date.now() + Math.max(30, ttlSeconds - 60) * 1000 - safetyWindowMs,
+    signedUrl,
+  })
+}
 
 function normalizeUsername(username = '') {
   return String(username).trim().toLowerCase().replace(/\s+/g, '')
@@ -1478,6 +1498,15 @@ async function uploadChatAttachment({ attachment, companyId, folder = 'chat', th
   })
 
   if (error) return { data: '', error }
+
+  await registerCompanyStorageFile({
+    bucket: companyAssetsBucket,
+    category: 'chat',
+    companyId,
+    filePath,
+    sizeBytes: fileBody?.byteLength ?? attachment.size ?? 0,
+  })
+
   return { data: filePath, error: null }
 }
 
@@ -1987,12 +2016,26 @@ export async function markChatMessagesRead(threadId, readerRole) {
 
 export async function createCompanyAssetSignedUrl(filePath) {
   if (!isSupabaseConfigured || !filePath) return { data: null, error: null }
-  return supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, 86400)
+  const ttlSeconds = 86400
+  const cacheKey = `${companyAssetsBucket}:${filePath}`
+  const cachedSignedUrl = getCachedSignedUrl(cacheKey)
+  if (cachedSignedUrl) return { data: { signedUrl: cachedSignedUrl }, error: null }
+
+  const result = await supabase.storage.from(companyAssetsBucket).createSignedUrl(filePath, ttlSeconds)
+  rememberSignedUrl(cacheKey, result.data?.signedUrl, ttlSeconds)
+  return result
 }
 
 export async function createDriverDocumentSignedUrl(filePath) {
   if (!isSupabaseConfigured || !filePath) return { data: null, error: null }
-  return supabase.storage.from(driverDocumentsBucket).createSignedUrl(filePath, 600)
+  const ttlSeconds = 600
+  const cacheKey = `${driverDocumentsBucket}:${filePath}`
+  const cachedSignedUrl = getCachedSignedUrl(cacheKey)
+  if (cachedSignedUrl) return { data: { signedUrl: cachedSignedUrl }, error: null }
+
+  const result = await supabase.storage.from(driverDocumentsBucket).createSignedUrl(filePath, ttlSeconds)
+  rememberSignedUrl(cacheKey, result.data?.signedUrl, ttlSeconds)
+  return result
 }
 
 export async function updateFaultReportStatus(reportId, status, repair = {}) {

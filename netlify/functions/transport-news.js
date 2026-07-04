@@ -10,7 +10,7 @@ const jsonHeaders = {
 }
 
 const defaultLanguage = 'it'
-const cacheFreshHours = 20
+const cacheFreshHours = 4
 const newsRetentionDays = 30
 const cleanupRetentionDays = 45
 const maxItemsPerSource = 8
@@ -873,16 +873,20 @@ export async function handler(event = {}) {
       if (saveIssue) issues.push(saveIssue)
     }
 
-    return jsonResponse(200, {
-      generatedAt: new Date().toISOString(),
-      items: outputItems.slice(0, maxItemsToReturn),
-      mode: 'cache',
-      nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
-      retentionDays: newsRetentionDays,
-      restrictionSchedule: transportRestrictionSchedule2026,
-      restrictions: transportRestrictionResources,
-      issues,
-    })
+    if (outputItems.length) {
+      return jsonResponse(200, {
+        generatedAt: new Date().toISOString(),
+        items: outputItems.slice(0, maxItemsToReturn),
+        mode: 'cache',
+        nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
+        retentionDays: newsRetentionDays,
+        restrictionSchedule: transportRestrictionSchedule2026,
+        restrictions: transportRestrictionResources,
+        issues,
+      })
+    }
+
+    issues.push('Cache news non utilizzabile: Vygo sta cercando fonti aggiornate.')
   }
 
   const cleanupIssue = await deleteOldNews(serviceClient)

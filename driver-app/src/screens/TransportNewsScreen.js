@@ -285,7 +285,14 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
     setIsLoading(true)
     setStatus(force ? 'Aggiornamento in corso...' : 'Caricamento news e fermi...')
 
-    const result = await fetchTransportNews({ language: 'it', refresh: force })
+    let result = await fetchTransportNews({ language: 'it', refresh: force })
+    let nextItems = Array.isArray(result.data?.items) ? result.data.items : []
+
+    if (!force && !nextItems.filter(hasDisplayNewsText).length && !result.error) {
+      result = await fetchTransportNews({ language: 'it', refresh: true })
+      nextItems = Array.isArray(result.data?.items) ? result.data.items : []
+    }
+
     setIsLoading(false)
 
     if (result.error) {
@@ -293,7 +300,6 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
       return
     }
 
-    const nextItems = Array.isArray(result.data?.items) ? result.data.items : []
     const readableCount = nextItems.filter(hasDisplayNewsText).length
     setItems(nextItems)
     setMeta(result.data && typeof result.data === 'object' ? result.data : null)

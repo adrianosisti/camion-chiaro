@@ -9981,7 +9981,14 @@ function App() {
     setIsTransportNewsLoading(true)
     setTransportNewsStatus(force ? 'Aggiornamento news e fermi in corso...' : 'Caricamento news e fermi...')
 
-    const result = await fetchTransportNews({ language: 'it', refresh: force })
+    let result = await fetchTransportNews({ language: 'it', refresh: force })
+    let items = Array.isArray(result.data?.items) ? result.data.items : []
+
+    if (!force && !items.filter(hasTransportNewsDisplayText).length && !result.error) {
+      result = await fetchTransportNews({ language: 'it', refresh: true })
+      items = Array.isArray(result.data?.items) ? result.data.items : []
+    }
+
     setIsTransportNewsLoading(false)
 
     if (result.error) {
@@ -9989,7 +9996,6 @@ function App() {
       return
     }
 
-    const items = Array.isArray(result.data?.items) ? result.data.items : []
     const readableCount = items.filter(hasTransportNewsDisplayText).length
     setTransportNews(items)
     setTransportNewsMeta(result.data && typeof result.data === 'object' ? result.data : null)

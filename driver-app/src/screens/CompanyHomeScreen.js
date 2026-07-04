@@ -646,15 +646,13 @@ export function CompanyHomeScreen({
           ? `${soonDeadlineCount} scadenze vicine`
           : 'Situazione sotto controllo'
   const openWorkSection = () => onOpenManagement?.(openFaults.length ? 'faults' : activeChecks.length ? 'checks' : 'deadlines')
-  const nextAction = criticalChecks.length
-    ? { icon: 'warning-outline', label: 'Apri check critici', onPress: () => onOpenManagement?.('checks'), tone: 'danger' }
-    : openFaults.length
-      ? { icon: 'construct-outline', label: 'Apri guasti', onPress: () => onOpenManagement?.('faults'), tone: 'warning' }
-      : activeDeadlines.length
-        ? { icon: 'calendar-outline', label: 'Apri scadenze', onPress: () => onOpenManagement?.('deadlines'), tone: deadlineTone }
-        : unreadMessages
-          ? { icon: 'chatbubbles-outline', label: 'Apri chat', onPress: onOpenChat, tone: 'warning' }
-          : { icon: 'shield-checkmark-outline', label: 'Tutto sotto controllo', onPress: onOpenAssistant, tone: 'success' }
+  const newsQuickAction = {
+    icon: 'newspaper-outline',
+    label: 'News e fermi',
+    meta: 'Bollettino operativo',
+    onPress: () => onOpenManagement?.('news'),
+    tone: 'info',
+  }
 
   async function resolveSelectedDetail(detail = selectedDetail, repair = undefined) {
     if (!detail?.item?.id) return
@@ -773,10 +771,13 @@ export function CompanyHomeScreen({
             value={`${fleetHealthAverage}%`}
           />
         </View>
-        <Pressable onPress={nextAction.onPress} style={[styles.nextActionStrip, styles[`${nextAction.tone}DashboardSignalRow`]]}>
-          <Ionicons color={getToneColor(nextAction.tone)} name={nextAction.icon} size={17} />
-          <Text style={styles.nextActionKicker}>Prossima azione</Text>
-          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={styles.nextActionLabel}>{nextAction.label}</Text>
+        <Pressable onPress={newsQuickAction.onPress} style={[styles.nextActionStrip, styles.newsQuickActionStrip]}>
+          <Ionicons color={colors.cyanDark} name={newsQuickAction.icon} size={18} />
+          <View style={styles.nextActionCopy}>
+            <Text style={styles.nextActionKicker}>{newsQuickAction.label}</Text>
+            <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={styles.nextActionLabel}>{newsQuickAction.meta}</Text>
+          </View>
+          <Ionicons color={colors.cyanDark} name="chevron-forward" size={16} />
         </Pressable>
       </ImageBackground>
 
@@ -995,18 +996,21 @@ const styles = StyleSheet.create({
     borderColor: '#d8e7ee',
   },
   nextActionKicker: {
-    color: colors.muted,
-    fontSize: 9,
+    color: colors.cyanDark,
+    fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   nextActionLabel: {
-    color: colors.ink,
-    flex: 1,
+    color: '#334155',
     fontSize: 12,
-    fontWeight: '900',
-    textAlign: 'right',
+    fontWeight: '800',
+  },
+  nextActionCopy: {
+    flex: 1,
+    gap: 1,
+    minWidth: 0,
   },
   nextActionStrip: {
     alignItems: 'center',
@@ -1018,6 +1022,10 @@ const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: 10,
     paddingVertical: 6,
+  },
+  newsQuickActionStrip: {
+    backgroundColor: '#ecfeff',
+    borderColor: 'rgba(18, 198, 223, 0.42)',
   },
   operationalRadarCard: {
     borderRadius: 14,

@@ -449,6 +449,12 @@ function getCategory(text = '') {
   return match?.category ?? 'Logistica'
 }
 
+function getTitleDrivenCategory(title = '', fallbackText = '') {
+  const titleCategory = getCategory(title)
+  if (titleCategory !== 'Logistica') return titleCategory
+  return getCategory(`${title} ${fallbackText}`)
+}
+
 function scoreNews({ category, publishedAt, sourcePriority, text }) {
   const lowerText = text.toLowerCase()
   const urgentWords = ['urgente', 'divieto', 'blocco', 'sciopero', 'fermo', 'decreto', 'tachigrafo', 'brennero', 'gasolio']
@@ -462,11 +468,14 @@ function scoreNews({ category, publishedAt, sourcePriority, text }) {
 
 function buildOperationalSummary(category, title = '') {
   const cleanTitle = String(title).toLowerCase()
-  if (/(iveco|camion|veicol|truck|servizi|flotta|concessionar|assistenza|ricambi|manutenzion)/i.test(cleanTitle)) {
-    return 'Tema utile per chi gestisce mezzi e flotta: riguarda servizi, assistenza, manutenzione, valore operativo o organizzazione dei veicoli.'
+  if (/(iveco|ecosistema di servizi|servizi collegati|oltre il camion)/i.test(cleanTitle)) {
+    return 'Notizia di mercato sui veicoli industriali: il valore non passa solo dal camion, ma dai servizi collegati alla flotta, come assistenza, manutenzione, ricambi, dati operativi e continuita dei mezzi. Per un trasportatore significa guardare anche a tempi di fermo, supporto post vendita e organizzazione della manutenzione.'
+  }
+  if (/(camion|veicol|truck|servizi|flotta|concessionar|assistenza|ricambi|manutenzion)/i.test(cleanTitle)) {
+    return 'Tema utile per chi gestisce mezzi e flotta: riguarda servizi, assistenza, manutenzione, valore operativo o organizzazione dei veicoli. Conviene valutarlo rispetto a costi, disponibilita dei mezzi e fermi tecnici.'
   }
   if (/(pallet|hub|magazzin|deposit|supply chain|intermodal|terminal|porto|spedizion)/i.test(cleanTitle)) {
-    return 'Tema utile per ufficio traffico e magazzino: puo incidere su flussi, consegne, ritiri, tempi e organizzazione della logistica.'
+    return 'Tema utile per ufficio traffico e magazzino: puo incidere su flussi, consegne, ritiri, tempi e organizzazione della logistica. Va letto pensando a tratte, pianificazione, carichi e comunicazioni interne.'
   }
 
   const summaries = {
@@ -487,9 +496,38 @@ function truncateText(value = '', maxLength = 1100) {
   return `${cleanValue.slice(0, maxLength).replace(/\s+\S*$/, '')}...`
 }
 
+function isBlockedArticleText(value = '') {
+  const cleanValue = String(value).toLowerCase()
+  return [
+    'per accedere a questo contenuto',
+    'effettua login',
+    'effettua il login',
+    'devi essere autenticato',
+    'contenuto riservato',
+    'accesso riservato',
+    'abbonati per continuare',
+    'subscribe to continue',
+    'sign in to continue',
+    'log in to continue',
+  ].some((pattern) => cleanValue.includes(pattern))
+}
+
+function isGenericOperationalSummary(value = '') {
+  const cleanValue = String(value).toLowerCase()
+  return [
+    'possibile impatto su documenti',
+    'aggiornamento di settore',
+    'impatto possibile su carburante',
+    'possibile impatto su partenze',
+    'possibile impatto su tratte',
+    'tema utile per chi gestisce',
+    'tema utile per ufficio traffico',
+  ].some((pattern) => cleanValue.includes(pattern))
+}
+
 function buildReadableSummary(category, description = '', title = '') {
   const operationalSummary = buildOperationalSummary(category, title)
-  const excerpt = truncateText(description, 1100)
+  const excerpt = isBlockedArticleText(description) ? '' : truncateText(description, 1100)
   if (!excerpt) return operationalSummary
   return `${excerpt}\n\nLettura Vygo: ${operationalSummary}`
 }
@@ -510,13 +548,15 @@ function extractMetaContent(html = '', key = '') {
 }
 
 function extractArticleDescription(html = '') {
-  return truncateText(
+  const description = truncateText(
     extractMetaContent(html, 'og:description')
       || extractMetaContent(html, 'twitter:description')
       || extractMetaContent(html, 'description')
       || '',
     1100,
   )
+
+  return isBlockedArticleText(description) ? '' : description
 }
 
 async function fetchArticleDescription(url = '') {
@@ -547,25 +587,43 @@ function summaryNeedsArticlePreview(item = {}) {
   const summary = String(item.summary ?? '').trim()
   if (!String(item.url ?? '').startsWith('http')) return false
   if (item.isFallback) return false
+  if (isBlockedArticleText(summary)) return true
   if (summary.length < 220) return true
   return summary === buildOperationalSummary(item.category, item.title)
 }
 
+function normalizeNewsItem(item = {}, language = defaultLanguage) {
+  const summary = String(item.summary ?? '')
+  const category = getTitleDrivenCategory(item.title, isBlockedArticleText(summary) ? '' : summary)
+  const shouldRebuildSummary = isBlockedArticleText(summary)
+    || (category !== item.category && isGenericOperationalSummary(summary))
+    || !summary.trim()
+
+  return {
+    ...item,
+    category,
+    language: item.language || language,
+    summary: shouldRebuildSummary ? buildReadableSummary(category, '', item.title) : summary,
+    tags: Array.from(new Set([...(Array.isArray(item.tags) ? item.tags : []), category.toLowerCase()])),
+  }
+}
+
 async function enrichNewsItemsWithArticleMetadata(items = [], language = defaultLanguage, maxItems = maxArticlePreviewsPerSource) {
+  const normalizedItems = items.map((item) => normalizeNewsItem(item, language))
   const previewIds = new Set(
-    items
+    normalizedItems
       .filter((item) => summaryNeedsArticlePreview(item))
       .slice(0, maxItems)
       .map((item) => item.id || item.url),
   )
 
-  return Promise.all(items.map(async (item) => {
+  return Promise.all(normalizedItems.map(async (item) => {
     if (!previewIds.has(item.id || item.url)) return item
 
     const articleDescription = await fetchArticleDescription(item.url)
     if (!articleDescription) return item
 
-    const category = getCategory(`${item.title} ${articleDescription}`)
+    const category = getTitleDrivenCategory(item.title, articleDescription)
     return {
       ...item,
       category,

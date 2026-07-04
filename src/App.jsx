@@ -12065,6 +12065,84 @@ function getTransportNewsSectionId(category = '') {
   return 'logistics'
 }
 
+function getTransportNewsTitleCategory(title = '', fallbackCategory = 'Logistica') {
+  const cleanTitle = String(title).toLowerCase()
+  if (/(sciopero|fermo|protesta|agitazione|presidio)/i.test(cleanTitle)) return 'Scioperi'
+  if (/(autostrada|divieto|blocco|valico|brennero|traforo|traffico|meteo|neve)/i.test(cleanTitle)) return 'Viabilità'
+  if (/(gasolio|carburante|pedaggio|costi|tariffe|accise|rimborso)/i.test(cleanTitle)) return 'Costi'
+  if (/(norma|decreto|ministero|tachigrafo|cqc|patente|adr|cabotaggio|regolamento)/i.test(cleanTitle)) return 'Norme'
+  if (/(iveco|camion|veicol|truck|flotta|assistenza|ricambi|manutenzione|servizi|concessionario|autotrasporto)/i.test(cleanTitle)) return 'Mercato'
+  if (/(logistica|spedizioni|magazzino|porto|interporto|terminal|pallet|hub|deposito|supply chain|intermodale)/i.test(cleanTitle)) return 'Logistica'
+  return fallbackCategory || 'Logistica'
+}
+
+function hasTransportNewsBlockedText(value = '') {
+  const cleanValue = String(value).toLowerCase()
+  return [
+    'per accedere a questo contenuto',
+    'effettua login',
+    'effettua il login',
+    'devi essere autenticato',
+    'contenuto riservato',
+    'accesso riservato',
+    'abbonati per continuare',
+    'subscribe to continue',
+    'sign in to continue',
+    'log in to continue',
+  ].some((pattern) => cleanValue.includes(pattern))
+}
+
+function isTransportNewsGenericSummary(value = '') {
+  const cleanValue = String(value).toLowerCase()
+  return [
+    'possibile impatto su documenti',
+    'aggiornamento di settore',
+    'impatto possibile su carburante',
+    'possibile impatto su partenze',
+    'possibile impatto su tratte',
+    'tema utile per chi gestisce',
+    'tema utile per ufficio traffico',
+  ].some((pattern) => cleanValue.includes(pattern))
+}
+
+function buildTransportNewsLocalSummary(category = 'Logistica', title = '') {
+  const cleanTitle = String(title).toLowerCase()
+  if (/(iveco|ecosistema di servizi|servizi collegati|oltre il camion)/i.test(cleanTitle)) {
+    return 'Notizia di mercato sui veicoli industriali: il valore non passa solo dal camion, ma dai servizi collegati alla flotta, come assistenza, manutenzione, ricambi, dati operativi e continuita dei mezzi. Per un trasportatore significa guardare anche a tempi di fermo, supporto post vendita e organizzazione della manutenzione.'
+  }
+  if (/(camion|veicol|truck|servizi|flotta|concessionar|assistenza|ricambi|manutenzion)/i.test(cleanTitle)) {
+    return 'Tema utile per chi gestisce mezzi e flotta: riguarda servizi, assistenza, manutenzione, valore operativo o organizzazione dei veicoli. Conviene valutarlo rispetto a costi, disponibilita dei mezzi e fermi tecnici.'
+  }
+  if (/(pallet|hub|magazzin|deposit|supply chain|intermodal|terminal|porto|spedizion)/i.test(cleanTitle)) {
+    return 'Tema utile per ufficio traffico e magazzino: puo incidere su flussi, consegne, ritiri, tempi e organizzazione della logistica. Va letto pensando a tratte, pianificazione, carichi e comunicazioni interne.'
+  }
+
+  const summaries = {
+    Costi: 'Impatto possibile su carburante, pedaggi o spese operative: valuta tratte, margini e centro costi.',
+    Logistica: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
+    Mercato: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
+    Norme: 'Possibile impatto su documenti, scadenze o regole operative: verifica se riguarda autisti, mezzi o viaggi.',
+    Scioperi: 'Possibile impatto su partenze, consegne o ritiri: controlla tratte, clienti coinvolti e comunicazioni interne.',
+    Viabilità: 'Possibile impatto su tratte e tempi di consegna: avvisa ufficio traffico e autisti se la zona e coinvolta.',
+  }
+
+  return summaries[category] ?? summaries.Logistica
+}
+
+function getTransportNewsDisplayItem(item = {}) {
+  const category = getTransportNewsTitleCategory(item.title, item.category || 'Logistica')
+  const summary = String(item.summary ?? '')
+  const shouldReplaceSummary = hasTransportNewsBlockedText(summary)
+    || !summary.trim()
+    || (category !== item.category && isTransportNewsGenericSummary(summary))
+
+  return {
+    ...item,
+    category,
+    summary: shouldReplaceSummary ? buildTransportNewsLocalSummary(category, item.title) : summary,
+  }
+}
+
 function splitTransportNewsText(value = '') {
   const cleanValue = String(value || '').replace(/\s+/g, ' ').trim()
   if (!cleanValue) return []
@@ -12151,25 +12229,26 @@ function TransportNewsWorkspace({
     .slice(0, 8)
 
   if (selectedItem) {
-    const detailParagraphs = splitTransportNewsText(selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.')
-    const adviceItems = getTransportNewsAdvice(selectedItem.category)
+    const displayItem = getTransportNewsDisplayItem(selectedItem)
+    const detailParagraphs = splitTransportNewsText(displayItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.')
+    const adviceItems = getTransportNewsAdvice(displayItem.category)
 
     return (
       <section className="transport-news-workspace" aria-label="Dettaglio news e fermi">
-        <article className={`panel transport-news-detail tone-${getTransportNewsTone(selectedItem.category)}`}>
+        <article className={`panel transport-news-detail tone-${getTransportNewsTone(displayItem.category)}`}>
           <header className="transport-news-detail-hero">
             <button className="ghost-button compact-button" onClick={() => setSelectedItem(null)} type="button">
               <ArrowLeft size={16} />
               Indietro
             </button>
             <div className="transport-news-detail-head">
-              <span>{selectedItem.category || 'Logistica'}</span>
-              <small>{formatTransportNewsDate(selectedItem.published_at || selectedItem.fetched_at)}</small>
+              <span>{displayItem.category || 'Logistica'}</span>
+              <small>{formatTransportNewsDate(displayItem.published_at || displayItem.fetched_at)}</small>
             </div>
-            <h2>{selectedItem.title}</h2>
+            <h2>{displayItem.title}</h2>
             <div className="transport-news-detail-source">
-              <strong>{selectedItem.source_name || 'Fonte'}</strong>
-              <span>{selectedItem.isFallback ? 'Canale operativo Vygo' : `Disponibile per circa ${retentionDays} giorni`}</span>
+              <strong>{displayItem.source_name || 'Fonte'}</strong>
+              <span>{displayItem.isFallback ? 'Canale operativo Vygo' : `Disponibile per circa ${retentionDays} giorni`}</span>
             </div>
           </header>
 
@@ -12177,7 +12256,7 @@ function TransportNewsWorkspace({
             <h3>Leggi in Vygo</h3>
             <small>Scheda operativa sintetica: per leggere l'articolo completo puoi aprire la fonte originale.</small>
             {detailParagraphs.map((paragraph, index) => (
-              <p key={`${selectedItem.id || selectedItem.url}-paragraph-${index}`}>{paragraph}</p>
+              <p key={`${displayItem.id || displayItem.url}-paragraph-${index}`}>{paragraph}</p>
             ))}
           </div>
 
@@ -12193,7 +12272,7 @@ function TransportNewsWorkspace({
             </ul>
           </div>
 
-          <a className="primary-button compact-button transport-news-source-button" href={selectedItem.url} rel="noreferrer" target="_blank">
+          <a className="primary-button compact-button transport-news-source-button" href={displayItem.url} rel="noreferrer" target="_blank">
             Apri fonte originale
             <ExternalLink size={15} />
           </a>
@@ -12363,19 +12442,20 @@ function TransportNewsWorkspace({
 
       <div className="transport-news-grid">
         {activeSection !== 'restrictions' && visibleItems.length ? visibleItems.map((item) => {
-          const tone = getTransportNewsTone(item.category)
+          const displayItem = getTransportNewsDisplayItem(item)
+          const tone = getTransportNewsTone(displayItem.category)
 
           return (
-            <button className={`transport-news-card tone-${tone}`} key={item.id || item.url} onClick={() => setSelectedItem(item)} type="button">
+            <button className={`transport-news-card tone-${tone}`} key={displayItem.id || displayItem.url} onClick={() => setSelectedItem(displayItem)} type="button">
               <div className="transport-news-card-head">
-                <span>{item.category || 'Logistica'}</span>
-                <small>{formatTransportNewsDate(item.published_at || item.fetched_at)}</small>
+                <span>{displayItem.category || 'Logistica'}</span>
+                <small>{formatTransportNewsDate(displayItem.published_at || displayItem.fetched_at)}</small>
               </div>
-              <h3>{item.title}</h3>
-              <p>{item.summary || 'Apri la fonte per leggere il dettaglio completo.'}</p>
+              <h3>{displayItem.title}</h3>
+              <p>{displayItem.summary || 'Apri la fonte per leggere il dettaglio completo.'}</p>
               <div className="transport-news-card-foot">
-                <strong>{item.source_name || 'Fonte'}</strong>
-                <span>{item.isFallback ? 'Apri canale' : 'Leggi'}</span>
+                <strong>{displayItem.source_name || 'Fonte'}</strong>
+                <span>{displayItem.isFallback ? 'Apri canale' : 'Leggi'}</span>
               </div>
             </button>
           )

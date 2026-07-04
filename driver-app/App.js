@@ -3810,6 +3810,11 @@ function CamionChiaroApp() {
   }
 
   function openCompanyManagement(section = 'drivers', options = {}) {
+    if (section === 'news') {
+      setActiveTab('news')
+      return
+    }
+
     if (section === 'costs' && !canUseNativePlanFeature('costCenter')) {
       showNativePlanFeatureLimit('costCenter')
       return

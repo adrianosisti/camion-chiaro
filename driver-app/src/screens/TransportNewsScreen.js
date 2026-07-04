@@ -152,6 +152,84 @@ function getNewsSectionId(category = '') {
   return 'logistics'
 }
 
+function getNewsTitleCategory(title = '', fallbackCategory = 'Logistica') {
+  const cleanTitle = String(title).toLowerCase()
+  if (/(sciopero|fermo|protesta|agitazione|presidio)/i.test(cleanTitle)) return 'Scioperi'
+  if (/(autostrada|divieto|blocco|valico|brennero|traforo|traffico|meteo|neve)/i.test(cleanTitle)) return 'Viabilita'
+  if (/(gasolio|carburante|pedaggio|costi|tariffe|accise|rimborso)/i.test(cleanTitle)) return 'Costi'
+  if (/(norma|decreto|ministero|tachigrafo|cqc|patente|adr|cabotaggio|regolamento)/i.test(cleanTitle)) return 'Norme'
+  if (/(iveco|camion|veicol|truck|flotta|assistenza|ricambi|manutenzione|servizi|concessionario|autotrasporto)/i.test(cleanTitle)) return 'Mercato'
+  if (/(logistica|spedizioni|magazzino|porto|interporto|terminal|pallet|hub|deposito|supply chain|intermodale)/i.test(cleanTitle)) return 'Logistica'
+  return fallbackCategory || 'Logistica'
+}
+
+function hasBlockedNewsText(value = '') {
+  const cleanValue = String(value).toLowerCase()
+  return [
+    'per accedere a questo contenuto',
+    'effettua login',
+    'effettua il login',
+    'devi essere autenticato',
+    'contenuto riservato',
+    'accesso riservato',
+    'abbonati per continuare',
+    'subscribe to continue',
+    'sign in to continue',
+    'log in to continue',
+  ].some((pattern) => cleanValue.includes(pattern))
+}
+
+function isGenericNewsSummary(value = '') {
+  const cleanValue = String(value).toLowerCase()
+  return [
+    'possibile impatto su documenti',
+    'aggiornamento di settore',
+    'impatto possibile su carburante',
+    'possibile impatto su partenze',
+    'possibile impatto su tratte',
+    'tema utile per chi gestisce',
+    'tema utile per ufficio traffico',
+  ].some((pattern) => cleanValue.includes(pattern))
+}
+
+function buildLocalNewsSummary(category = 'Logistica', title = '') {
+  const cleanTitle = String(title).toLowerCase()
+  if (/(iveco|ecosistema di servizi|servizi collegati|oltre il camion)/i.test(cleanTitle)) {
+    return 'Notizia di mercato sui veicoli industriali: il valore non passa solo dal camion, ma dai servizi collegati alla flotta, come assistenza, manutenzione, ricambi, dati operativi e continuita dei mezzi. Per un trasportatore significa guardare anche a tempi di fermo, supporto post vendita e organizzazione della manutenzione.'
+  }
+  if (/(camion|veicol|truck|servizi|flotta|concessionar|assistenza|ricambi|manutenzion)/i.test(cleanTitle)) {
+    return 'Tema utile per chi gestisce mezzi e flotta: riguarda servizi, assistenza, manutenzione, valore operativo o organizzazione dei veicoli. Conviene valutarlo rispetto a costi, disponibilita dei mezzi e fermi tecnici.'
+  }
+  if (/(pallet|hub|magazzin|deposit|supply chain|intermodal|terminal|porto|spedizion)/i.test(cleanTitle)) {
+    return 'Tema utile per ufficio traffico e magazzino: puo incidere su flussi, consegne, ritiri, tempi e organizzazione della logistica. Va letto pensando a tratte, pianificazione, carichi e comunicazioni interne.'
+  }
+
+  const summaries = {
+    Costi: 'Impatto possibile su carburante, pedaggi o spese operative: valuta tratte, margini e centro costi.',
+    Logistica: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
+    Mercato: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
+    Norme: 'Possibile impatto su documenti, scadenze o regole operative: verifica se riguarda autisti, mezzi o viaggi.',
+    Scioperi: 'Possibile impatto su partenze, consegne o ritiri: controlla tratte, clienti coinvolti e comunicazioni interne.',
+    Viabilita: 'Possibile impatto su tratte e tempi di consegna: avvisa ufficio traffico e autisti se la zona e coinvolta.',
+  }
+
+  return summaries[category] ?? summaries.Logistica
+}
+
+function getDisplayNewsItem(item = {}) {
+  const category = getNewsTitleCategory(item.title, item.category || 'Logistica')
+  const summary = String(item.summary ?? '')
+  const shouldReplaceSummary = hasBlockedNewsText(summary)
+    || !summary.trim()
+    || (category !== item.category && isGenericNewsSummary(summary))
+
+  return {
+    ...item,
+    category,
+    summary: shouldReplaceSummary ? buildLocalNewsSummary(category, item.title) : summary,
+  }
+}
+
 function splitNewsText(value = '') {
   const cleanValue = String(value || '').replace(/\s+/g, ' ').trim()
   if (!cleanValue) return []
@@ -262,9 +340,10 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   }, [])
 
   if (selectedItem) {
-    const tone = getNewsTone(selectedItem.category)
-    const detailParagraphs = splitNewsText(selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.')
-    const adviceItems = getNewsAdvice(selectedItem.category)
+    const displayItem = getDisplayNewsItem(selectedItem)
+    const tone = getNewsTone(displayItem.category)
+    const detailParagraphs = splitNewsText(displayItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.')
+    const adviceItems = getNewsAdvice(displayItem.category)
 
     return (
       <ScrollView contentContainerStyle={styles.content}>
@@ -274,18 +353,18 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
             <Text style={styles.backText}>Indietro</Text>
           </Pressable>
           <View style={styles.newsHead}>
-            <Text style={styles.category}>{selectedItem.category || 'Logistica'}</Text>
-            <Text style={styles.detailDate}>{formatDate(selectedItem.published_at || selectedItem.fetched_at)}</Text>
+            <Text style={styles.category}>{displayItem.category || 'Logistica'}</Text>
+            <Text style={styles.detailDate}>{formatDate(displayItem.published_at || displayItem.fetched_at)}</Text>
           </View>
-          <Text style={styles.detailTitle}>{selectedItem.title}</Text>
-          <Text style={styles.detailSource}>{selectedItem.source_name || 'Fonte'} · disponibile per circa {retentionDays} giorni</Text>
+          <Text style={styles.detailTitle}>{displayItem.title}</Text>
+          <Text style={styles.detailSource}>{displayItem.source_name || 'Fonte'} · disponibile per circa {retentionDays} giorni</Text>
         </View>
 
         <View style={styles.readerCard}>
           <Text style={styles.readerTitle}>Leggi in Vygo</Text>
           <Text style={styles.readerNote}>Scheda operativa sintetica: per leggere l'articolo completo puoi aprire la fonte originale.</Text>
           {detailParagraphs.map((paragraph, index) => (
-            <Text key={`${selectedItem.id || selectedItem.url}-paragraph-${index}`} style={styles.detailSummary}>{paragraph}</Text>
+            <Text key={`${displayItem.id || displayItem.url}-paragraph-${index}`} style={styles.detailSummary}>{paragraph}</Text>
           ))}
         </View>
 
@@ -299,7 +378,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
           ))}
         </View>
 
-        <Pressable onPress={() => selectedItem.url && Linking.openURL(selectedItem.url)} style={styles.sourceButton}>
+        <Pressable onPress={() => displayItem.url && Linking.openURL(displayItem.url)} style={styles.sourceButton}>
           <Text style={styles.sourceButtonText}>Apri fonte originale</Text>
           <Ionicons color={colors.white} name="open-outline" size={16} />
         </Pressable>
@@ -448,20 +527,21 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
       ) : null}
 
       {activeSection !== 'restrictions' && visibleItems.map((item) => {
-        const tone = getNewsTone(item.category)
+        const displayItem = getDisplayNewsItem(item)
+        const tone = getNewsTone(displayItem.category)
 
         return (
-          <Pressable key={item.id || item.url} onPress={() => setSelectedItem(item)} style={[styles.newsCard, styles[`${tone}Card`]]}>
+          <Pressable key={displayItem.id || displayItem.url} onPress={() => setSelectedItem(displayItem)} style={[styles.newsCard, styles[`${tone}Card`]]}>
             <View style={styles.newsHead}>
-              <Text style={styles.category}>{item.category || 'Logistica'}</Text>
-              <Text style={styles.date}>{formatDate(item.published_at || item.fetched_at)}</Text>
+              <Text style={styles.category}>{displayItem.category || 'Logistica'}</Text>
+              <Text style={styles.date}>{formatDate(displayItem.published_at || displayItem.fetched_at)}</Text>
             </View>
-            <Text style={styles.newsTitle}>{item.title}</Text>
-            <Text numberOfLines={4} style={styles.summary}>{item.summary || 'Apri la fonte per leggere il dettaglio completo.'}</Text>
+            <Text style={styles.newsTitle}>{displayItem.title}</Text>
+            <Text numberOfLines={4} style={styles.summary}>{displayItem.summary || 'Apri la fonte per leggere il dettaglio completo.'}</Text>
             <View style={styles.sourceRow}>
-              <Text style={styles.source}>{item.source_name || 'Fonte'}</Text>
+              <Text style={styles.source}>{displayItem.source_name || 'Fonte'}</Text>
               <View style={styles.sourceAction}>
-                <Text style={styles.sourceActionText}>{item.isFallback ? 'Canale' : 'Fonte'}</Text>
+                <Text style={styles.sourceActionText}>{displayItem.isFallback ? 'Canale' : 'Fonte'}</Text>
                 <Ionicons color={colors.cyanDark} name="open-outline" size={15} />
               </View>
             </View>

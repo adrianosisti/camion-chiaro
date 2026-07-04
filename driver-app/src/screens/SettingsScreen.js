@@ -59,10 +59,10 @@ const companyMenuItems = [
     title: 'Dashboard',
   },
   {
-    body: 'Notizie operative su trasporti, norme, viabilita, scioperi, costi e logistica.',
+    body: 'News operative, norme, viabilita e fermi ministeriali mezzi pesanti.',
     icon: 'newspaper-outline',
     id: 'news',
-    title: 'Radar Trasporti',
+    title: 'News e fermi',
   },
   {
     body: 'Check, guasti, pratiche aperte e cose da lavorare.',

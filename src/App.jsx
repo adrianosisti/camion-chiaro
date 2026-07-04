@@ -823,7 +823,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Scadenze',
-    'nav.news': 'Radar',
+    'nav.news': 'News e fermi',
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
     'nav.reports': 'Report',
@@ -1043,7 +1043,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Deadlines',
-    'nav.news': 'Radar',
+    'nav.news': 'News e fermi',
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
     'nav.reports': 'Reports',
@@ -1184,7 +1184,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Panel',
     'nav.deadlines': 'Vencimientos',
-    'nav.news': 'Radar',
+    'nav.news': 'News e fermi',
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
     'nav.reports': 'Informes',
@@ -1325,7 +1325,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Tableau',
     'nav.deadlines': 'Echeances',
-    'nav.news': 'Radar',
+    'nav.news': 'News e fermi',
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
     'nav.reports': 'Rapports',
@@ -1466,7 +1466,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Fristen',
-    'nav.news': 'Radar',
+    'nav.news': 'News e fermi',
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
     'nav.reports': 'Berichte',
@@ -4086,7 +4086,7 @@ const regionalTranslations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Scadente',
-    'nav.news': 'Radar',
+    'nav.news': 'News e fermi',
     'nav.notifications': 'Notificari',
     'nav.records': 'Date',
     'nav.reports': 'Rapoarte',
@@ -4148,7 +4148,7 @@ const regionalTranslations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Terminy',
-    'nav.news': 'Radar',
+    'nav.news': 'News e fermi',
     'nav.notifications': 'Powiadomienia',
     'nav.records': 'Kartoteki',
     'nav.reports': 'Raporty',
@@ -9968,7 +9968,7 @@ function App() {
 
   const refreshTransportNews = useCallback(async ({ force = false } = {}) => {
     setIsTransportNewsLoading(true)
-    setTransportNewsStatus(force ? 'Aggiornamento Radar Trasporti in corso...' : 'Caricamento Radar Trasporti...')
+    setTransportNewsStatus(force ? 'Aggiornamento news e fermi in corso...' : 'Caricamento news e fermi...')
 
     const result = await fetchTransportNews({ language: 'it', refresh: force })
     setIsTransportNewsLoading(false)
@@ -9983,7 +9983,7 @@ function App() {
     setTransportNewsMeta(result.data && typeof result.data === 'object' ? result.data : null)
     setTransportNewsStatus(
       items.length
-        ? `Radar aggiornato: ${items.length} notizie operative. Prossimo aggiornamento automatico: ${result.data?.nextAutomaticUpdate ?? 'giornaliero'}.`
+        ? `News aggiornate: ${items.length} contenuti operativi. Prossimo aggiornamento automatico: ${result.data?.nextAutomaticUpdate ?? 'giornaliero'}.`
         : 'Nessuna notizia operativa disponibile in questo momento.',
     )
   }, [])
@@ -11935,10 +11935,70 @@ function formatTransportNewsDate(value = '') {
   }).format(date)
 }
 
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getMinutesFromTime(value = '') {
+  const [hours = '0', minutes = '0'] = String(value).split(':')
+  return Number(hours) * 60 + Number(minutes)
+}
+
+function getTransportRestrictionInsight(schedule = [], now = new Date()) {
+  if (!Array.isArray(schedule) || !schedule.length) return null
+
+  const todayKey = getLocalDateKey(now)
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const orderedSchedule = [...schedule].sort((first, second) => String(first.date).localeCompare(String(second.date)))
+  const todayRestriction = orderedSchedule.find((item) => item.date === todayKey)
+
+  if (todayRestriction) {
+    const startMinutes = getMinutesFromTime(todayRestriction.start)
+    const endMinutes = getMinutesFromTime(todayRestriction.end)
+    if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+      return {
+        body: 'Blocchi attivi adesso: controlla partenze, rientri e tratte prima di muovere mezzi pesanti.',
+        label: `${todayRestriction.start} - ${todayRestriction.end}`,
+        title: 'Blocco attivo ora',
+        tone: 'danger',
+      }
+    }
+
+    if (nowMinutes < startMinutes) {
+      return {
+        body: 'C’è un fermo nella giornata di oggi: pianifica partenze e consegne prima dell’orario di stop.',
+        label: `${todayRestriction.start} - ${todayRestriction.end}`,
+        title: 'Blocco previsto oggi',
+        tone: 'warning',
+      }
+    }
+  }
+
+  const nextRestriction = orderedSchedule.find((item) => item.date > todayKey)
+  if (!nextRestriction) {
+    return {
+      body: 'Non risultano altri fermi nel calendario caricato. Verifica sempre aggiornamenti ufficiali MIT.',
+      label: 'Calendario completato',
+      title: 'Nessun prossimo fermo',
+      tone: 'ok',
+    }
+  }
+
+  return {
+    body: 'Prossima finestra da controllare per pianificazione partenze, rientri e comunicazioni agli autisti.',
+    label: `${formatTransportNewsDate(nextRestriction.date)} · ${nextRestriction.start} - ${nextRestriction.end}`,
+    title: 'Prossimo fermo',
+    tone: 'info',
+  }
+}
+
 const transportNewsSections = [
   { id: 'all', label: 'Tutto' },
   { id: 'rules', label: 'Norme' },
-  { id: 'restrictions', label: 'Fermi ministeriali' },
+  { id: 'restrictions', label: 'Fermi' },
   { id: 'logistics', label: 'Logistica' },
   { id: 'roads', label: 'Trasporti e viabilita' },
 ]
@@ -11965,6 +12025,7 @@ function TransportNewsWorkspace({
   const issues = Array.isArray(meta?.issues) ? meta.issues : []
   const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
   const restrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
+  const restrictionInsight = getTransportRestrictionInsight(restrictionSchedule)
   const retentionDays = Number.isFinite(Number(meta?.retentionDays)) ? Number(meta.retentionDays) : 30
   const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
   const visibleItems = activeSection === 'all'
@@ -11978,10 +12039,13 @@ function TransportNewsWorkspace({
     if (section.id === 'restrictions') return { ...counts, [section.id]: restrictionSchedule.length || restrictions.length }
     return { ...counts, [section.id]: safeItems.filter((item) => getTransportNewsSectionId(item.category) === section.id).length }
   }, {})
+  const upcomingRestrictions = restrictionSchedule
+    .filter((restriction) => restriction.date >= getLocalDateKey())
+    .slice(0, 8)
 
   if (selectedItem) {
     return (
-      <section className="transport-news-workspace" aria-label="Dettaglio Radar Trasporti">
+      <section className="transport-news-workspace" aria-label="Dettaglio news e fermi">
         <div className={`panel transport-news-detail tone-${getTransportNewsTone(selectedItem.category)}`}>
           <button className="ghost-button compact-button" onClick={() => setSelectedItem(null)} type="button">
             <ArrowLeft size={16} />
@@ -12007,12 +12071,12 @@ function TransportNewsWorkspace({
   }
 
   return (
-    <section className="transport-news-workspace" aria-label="Radar Trasporti">
+    <section className="transport-news-workspace" aria-label="News e fermi">
       <div className="panel transport-news-hero">
         <div>
-          <p className="overline">Radar Trasporti</p>
-          <h2>Le notizie che contano</h2>
-          <span>Norme, fermi ministeriali, logistica e viabilità divise per area. Le notizie restano consultabili per circa {retentionDays} giorni.</span>
+          <p className="overline">News e fermi</p>
+          <h2>Il bollettino operativo per chi trasporta</h2>
+          <span>Norme, blocchi mezzi pesanti, logistica e viabilità divise per area. Le notizie restano consultabili per circa {retentionDays} giorni.</span>
         </div>
         <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
           <RadioTower size={16} />
@@ -12024,7 +12088,7 @@ function TransportNewsWorkspace({
         <span>
           <Newspaper size={16} />
           {isFallbackMode
-            ? 'Radar in modalità sicurezza: mostro le fonti operative principali mentre attendo nuove notizie dai feed.'
+            ? 'Modalità sicurezza: mostro fonti operative principali e calendario fermi mentre attendo nuove notizie dai feed.'
             : statusMessage || 'Si aggiorna automaticamente ogni giorno intorno alle 10:00 ora italiana.'}
         </span>
         {updatedAt ? <small>Ultimo controllo {updatedAt}</small> : null}
@@ -12033,11 +12097,11 @@ function TransportNewsWorkspace({
       {issues.length && !visibleItems.length && activeSection !== 'restrictions' ? (
         <div className="transport-news-issues">
           <AlertTriangle size={16} />
-          <span>Radar in aggiornamento: alcune fonti non sono disponibili in questo momento.</span>
+          <span>News in aggiornamento: alcune fonti non sono disponibili in questo momento.</span>
         </div>
       ) : null}
 
-      <div className="transport-news-tabs" aria-label="Sezioni Radar Trasporti">
+      <div className="transport-news-tabs" aria-label="Sezioni News e fermi">
         {transportNewsSections.map((section) => (
           <button
             className={activeSection === section.id ? 'is-active' : ''}
@@ -12055,6 +12119,33 @@ function TransportNewsWorkspace({
         ))}
       </div>
 
+      {activeSection === 'all' && upcomingRestrictions.length ? (
+        <section className="transport-restrictions-preview">
+          <div className="transport-restrictions-preview-head">
+            <div>
+              <p className="overline">Fermi ministeriali</p>
+              <h3>Prossimi blocchi mezzi pesanti</h3>
+            </div>
+            <button
+              className="secondary-button compact-button"
+              onClick={() => setActiveSection('restrictions')}
+              type="button"
+            >
+              Calendario completo
+              <ChevronRight size={15} />
+            </button>
+          </div>
+          <div className="transport-restrictions-mini-grid">
+            {upcomingRestrictions.map((restriction) => (
+              <article key={`preview-${restriction.date}`}>
+                <strong>{formatTransportNewsDate(restriction.date)}</strong>
+                <span>{restriction.day} · {restriction.start} - {restriction.end}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {activeSection === 'restrictions' ? (
         <div className="transport-restrictions-panel">
           <div className="transport-restrictions-heading">
@@ -12065,6 +12156,18 @@ function TransportNewsWorkspace({
             </div>
             <span>{restrictionSchedule.length} giornate</span>
           </div>
+          {restrictionInsight ? (
+            <div className={`transport-restriction-insight is-${restrictionInsight.tone}`}>
+              <div>
+                <CalendarClock size={20} />
+              </div>
+              <section>
+                <span>{restrictionInsight.title}</span>
+                <strong>{restrictionInsight.label}</strong>
+                <p>{restrictionInsight.body}</p>
+              </section>
+            </div>
+          ) : null}
           <div className="transport-restrictions-list">
             {restrictions.map((restriction) => (
               <article key={`${restriction.year}-${restriction.title}`}>

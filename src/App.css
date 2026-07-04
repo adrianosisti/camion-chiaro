@@ -5472,6 +5472,68 @@
   white-space: nowrap;
 }
 
+.transport-restrictions-preview {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(19, 197, 223, 0.38);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(8, 145, 178, 0.82)),
+    #0f172a;
+  color: #ffffff;
+  padding: 14px;
+  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.16);
+}
+
+.transport-restrictions-preview .overline,
+.transport-restrictions-preview h3 {
+  color: #ffffff;
+}
+
+.transport-restrictions-preview h3 {
+  margin: 0;
+  font-size: 1.06rem;
+}
+
+.transport-restrictions-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.transport-restrictions-preview-head .secondary-button {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.transport-restrictions-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.transport-restrictions-mini-grid article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+}
+
+.transport-restrictions-mini-grid strong {
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.transport-restrictions-mini-grid span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
 .transport-news-issues {
   justify-content: flex-start;
   border-color: #fed7aa;
@@ -5721,6 +5783,71 @@
   font-weight: 900;
   padding: 7px 9px;
   white-space: nowrap;
+}
+
+.transport-restriction-insight {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ecfeff, #ffffff);
+  padding: 12px;
+}
+
+.transport-restriction-insight > div {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(19, 197, 223, 0.16);
+  color: #075985;
+}
+
+.transport-restriction-insight section {
+  display: grid;
+  gap: 3px;
+}
+
+.transport-restriction-insight span {
+  color: #075985;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.transport-restriction-insight strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.transport-restriction-insight p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.transport-restriction-insight.is-danger {
+  border-color: #fecdd3;
+  background: linear-gradient(135deg, #fff1f2, #ffffff);
+}
+
+.transport-restriction-insight.is-danger > div,
+.transport-restriction-insight.is-danger span {
+  color: #be123c;
+}
+
+.transport-restriction-insight.is-warning {
+  border-color: #fed7aa;
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+}
+
+.transport-restriction-insight.is-warning > div,
+.transport-restriction-insight.is-warning span {
+  color: #c2410c;
 }
 
 .transport-restrictions-list {
@@ -12383,8 +12510,13 @@
     grid-template-columns: 1fr;
   }
 
+  .transport-restrictions-mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .transport-news-hero,
-  .transport-news-status {
+  .transport-news-status,
+  .transport-restrictions-preview-head {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -12836,6 +12968,10 @@
   .monthly-report-grid,
   .report-active-summary,
   .fault-cost-entry-form {
+    grid-template-columns: 1fr;
+  }
+
+  .transport-restrictions-mini-grid {
     grid-template-columns: 1fr;
   }
 

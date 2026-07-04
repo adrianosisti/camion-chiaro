@@ -14,6 +14,66 @@ function formatDate(value = '') {
   }
 }
 
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getMinutesFromTime(value = '') {
+  const [hours = '0', minutes = '0'] = String(value).split(':')
+  return Number(hours) * 60 + Number(minutes)
+}
+
+function getRestrictionInsight(schedule = [], now = new Date()) {
+  if (!Array.isArray(schedule) || !schedule.length) return null
+
+  const todayKey = getLocalDateKey(now)
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const orderedSchedule = [...schedule].sort((first, second) => String(first.date).localeCompare(String(second.date)))
+  const todayRestriction = orderedSchedule.find((item) => item.date === todayKey)
+
+  if (todayRestriction) {
+    const startMinutes = getMinutesFromTime(todayRestriction.start)
+    const endMinutes = getMinutesFromTime(todayRestriction.end)
+    if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+      return {
+        body: 'Blocchi attivi adesso: controlla partenze, rientri e tratte prima di muovere mezzi pesanti.',
+        label: `${todayRestriction.start} - ${todayRestriction.end}`,
+        title: 'Blocco attivo ora',
+        tone: 'danger',
+      }
+    }
+
+    if (nowMinutes < startMinutes) {
+      return {
+        body: 'C’e un fermo nella giornata di oggi: pianifica partenze e consegne prima dell’orario di stop.',
+        label: `${todayRestriction.start} - ${todayRestriction.end}`,
+        title: 'Blocco previsto oggi',
+        tone: 'warning',
+      }
+    }
+  }
+
+  const nextRestriction = orderedSchedule.find((item) => item.date > todayKey)
+  if (!nextRestriction) {
+    return {
+      body: 'Non risultano altri fermi nel calendario caricato. Verifica sempre aggiornamenti ufficiali MIT.',
+      label: 'Calendario completato',
+      title: 'Nessun prossimo fermo',
+      tone: 'ok',
+    }
+  }
+
+  return {
+    body: 'Prossima finestra da controllare per pianificazione partenze, rientri e comunicazioni agli autisti.',
+    label: `${formatDate(nextRestriction.date)} · ${nextRestriction.start} - ${nextRestriction.end}`,
+    title: 'Prossimo fermo',
+    tone: 'info',
+  }
+}
+
 function getNewsTone(category = '') {
   const normalized = String(category).toLowerCase()
   if (normalized.includes('norm')) return 'rules'
@@ -42,27 +102,32 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   const [items, setItems] = useState([])
   const [activeSection, setActiveSection] = useState('all')
   const [selectedItem, setSelectedItem] = useState(null)
-  const [status, setStatus] = useState('Caricamento Radar Trasporti...')
+  const [status, setStatus] = useState('Caricamento news e fermi...')
   const [isLoading, setIsLoading] = useState(false)
   const [meta, setMeta] = useState(null)
-  const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || items.some((item) => item.isFallback)
-  const restrictions = meta?.restrictions ?? []
+  const safeItems = Array.isArray(items) ? items : []
+  const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
+  const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
   const restrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
+  const restrictionInsight = getRestrictionInsight(restrictionSchedule)
   const retentionDays = meta?.retentionDays ?? 30
   const visibleItems = activeSection === 'all'
-    ? items
+    ? safeItems
     : activeSection === 'restrictions'
       ? []
-      : items.filter((item) => getNewsSectionId(item.category) === activeSection)
+      : safeItems.filter((item) => getNewsSectionId(item.category) === activeSection)
   const sectionCounts = newsSections.reduce((counts, section) => {
-    if (section.id === 'all') return { ...counts, all: items.length }
+    if (section.id === 'all') return { ...counts, all: safeItems.length }
     if (section.id === 'restrictions') return { ...counts, restrictions: restrictionSchedule.length || restrictions.length }
-    return { ...counts, [section.id]: items.filter((item) => getNewsSectionId(item.category) === section.id).length }
+    return { ...counts, [section.id]: safeItems.filter((item) => getNewsSectionId(item.category) === section.id).length }
   }, {})
+  const upcomingRestrictions = restrictionSchedule
+    .filter((restriction) => restriction.date >= getLocalDateKey())
+    .slice(0, 4)
 
   async function loadNews({ force = false } = {}) {
     setIsLoading(true)
-    setStatus(force ? 'Aggiornamento in corso...' : 'Caricamento Radar Trasporti...')
+    setStatus(force ? 'Aggiornamento in corso...' : 'Caricamento news e fermi...')
 
     const result = await fetchTransportNews({ language: 'it', refresh: force })
     setIsLoading(false)
@@ -72,9 +137,9 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
       return
     }
 
-    const nextItems = result.data?.items ?? []
+    const nextItems = Array.isArray(result.data?.items) ? result.data.items : []
     setItems(nextItems)
-    setMeta(result.data ?? null)
+    setMeta(result.data && typeof result.data === 'object' ? result.data : null)
     setStatus(nextItems.length ? `${nextItems.length} notizie operative caricate.` : 'Nessuna notizia operativa disponibile ora.')
   }
 
@@ -100,7 +165,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
           <Text style={styles.detailSummary}>{selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.'}</Text>
           <View style={styles.detailMeta}>
             <Text style={styles.source}>{selectedItem.source_name || 'Fonte'}</Text>
-            <Text style={styles.statusMeta}>Conservata nel Radar per circa {retentionDays} giorni.</Text>
+            <Text style={styles.statusMeta}>Conservata per circa {retentionDays} giorni.</Text>
           </View>
           <Pressable onPress={() => selectedItem.url && Linking.openURL(selectedItem.url)} style={styles.sourceButton}>
             <Text style={styles.sourceButtonText}>Apri fonte originale</Text>
@@ -124,8 +189,8 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         <View style={styles.icon}>
           <Ionicons color={colors.white} name="newspaper-outline" size={24} />
         </View>
-        <Text style={styles.kicker}>Radar Trasporti</Text>
-        <Text style={styles.title}>Le notizie che contano</Text>
+        <Text style={styles.kicker}>News e fermi</Text>
+        <Text style={styles.title}>Bollettino operativo</Text>
         <Text style={styles.subtitle}>
           Norme, fermi ministeriali, logistica e viabilita divise per area. Restano consultabili per circa {retentionDays} giorni.
         </Text>
@@ -135,7 +200,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         <Ionicons color={colors.cyanDark} name="radio-outline" size={18} />
         <View style={styles.statusCopy}>
           <Text style={styles.statusText}>
-            {isFallbackMode ? 'Radar in modalita sicurezza: fonti operative principali disponibili.' : status}
+            {isFallbackMode ? 'Modalita sicurezza: fonti operative e fermi disponibili.' : status}
           </Text>
           <Text style={styles.statusMeta}>{meta?.nextAutomaticUpdate ?? 'Aggiornamento automatico ogni giorno intorno alle 10:00 ora italiana.'}</Text>
         </View>
@@ -163,11 +228,44 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         ))}
       </View>
 
+      {activeSection === 'all' && upcomingRestrictions.length ? (
+        <View style={styles.upcomingPanel}>
+          <View style={styles.upcomingHead}>
+            <View>
+              <Text style={styles.panelKicker}>Fermi ministeriali</Text>
+              <Text style={styles.upcomingTitle}>Prossimi blocchi</Text>
+            </View>
+            <Pressable onPress={() => setActiveSection('restrictions')} style={styles.upcomingButton}>
+              <Text style={styles.upcomingButtonText}>Tutto</Text>
+              <Ionicons color={colors.white} name="chevron-forward" size={15} />
+            </Pressable>
+          </View>
+          {upcomingRestrictions.map((restriction) => (
+            <View key={`upcoming-${restriction.date}`} style={styles.upcomingRow}>
+              <Text style={styles.upcomingDate}>{formatDate(restriction.date)}</Text>
+              <Text style={styles.upcomingTime}>{restriction.day} · {restriction.start} - {restriction.end}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {activeSection === 'restrictions' ? (
         <View style={styles.restrictionsPanel}>
           <Text style={styles.panelKicker}>Fermi ministeriali</Text>
           <Text style={styles.panelTitle}>Calendario divieti mezzi pesanti 2026</Text>
           <Text style={styles.restrictionStatus}>Veicoli sopra 7,5 tonnellate fuori dai centri abitati. Verifica sempre deroghe e tratte speciali nella fonte ufficiale.</Text>
+          {restrictionInsight ? (
+            <View style={[styles.restrictionInsight, styles[`${restrictionInsight.tone}Insight`]]}>
+              <View style={styles.restrictionInsightIcon}>
+                <Ionicons color={colors.cyanDark} name="calendar-outline" size={21} />
+              </View>
+              <View style={styles.restrictionInsightCopy}>
+                <Text style={styles.restrictionInsightTitle}>{restrictionInsight.title}</Text>
+                <Text style={styles.restrictionInsightLabel}>{restrictionInsight.label}</Text>
+                <Text style={styles.restrictionStatus}>{restrictionInsight.body}</Text>
+              </View>
+            </View>
+          ) : null}
           {restrictions.map((restriction) => (
             <Pressable key={`${restriction.year}-${restriction.title}`} onPress={() => restriction.url && Linking.openURL(restriction.url)} style={styles.restrictionRow}>
               <View style={styles.restrictionYear}>
@@ -227,7 +325,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
       {activeSection !== 'restrictions' && !visibleItems.length && !isLoading ? (
         <View style={styles.emptyCard}>
           <Ionicons color={colors.cyanDark} name="newspaper-outline" size={28} />
-          <Text style={styles.emptyTitle}>Radar vuoto</Text>
+          <Text style={styles.emptyTitle}>Nessuna news caricata</Text>
           <Text style={styles.emptyText}>Tira giu per aggiornare oppure riprova piu tardi. Se resta vuoto, controlliamo fonti e cache Supabase.</Text>
         </View>
       ) : null}
@@ -394,14 +492,115 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
+  upcomingButton: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 12,
+    flexDirection: 'row',
+    gap: 4,
+    minHeight: 34,
+    paddingHorizontal: 10,
+  },
+  upcomingButtonText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  upcomingDate: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  upcomingHead: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  upcomingPanel: {
+    backgroundColor: colors.ink,
+    borderColor: 'rgba(18, 198, 223, 0.32)',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 9,
+    padding: 14,
+  },
+  upcomingRow: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    padding: 10,
+  },
+  upcomingTime: {
+    color: 'rgba(248, 250, 252, 0.78)',
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+  upcomingTitle: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '900',
+  },
   restrictionArea: {
     color: colors.muted,
     fontSize: 11,
     fontWeight: '800',
   },
+  dangerInsight: {
+    borderColor: '#fecdd3',
+  },
+  infoInsight: {
+    borderColor: 'rgba(18, 198, 223, 0.35)',
+  },
+  okInsight: {
+    borderColor: '#bbf7d0',
+  },
+  warningInsight: {
+    borderColor: '#fed7aa',
+  },
   restrictionCopy: {
     flex: 1,
     gap: 4,
+  },
+  restrictionInsight: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: 'rgba(18, 198, 223, 0.35)',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  restrictionInsightCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  restrictionInsightIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.cyanSoft,
+    borderRadius: 14,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  restrictionInsightLabel: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  restrictionInsightTitle: {
+    color: colors.cyanDark,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   restrictionRow: {
     alignItems: 'center',

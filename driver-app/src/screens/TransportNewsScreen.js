@@ -308,6 +308,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
     const displayItem = getDisplayNewsItem(selectedItem)
     const tone = getNewsTone(displayItem.category)
     const detailParagraphs = splitNewsText(displayItem.summary)
+    const detailSources = Array.isArray(displayItem.sources) ? displayItem.sources.filter((source) => source?.url) : []
 
     return (
       <ScrollView contentContainerStyle={styles.content}>
@@ -321,20 +322,41 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
             <Text style={styles.detailDate}>{formatDate(displayItem.published_at || displayItem.fetched_at)}</Text>
           </View>
           <Text style={styles.detailTitle}>{displayItem.title}</Text>
-          <Text style={styles.detailSource}>{displayItem.source_name || 'Fonte'} · disponibile per circa {retentionDays} giorni</Text>
+          <Text style={styles.detailSource}>
+            {displayItem.source_name || 'Fonte'} · {displayItem.isDigest ? 'bollettino con fonti collegate' : `disponibile per circa ${retentionDays} giorni`}
+          </Text>
         </View>
 
         {detailParagraphs.length ? (
           <View style={styles.readerCard}>
-            <Text style={styles.readerTitle}>Dalla fonte</Text>
+            <Text style={styles.readerTitle}>{displayItem.isDigest ? 'Bollettino Vygo' : 'Dalla fonte'}</Text>
             {detailParagraphs.map((paragraph, index) => (
               <Text key={`${displayItem.id || displayItem.url}-paragraph-${index}`} style={styles.detailSummary}>{paragraph}</Text>
             ))}
           </View>
         ) : null}
 
+        {detailSources.length ? (
+          <View style={styles.sourcesCard}>
+            <Text style={styles.readerTitle}>Fonti e approfondimenti</Text>
+            {detailSources.map((source, index) => (
+              <Pressable
+                key={`${source.url}-${index}`}
+                onPress={() => Linking.openURL(source.url)}
+                style={styles.sourceLinkCard}
+              >
+                <View style={styles.sourceLinkCopy}>
+                  <Text style={styles.sourceLinkName}>{source.sourceName || 'Fonte'}</Text>
+                  <Text style={styles.sourceLinkTitle}>{source.title}</Text>
+                </View>
+                <Ionicons color={colors.cyanDark} name="open-outline" size={16} />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         <Pressable onPress={() => displayItem.url && Linking.openURL(displayItem.url)} style={styles.sourceButton}>
-          <Text style={styles.sourceButtonText}>Apri fonte originale</Text>
+          <Text style={styles.sourceButtonText}>{displayItem.isDigest ? 'Apri fonte principale' : 'Apri fonte originale'}</Text>
           <Ionicons color={colors.white} name="open-outline" size={16} />
         </Pressable>
       </ScrollView>
@@ -354,10 +376,10 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         <View style={styles.icon}>
           <Ionicons color={colors.white} name="newspaper-outline" size={24} />
         </View>
-        <Text style={styles.kicker}>News e fermi</Text>
-        <Text style={styles.title}>News e fermi</Text>
+        <Text style={styles.kicker}>Radar Vygo</Text>
+        <Text style={styles.title}>Radar Vygo</Text>
         <Text style={styles.subtitle}>
-          Norme, fermi ministeriali, logistica e viabilita divise per area. Restano consultabili per circa {retentionDays} giorni.
+          Bollettini Vygo per area, costruiti dalle fonti di settore e collegati agli approfondimenti originali.
         </Text>
       </View>
 
@@ -986,6 +1008,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  sourceLinkCard: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: 'rgba(18, 198, 223, 0.18)',
+    borderRadius: 13,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+    padding: 11,
+  },
+  sourceLinkCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  sourceLinkName: {
+    color: colors.cyanDark,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  sourceLinkTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
   sourceButton: {
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -1006,6 +1055,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'space-between',
+  },
+  sourcesCard: {
+    backgroundColor: 'rgba(248, 250, 252, 0.94)',
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 9,
+    padding: 14,
   },
   statusCard: {
     alignItems: 'center',

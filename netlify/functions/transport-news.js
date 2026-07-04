@@ -190,7 +190,7 @@ const transportRestrictionSchedule2026 = [
 const categoryRules = [
   {
     category: 'Viabilità',
-    keywords: ['autostrada', 'divieto', 'blocco', 'valico', 'brennero', 'traforo', 'traffico', 'meteo', 'neve'],
+    keywords: ['autostrada', 'divieto', 'blocco', 'valico', 'brennero', 'traforo', 'viabilita', 'viabilità', 'meteo', 'neve'],
   },
   {
     category: 'Scioperi',
@@ -202,7 +202,7 @@ const categoryRules = [
   },
   {
     category: 'Norme',
-    keywords: ['norma', 'decreto', 'ministero', 'mit', 'tachigrafo', 'cqc', 'patente', 'adr', 'cabotaggio', 'ue', 'regolamento'],
+    keywords: ['norma', 'decreto', 'ministero', 'mit', 'tachigrafo', 'cqc', 'patente', 'adr', 'cabotaggio', 'ue', 'regolamento', 'documenti', 'scadenze', 'revisione', 'revisioni', 'assicurazione', 'assicurazioni'],
   },
   {
     category: 'Mercato',
@@ -518,11 +518,13 @@ async function enrichNewsItemsWithArticleMetadata(items = [], language = default
 function getPersistableNewsItems(items = []) {
   return items
     .filter(isReadableNewsItem)
-    .filter((item) => item && !item.isFallback)
+    .filter((item) => item && !item.isFallback && !item.isDigest)
     .map((item) => {
       const cleanItem = { ...item }
       delete cleanItem.isFallback
       delete cleanItem._skipArticlePreview
+      delete cleanItem.isDigest
+      delete cleanItem.sources
       return cleanItem
     })
 }
@@ -671,6 +673,168 @@ function ensureMinimumSectionCoverage(items = []) {
   return mergeNewsItems(items)
 }
 
+const digestPlans = [
+  {
+    category: 'Norme',
+    id: 'rules',
+    minItems: 1,
+    title: 'Radar Vygo: norme, Albo e regole operative',
+    intro: 'Il quadro normativo resta uno dei punti piu delicati per chi gestisce autisti, documenti e mezzi.',
+    closing: 'Per una direzione trasporti significa tenere allineati ufficio traffico, amministrazione e personale prima che una notizia diventi una scadenza dimenticata.',
+  },
+  {
+    category: 'Viabilità',
+    id: 'roads',
+    minItems: 1,
+    title: 'Radar Vygo: viabilita e tratte da controllare',
+    intro: 'La viabilita incide direttamente su partenze, rientri, ritiri e promesse fatte ai clienti.',
+    closing: 'Il punto utile e trasformare ogni criticita in una comunicazione rapida verso autisti e ufficio traffico.',
+  },
+  {
+    category: 'Scioperi',
+    id: 'strikes',
+    minItems: 1,
+    title: 'Radar Vygo: scioperi e agitazioni da monitorare',
+    intro: 'Scioperi e agitazioni possono cambiare in poche ore il piano consegne, soprattutto su porti, interporti e nodi logistici.',
+    closing: 'Conviene controllare le fonti e preparare alternative prima che la criticita arrivi al cliente finale.',
+  },
+  {
+    category: 'Costi',
+    id: 'costs',
+    minItems: 1,
+    title: 'Radar Vygo: costi, carburanti e margini',
+    intro: 'Carburanti, pedaggi, manutenzioni e rincari pesano subito sul margine operativo.',
+    closing: 'Ogni variazione va letta insieme al centro costi, cosi la direzione capisce dove intervenire e quali tratte controllare.',
+  },
+  {
+    category: 'Logistica',
+    id: 'logistics',
+    minItems: 1,
+    title: 'Radar Vygo: logistica, magazzino e supply chain',
+    intro: 'Le notizie di logistica aiutano a capire cosa cambia in magazzini, hub, porti, interporti e processi di consegna.',
+    closing: 'Il valore per l’azienda e leggere il segnale prima che diventi ritardo, extra costo o telefonata urgente.',
+  },
+  {
+    category: 'Mercato',
+    id: 'market',
+    minItems: 1,
+    title: 'Radar Vygo: flotte, veicoli e mercato trasporto',
+    intro: 'Mercato, veicoli industriali, ricambi e servizi di assistenza raccontano dove sta andando il settore.',
+    closing: 'Sono segnali utili per pianificare acquisti, manutenzioni, rinnovi flotta e rapporti con fornitori.',
+  },
+]
+
+function cleanDigestSnippet(value = '', maxLength = 240) {
+  const cleanValue = stripHtml(value)
+    .replace(/\s+/g, ' ')
+    .replace(/^(leggi|continua|read more)\b.*$/i, '')
+    .trim()
+
+  if (!cleanValue || isBlockedArticleText(cleanValue) || isGenericOperationalSummary(cleanValue)) return ''
+  if (cleanValue.length <= maxLength) return cleanValue
+  return `${cleanValue.slice(0, maxLength).replace(/\s+\S*$/, '')}...`
+}
+
+function getDigestPlanForItem(item = {}) {
+  const category = String(item.category ?? '')
+  const normalizedCategory = category.toLowerCase()
+  if (normalizedCategory.includes('norm')) return digestPlans.find((plan) => plan.id === 'rules')
+  if (normalizedCategory.includes('viabil')) return digestPlans.find((plan) => plan.id === 'roads')
+  if (normalizedCategory.includes('scioper')) return digestPlans.find((plan) => plan.id === 'strikes')
+  if (normalizedCategory.includes('cost')) return digestPlans.find((plan) => plan.id === 'costs')
+  if (normalizedCategory.includes('mercato')) return digestPlans.find((plan) => plan.id === 'market')
+  return digestPlans.find((plan) => plan.id === 'logistics')
+}
+
+function buildDigestParagraph(plan, items = []) {
+  const sourceNames = Array.from(new Set(items.map((item) => item.source_name).filter(Boolean))).slice(0, 4)
+  const headlines = items.slice(0, 4).map((item) => {
+    const snippet = cleanDigestSnippet(item.summary)
+    const source = item.source_name ? ` (${item.source_name})` : ''
+    return snippet
+      ? `${item.title}${source}: ${snippet}`
+      : `${item.title}${source}.`
+  })
+
+  const sourceText = sourceNames.length
+    ? `Le fonti monitorate oggi includono ${sourceNames.join(', ')}.`
+    : 'Vygo ha raccolto aggiornamenti dalle fonti di settore collegate sotto.'
+
+  return [
+    `${plan.intro} ${sourceText}`,
+    `Il radar di oggi evidenzia ${headlines.length} segnali principali: ${headlines.join(' ')}`,
+    `${plan.closing} Le fonti originali sono disponibili sotto per leggere il dettaglio completo direttamente dal sito che ha pubblicato la notizia.`,
+  ].join('\n\n')
+}
+
+function buildDailyDigestItems(items = [], language = defaultLanguage) {
+  const readableItems = mergeNewsItems(items)
+  if (!readableItems.length) return []
+
+  const today = new Date().toISOString()
+  const groupedItems = digestPlans.map((plan) => ({
+    plan,
+    items: readableItems
+      .filter((item) => getDigestPlanForItem(item)?.id === plan.id)
+      .slice(0, 5),
+  }))
+    .filter((entry) => entry.items.length >= entry.plan.minItems)
+
+  const digestItems = groupedItems.map(({ plan, items }) => {
+    const primaryItem = items[0]
+    const sources = items.map((item) => ({
+      publishedAt: item.published_at || item.fetched_at || today,
+      sourceName: item.source_name || 'Fonte',
+      title: item.title,
+      url: item.url,
+    }))
+
+    return {
+      category: plan.category,
+      fetched_at: today,
+      id: getNewsId(`vygo-daily-${plan.id}`, sources.map((source) => source.url).join('|'), today.slice(0, 10)),
+      importance: Math.max(...items.map((item) => Number(item.importance ?? 50)), 70),
+      isDigest: true,
+      is_active: true,
+      language,
+      published_at: today,
+      source_id: `vygo-daily-${plan.id}`,
+      source_name: 'Radar Vygo',
+      sources,
+      summary: buildDigestParagraph(plan, items),
+      tags: [plan.id, 'radar-vygo', 'digest'],
+      title: plan.title,
+      url: primaryItem?.url || 'https://vy-go.com',
+    }
+  })
+
+  if (digestItems.length) return digestItems.sort((first, second) => (second.importance ?? 0) - (first.importance ?? 0))
+
+  const topItems = readableItems.slice(0, 5)
+  return [{
+    category: 'Logistica',
+    fetched_at: today,
+    id: getNewsId('vygo-daily-general', topItems.map((item) => item.url).join('|'), today.slice(0, 10)),
+    importance: 72,
+    isDigest: true,
+    is_active: true,
+    language,
+    published_at: today,
+    source_id: 'vygo-daily-general',
+    source_name: 'Radar Vygo',
+    sources: topItems.map((item) => ({
+      publishedAt: item.published_at || item.fetched_at || today,
+      sourceName: item.source_name || 'Fonte',
+      title: item.title,
+      url: item.url,
+    })),
+    summary: buildDigestParagraph(digestPlans.find((plan) => plan.id === 'logistics'), topItems),
+    tags: ['radar-vygo', 'digest'],
+    title: 'Radar Vygo: cosa sapere oggi nel trasporto',
+    url: topItems[0]?.url || 'https://vy-go.com',
+  }]
+}
+
 function isCacheFresh(items = []) {
   const latestFetchedAt = items
     .map((item) => new Date(item.fetched_at).getTime())
@@ -703,6 +867,7 @@ export async function handler(event = {}) {
     const coveredItems = ensureMinimumSectionCoverage(cached.items, language, issues)
     const enrichedItems = await enrichNewsItemsWithArticleMetadata(coveredItems, language, 10)
     const changedItems = enrichedItems.filter((item, index) => item.summary !== coveredItems[index]?.summary || item.category !== coveredItems[index]?.category)
+    const outputItems = buildDailyDigestItems(enrichedItems, language)
     if (changedItems.length) {
       const saveIssue = await saveNews(serviceClient, changedItems)
       if (saveIssue) issues.push(saveIssue)
@@ -710,7 +875,7 @@ export async function handler(event = {}) {
 
     return jsonResponse(200, {
       generatedAt: new Date().toISOString(),
-      items: enrichedItems.slice(0, maxItemsToReturn),
+      items: outputItems.slice(0, maxItemsToReturn),
       mode: 'cache',
       nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
       retentionDays: newsRetentionDays,
@@ -733,10 +898,11 @@ export async function handler(event = {}) {
     if (refreshedCache.issue && refreshedCache.issue !== cached.issue) issues.push(refreshedCache.issue)
     const mergedItems = mergeNewsItems(collected.items, refreshedCache.items, cached.items)
     const coveredItems = ensureMinimumSectionCoverage(mergedItems, language, issues)
+    const outputItems = buildDailyDigestItems(coveredItems, language)
 
     return jsonResponse(200, {
       generatedAt: new Date().toISOString(),
-      items: coveredItems.slice(0, maxItemsToReturn),
+      items: outputItems.slice(0, maxItemsToReturn),
       mode: forceRefresh ? 'refresh' : 'live',
       nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
       retentionDays: newsRetentionDays,
@@ -748,7 +914,7 @@ export async function handler(event = {}) {
 
   return jsonResponse(200, {
     generatedAt: new Date().toISOString(),
-    items: ensureMinimumSectionCoverage(cached.items, language, issues).slice(0, maxItemsToReturn),
+    items: buildDailyDigestItems(ensureMinimumSectionCoverage(cached.items, language, issues), language).slice(0, maxItemsToReturn),
     mode: 'cache-fallback',
     nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
     retentionDays: newsRetentionDays,

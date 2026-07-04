@@ -828,7 +828,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Scadenze',
-    'nav.news': 'News e fermi',
+    'nav.news': 'Radar Vygo',
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
     'nav.reports': 'Report',
@@ -1048,7 +1048,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Deadlines',
-    'nav.news': 'News e fermi',
+    'nav.news': 'Radar Vygo',
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
     'nav.reports': 'Reports',
@@ -1189,7 +1189,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Panel',
     'nav.deadlines': 'Vencimientos',
-    'nav.news': 'News e fermi',
+    'nav.news': 'Radar Vygo',
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
     'nav.reports': 'Informes',
@@ -1330,7 +1330,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Tableau',
     'nav.deadlines': 'Echeances',
-    'nav.news': 'News e fermi',
+    'nav.news': 'Radar Vygo',
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
     'nav.reports': 'Rapports',
@@ -1471,7 +1471,7 @@ const translations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Fristen',
-    'nav.news': 'News e fermi',
+    'nav.news': 'Radar Vygo',
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
     'nav.reports': 'Berichte',
@@ -4091,7 +4091,7 @@ const regionalTranslations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Scadente',
-    'nav.news': 'News e fermi',
+    'nav.news': 'Radar Vygo',
     'nav.notifications': 'Notificari',
     'nav.records': 'Date',
     'nav.reports': 'Rapoarte',
@@ -4153,7 +4153,7 @@ const regionalTranslations = {
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
     'nav.deadlines': 'Terminy',
-    'nav.news': 'News e fermi',
+    'nav.news': 'Radar Vygo',
     'nav.notifications': 'Powiadomienia',
     'nav.records': 'Kartoteki',
     'nav.reports': 'Raporty',
@@ -12216,6 +12216,7 @@ function TransportNewsWorkspace({
   if (selectedItem) {
     const displayItem = getTransportNewsDisplayItem(selectedItem)
     const detailParagraphs = splitTransportNewsText(displayItem.summary)
+    const detailSources = Array.isArray(displayItem.sources) ? displayItem.sources.filter((source) => source?.url) : []
 
     return (
       <section className="transport-news-workspace" aria-label="Dettaglio news e fermi">
@@ -12232,21 +12233,36 @@ function TransportNewsWorkspace({
             <h2>{displayItem.title}</h2>
             <div className="transport-news-detail-source">
               <strong>{displayItem.source_name || 'Fonte'}</strong>
-              <span>{displayItem.isFallback ? 'Canale operativo Vygo' : `Disponibile per circa ${retentionDays} giorni`}</span>
+              <span>{displayItem.isDigest ? 'Bollettino giornaliero con fonti collegate' : `Disponibile per circa ${retentionDays} giorni`}</span>
             </div>
           </header>
 
           {detailParagraphs.length ? (
             <div className="transport-news-readable">
-              <h3>Dalla fonte</h3>
+              <h3>{displayItem.isDigest ? 'Bollettino Vygo' : 'Dalla fonte'}</h3>
               {detailParagraphs.map((paragraph, index) => (
                 <p key={`${displayItem.id || displayItem.url}-paragraph-${index}`}>{paragraph}</p>
               ))}
             </div>
           ) : null}
 
+          {detailSources.length ? (
+            <div className="transport-news-sources-card">
+              <h3>Fonti e approfondimenti</h3>
+              <div className="transport-news-sources-list">
+                {detailSources.map((source, index) => (
+                  <a href={source.url} key={`${source.url}-${index}`} rel="noreferrer" target="_blank">
+                    <span>{source.sourceName || 'Fonte'}</span>
+                    <strong>{source.title}</strong>
+                    <ExternalLink size={14} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <a className="primary-button compact-button transport-news-source-button" href={displayItem.url} rel="noreferrer" target="_blank">
-            Apri fonte originale
+            {displayItem.isDigest ? 'Apri fonte principale' : 'Apri fonte originale'}
             <ExternalLink size={15} />
           </a>
         </article>
@@ -12258,9 +12274,9 @@ function TransportNewsWorkspace({
     <section className="transport-news-workspace" aria-label="News e fermi">
       <div className="panel transport-news-hero">
         <div>
-          <p className="overline">News e fermi</p>
-          <h2>Il bollettino operativo per chi trasporta</h2>
-          <span>Norme, blocchi mezzi pesanti, logistica e viabilità divise per area. Le notizie restano consultabili per circa {retentionDays} giorni.</span>
+          <p className="overline">Radar Vygo</p>
+          <h2>Il bollettino giornaliero per chi trasporta</h2>
+          <span>Articoli Vygo per area, costruiti dalle fonti di settore e collegati agli approfondimenti originali. Restano consultabili per circa {retentionDays} giorni.</span>
         </div>
         <button className="primary-button compact-button" disabled={isLoading} onClick={onRefresh} type="button">
           <RadioTower size={16} />
@@ -12428,15 +12444,15 @@ function TransportNewsWorkspace({
               <p>{displayItem.summary}</p>
               <div className="transport-news-card-foot">
                 <strong>{displayItem.source_name || 'Fonte'}</strong>
-                <span>{displayItem.isFallback ? 'Apri canale' : 'Leggi'}</span>
+                <span>{displayItem.isDigest ? 'Radar' : 'Leggi'}</span>
               </div>
             </button>
           )
         }) : activeSection !== 'restrictions' ? (
         <div className="transport-news-empty">
           <Newspaper size={24} />
-          <strong>Nessuna notizia caricata</strong>
-          <span>Premi Aggiorna ora oppure riprova più tardi. Il calendario fermi resta disponibile anche quando le fonti news non pubblicano contenuti leggibili.</span>
+          <strong>Nessun bollettino disponibile</strong>
+          <span>Premi Aggiorna ora oppure riprova più tardi. Il calendario fermi resta disponibile anche quando le fonti non pubblicano contenuti utilizzabili.</span>
         </div>
         ) : null}
       </div>

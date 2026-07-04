@@ -9978,9 +9978,9 @@ function App() {
       return
     }
 
-    const items = result.data?.items ?? []
+    const items = Array.isArray(result.data?.items) ? result.data.items : []
     setTransportNews(items)
-    setTransportNewsMeta(result.data ?? null)
+    setTransportNewsMeta(result.data && typeof result.data === 'object' ? result.data : null)
     setTransportNewsStatus(
       items.length
         ? `Radar aggiornato: ${items.length} notizie operative. Prossimo aggiornamento automatico: ${result.data?.nextAutomaticUpdate ?? 'giornaliero'}.`
@@ -11922,6 +11922,19 @@ function getTransportNewsTone(category = '') {
   return 'market'
 }
 
+function formatTransportNewsDate(value = '') {
+  if (!value) return 'Oggi'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Oggi'
+
+  return new Intl.DateTimeFormat('it-IT', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+}
+
 const transportNewsSections = [
   { id: 'all', label: 'Tutto' },
   { id: 'rules', label: 'Norme' },
@@ -11948,20 +11961,21 @@ function TransportNewsWorkspace({
   const [activeSection, setActiveSection] = useState('all')
   const [selectedItem, setSelectedItem] = useState(null)
   const updatedAt = meta?.generatedAt ? formatShortDateTime(meta.generatedAt) : ''
-  const issues = meta?.issues ?? []
-  const restrictions = meta?.restrictions ?? []
-  const retentionDays = meta?.retentionDays ?? 30
-  const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || items.some((item) => item.isFallback)
+  const safeItems = Array.isArray(items) ? items : []
+  const issues = Array.isArray(meta?.issues) ? meta.issues : []
+  const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
+  const retentionDays = Number.isFinite(Number(meta?.retentionDays)) ? Number(meta.retentionDays) : 30
+  const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
   const visibleItems = activeSection === 'all'
-    ? items
+    ? safeItems
     : activeSection === 'restrictions'
       ? []
-      : items.filter((item) => getTransportNewsSectionId(item.category) === activeSection)
+      : safeItems.filter((item) => getTransportNewsSectionId(item.category) === activeSection)
 
   const sectionCounts = transportNewsSections.reduce((counts, section) => {
-    if (section.id === 'all') return { ...counts, [section.id]: items.length }
+    if (section.id === 'all') return { ...counts, [section.id]: safeItems.length }
     if (section.id === 'restrictions') return { ...counts, [section.id]: restrictions.length }
-    return { ...counts, [section.id]: items.filter((item) => getTransportNewsSectionId(item.category) === section.id).length }
+    return { ...counts, [section.id]: safeItems.filter((item) => getTransportNewsSectionId(item.category) === section.id).length }
   }, {})
 
   if (selectedItem) {
@@ -11974,7 +11988,7 @@ function TransportNewsWorkspace({
           </button>
           <div className="transport-news-detail-head">
             <span>{selectedItem.category || 'Logistica'}</span>
-            <small>{selectedItem.published_at ? formatDate(selectedItem.published_at) : selectedItem.fetched_at ? formatDate(selectedItem.fetched_at) : 'Oggi'}</small>
+            <small>{formatTransportNewsDate(selectedItem.published_at || selectedItem.fetched_at)}</small>
           </div>
           <h2>{selectedItem.title}</h2>
           <p>{selectedItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.'}</p>
@@ -12079,7 +12093,7 @@ function TransportNewsWorkspace({
             <button className={`transport-news-card tone-${tone}`} key={item.id || item.url} onClick={() => setSelectedItem(item)} type="button">
               <div className="transport-news-card-head">
                 <span>{item.category || 'Logistica'}</span>
-                <small>{item.published_at ? formatDate(item.published_at) : item.fetched_at ? formatDate(item.fetched_at) : 'Oggi'}</small>
+                <small>{formatTransportNewsDate(item.published_at || item.fetched_at)}</small>
               </div>
               <h3>{item.title}</h3>
               <p>{item.summary || 'Apri la fonte per leggere il dettaglio completo.'}</p>

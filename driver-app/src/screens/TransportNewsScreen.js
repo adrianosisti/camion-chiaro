@@ -278,11 +278,12 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
             <Text style={styles.detailDate}>{formatDate(selectedItem.published_at || selectedItem.fetched_at)}</Text>
           </View>
           <Text style={styles.detailTitle}>{selectedItem.title}</Text>
-          <Text style={styles.detailSource}>{selectedItem.source_name || 'Fonte'} · conservata per circa {retentionDays} giorni</Text>
+          <Text style={styles.detailSource}>{selectedItem.source_name || 'Fonte'} · disponibile per circa {retentionDays} giorni</Text>
         </View>
 
         <View style={styles.readerCard}>
           <Text style={styles.readerTitle}>Leggi in Vygo</Text>
+          <Text style={styles.readerNote}>Scheda operativa sintetica: per leggere l'articolo completo puoi aprire la fonte originale.</Text>
           {detailParagraphs.map((paragraph, index) => (
             <Text key={`${selectedItem.id || selectedItem.url}-paragraph-${index}`} style={styles.detailSummary}>{paragraph}</Text>
           ))}
@@ -330,7 +331,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         <Ionicons color={colors.cyanDark} name="radio-outline" size={18} />
         <View style={styles.statusCopy}>
           <Text style={styles.statusText}>
-            {isFallbackMode ? 'Modalita sicurezza: fonti operative e fermi disponibili.' : status}
+            {isFallbackMode ? 'Informazioni disponibili e calendario fermi aggiornato.' : status}
           </Text>
           <Text style={styles.statusMeta}>{meta?.nextAutomaticUpdate ?? 'Aggiornamento automatico ogni giorno intorno alle 10:00 ora italiana.'}</Text>
         </View>
@@ -472,7 +473,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         <View style={styles.emptyCard}>
           <Ionicons color={colors.cyanDark} name="newspaper-outline" size={28} />
           <Text style={styles.emptyTitle}>Nessuna news caricata</Text>
-          <Text style={styles.emptyText}>Tira giu per aggiornare oppure riprova piu tardi. Se resta vuoto, controlliamo fonti e cache Supabase.</Text>
+          <Text style={styles.emptyText}>Tira giu per aggiornare oppure riprova piu tardi. Vygo mantiene comunque visibili fermi e canali principali.</Text>
         </View>
       ) : null}
     </ScrollView>
@@ -692,6 +693,12 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 17,
     fontWeight: '900',
+  },
+  readerNote: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   upcomingButton: {
     alignItems: 'center',

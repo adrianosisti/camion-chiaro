@@ -12169,12 +12169,13 @@ function TransportNewsWorkspace({
             <h2>{selectedItem.title}</h2>
             <div className="transport-news-detail-source">
               <strong>{selectedItem.source_name || 'Fonte'}</strong>
-              <span>{selectedItem.isFallback ? 'Canale operativo Vygo' : `Conservata per circa ${retentionDays} giorni`}</span>
+              <span>{selectedItem.isFallback ? 'Canale operativo Vygo' : `Disponibile per circa ${retentionDays} giorni`}</span>
             </div>
           </header>
 
           <div className="transport-news-readable">
             <h3>Leggi in Vygo</h3>
+            <small>Scheda operativa sintetica: per leggere l'articolo completo puoi aprire la fonte originale.</small>
             {detailParagraphs.map((paragraph, index) => (
               <p key={`${selectedItem.id || selectedItem.url}-paragraph-${index}`}>{paragraph}</p>
             ))}
@@ -12219,7 +12220,7 @@ function TransportNewsWorkspace({
         <span>
           <Newspaper size={16} />
           {isFallbackMode
-            ? 'Modalità sicurezza: mostro fonti operative principali e calendario fermi mentre attendo nuove notizie dai feed.'
+            ? 'Vygo mostra le informazioni disponibili e il calendario fermi aggiornato.'
             : statusMessage || 'Si aggiorna automaticamente ogni giorno intorno alle 10:00 ora italiana.'}
         </span>
         {updatedAt ? <small>Ultimo controllo {updatedAt}</small> : null}
@@ -12266,6 +12267,20 @@ function TransportNewsWorkspace({
               <ChevronRight size={15} />
             </button>
           </div>
+          {restrictionInsight ? (
+            <button
+              className={`transport-restriction-live-alert is-${restrictionInsight.tone}`}
+              onClick={() => setActiveSection('restrictions')}
+              type="button"
+            >
+              <CalendarClock size={18} />
+              <span>
+                <strong>{restrictionInsight.title}</strong>
+                <small>{restrictionInsight.label} · {restrictionInsight.body}</small>
+              </span>
+              <ChevronRight size={16} />
+            </button>
+          ) : null}
           <div className="transport-restrictions-mini-grid">
             {upcomingRestrictions.map((restriction) => (
               <article key={`preview-${restriction.date}`}>
@@ -12365,11 +12380,11 @@ function TransportNewsWorkspace({
             </button>
           )
         }) : activeSection !== 'restrictions' ? (
-          <div className="transport-news-empty">
-            <Newspaper size={24} />
-            <strong>Nessuna notizia caricata</strong>
-            <span>Premi Aggiorna ora. Se resta vuoto, una o più fonti RSS potrebbero non essere raggiungibili o la tabella Supabase non è ancora installata.</span>
-          </div>
+        <div className="transport-news-empty">
+          <Newspaper size={24} />
+          <strong>Nessuna notizia caricata</strong>
+          <span>Premi Aggiorna ora oppure riprova più tardi. Vygo manterrà comunque visibili fermi e canali operativi principali.</span>
+        </div>
         ) : null}
       </div>
     </section>

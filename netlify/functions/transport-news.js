@@ -15,7 +15,9 @@ const newsRetentionDays = 30
 const cleanupRetentionDays = 45
 const maxItemsPerSource = 8
 const maxItemsToReturn = 64
+const maxArticlePreviewsPerSource = 2
 const sourceTimeoutMs = 7500
+const articlePreviewTimeoutMs = 2800
 const newsSources = [
   {
     id: 'mit-news',
@@ -310,12 +312,8 @@ const transportRestrictionSchedule2026 = [
 
 const categoryRules = [
   {
-    category: 'Norme',
-    keywords: ['norma', 'decreto', 'ministero', 'mit', 'tachigrafo', 'cqc', 'patente', 'adr', 'cabotaggio', 'ue', 'regolamento'],
-  },
-  {
     category: 'Viabilità',
-    keywords: ['autostrada', 'divieto', 'blocco', 'valico', 'brennero', 'traforo', 'traffico', 'meteo', 'neve', 'porto', 'interporto'],
+    keywords: ['autostrada', 'divieto', 'blocco', 'valico', 'brennero', 'traforo', 'traffico', 'meteo', 'neve'],
   },
   {
     category: 'Scioperi',
@@ -326,8 +324,16 @@ const categoryRules = [
     keywords: ['gasolio', 'carburante', 'pedaggio', 'costi', 'tariffe', 'accise', 'rimborso'],
   },
   {
+    category: 'Norme',
+    keywords: ['norma', 'decreto', 'ministero', 'mit', 'tachigrafo', 'cqc', 'patente', 'adr', 'cabotaggio', 'ue', 'regolamento'],
+  },
+  {
     category: 'Mercato',
-    keywords: ['logistica', 'trasporto', 'autotrasporto', 'flotta', 'spedizioni', 'magazzino'],
+    keywords: ['iveco', 'camion', 'veicolo', 'veicoli', 'truck', 'flotta', 'assistenza', 'ricambi', 'manutenzione', 'servizi', 'concessionario', 'autotrasporto'],
+  },
+  {
+    category: 'Logistica',
+    keywords: ['logistica', 'spedizioni', 'magazzino', 'porto', 'interporto', 'terminal', 'pallet', 'hub', 'deposito', 'supply chain', 'intermodale'],
   },
 ]
 
@@ -405,6 +411,10 @@ function stripHtml(value = '') {
     .trim()
 }
 
+function escapeRegExp(value = '') {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function extractTag(xmlChunk, tagName) {
   const pattern = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i')
   return decodeXml(xmlChunk.match(pattern)?.[1] ?? '').trim()
@@ -424,9 +434,18 @@ function parseDate(value = '') {
   return date.toISOString()
 }
 
+function matchesKeyword(text, keyword) {
+  const cleanKeyword = String(keyword).toLowerCase()
+  if (cleanKeyword.length <= 3) {
+    return new RegExp(`(^|[^a-z0-9])${escapeRegExp(cleanKeyword)}([^a-z0-9]|$)`, 'i').test(text)
+  }
+
+  return text.includes(cleanKeyword)
+}
+
 function getCategory(text = '') {
   const cleanText = text.toLowerCase()
-  const match = categoryRules.find((rule) => rule.keywords.some((keyword) => cleanText.includes(keyword)))
+  const match = categoryRules.find((rule) => rule.keywords.some((keyword) => matchesKeyword(cleanText, keyword)))
   return match?.category ?? 'Logistica'
 }
 
@@ -441,7 +460,15 @@ function scoreNews({ category, publishedAt, sourcePriority, text }) {
   return Math.min(100, Math.round(sourcePriority * 0.45 + urgency + categoryBonus + freshness))
 }
 
-function buildOperationalSummary(category) {
+function buildOperationalSummary(category, title = '') {
+  const cleanTitle = String(title).toLowerCase()
+  if (/(iveco|camion|veicol|truck|servizi|flotta|concessionar|assistenza|ricambi|manutenzion)/i.test(cleanTitle)) {
+    return 'Tema utile per chi gestisce mezzi e flotta: riguarda servizi, assistenza, manutenzione, valore operativo o organizzazione dei veicoli.'
+  }
+  if (/(pallet|hub|magazzin|deposit|supply chain|intermodal|terminal|porto|spedizion)/i.test(cleanTitle)) {
+    return 'Tema utile per ufficio traffico e magazzino: puo incidere su flussi, consegne, ritiri, tempi e organizzazione della logistica.'
+  }
+
   const summaries = {
     Costi: 'Impatto possibile su carburante, pedaggi o spese operative: valuta tratte, margini e centro costi.',
     Logistica: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
@@ -460,11 +487,105 @@ function truncateText(value = '', maxLength = 1100) {
   return `${cleanValue.slice(0, maxLength).replace(/\s+\S*$/, '')}...`
 }
 
-function buildReadableSummary(category, description = '') {
-  const operationalSummary = buildOperationalSummary(category)
+function buildReadableSummary(category, description = '', title = '') {
+  const operationalSummary = buildOperationalSummary(category, title)
   const excerpt = truncateText(description, 1100)
   if (!excerpt) return operationalSummary
-  return `${excerpt} ${operationalSummary}`
+  return `${excerpt}\n\nLettura Vygo: ${operationalSummary}`
+}
+
+function extractMetaContent(html = '', key = '') {
+  const escapedKey = escapeRegExp(key)
+  const patterns = [
+    new RegExp(`<meta[^>]+(?:property|name)=["']${escapedKey}["'][^>]+content=["']([^"']+)["'][^>]*>`, 'i'),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escapedKey}["'][^>]*>`, 'i'),
+  ]
+
+  for (const pattern of patterns) {
+    const match = String(html).match(pattern)
+    if (match?.[1]) return stripHtml(match[1])
+  }
+
+  return ''
+}
+
+function extractArticleDescription(html = '') {
+  return truncateText(
+    extractMetaContent(html, 'og:description')
+      || extractMetaContent(html, 'twitter:description')
+      || extractMetaContent(html, 'description')
+      || '',
+    1100,
+  )
+}
+
+async function fetchArticleDescription(url = '') {
+  if (!String(url).startsWith('http')) return ''
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), articlePreviewTimeoutMs)
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.7',
+        'User-Agent': 'VygoTransportRadar/1.0 (+https://vy-go.com)',
+      },
+      signal: controller.signal,
+    })
+
+    if (!response.ok) return ''
+    return extractArticleDescription(await response.text())
+  } catch {
+    return ''
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function summaryNeedsArticlePreview(item = {}) {
+  const summary = String(item.summary ?? '').trim()
+  if (!String(item.url ?? '').startsWith('http')) return false
+  if (item.isFallback) return false
+  if (summary.length < 220) return true
+  return summary === buildOperationalSummary(item.category, item.title)
+}
+
+async function enrichNewsItemsWithArticleMetadata(items = [], language = defaultLanguage, maxItems = maxArticlePreviewsPerSource) {
+  const previewIds = new Set(
+    items
+      .filter((item) => summaryNeedsArticlePreview(item))
+      .slice(0, maxItems)
+      .map((item) => item.id || item.url),
+  )
+
+  return Promise.all(items.map(async (item) => {
+    if (!previewIds.has(item.id || item.url)) return item
+
+    const articleDescription = await fetchArticleDescription(item.url)
+    if (!articleDescription) return item
+
+    const category = getCategory(`${item.title} ${articleDescription}`)
+    return {
+      ...item,
+      category,
+      importance: scoreNews({
+        category,
+        publishedAt: item.published_at,
+        sourcePriority: Number(item.importance ?? 70),
+        text: `${item.title} ${articleDescription}`,
+      }),
+      language: item.language || language,
+      summary: buildReadableSummary(category, articleDescription, item.title),
+      tags: Array.from(new Set([...(Array.isArray(item.tags) ? item.tags : []), category.toLowerCase(), 'article-preview'])),
+    }
+  }))
+}
+
+function getPersistableNewsItems(items = []) {
+  return items
+    .filter((item) => item && !item.isFallback)
+    .map(({ isFallback, ...item }) => item)
 }
 
 function getNewsId(sourceId, url, title) {
@@ -486,7 +607,7 @@ function buildFallbackItems(language, issues = []) {
     language,
     published_at: now,
     tags: [item.category.toLowerCase(), item.source_id, 'fallback'],
-    summary: `${item.summary}${issues.length ? ' Radar automatico in attesa di nuove notizie dai feed.' : ''}`,
+    summary: `${item.summary}${issues.length ? ' Vygo aggiornera il bollettino appena le fonti pubblicheranno nuovi dati.' : ''}`,
   }))
 }
 
@@ -526,7 +647,7 @@ function parseFeed(xml, source, language) {
         published_at: publishedAt || null,
         source_id: source.id,
         source_name: source.name,
-        summary: buildReadableSummary(category, description),
+        summary: buildReadableSummary(category, description, title),
         tags: [category.toLowerCase(), source.id],
         title,
         url: link,
@@ -553,7 +674,9 @@ async function fetchSource(source, language) {
     }
 
     const xml = await response.text()
-    return { items: parseFeed(xml, source, language).slice(0, maxItemsPerSource), issue: '' }
+    const parsedItems = parseFeed(xml, source, language).slice(0, maxItemsPerSource)
+    const enrichedItems = await enrichNewsItemsWithArticleMetadata(parsedItems, language)
+    return { items: enrichedItems, issue: '' }
   } catch (error) {
     return { items: [], issue: `${source.name}: ${error.name === 'AbortError' ? 'tempo scaduto' : 'fonte non raggiungibile'}` }
   } finally {
@@ -582,7 +705,7 @@ async function collectTransportNews(language) {
 }
 
 async function readCachedNews(serviceClient, language) {
-  if (!serviceClient) return { items: [], issue: 'Supabase service role non configurata per cache Radar Trasporti.' }
+  if (!serviceClient) return { items: [], issue: 'Archivio news non disponibile in questo momento.' }
 
   const retentionCutoff = new Date(Date.now() - newsRetentionDays * 24 * 3600000).toISOString()
 
@@ -597,7 +720,7 @@ async function readCachedNews(serviceClient, language) {
     .limit(160)
 
   if (error) {
-    return { items: [], issue: `Cache news non pronta: ${error.message}` }
+    return { items: [], issue: 'Archivio news non disponibile in questo momento.' }
   }
 
   return { items: data ?? [], issue: '' }
@@ -612,7 +735,7 @@ async function deleteOldNews(serviceClient) {
     .delete()
     .lt('fetched_at', cleanupCutoff)
 
-  return error ? `Pulizia cache news non riuscita: ${error.message}` : ''
+  return error ? 'Archivio news temporaneamente non aggiornato.' : ''
 }
 
 function mergeNewsItems(...groups) {
@@ -663,7 +786,7 @@ function ensureMinimumSectionCoverage(items = [], language = defaultLanguage, is
   const coveredItems = mergeNewsItems(mergedItems, additions)
   if (coveredItems.length >= 14) return coveredItems
 
-  return mergeNewsItems(coveredItems, fallbackItems).slice(0, Math.max(14, coveredItems.length))
+  return mergeNewsItems(coveredItems, fallbackItems)
 }
 
 function isCacheFresh(items = []) {
@@ -677,13 +800,14 @@ function isCacheFresh(items = []) {
 }
 
 async function saveNews(serviceClient, items) {
-  if (!serviceClient || !items.length) return ''
+  const persistableItems = getPersistableNewsItems(items)
+  if (!serviceClient || !persistableItems.length) return ''
 
   const { error } = await serviceClient
     .from('transport_news_items')
-    .upsert(items, { onConflict: 'id' })
+    .upsert(persistableItems, { onConflict: 'id' })
 
-  return error ? `Salvataggio cache news non riuscito: ${error.message}` : ''
+  return error ? 'Archivio news temporaneamente non aggiornato.' : ''
 }
 
 export async function handler(event = {}) {
@@ -695,10 +819,16 @@ export async function handler(event = {}) {
 
   if (!forceRefresh && isCacheFresh(cached.items)) {
     const coveredItems = ensureMinimumSectionCoverage(cached.items, language, issues)
+    const enrichedItems = await enrichNewsItemsWithArticleMetadata(coveredItems, language, 10)
+    const changedItems = enrichedItems.filter((item, index) => item.summary !== coveredItems[index]?.summary || item.category !== coveredItems[index]?.category)
+    if (changedItems.length) {
+      const saveIssue = await saveNews(serviceClient, changedItems)
+      if (saveIssue) issues.push(saveIssue)
+    }
 
     return jsonResponse(200, {
       generatedAt: new Date().toISOString(),
-      items: coveredItems.slice(0, maxItemsToReturn),
+      items: enrichedItems.slice(0, maxItemsToReturn),
       mode: 'cache',
       nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
       retentionDays: newsRetentionDays,

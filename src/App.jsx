@@ -10029,7 +10029,9 @@ function App() {
 
   useEffect(() => {
     if (activeView !== 'admin') return
-    void refreshAdminOverview()
+    const initialTimerId = window.setTimeout(() => {
+      void refreshAdminOverview()
+    }, 0)
 
     const timerId = window.setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -10037,12 +10039,19 @@ function App() {
       }
     }, WEB_ADMIN_FALLBACK_REFRESH_MS)
 
-    return () => window.clearInterval(timerId)
+    return () => {
+      window.clearTimeout(initialTimerId)
+      window.clearInterval(timerId)
+    }
   }, [activeView, refreshAdminOverview])
 
   useEffect(() => {
     if (activeView !== 'news') return
-    void refreshTransportNews()
+    const timerId = window.setTimeout(() => {
+      void refreshTransportNews()
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
   }, [activeView, refreshTransportNews])
 
   if (isPasswordRecoveryMode) {
@@ -12118,6 +12127,15 @@ function isTransportNewsGenericSummary(value = '') {
     'per leggere l\'articolo completo',
     'usa la fonte originale',
     'notizia di mercato',
+    'canale istituzionale da controllare',
+    'area da tenere sotto controllo',
+    'canale da consultare',
+    'canale operativo',
+    'riferimento pubblico',
+    'riferimento utile',
+    'fonte verticale di settore',
+    'fonte di settore',
+    'raccolta di notizie',
   ].some((pattern) => cleanValue.includes(pattern))
 }
 
@@ -12126,7 +12144,7 @@ function getTransportNewsDisplayItem(item = {}) {
   const summary = String(item.summary ?? '')
   const shouldClearSummary = hasTransportNewsBlockedText(summary)
     || !summary.trim()
-    || (category !== item.category && isTransportNewsGenericSummary(summary))
+    || isTransportNewsGenericSummary(summary)
 
   return {
     ...item,
@@ -12158,6 +12176,7 @@ function splitTransportNewsText(value = '') {
 }
 
 function hasTransportNewsDisplayText(item = {}) {
+  if (item?.isFallback || String(item?.source_id ?? '').includes('fallback')) return false
   return splitTransportNewsText(getTransportNewsDisplayItem(item).summary).length > 0
 }
 
@@ -12178,7 +12197,7 @@ function TransportNewsWorkspace({
   const restrictionSchedule = apiRestrictionSchedule.length ? apiRestrictionSchedule : fallbackRestrictionSchedule2026
   const restrictionInsight = getTransportRestrictionInsight(restrictionSchedule)
   const retentionDays = Number.isFinite(Number(meta?.retentionDays)) ? Number(meta.retentionDays) : 30
-  const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
+  const isFallbackMode = safeItems.length > 0 && (String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback))
   const visibleItems = activeSection === 'all'
     ? safeItems
     : activeSection === 'restrictions'
@@ -12417,7 +12436,7 @@ function TransportNewsWorkspace({
         <div className="transport-news-empty">
           <Newspaper size={24} />
           <strong>Nessuna notizia caricata</strong>
-          <span>Premi Aggiorna ora oppure riprova più tardi. Vygo manterrà comunque visibili fermi e canali operativi principali.</span>
+          <span>Premi Aggiorna ora oppure riprova più tardi. Il calendario fermi resta disponibile anche quando le fonti news non pubblicano contenuti leggibili.</span>
         </div>
         ) : null}
       </div>
@@ -20102,7 +20121,11 @@ function ChatWorkspace({
   }, [hasUnreadTeamMessages, isCompanyChatOpen, onMarkTeamRead, selectedTeamThread?.id])
 
   useEffect(() => {
-    setIsMediaPanelOpen(false)
+    const timerId = window.setTimeout(() => {
+      setIsMediaPanelOpen(false)
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
   }, [selectedThread?.id])
 
   function getDriverThread(driverId) {

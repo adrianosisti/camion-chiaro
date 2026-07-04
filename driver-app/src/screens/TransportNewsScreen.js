@@ -193,6 +193,15 @@ function isGenericNewsSummary(value = '') {
     'per leggere l\'articolo completo',
     'usa la fonte originale',
     'notizia di mercato',
+    'canale istituzionale da controllare',
+    'area da tenere sotto controllo',
+    'canale da consultare',
+    'canale operativo',
+    'riferimento pubblico',
+    'riferimento utile',
+    'fonte verticale di settore',
+    'fonte di settore',
+    'raccolta di notizie',
   ].some((pattern) => cleanValue.includes(pattern))
 }
 
@@ -201,7 +210,7 @@ function getDisplayNewsItem(item = {}) {
   const summary = String(item.summary ?? '')
   const shouldClearSummary = hasBlockedNewsText(summary)
     || !summary.trim()
-    || (category !== item.category && isGenericNewsSummary(summary))
+    || isGenericNewsSummary(summary)
 
   return {
     ...item,
@@ -233,6 +242,7 @@ function splitNewsText(value = '') {
 }
 
 function hasDisplayNewsText(item = {}) {
+  if (item?.isFallback || String(item?.source_id ?? '').includes('fallback')) return false
   return splitNewsText(getDisplayNewsItem(item).summary).length > 0
 }
 
@@ -245,7 +255,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   const [meta, setMeta] = useState(null)
   const [isScheduleExpanded, setIsScheduleExpanded] = useState(false)
   const safeItems = (Array.isArray(items) ? items : []).filter(hasDisplayNewsText)
-  const isFallbackMode = String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback)
+  const isFallbackMode = safeItems.length > 0 && (String(meta?.mode ?? '').includes('fallback') || safeItems.some((item) => item.isFallback))
   const restrictions = Array.isArray(meta?.restrictions) ? meta.restrictions : []
   const apiRestrictionSchedule = Array.isArray(meta?.restrictionSchedule) ? meta.restrictionSchedule : []
   const restrictionSchedule = apiRestrictionSchedule.length ? apiRestrictionSchedule : fallbackRestrictionSchedule2026

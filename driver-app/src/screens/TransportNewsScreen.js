@@ -187,46 +187,22 @@ function isGenericNewsSummary(value = '') {
     'impatto possibile su carburante',
     'possibile impatto su partenze',
     'possibile impatto su tratte',
-    'tema utile per chi gestisce',
+    'tema utile',
     'tema utile per ufficio traffico',
   ].some((pattern) => cleanValue.includes(pattern))
-}
-
-function buildLocalNewsSummary(category = 'Logistica', title = '') {
-  const cleanTitle = String(title).toLowerCase()
-  if (/(iveco|ecosistema di servizi|servizi collegati|oltre il camion)/i.test(cleanTitle)) {
-    return 'Notizia di mercato sui veicoli industriali: il valore non passa solo dal camion, ma dai servizi collegati alla flotta, come assistenza, manutenzione, ricambi, dati operativi e continuita dei mezzi. Per un trasportatore significa guardare anche a tempi di fermo, supporto post vendita e organizzazione della manutenzione.'
-  }
-  if (/(camion|veicol|truck|servizi|flotta|concessionar|assistenza|ricambi|manutenzion)/i.test(cleanTitle)) {
-    return 'Tema utile per chi gestisce mezzi e flotta: riguarda servizi, assistenza, manutenzione, valore operativo o organizzazione dei veicoli. Conviene valutarlo rispetto a costi, disponibilita dei mezzi e fermi tecnici.'
-  }
-  if (/(pallet|hub|magazzin|deposit|supply chain|intermodal|terminal|porto|spedizion)/i.test(cleanTitle)) {
-    return 'Tema utile per ufficio traffico e magazzino: puo incidere su flussi, consegne, ritiri, tempi e organizzazione della logistica. Va letto pensando a tratte, pianificazione, carichi e comunicazioni interne.'
-  }
-
-  const summaries = {
-    Costi: 'Impatto possibile su carburante, pedaggi o spese operative: valuta tratte, margini e centro costi.',
-    Logistica: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
-    Mercato: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
-    Norme: 'Possibile impatto su documenti, scadenze o regole operative: verifica se riguarda autisti, mezzi o viaggi.',
-    Scioperi: 'Possibile impatto su partenze, consegne o ritiri: controlla tratte, clienti coinvolti e comunicazioni interne.',
-    Viabilita: 'Possibile impatto su tratte e tempi di consegna: avvisa ufficio traffico e autisti se la zona e coinvolta.',
-  }
-
-  return summaries[category] ?? summaries.Logistica
 }
 
 function getDisplayNewsItem(item = {}) {
   const category = getNewsTitleCategory(item.title, item.category || 'Logistica')
   const summary = String(item.summary ?? '')
-  const shouldReplaceSummary = hasBlockedNewsText(summary)
+  const shouldClearSummary = hasBlockedNewsText(summary)
     || !summary.trim()
     || (category !== item.category && isGenericNewsSummary(summary))
 
   return {
     ...item,
     category,
-    summary: shouldReplaceSummary ? buildLocalNewsSummary(category, item.title) : summary,
+    summary: shouldClearSummary ? '' : summary,
   }
 }
 
@@ -250,36 +226,6 @@ function splitNewsText(value = '') {
   })
 
   return paragraphs
-}
-
-function getNewsAdvice(category = '') {
-  const normalized = String(category).toLowerCase()
-  if (normalized.includes('norm')) {
-    return [
-      'Controlla se cambia una procedura, una scadenza o un documento.',
-      'Avvisa ufficio traffico o direzione se riguarda viaggi o mezzi.',
-      'Crea un promemoria operativo se serve un controllo successivo.',
-    ]
-  }
-  if (normalized.includes('viabil') || normalized.includes('scioper')) {
-    return [
-      'Verifica tratte, partenze e rientri previsti.',
-      'Avvisa gli autisti coinvolti prima di muovere i mezzi.',
-      'Apri la fonte se servono aggiornamenti in tempo reale.',
-    ]
-  }
-  if (normalized.includes('cost')) {
-    return [
-      'Valuta impatto su gasolio, pedaggi, manutenzioni o margini.',
-      'Aggiorna il centro costi se il dato diventa rilevante.',
-      'Confronta la notizia con i report mensili della flotta.',
-    ]
-  }
-  return [
-    'Valuta impatto su magazzino, flotta, clienti o reparto.',
-    'Condividi la notizia nella chat interessata se cambia il lavoro.',
-    'Apri la fonte solo se servono dettagli ufficiali o allegati.',
-  ]
 }
 
 export function TransportNewsScreen({ language = 'it', onBack }) {
@@ -342,8 +288,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
   if (selectedItem) {
     const displayItem = getDisplayNewsItem(selectedItem)
     const tone = getNewsTone(displayItem.category)
-    const detailParagraphs = splitNewsText(displayItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.')
-    const adviceItems = getNewsAdvice(displayItem.category)
+    const detailParagraphs = splitNewsText(displayItem.summary)
 
     return (
       <ScrollView contentContainerStyle={styles.content}>
@@ -361,21 +306,12 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
         </View>
 
         <View style={styles.readerCard}>
-          <Text style={styles.readerTitle}>Leggi in Vygo</Text>
-          <Text style={styles.readerNote}>Scheda operativa sintetica: per leggere l'articolo completo puoi aprire la fonte originale.</Text>
-          {detailParagraphs.map((paragraph, index) => (
+          <Text style={styles.readerTitle}>Dalla fonte</Text>
+          {detailParagraphs.length ? detailParagraphs.map((paragraph, index) => (
             <Text key={`${displayItem.id || displayItem.url}-paragraph-${index}`} style={styles.detailSummary}>{paragraph}</Text>
-          ))}
-        </View>
-
-        <View style={styles.adviceCard}>
-          <Text style={styles.readerTitle}>Cosa fare adesso</Text>
-          {adviceItems.map((advice) => (
-            <View key={advice} style={styles.adviceRow}>
-              <Ionicons color={colors.cyanDark} name="checkmark-circle" size={18} />
-              <Text style={styles.adviceText}>{advice}</Text>
-            </View>
-          ))}
+          )) : (
+            <Text style={styles.detailSummary}>La fonte non rende disponibile un testo leggibile in anteprima. Apri la fonte originale per leggere la notizia completa.</Text>
+          )}
         </View>
 
         <Pressable onPress={() => displayItem.url && Linking.openURL(displayItem.url)} style={styles.sourceButton}>
@@ -400,7 +336,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
           <Ionicons color={colors.white} name="newspaper-outline" size={24} />
         </View>
         <Text style={styles.kicker}>News e fermi</Text>
-        <Text style={styles.title}>Bollettino operativo</Text>
+        <Text style={styles.title}>News e fermi</Text>
         <Text style={styles.subtitle}>
           Norme, fermi ministeriali, logistica e viabilita divise per area. Restano consultabili per circa {retentionDays} giorni.
         </Text>
@@ -741,26 +677,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
-  adviceCard: {
-    backgroundColor: '#f8fdff',
-    borderColor: 'rgba(18, 198, 223, 0.24)',
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 10,
-    padding: 14,
-  },
-  adviceRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  adviceText: {
-    color: '#334155',
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 19,
-  },
   readerCard: {
     backgroundColor: colors.white,
     borderColor: 'rgba(18, 198, 223, 0.18)',
@@ -773,12 +689,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 17,
     fontWeight: '900',
-  },
-  readerNote: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 18,
   },
   upcomingButton: {
     alignItems: 'center',

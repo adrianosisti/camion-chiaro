@@ -466,30 +466,6 @@ function scoreNews({ category, publishedAt, sourcePriority, text }) {
   return Math.min(100, Math.round(sourcePriority * 0.45 + urgency + categoryBonus + freshness))
 }
 
-function buildOperationalSummary(category, title = '') {
-  const cleanTitle = String(title).toLowerCase()
-  if (/(iveco|ecosistema di servizi|servizi collegati|oltre il camion)/i.test(cleanTitle)) {
-    return 'Notizia di mercato sui veicoli industriali: il valore non passa solo dal camion, ma dai servizi collegati alla flotta, come assistenza, manutenzione, ricambi, dati operativi e continuita dei mezzi. Per un trasportatore significa guardare anche a tempi di fermo, supporto post vendita e organizzazione della manutenzione.'
-  }
-  if (/(camion|veicol|truck|servizi|flotta|concessionar|assistenza|ricambi|manutenzion)/i.test(cleanTitle)) {
-    return 'Tema utile per chi gestisce mezzi e flotta: riguarda servizi, assistenza, manutenzione, valore operativo o organizzazione dei veicoli. Conviene valutarlo rispetto a costi, disponibilita dei mezzi e fermi tecnici.'
-  }
-  if (/(pallet|hub|magazzin|deposit|supply chain|intermodal|terminal|porto|spedizion)/i.test(cleanTitle)) {
-    return 'Tema utile per ufficio traffico e magazzino: puo incidere su flussi, consegne, ritiri, tempi e organizzazione della logistica. Va letto pensando a tratte, pianificazione, carichi e comunicazioni interne.'
-  }
-
-  const summaries = {
-    Costi: 'Impatto possibile su carburante, pedaggi o spese operative: valuta tratte, margini e centro costi.',
-    Logistica: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
-    Mercato: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
-    Norme: 'Possibile impatto su documenti, scadenze o regole operative: verifica se riguarda autisti, mezzi o viaggi.',
-    Scioperi: 'Possibile impatto su partenze, consegne o ritiri: controlla tratte, clienti coinvolti e comunicazioni interne.',
-    Viabilità: 'Possibile impatto su tratte e tempi di consegna: avvisa ufficio traffico e autisti se la zona e coinvolta.',
-  }
-
-  return summaries[category] ?? summaries.Logistica
-}
-
 function truncateText(value = '', maxLength = 1100) {
   const cleanValue = String(value).replace(/\s+/g, ' ').trim()
   if (cleanValue.length <= maxLength) return cleanValue
@@ -515,21 +491,16 @@ function isBlockedArticleText(value = '') {
 function isGenericOperationalSummary(value = '') {
   const cleanValue = String(value).toLowerCase()
   return [
-    'possibile impatto su documenti',
+    'possibile impatto',
     'aggiornamento di settore',
-    'impatto possibile su carburante',
-    'possibile impatto su partenze',
-    'possibile impatto su tratte',
-    'tema utile per chi gestisce',
-    'tema utile per ufficio traffico',
+    'tema utile',
+    'lettura vygo',
   ].some((pattern) => cleanValue.includes(pattern))
 }
 
 function buildReadableSummary(category, description = '', title = '') {
-  const operationalSummary = buildOperationalSummary(category, title)
   const excerpt = isBlockedArticleText(description) ? '' : truncateText(description, 1100)
-  if (!excerpt) return operationalSummary
-  return `${excerpt}\n\nLettura Vygo: ${operationalSummary}`
+  return excerpt
 }
 
 function extractMetaContent(html = '', key = '') {
@@ -589,21 +560,20 @@ function summaryNeedsArticlePreview(item = {}) {
   if (item.isFallback) return false
   if (isBlockedArticleText(summary)) return true
   if (summary.length < 220) return true
-  return summary === buildOperationalSummary(item.category, item.title)
+  return isGenericOperationalSummary(summary)
 }
 
 function normalizeNewsItem(item = {}, language = defaultLanguage) {
   const summary = String(item.summary ?? '')
   const category = getTitleDrivenCategory(item.title, isBlockedArticleText(summary) ? '' : summary)
-  const shouldRebuildSummary = isBlockedArticleText(summary)
+  const shouldClearSummary = isBlockedArticleText(summary)
     || (category !== item.category && isGenericOperationalSummary(summary))
-    || !summary.trim()
 
   return {
     ...item,
     category,
     language: item.language || language,
-    summary: shouldRebuildSummary ? buildReadableSummary(category, '', item.title) : summary,
+    summary: shouldClearSummary ? '' : summary,
     tags: Array.from(new Set([...(Array.isArray(item.tags) ? item.tags : []), category.toLowerCase()])),
   }
 }

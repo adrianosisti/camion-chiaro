@@ -649,7 +649,6 @@ export function CompanyHomeScreen({
   const newsQuickAction = {
     icon: 'newspaper-outline',
     label: 'News e fermi',
-    meta: 'Bollettino operativo',
     onPress: () => onOpenManagement?.('news'),
     tone: 'info',
   }
@@ -773,9 +772,9 @@ export function CompanyHomeScreen({
         </View>
         <Pressable onPress={newsQuickAction.onPress} style={[styles.nextActionStrip, styles.newsQuickActionStrip]}>
           <Ionicons color={colors.cyanDark} name={newsQuickAction.icon} size={18} />
-          <View style={styles.nextActionCopy}>
-            <Text style={styles.nextActionKicker}>{newsQuickAction.label}</Text>
-            <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={styles.nextActionLabel}>{newsQuickAction.meta}</Text>
+          <Text style={styles.nextActionNewsTitle}>{newsQuickAction.label}</Text>
+          <View style={styles.nextActionNewsButton}>
+            <Text style={styles.nextActionNewsButtonText}>Apri news</Text>
           </View>
           <Ionicons color={colors.cyanDark} name="chevron-forward" size={16} />
         </Pressable>
@@ -995,22 +994,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fbff',
     borderColor: '#d8e7ee',
   },
-  nextActionKicker: {
+  nextActionNewsTitle: {
     color: colors.cyanDark,
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  nextActionLabel: {
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  nextActionCopy: {
     flex: 1,
-    gap: 1,
+    fontSize: 13,
+    fontWeight: '900',
     minWidth: 0,
+  },
+  nextActionNewsButton: {
+    backgroundColor: colors.white,
+    borderColor: 'rgba(18, 198, 223, 0.42)',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  nextActionNewsButtonText: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '900',
   },
   nextActionStrip: {
     alignItems: 'center',

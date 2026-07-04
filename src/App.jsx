@@ -12100,46 +12100,22 @@ function isTransportNewsGenericSummary(value = '') {
     'impatto possibile su carburante',
     'possibile impatto su partenze',
     'possibile impatto su tratte',
-    'tema utile per chi gestisce',
+    'tema utile',
     'tema utile per ufficio traffico',
   ].some((pattern) => cleanValue.includes(pattern))
-}
-
-function buildTransportNewsLocalSummary(category = 'Logistica', title = '') {
-  const cleanTitle = String(title).toLowerCase()
-  if (/(iveco|ecosistema di servizi|servizi collegati|oltre il camion)/i.test(cleanTitle)) {
-    return 'Notizia di mercato sui veicoli industriali: il valore non passa solo dal camion, ma dai servizi collegati alla flotta, come assistenza, manutenzione, ricambi, dati operativi e continuita dei mezzi. Per un trasportatore significa guardare anche a tempi di fermo, supporto post vendita e organizzazione della manutenzione.'
-  }
-  if (/(camion|veicol|truck|servizi|flotta|concessionar|assistenza|ricambi|manutenzion)/i.test(cleanTitle)) {
-    return 'Tema utile per chi gestisce mezzi e flotta: riguarda servizi, assistenza, manutenzione, valore operativo o organizzazione dei veicoli. Conviene valutarlo rispetto a costi, disponibilita dei mezzi e fermi tecnici.'
-  }
-  if (/(pallet|hub|magazzin|deposit|supply chain|intermodal|terminal|porto|spedizion)/i.test(cleanTitle)) {
-    return 'Tema utile per ufficio traffico e magazzino: puo incidere su flussi, consegne, ritiri, tempi e organizzazione della logistica. Va letto pensando a tratte, pianificazione, carichi e comunicazioni interne.'
-  }
-
-  const summaries = {
-    Costi: 'Impatto possibile su carburante, pedaggi o spese operative: valuta tratte, margini e centro costi.',
-    Logistica: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
-    Mercato: 'Aggiornamento di settore: utile per capire mercato, flotta, magazzino e organizzazione operativa.',
-    Norme: 'Possibile impatto su documenti, scadenze o regole operative: verifica se riguarda autisti, mezzi o viaggi.',
-    Scioperi: 'Possibile impatto su partenze, consegne o ritiri: controlla tratte, clienti coinvolti e comunicazioni interne.',
-    Viabilità: 'Possibile impatto su tratte e tempi di consegna: avvisa ufficio traffico e autisti se la zona e coinvolta.',
-  }
-
-  return summaries[category] ?? summaries.Logistica
 }
 
 function getTransportNewsDisplayItem(item = {}) {
   const category = getTransportNewsTitleCategory(item.title, item.category || 'Logistica')
   const summary = String(item.summary ?? '')
-  const shouldReplaceSummary = hasTransportNewsBlockedText(summary)
+  const shouldClearSummary = hasTransportNewsBlockedText(summary)
     || !summary.trim()
     || (category !== item.category && isTransportNewsGenericSummary(summary))
 
   return {
     ...item,
     category,
-    summary: shouldReplaceSummary ? buildTransportNewsLocalSummary(category, item.title) : summary,
+    summary: shouldClearSummary ? '' : summary,
   }
 }
 
@@ -12163,36 +12139,6 @@ function splitTransportNewsText(value = '') {
   })
 
   return paragraphs
-}
-
-function getTransportNewsAdvice(category = '') {
-  const normalized = String(category).toLowerCase()
-  if (normalized.includes('norm')) {
-    return [
-      'Controlla se cambia una procedura aziendale, una scadenza o un documento da tenere aggiornato.',
-      'Se riguarda autisti o mezzi, crea subito un promemoria operativo in Vygo.',
-      'Avvisa ufficio traffico o direzione prima di programmare viaggi interessati.',
-    ]
-  }
-  if (normalized.includes('viabil') || normalized.includes('scioper')) {
-    return [
-      'Verifica tratte, partenze e rientri previsti nelle prossime ore.',
-      'Avvisa gli autisti coinvolti e prepara un piano alternativo se la zona e critica.',
-      'Tieni aperta la fonte ufficiale se devi confermare dettagli in tempo reale.',
-    ]
-  }
-  if (normalized.includes('cost')) {
-    return [
-      'Valuta se il costo incide su gasolio, pedaggi, manutenzioni o margine viaggio.',
-      'Aggiorna il centro costi se la variazione diventa rilevante per la flotta.',
-      'Confronta il dato con spese e report mensili dell azienda.',
-    ]
-  }
-  return [
-    'Valuta se la notizia impatta magazzino, flotta, clienti o organizzazione interna.',
-    'Condividila in chat al reparto interessato se puo cambiare il lavoro del giorno.',
-    'Usa la fonte originale solo se servono dettagli completi, allegati o conferme ufficiali.',
-  ]
 }
 
 function TransportNewsWorkspace({
@@ -12230,8 +12176,7 @@ function TransportNewsWorkspace({
 
   if (selectedItem) {
     const displayItem = getTransportNewsDisplayItem(selectedItem)
-    const detailParagraphs = splitTransportNewsText(displayItem.summary || 'Apri la fonte ufficiale per leggere il dettaglio completo della notizia.')
-    const adviceItems = getTransportNewsAdvice(displayItem.category)
+    const detailParagraphs = splitTransportNewsText(displayItem.summary)
 
     return (
       <section className="transport-news-workspace" aria-label="Dettaglio news e fermi">
@@ -12253,23 +12198,12 @@ function TransportNewsWorkspace({
           </header>
 
           <div className="transport-news-readable">
-            <h3>Leggi in Vygo</h3>
-            <small>Scheda operativa sintetica: per leggere l'articolo completo puoi aprire la fonte originale.</small>
-            {detailParagraphs.map((paragraph, index) => (
+            <h3>Dalla fonte</h3>
+            {detailParagraphs.length ? detailParagraphs.map((paragraph, index) => (
               <p key={`${displayItem.id || displayItem.url}-paragraph-${index}`}>{paragraph}</p>
-            ))}
-          </div>
-
-          <div className="transport-news-actions-box">
-            <h3>Cosa fare adesso</h3>
-            <ul>
-              {adviceItems.map((advice) => (
-                <li key={advice}>
-                  <CheckCircle2 size={15} />
-                  <span>{advice}</span>
-                </li>
-              ))}
-            </ul>
+            )) : (
+              <p>La fonte non rende disponibile un testo leggibile in anteprima. Apri la fonte originale per leggere la notizia completa.</p>
+            )}
           </div>
 
           <a className="primary-button compact-button transport-news-source-button" href={displayItem.url} rel="noreferrer" target="_blank">

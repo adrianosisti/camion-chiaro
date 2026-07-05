@@ -10201,8 +10201,31 @@ function App() {
   }
 
   const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
-  const activeDriverCount = driverRecords.filter((driver) => driver.status !== 'Archiviato').length
-  const activeVehicleCount = vehicleRecords.filter((vehicle) => vehicle.status !== 'Archiviato').length
+  const activeDriverCount = driverRecords.filter((driver) => !isArchivedStatus(driver.status)).length
+  const activePeopleCount = personRecords.filter((person) => !isArchivedStatus(person.status)).length
+  const activeVehicleCount = vehicleRecords.filter((vehicle) => !isArchivedStatus(vehicle.status)).length
+  const checkEnabledDriverCount = driverRecords.filter((driver) => !isArchivedStatus(driver.status) && driver.canSubmitChecks !== false).length
+  const visibleDocumentRecords = documentRecords.filter((document) => document.visibleToDriver !== false)
+  const documentFileCount = visibleDocumentRecords.filter((document) => Boolean(document.filePath)).length
+  const missingDocumentCount = visibleDocumentRecords.filter((document) => {
+    const status = String(document.status ?? '').toLowerCase()
+    const isExpired = document.expiresAt ? daysUntil(document.expiresAt) < 0 : false
+    return !document.filePath || status.includes('manc') || status.includes('missing') || status.includes('scad') || status.includes('expired') || isExpired
+  }).length
+  const pilotReadiness = buildPilotReadinessSnapshot({
+    activeDriverCount,
+    activePeopleCount,
+    activeVehicleCount,
+    actionableDeadlineCount: actionableComplianceItems.length,
+    chatMessageCount: chatMessageRecords.length + teamChatMessageRecords.length,
+    checkEnabledDriverCount,
+    complianceItemCount: decoratedItems.length,
+    criticalCheckCount,
+    documentFileCount,
+    missingDocumentCount,
+    notificationEnabled: phoneNotificationEnabled,
+    openFaultCount,
+  })
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
   if (activeCompanyId && activeView !== 'admin' && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
@@ -10795,6 +10818,7 @@ function App() {
                 onOpenNotifications={() => openNotifications('inbox')}
                 onOpenWork={() => openNotifications('open_work')}
                 openFaultCount={openFaultCount}
+                pilotReadiness={pilotReadiness}
                 summary={summary}
                 t={t}
               />
@@ -14273,6 +14297,112 @@ function getUsageReadinessTone(score = 0) {
   return 'danger'
 }
 
+function buildPilotReadinessSnapshot({
+  activeDriverCount = 0,
+  activePeopleCount = 0,
+  activeVehicleCount = 0,
+  actionableDeadlineCount = 0,
+  chatMessageCount = 0,
+  checkEnabledDriverCount = 0,
+  complianceItemCount = 0,
+  criticalCheckCount = 0,
+  documentFileCount = 0,
+  missingDocumentCount = 0,
+  notificationEnabled = false,
+  openFaultCount = 0,
+} = {}) {
+  const totalPeople = activeDriverCount + activePeopleCount
+  const hasChatTest = chatMessageCount > 0
+  const hasDocuments = documentFileCount > 0
+  const hasDeadlines = complianceItemCount > 0
+  const issuesToWork = actionableDeadlineCount + criticalCheckCount + openFaultCount
+  const checks = [
+    {
+      detail: `${activeDriverCount} autisti · ${activePeopleCount} ufficio/magazzino`,
+      id: 'people',
+      label: 'Persone',
+      ready: totalPeople > 0,
+      todo: 'Inserisci almeno un autista o una persona aziendale.',
+      weight: 18,
+    },
+    {
+      detail: `${activeVehicleCount} mezzi in flotta`,
+      id: 'fleet',
+      label: 'Flotta',
+      ready: activeVehicleCount > 0,
+      todo: 'Carica almeno un mezzo reale della flotta.',
+      weight: 18,
+    },
+    {
+      detail: hasDeadlines ? `${complianceItemCount} scadenze monitorate` : 'Nessuna scadenza caricata',
+      id: 'deadlines',
+      label: 'Scadenze',
+      ready: hasDeadlines,
+      todo: 'Inserisci assicurazioni, revisioni o documenti con data.',
+      weight: 16,
+    },
+    {
+      detail: hasDocuments ? `${documentFileCount} file caricati` : 'Nessun file documento',
+      id: 'documents',
+      label: 'Documenti',
+      ready: hasDocuments,
+      todo: 'Carica almeno patente, libretto o assicurazione reale.',
+      weight: 14,
+    },
+    {
+      detail: hasChatTest ? `${chatMessageCount} messaggi registrati` : 'Chat da provare',
+      id: 'chat',
+      label: 'Chat',
+      ready: hasChatTest,
+      todo: 'Invia un messaggio di prova tra azienda e persona.',
+      weight: 12,
+    },
+    {
+      detail: notificationEnabled ? 'Attive su questo dispositivo' : 'Da attivare sui telefoni',
+      id: 'push',
+      label: 'Notifiche',
+      ready: notificationEnabled,
+      todo: 'Attiva notifiche sui telefoni del test.',
+      weight: 10,
+    },
+    {
+      detail: checkEnabledDriverCount ? `${checkEnabledDriverCount} autisti abilitati` : 'Nessun check abilitato',
+      id: 'checks',
+      label: 'Check',
+      ready: checkEnabledDriverCount > 0,
+      todo: 'Abilita i check mattutini agli autisti pilota.',
+      weight: 8,
+    },
+    {
+      detail: 'Segnalazione guasti disponibile',
+      id: 'faults',
+      label: 'Guasti',
+      ready: activeDriverCount > 0 && activeVehicleCount > 0,
+      todo: 'Serve almeno un autista e un mezzo per testare i guasti.',
+      weight: 4,
+    },
+  ]
+  const totalWeight = checks.reduce((total, item) => total + item.weight, 0)
+  const readyWeight = checks.reduce((total, item) => total + (item.ready ? item.weight : 0), 0)
+  const score = Math.round((readyWeight / totalWeight) * 100)
+  const firstMissing = checks.find((item) => !item.ready)
+  const nextAction = firstMissing?.todo
+    ?? (missingDocumentCount > 0
+      ? `${missingDocumentCount} documenti da controllare o rinnovare.`
+      : issuesToWork > 0
+        ? `${issuesToWork} pratiche aperte da gestire prima del pilota.`
+        : 'Pronta per il test pilota: puoi avviare l azienda.')
+
+  return {
+    readyCount: checks.filter((item) => item.ready).length,
+    score,
+    tasks: checks,
+    tone: getUsageReadinessTone(score),
+    totalCount: checks.length,
+    nextAction,
+  }
+}
+
 function HeroPanel({
   activeDriverCount,
   activeVehicleCount,
@@ -14297,6 +14427,7 @@ function HeroPanel({
   onOpenNotifications,
   onOpenWork,
   openFaultCount,
+  pilotReadiness,
   summary,
   t,
 }) {
@@ -14532,8 +14663,39 @@ function HeroPanel({
           <strong>{radarAction.label}</strong>
           <b>{radarAction.value}</b>
         </button>
+        <PilotReadinessPanel readiness={pilotReadiness} />
       </div>
     </section>
+  )
+}
+
+function PilotReadinessPanel({ readiness }) {
+  if (!readiness) return null
+
+  const visibleTasks = readiness.tasks.slice(0, 4)
+
+  return (
+    <div className={`pilot-readiness tone-${readiness.tone}`} aria-label="Pronto pilota">
+      <div className="pilot-readiness-head">
+        <span>
+          <ClipboardCheck size={16} />
+          Pronto pilota
+        </span>
+        <strong>{readiness.score}%</strong>
+      </div>
+      <div className="pilot-readiness-bar" aria-hidden="true">
+        <span style={{ width: `${readiness.score}%` }} />
+      </div>
+      <div className="pilot-readiness-list">
+        {visibleTasks.map((task) => (
+          <span className={task.ready ? 'is-ready' : 'is-missing'} key={task.id}>
+            {task.ready ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+            {task.label}
+          </span>
+        ))}
+      </div>
+      <p>{readiness.nextAction}</p>
+    </div>
   )
 }
 

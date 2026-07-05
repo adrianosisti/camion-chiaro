@@ -4015,11 +4015,12 @@ function CamionChiaroApp() {
       return (
         <CompanyHomeScreen
           context={companyContext}
-	          isRefreshing={isRefreshing}
-	          language={language}
-	          logoUrl={logoUrl}
-	          onOpenChat={openNativeChatTab}
-	          onOpenAssistant={() => setIsAssistantOpen(true)}
+          isRefreshing={isRefreshing}
+          language={language}
+          logoUrl={logoUrl}
+          notificationEnabled={/abilitat|enabled|registered/.test(String(nativePushStatus).toLowerCase())}
+          onOpenChat={openNativeChatTab}
+          onOpenAssistant={() => setIsAssistantOpen(true)}
           onOpenManagement={openCompanyManagement}
           onRefresh={() => loadCompanyData()}
           onCloseDeadline={handleCloseCompanyDeadline}

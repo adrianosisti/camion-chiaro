@@ -28,6 +28,7 @@ import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard.mjs'
 import LockKeyhole from 'lucide-react/dist/esm/icons/lock-keyhole.mjs'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.mjs'
 import Mail from 'lucide-react/dist/esm/icons/mail.mjs'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle.mjs'
 import Mic from 'lucide-react/dist/esm/icons/mic.mjs'
 import Newspaper from 'lucide-react/dist/esm/icons/newspaper.mjs'
 import Paperclip from 'lucide-react/dist/esm/icons/paperclip.mjs'
@@ -71,7 +72,6 @@ import {
   createCompanyAnnouncementRecord as createSupabaseCompanyAnnouncement,
   createComplianceItemRecord as createSupabaseComplianceItem,
   createCostEntryRecord as createSupabaseCostEntry,
-  createDeliveryPodRecord as createSupabaseDeliveryPod,
   fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
   createTeamChatMessageRecord as createSupabaseTeamChatMessage,
@@ -101,7 +101,6 @@ import {
   fetchCompanyInvoices,
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
-  fetchDeliveryPods,
   fetchTransportNews,
   fetchLegalAcceptanceStatus,
   fetchAdminOverview,
@@ -6769,7 +6768,6 @@ function App() {
   const [chatLiveState, setChatLiveState] = useState(emptyChatLiveState)
   const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [costEntryRecords, setCostEntryRecords] = useState([])
-  const [deliveryPodRecords, setDeliveryPodRecords] = useState([])
   const [announcementRecords, setAnnouncementRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
   const [companyStorageSummary, setCompanyStorageSummary] = useState(emptyCompanyStorageSummary)
@@ -7045,7 +7043,6 @@ function App() {
       setCompanyProfile(getInitialCompanyProfile())
     }
     setCostEntryRecords([])
-    setDeliveryPodRecords([])
     setAnnouncementRecords([])
     setCompanyInvoiceRecords([])
     setCompanyStorageSummary(emptyCompanyStorageSummary)
@@ -7080,7 +7077,6 @@ function App() {
     setVehicleCheckRecords([])
     setFaultReportRecords([])
     setCostEntryRecords([])
-    setDeliveryPodRecords([])
     setAnnouncementRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
@@ -7102,7 +7098,6 @@ function App() {
     setVehicleCheckRecords([])
     setFaultReportRecords([])
     setCostEntryRecords([])
-    setDeliveryPodRecords([])
     setAnnouncementRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
@@ -7673,7 +7668,6 @@ function App() {
         documentEventsResult,
         companyInvoicesResult,
         costEntriesResult,
-        deliveryPodsResult,
         announcementsResult,
         checksResult,
         faultsResult,
@@ -7692,7 +7686,6 @@ function App() {
         fetchDriverDocumentEvents(companyId),
         fetchCompanyInvoices(companyId),
         fetchCompanyCostEntries(companyId),
-        fetchDeliveryPods(companyId),
         fetchCompanyAnnouncements(companyId),
         fetchVehicleChecks(companyId),
         fetchFaultReports(companyId),
@@ -7723,7 +7716,6 @@ function App() {
       if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
       if (companyInvoicesResult.data) setCompanyInvoiceRecords(companyInvoicesResult.data)
       if (costEntriesResult.data) setCostEntryRecords(costEntriesResult.data)
-      if (deliveryPodsResult.data) setDeliveryPodRecords(deliveryPodsResult.data)
       if (announcementsResult.data) setAnnouncementRecords(announcementsResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
@@ -8714,43 +8706,6 @@ function App() {
     setCostEntryRecords((currentEntries) => [localEntry, ...currentEntries])
     setOperationsSyncStatus('Spesa aggiunta su questo dispositivo.')
     return localEntry
-  }
-
-  async function addDeliveryPodRecord(pod, proofFile = null) {
-    const cleanPod = {
-      ...pod,
-      deliveryDate: pod.deliveryDate || new Date().toISOString().slice(0, 10),
-      status: proofFile || pod.signatureName ? 'completed' : 'open',
-    }
-
-    if (hasCompanyDataConnection && session?.role === 'company') {
-      setOperationsSyncStatus('Salvataggio POD digitale...')
-      const result = await createSupabaseDeliveryPod(cleanPod, activeCompanyId, proofFile)
-
-      if (result.error) {
-        setOperationsSyncStatus(`POD non salvato: ${result.error.message}`)
-        return false
-      }
-
-      if (result.data) {
-        setDeliveryPodRecords((currentRecords) => [result.data, ...currentRecords])
-        void refreshStorageSummary(activeCompanyId)
-      }
-      setOperationsSyncStatus('POD digitale salvato.')
-      return result.data
-    }
-
-    const localPod = {
-      ...cleanPod,
-      companyId: activeCompanyId,
-      createdAt: new Date().toISOString(),
-      id: `pod-${Date.now()}`,
-      proofFilePath: proofFile ? URL.createObjectURL(proofFile) : '',
-      updatedAt: new Date().toISOString(),
-    }
-    setDeliveryPodRecords((currentRecords) => [localPod, ...currentRecords])
-    setOperationsSyncStatus('POD salvato su questo dispositivo.')
-    return localPod
   }
 
   async function addAnnouncementRecord(announcement) {
@@ -10734,12 +10689,10 @@ function App() {
             companyName={companyName}
             complianceItems={decoratedItems}
             costEntryRecords={costEntryRecords}
-            deliveryPodRecords={deliveryPodRecords}
             documentRecords={documentRecords}
             driverRecords={driverRecords}
             faultReportRecords={visibleFaultReportRecords}
             onCreateAnnouncement={addAnnouncementRecord}
-            onCreatePod={addDeliveryPodRecord}
             onOpenChat={openCompanyChat}
             onOpenDeadlines={() => openComplianceFilter('urgent')}
             onOpenReports={openReports}
@@ -14585,12 +14538,10 @@ function DailyOperationsWorkspace({
   companyName = 'Azienda',
   complianceItems = [],
   costEntryRecords = [],
-  deliveryPodRecords = [],
   documentRecords = [],
   driverRecords = [],
   faultReportRecords = [],
   onCreateAnnouncement,
-  onCreatePod,
   onOpenChat,
   onOpenDeadlines,
   onOpenReports,
@@ -14599,28 +14550,16 @@ function DailyOperationsWorkspace({
   vehicleRecords = [],
 }) {
   const todayKey = getDateInputToday()
-  const [podForm, setPodForm] = useState({
-    code: '',
-    customerName: '',
-    deliveryDate: todayKey,
-    driverId: '',
-    notes: '',
-    signatureName: '',
-    vehicleId: '',
-  })
-  const [podFile, setPodFile] = useState(null)
   const [announcementForm, setAnnouncementForm] = useState({
     audienceType: 'all',
     body: '',
     requiresAck: true,
     title: '',
   })
-  const [isSavingPod, setIsSavingPod] = useState(false)
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false)
   const [localStatus, setLocalStatus] = useState('')
 
   const driverById = useMemo(() => new Map(driverRecords.map((driver) => [driver.id, driver])), [driverRecords])
-  const vehicleById = useMemo(() => new Map(vehicleRecords.map((vehicle) => [vehicle.id, vehicle])), [vehicleRecords])
   const activeDrivers = useMemo(() => driverRecords.filter((driver) => !isArchivedStatus(driver.status)), [driverRecords])
   const checkEnabledDrivers = useMemo(
     () => activeDrivers.filter((driver) => driver.canSubmitChecks !== false),
@@ -14636,8 +14575,6 @@ function DailyOperationsWorkspace({
   const criticalChecks = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check) && hasCheckIssues(check))
   const actionableDeadlines = complianceItems.filter(isComplianceActionRequired)
   const expiredDeadlines = actionableDeadlines.filter((item) => getDaysUntil(item.dueDate) < 0)
-  const pendingPods = deliveryPodRecords.filter((pod) => pod.status !== 'archived')
-  const openPods = pendingPods.filter((pod) => pod.status !== 'completed')
   const companyAnnouncements = announcementRecords.filter((announcement) => announcement.status !== 'archived')
   const ackMissingAnnouncements = companyAnnouncements.filter((announcement) => {
     if (!announcement.requiresAck) return false
@@ -14666,50 +14603,7 @@ function DailyOperationsWorkspace({
     const driver = driverById.get(driverId)
     return driver ? driver.fullName || driver.name || driver.username || 'Autista' : 'Non assegnato'
   }
-  const vehicleLabel = (vehicleId) => {
-    const vehicle = vehicleById.get(vehicleId)
-    return vehicle ? [vehicle.plate, getFleetTypeLabel(vehicle.fleetType), vehicle.model].filter(Boolean).join(' · ') : 'Non assegnato'
-  }
-  const updatePodField = (field, value) => setPodForm((current) => ({ ...current, [field]: value }))
   const updateAnnouncementField = (field, value) => setAnnouncementForm((current) => ({ ...current, [field]: value }))
-  const handlePodSubmit = async (event) => {
-    event.preventDefault()
-    setLocalStatus('')
-
-    if (!podForm.code.trim() && !podForm.customerName.trim()) {
-      setLocalStatus('Inserisci almeno codice consegna o cliente.')
-      return
-    }
-
-    setIsSavingPod(true)
-    const result = await onCreatePod?.(
-      {
-        code: podForm.code.trim(),
-        customerName: podForm.customerName.trim(),
-        deliveryDate: podForm.deliveryDate,
-        driverId: podForm.driverId || null,
-        notes: podForm.notes.trim(),
-        signatureName: podForm.signatureName.trim(),
-        vehicleId: podForm.vehicleId || null,
-      },
-      podFile,
-    )
-    setIsSavingPod(false)
-
-    if (result) {
-      setPodForm({
-        code: '',
-        customerName: '',
-        deliveryDate: todayKey,
-        driverId: '',
-        notes: '',
-        signatureName: '',
-        vehicleId: '',
-      })
-      setPodFile(null)
-      setLocalStatus('POD salvato nella giornata operativa.')
-    }
-  }
   const handleAnnouncementSubmit = async (event) => {
     event.preventDefault()
     setLocalStatus('')
@@ -14783,7 +14677,6 @@ function DailyOperationsWorkspace({
     { label: 'Check critici', value: criticalChecks.length, tone: criticalChecks.length ? 'danger' : 'success' },
     { label: 'Guasti aperti', value: openFaults.length, tone: openFaults.length ? 'danger' : 'success' },
     { label: 'Scadenze critiche', value: expiredDeadlines.length, tone: expiredDeadlines.length ? 'danger' : 'success' },
-    { label: 'POD aperti', value: openPods.length, tone: openPods.length ? 'warning' : 'success' },
     { label: 'Presa visione', value: ackMissingAnnouncements.length, tone: ackMissingAnnouncements.length ? 'warning' : 'success' },
   ]
 
@@ -14848,71 +14741,26 @@ function DailyOperationsWorkspace({
         <section className="panel daily-panel">
           <div className="daily-panel-head">
             <div>
-              <p className="overline">POD digitale</p>
-              <h3>Prova consegna rapida</h3>
+              <p className="overline">Partenze</p>
+              <h3>Check da completare oggi</h3>
             </div>
-            <Truck size={20} />
+            <ClipboardCheck size={20} />
           </div>
-          <form className="daily-form" onSubmit={handlePodSubmit}>
-            <div className="daily-form-grid">
-              <label>
-                Codice consegna
-                <input value={podForm.code} onChange={(event) => updatePodField('code', event.target.value)} placeholder="POD-1024" />
-              </label>
-              <label>
-                Cliente
-                <input value={podForm.customerName} onChange={(event) => updatePodField('customerName', event.target.value)} placeholder="Cliente destinatario" />
-              </label>
-              <label>
-                Data
-                <input type="date" value={podForm.deliveryDate} onChange={(event) => updatePodField('deliveryDate', event.target.value)} />
-              </label>
-              <label>
-                Firmatario
-                <input value={podForm.signatureName} onChange={(event) => updatePodField('signatureName', event.target.value)} placeholder="Nome e cognome" />
-              </label>
-              <label>
-                Autista
-                <select value={podForm.driverId} onChange={(event) => updatePodField('driverId', event.target.value)}>
-                  <option value="">Non assegnato</option>
-                  {activeDrivers.map((driver) => (
-                    <option key={driver.id} value={driver.id}>{driver.fullName || driver.username}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Mezzo
-                <select value={podForm.vehicleId} onChange={(event) => updatePodField('vehicleId', event.target.value)}>
-                  <option value="">Non assegnato</option>
-                  {vehicleRecords.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              Note
-              <textarea rows={3} value={podForm.notes} onChange={(event) => updatePodField('notes', event.target.value)} placeholder="Esito consegna, riserva, colli, ora..." />
-            </label>
-            <label className="daily-file-control">
-              <Paperclip size={16} />
-              <span>{podFile ? podFile.name : 'Allega firma, foto o documento consegna'}</span>
-              <input accept="image/*,.pdf" onChange={(event) => setPodFile(event.target.files?.[0] ?? null)} type="file" />
-            </label>
-            <button className="primary-button compact-button" disabled={isSavingPod} type="submit">
-              <Save size={16} />
-              {isSavingPod ? 'Salvataggio...' : 'Salva POD'}
-            </button>
-          </form>
           <DailyMiniList
-            emptyLabel="Nessun POD registrato."
-            rows={deliveryPodRecords.slice(0, 4).map((pod) => ({
-              id: pod.id,
-              title: pod.code || pod.customerName || 'POD senza codice',
-              meta: [formatDate(pod.deliveryDate), pod.customerName, driverLabel(pod.driverId), vehicleLabel(pod.vehicleId)].filter(Boolean).join(' · '),
-              tone: pod.status === 'completed' ? 'success' : 'warning',
+            emptyLabel="Tutti gli autisti abilitati hanno inviato il check o non ci sono check da sollecitare."
+            rows={missingCheckDrivers.slice(0, 6).map((driver) => ({
+              id: driver.id,
+              title: driver.fullName || driver.username || 'Autista',
+              meta: [driver.phone, driver.depot, driver.role].filter(Boolean).join(' · ') || 'Check mattutino non ricevuto',
+              tone: 'warning',
             }))}
           />
+          {missingCheckDrivers.length ? (
+            <button className="secondary-button compact-button" onClick={onOpenChat} type="button">
+              <MessageCircle size={16} />
+              Sollecita in chat
+            </button>
+          ) : null}
         </section>
 
         <section className="panel daily-panel">

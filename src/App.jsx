@@ -14155,6 +14155,11 @@ function VehiclePassportWorkspace({
           </select>
         </label>
       </div>
+      <StrategicGuide
+        title="A cosa serve"
+        body="Il passaporto mezzo raccoglie tutto quello che riguarda una targa. Quando devi capire se un mezzo e pronto, quanto sta costando o cosa gli e successo, parti da qui."
+        items={['Scegli la targa dal menu.', 'Controlla scadenze critiche, guasti, check e costi.', 'Se vedi un allarme costi, apri Centro costi per capire da dove nasce.']}
+      />
 
       <div className="strategic-kpi-grid">
         <StrategicKpi label="Scadenze critiche" tone={criticalDeadlines.length ? 'danger' : 'success'} value={criticalDeadlines.length} />
@@ -14168,7 +14173,7 @@ function VehiclePassportWorkspace({
         <div className="strategic-alert tone-danger">
           <AlertTriangle size={18} />
           <strong>Allarme costi anomali</strong>
-          <span>Questa targa costa {anomaly.ratio.toFixed(1)} volte la media delle targhe monitorate.</span>
+          <span>La targa {selectedVehicle?.plate || anomaly.label} costa {anomaly.ratio.toFixed(1)} volte la media delle targhe monitorate.</span>
         </div>
       ) : null}
 
@@ -14317,6 +14322,11 @@ function ControlModeWorkspace({
           <small>{dangerCount + warningCount} punti da controllare</small>
         </div>
       </div>
+      <StrategicGuide
+        title="Come si usa"
+        body="Serve prima di una partenza, un controllo su strada o un controllo interno. In pochi secondi verifica se autista, mezzo e semirimorchio hanno elementi che possono bloccare il viaggio."
+        items={['Seleziona autista, mezzo e semirimorchio agganciato.', 'Leggi il badge: Pronto, Verifica prima o Non partire.', 'Lavora prima le righe rosse: documenti scaduti, guasti aperti o check critici.']}
+      />
 
       <div className="control-picker-grid">
         <label>
@@ -14473,16 +14483,27 @@ function EvidenceRegisterWorkspace({
           <small>prove</small>
         </div>
       </div>
-
-      <div className="evidence-filter-bar">
-        {filters.map(([id, label]) => (
-          <button className={filter === id ? 'is-active' : ''} key={id} onClick={() => setFilter(id)} type="button">
-            {label}
-          </button>
-        ))}
-      </div>
+      <StrategicGuide
+        title="A cosa serve"
+        body="Qui trovi le prove operative salvate da Vygo: guasti, check, documenti, costi, foto e file. E utile quando devi ricostruire cosa e successo e chi ha fatto cosa."
+        items={['Usa i filtri per vedere solo guasti, check, documenti o costi.', 'Apri Prova quando e presente una foto o un file.', 'Usalo per contestazioni, assicurazioni, responsabilita e verifiche interne.']}
+      />
 
       <section className="panel strategic-panel">
+        <div className="evidence-controls-panel">
+          <div>
+            <p className="overline">Filtra registro</p>
+            <h3>Che prove vuoi vedere?</h3>
+            <span>Il registro resta unico, ma puoi isolare subito il tipo di evento che ti serve.</span>
+          </div>
+          <div className="evidence-filter-bar">
+            {filters.map(([id, label]) => (
+              <button className={filter === id ? 'is-active' : ''} key={id} onClick={() => setFilter(id)} type="button">
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="evidence-table">
           {filteredEvents.map((event) => {
             const fileUrl = event.filePath ? assetPreviewUrl(event.filePath) : ''
@@ -14508,6 +14529,23 @@ function EvidenceRegisterWorkspace({
           {!filteredEvents.length && <StrategicEmptyLine label="Nessuna prova in questa vista." />}
         </div>
       </section>
+    </section>
+  )
+}
+
+function StrategicGuide({ body, items = [], title }) {
+  return (
+    <section className="strategic-guide-panel" aria-label={title}>
+      <div>
+        <p className="overline">Guida rapida</p>
+        <h3>{title}</h3>
+        <span>{body}</span>
+      </div>
+      <ol>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ol>
     </section>
   )
 }

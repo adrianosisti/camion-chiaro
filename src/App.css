@@ -5511,6 +5511,7 @@
   align-content: start;
   min-width: 0;
   padding-bottom: 18px;
+  scroll-margin-top: 96px;
 }
 
 .strategic-hero-panel {
@@ -5630,6 +5631,50 @@
   counter-increment: guide-step;
   font-size: 0.72rem;
   font-weight: 950;
+}
+
+.strategic-info-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.strategic-info-strip article {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid #c8edf5;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(19, 197, 223, 0.1), rgba(255, 255, 255, 0) 48%),
+    #ffffff;
+  color: #075985;
+  padding: 12px;
+}
+
+.strategic-info-strip article > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.strategic-info-strip span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.strategic-info-strip strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.strategic-info-strip small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 740;
+  line-height: 1.35;
 }
 
 .strategic-kpi-grid {
@@ -5898,10 +5943,13 @@
 }
 
 .evidence-controls-panel {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 0.75fr) minmax(360px, 1.25fr);
   gap: 12px;
-  align-items: center;
+  align-items: start;
+  overflow: visible;
   border: 1px solid #d6eef5;
   border-radius: 8px;
   background: #f8fdff;
@@ -5930,9 +5978,10 @@
 .evidence-filter-bar {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   overflow: visible;
   border: 1px solid #c8edf5;
   border-radius: 8px;
@@ -5950,6 +5999,7 @@
   font: inherit;
   font-size: 0.8rem;
   font-weight: 850;
+  line-height: 1.1;
   padding: 0 12px;
   cursor: pointer;
 }
@@ -13676,6 +13726,7 @@
   .daily-main-grid,
   .strategic-guide-panel,
   .strategic-grid,
+  .strategic-info-strip,
   .strategic-kpi-grid,
   .monthly-archive-strip,
   .monthly-report-grid,
@@ -14155,6 +14206,10 @@
 
   .strategic-guide-panel li {
     align-items: start;
+  }
+
+  .strategic-info-strip {
+    grid-template-columns: 1fr;
   }
 
   .report-shortcuts-head span {

@@ -3,6 +3,7 @@ import { apiBaseUrl, driverAuthDomain, isSupabaseConfigured, supabase } from './
 import {
   mapChatMessage,
   mapChatThread,
+  mapCompanyAnnouncement,
   mapCompanyPerson as mapContextCompanyPerson,
   mapCostEntry,
   mapDriver,
@@ -138,6 +139,73 @@ const teamChatMessageSelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, reactions, read_by_company_at, created_at'
 const teamChatMessageLegacySelect =
   'id, company_id, thread_id, sender_user_id, sender_person_id, sender_role, body, attachment_path, created_at'
+const companyAnnouncementSelect =
+  'id, company_id, title, body, audience_type, requires_ack, status, published_at, created_at, updated_at'
+
+function getAnnouncementAudienceTypes({ driver = null, person = null } = {}) {
+  const audiences = new Set(['all'])
+  const department = person?.department
+
+  if (driver?.id || person?.linkedDriverId || department === 'drivers') audiences.add('drivers')
+  if (['office', 'warehouse', 'management'].includes(department)) audiences.add(department)
+  if (person?.personType === 'office') audiences.add('office')
+  if (person?.personType === 'warehouse') audiences.add('warehouse')
+  if (person?.personType === 'management') audiences.add('management')
+
+  return [...audiences]
+}
+
+async function fetchCompanyAnnouncementsForCurrentUser(companyId, audiences = ['all']) {
+  if (!isSupabaseConfigured || !companyId) return { data: [], error: null }
+
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id
+
+  if (!userId) return { data: [], error: null }
+
+  const safeAudiences = [...new Set(['all', ...(audiences ?? [])])].filter(Boolean)
+  const { data, error } = await supabase
+    .from('company_announcements')
+    .select(companyAnnouncementSelect)
+    .eq('company_id', companyId)
+    .eq('status', 'published')
+    .in('audience_type', safeAudiences)
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(80)
+
+  if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
+  if (error) return { data: [], error }
+
+  const announcementRows = data ?? []
+  const announcementIds = announcementRows.map((announcement) => announcement.id).filter(Boolean)
+  let readsByAnnouncementId = {}
+
+  if (announcementIds.length) {
+    const readsResult = await supabase
+      .from('company_announcement_reads')
+      .select('announcement_id, read_at, acknowledged_at')
+      .eq('company_id', companyId)
+      .eq('user_id', userId)
+      .in('announcement_id', announcementIds)
+
+    if (!isMissingWorkforceSchemaError(readsResult.error) && !readsResult.error) {
+      readsByAnnouncementId = (readsResult.data ?? []).reduce((reads, row) => ({
+        ...reads,
+        [row.announcement_id]: row,
+      }), {})
+    }
+  }
+
+  return {
+    data: announcementRows.map((announcement) => mapCompanyAnnouncement({
+      ...announcement,
+      acknowledged_at: readsByAnnouncementId[announcement.id]?.acknowledged_at ?? '',
+      read_at: readsByAnnouncementId[announcement.id]?.read_at ?? '',
+    })),
+    error: null,
+  }
+}
 const voiceCallSessionSelect =
   'id, company_id, thread_id, team_thread_id, caller_role, caller_user_id, caller_driver_id, caller_person_id, receiver_user_id, receiver_driver_id, receiver_person_id, call_type, status, started_at, answered_at, ended_at, duration_seconds, provider, provider_room_id, notes, created_at, updated_at'
 const vehicleCheckSelect =
@@ -1001,6 +1069,7 @@ async function fetchDriverContextDirect() {
     driversResult,
     teamThreadsResult,
     teamUnreadCountsResult,
+    announcementsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -1040,6 +1109,7 @@ async function fetchDriverContextDirect() {
     fetchCompanyDriverRows(driver.company_id),
     fetchTeamChatThreads(driver.company_id),
     fetchTeamUnreadCounts(driver.company_id),
+    fetchCompanyAnnouncementsForCurrentUser(driver.company_id, getAnnouncementAudienceTypes({ driver })),
   ])
 
   const firstError = [
@@ -1054,6 +1124,7 @@ async function fetchDriverContextDirect() {
     driversResult.error,
     teamThreadsResult.error,
     teamUnreadCountsResult.error,
+    announcementsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -1075,6 +1146,7 @@ async function fetchDriverContextDirect() {
   return {
     data: mapDriverContext({
       companyId: driver.company_id,
+      announcements: announcementsResult.data ?? [],
       companyProfile,
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
       currentPerson: personResult.data,
@@ -1104,6 +1176,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
     complianceResult,
     teamThreadsResult,
     teamUnreadCountsResult,
+    announcementsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -1126,6 +1199,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
       .order('due_date', { ascending: true }),
     fetchTeamChatThreads(companyId),
     fetchTeamUnreadCounts(companyId),
+    fetchCompanyAnnouncementsForCurrentUser(companyId, getAnnouncementAudienceTypes({ person })),
   ])
 
   const firstError = [
@@ -1135,6 +1209,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
     complianceResult.error,
     teamThreadsResult.error,
     teamUnreadCountsResult.error,
+    announcementsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -1143,6 +1218,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
   return {
     data: mapDriverContext({
       companyId,
+      announcements: announcementsResult.data ?? [],
       companyProfile: companyResult.data ? mapCompanyProfile(companyResult.data) : { id: companyId, logoPath: '', name: 'Azienda' },
       complianceItems: (complianceResult.data ?? []).map(mapComplianceItem),
       currentPerson: person,
@@ -1701,6 +1777,67 @@ export async function markTeamThreadRead(threadId) {
   }
 
   return { data: Number(data ?? 0), error }
+}
+
+export async function acknowledgeCompanyAnnouncement({
+  acknowledge = true,
+  announcementId,
+  companyId,
+  driverId = '',
+  personId = '',
+}) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!announcementId || !companyId) return { data: null, error: { message: 'Comunicazione mancante.' } }
+
+  const sessionResult = await supabase.auth.getSession()
+  const userId = sessionResult.data?.session?.user?.id
+
+  if (!userId) return { data: null, error: { message: 'Sessione scaduta. Fai login e riprova.' } }
+
+  const now = new Date().toISOString()
+  const existingResult = await supabase
+    .from('company_announcement_reads')
+    .select('acknowledged_at, read_at')
+    .eq('announcement_id', announcementId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (isMissingWorkforceSchemaError(existingResult.error)) {
+    return { data: null, error: { message: 'Presa visione non ancora attiva per questa azienda.' } }
+  }
+
+  if (existingResult.error) return { data: null, error: existingResult.error }
+
+  const payload = {
+    acknowledged_at: acknowledge ? now : existingResult.data?.acknowledged_at ?? null,
+    announcement_id: announcementId,
+    company_id: companyId,
+    driver_id: driverId || null,
+    person_id: personId || null,
+    read_at: existingResult.data?.read_at ?? now,
+    user_id: userId,
+  }
+
+  const { data, error } = await supabase
+    .from('company_announcement_reads')
+    .upsert(payload, { onConflict: 'announcement_id,user_id' })
+    .select('announcement_id, read_at, acknowledged_at')
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: { message: 'Presa visione non ancora attiva per questa azienda.' } }
+  }
+
+  return {
+    data: data
+      ? {
+          acknowledgedAt: data.acknowledged_at ?? '',
+          announcementId: data.announcement_id,
+          readAt: data.read_at ?? '',
+        }
+      : null,
+    error,
+  }
 }
 
 export async function sendTeamChatMessage({

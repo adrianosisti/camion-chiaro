@@ -120,6 +120,7 @@ export function HomeScreen({
   driverName,
   language = 'it',
   logoUrl,
+  onOpenAnnouncements,
   onOpenChat,
   onOpenDocuments,
   onOpenOperations,
@@ -128,6 +129,7 @@ export function HomeScreen({
   onSelectDailyVehicle,
   onUpdateProfilePhoto,
   selectedDailyVehicleId = '',
+  pendingAnnouncementCount = 0,
   unreadChatMessages = 0,
   unreadCompanyMessages = 0,
 }) {
@@ -220,9 +222,10 @@ export function HomeScreen({
         <View style={styles.metricRow}>
           <MetricPill label="Messaggi" onPress={onOpenChat} tone={unreadMessages ? 'warning' : 'info'} value={unreadMessages} />
           <MetricPill label="Documenti" onPress={() => onOpenDocuments?.(criticalDocuments[0]?.id ?? '')} tone={documentAlertTone} value={criticalDocuments.length} />
-          <MetricPill label={t(language, 'faultsOpen')} tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
+          <MetricPill label="Avvisi" onPress={onOpenAnnouncements} tone={pendingAnnouncementCount ? 'warning' : 'success'} value={pendingAnnouncementCount} />
         </View>
         <View style={styles.metricRowSecondary}>
+          <MetricPill label={t(language, 'faultsOpen')} tone={openFaults.length ? 'danger' : 'success'} value={openFaults.length} />
           <MetricPill label={t(language, 'checkCritical')} tone={criticalChecks.length ? 'danger' : 'success'} value={criticalChecks.length} />
         </View>
         <Text style={styles.dailyPhrase}>{dailyPhrase}</Text>
@@ -265,12 +268,34 @@ export function HomeScreen({
           onPress={() => onOpenDocuments?.('')}
         />
         <ActionTile
+          icon="megaphone-outline"
+          label="Avvisi"
+          meta={pendingAnnouncementCount ? `${pendingAnnouncementCount} da confermare` : 'Tutto confermato'}
+          onPress={onOpenAnnouncements}
+        />
+        <ActionTile
           icon={canSubmitChecks ? 'checkbox-outline' : 'construct-outline'}
           label={canSubmitChecks ? 'Check' : t(language, 'fault')}
           meta={canSubmitChecks ? (selectedDailyVehicle ? selectedDailyVehicle.plate : 'Scegli mezzo') : 'Sempre visibile'}
           onPress={onOpenOperations}
         />
       </View>
+
+      <Panel
+        kicker="Presa visione"
+        right={
+          <Pressable onPress={onOpenAnnouncements} style={styles.panelIconButton}>
+            <Ionicons color={colors.ink} name="arrow-forward" size={18} />
+          </Pressable>
+        }
+        title={pendingAnnouncementCount ? 'Comunicazioni da confermare' : 'Comunicazioni confermate'}
+      >
+        <Text style={styles.bodyText}>
+          {pendingAnnouncementCount
+            ? `${pendingAnnouncementCount} comunicazioni aziendali aspettano la tua presa visione.`
+            : 'Non ci sono comunicazioni aziendali in attesa.'}
+        </Text>
+      </Panel>
 
       <Panel
         kicker="Chat azienda"
@@ -611,7 +636,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginTop: 8,
-    maxWidth: '33%',
+    maxWidth: '66%',
   },
   listCopy: {
     flex: 1,

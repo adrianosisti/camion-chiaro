@@ -160,7 +160,50 @@ async function getTeamRecipientUserIds(serviceClient, senderContext, threadId) {
   }
 }
 
-async function getRecipientUserIds(serviceClient, senderContext, targetRole, driverId, threadId) {
+async function getAnnouncementRecipientUserIds(serviceClient, senderContext, targetAudience = 'all') {
+  if (senderContext.role !== 'company') {
+    return { data: null, error: { message: 'Solo l azienda puo inviare comunicazioni con presa visione.' } }
+  }
+
+  const safeAudience = ['all', 'drivers', 'office', 'warehouse', 'management'].includes(targetAudience)
+    ? targetAudience
+    : 'all'
+  let driverUserIds = []
+  let personUserIds = []
+
+  if (safeAudience === 'all' || safeAudience === 'drivers') {
+    const { data, error } = await serviceClient
+      .from('drivers')
+      .select('user_id')
+      .eq('company_id', senderContext.companyId)
+      .neq('status', 'archived')
+
+    if (error) return { data: null, error }
+    driverUserIds = (data ?? []).map((driver) => driver.user_id).filter(Boolean)
+  }
+
+  if (safeAudience === 'all' || ['office', 'warehouse', 'management'].includes(safeAudience)) {
+    let query = serviceClient
+      .from('company_people')
+      .select('user_id')
+      .eq('company_id', senderContext.companyId)
+      .neq('status', 'archived')
+
+    if (safeAudience !== 'all') query = query.eq('department', safeAudience)
+
+    const { data, error } = await query
+
+    if (error && !['42P01', '42703'].includes(error.code)) return { data: null, error }
+    personUserIds = error ? [] : (data ?? []).map((person) => person.user_id).filter(Boolean)
+  }
+
+  return {
+    data: [...new Set([...driverUserIds, ...personUserIds])],
+    error: null,
+  }
+}
+
+async function getRecipientUserIds(serviceClient, senderContext, targetRole, driverId, threadId, targetAudience = 'all') {
   if (targetRole === 'company') {
     const { data, error } = await serviceClient
       .from('company_members')
@@ -200,6 +243,10 @@ async function getRecipientUserIds(serviceClient, senderContext, targetRole, dri
 
   if (targetRole === 'team') {
     return getTeamRecipientUserIds(serviceClient, senderContext, threadId)
+  }
+
+  if (targetRole === 'announcement') {
+    return getAnnouncementRecipientUserIds(serviceClient, senderContext, targetAudience)
   }
 
   return { data: null, error: { message: 'Destinatario notifica non valido.' } }
@@ -326,9 +373,10 @@ export async function handler(event) {
   const tag = String(body.tag ?? `vygo-${Date.now()}`)
   const notificationType = String(body.notificationType ?? '').slice(0, 40)
   const threadId = String(body.threadId ?? '').slice(0, 120)
+  const targetAudience = String(body.targetAudience ?? 'all').slice(0, 40)
   const callId = String(body.callId ?? '').slice(0, 120)
 
-  if (!companyId || !['company', 'driver', 'team'].includes(targetRole)) {
+  if (!companyId || !['company', 'driver', 'team', 'announcement'].includes(targetRole)) {
     return jsonResponse(400, { error: 'Azienda o destinatario non valido.' })
   }
 
@@ -362,6 +410,7 @@ export async function handler(event) {
     targetRole,
     driverId,
     threadId,
+    targetAudience,
   )
 
   if (recipientsResult.error) {
@@ -412,7 +461,9 @@ export async function handler(event) {
           ? 'Nessun telefono azienda registrato. Entra come azienda dal telefono e premi Abilita notifiche.'
           : targetRole === 'driver'
             ? 'Nessun telefono registrato per questo autista. Apri l app autista dal telefono e premi Abilita notifiche.'
-            : 'Nessun telefono registrato per i partecipanti del gruppo.',
+            : targetRole === 'announcement'
+              ? 'Nessun telefono registrato per i destinatari della comunicazione.'
+              : 'Nessun telefono registrato per i partecipanti del gruppo.',
       sent: 0,
       skipped: true,
     })

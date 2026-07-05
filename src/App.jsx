@@ -8725,7 +8725,22 @@ function App() {
       }
 
       if (result.data) setAnnouncementRecords((currentRecords) => [result.data, ...currentRecords])
-      setOperationsSyncStatus('Comunicazione pubblicata.')
+
+      const pushResult = await notifyPhone({
+        body: cleanAnnouncement.body || 'Nuova comunicazione aziendale da leggere.',
+        notificationType: 'announcement',
+        tag: `announcement-${result.data?.id ?? Date.now()}`,
+        targetAudience: cleanAnnouncement.audienceType,
+        targetRole: 'announcement',
+        title: cleanAnnouncement.title || 'Comunicazione aziendale',
+        url: '/?view=dashboard',
+      })
+
+      setOperationsSyncStatus(
+        pushResult.error
+          ? `Comunicazione pubblicata. Notifica telefono: ${pushResult.error.message}`
+          : 'Comunicazione pubblicata e notificata.',
+      )
       return result.data
     }
 
@@ -14126,7 +14141,7 @@ function VehiclePassportWorkspace({
         <div className="strategic-alert tone-danger">
           <AlertTriangle size={18} />
           <strong>Allarme costi anomali</strong>
-          <span>La targa {selectedVehicle?.plate || anomaly.label} costa {anomaly.ratio.toFixed(1)} volte la media delle targhe monitorate.</span>
+          <span>{selectedVehicle?.plate || anomaly.label}: costo {anomaly.ratio.toFixed(1)} volte sopra la media delle targhe monitorate.</span>
         </div>
       ) : null}
 
@@ -14279,6 +14294,14 @@ function ControlModeWorkspace({
         title="Come si usa"
         body="Serve prima di una partenza, un controllo su strada o un controllo interno. In pochi secondi verifica se autista, mezzo e semirimorchio hanno elementi che possono bloccare il viaggio."
         items={['Seleziona autista, mezzo e semirimorchio agganciato.', 'Leggi il badge: Pronto, Verifica prima o Non partire.', 'Lavora prima le righe rosse: documenti scaduti, guasti aperti o check critici.']}
+      />
+      <StrategicInfoStrip
+        icon={ShieldCheck}
+        items={[
+          ['Verde', 'Documenti e mezzi risultano pronti per il controllo.'],
+          ['Arancio', 'C e qualcosa da verificare prima di partire.'],
+          ['Rosso', 'Non far partire il mezzo finche la criticita non e gestita.'],
+        ]}
       />
 
       <div className="control-picker-grid">
@@ -14441,13 +14464,21 @@ function EvidenceRegisterWorkspace({
         body="Qui trovi le prove operative salvate da Vygo: guasti, check, documenti, costi, foto e file. E utile quando devi ricostruire cosa e successo e chi ha fatto cosa."
         items={['Usa i filtri per vedere solo guasti, check, documenti o costi.', 'Apri Prova quando e presente una foto o un file.', 'Usalo per contestazioni, assicurazioni, responsabilita e verifiche interne.']}
       />
+      <StrategicInfoStrip
+        icon={BadgeCheck}
+        items={[
+          ['Non si compila qui', 'Il registro raccoglie automaticamente cio che nasce da guasti, check, documenti e costi.'],
+          ['A cosa serve', 'Ti aiuta a dimostrare data, ora, utente e stato di ogni evento.'],
+          ['Quando usarlo', 'Contestazioni, assicurazioni, controlli interni e responsabilita operative.'],
+        ]}
+      />
 
       <section className="panel strategic-panel">
         <div className="evidence-controls-panel">
           <div>
             <p className="overline">Filtra registro</p>
-            <h3>Che prove vuoi vedere?</h3>
-            <span>Il registro resta unico, ma puoi isolare subito il tipo di evento che ti serve.</span>
+            <h3>Scegli cosa controllare</h3>
+            <span>Seleziona una categoria e Vygo mostra solo le prove collegate.</span>
           </div>
           <div className="evidence-filter-bar">
             {filters.map(([id, label]) => (
@@ -14471,7 +14502,7 @@ function EvidenceRegisterWorkspace({
                 {fileUrl ? (
                   <a href={fileUrl} rel="noreferrer" target="_blank">
                     <Camera size={15} />
-                    Prova
+                    Apri prova
                   </a>
                 ) : (
                   <em>Tracciato</em>
@@ -14499,6 +14530,22 @@ function StrategicGuide({ body, items = [], title }) {
           <li key={item}>{item}</li>
         ))}
       </ol>
+    </section>
+  )
+}
+
+function StrategicInfoStrip({ icon: Icon, items = [] }) {
+  return (
+    <section className="strategic-info-strip" aria-label="Indicazioni operative">
+      {items.map(([title, body]) => (
+        <article key={title}>
+          <Icon size={18} />
+          <span>
+            <strong>{title}</strong>
+            <small>{body}</small>
+          </span>
+        </article>
+      ))}
     </section>
   )
 }

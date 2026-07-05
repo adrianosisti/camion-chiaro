@@ -14,23 +14,16 @@ function getDepartmentLabel(value = '') {
   return 'Reparto'
 }
 
-function getDeadlineDays(value) {
-  if (!value) return 9999
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return Math.ceil((new Date(value) - today) / 86400000)
-}
-
 export function WorkforceHomeScreen({
   companyName,
   context,
+  onOpenAnnouncements,
   onOpenChat,
   onOpenSettings,
+  pendingAnnouncementCount = 0,
   unreadChatMessages = 0,
 }) {
   const person = context?.currentPerson
-  const deadlines = (context?.complianceItems ?? []).filter((item) => item.dueDate)
-  const criticalDeadlines = deadlines.filter((item) => getDeadlineDays(item.dueDate) <= 30)
   const groups = context?.teamChatThreads ?? []
 
   return (
@@ -44,9 +37,18 @@ export function WorkforceHomeScreen({
         <View style={styles.metricRow}>
           <MetricPill label="Messaggi" onPress={onOpenChat} tone={unreadChatMessages ? 'warning' : 'info'} value={unreadChatMessages} />
           <MetricPill label="Gruppi" tone="info" value={groups.length} />
-          <MetricPill label="Scadenze" tone={criticalDeadlines.length ? 'warning' : 'success'} value={criticalDeadlines.length} />
+          <MetricPill label="Avvisi" onPress={onOpenAnnouncements} tone={pendingAnnouncementCount ? 'warning' : 'success'} value={pendingAnnouncementCount} />
         </View>
       </ImageBackground>
+
+      <Panel kicker="Presa visione" title={pendingAnnouncementCount ? 'Comunicazioni da confermare' : 'Tutto confermato'}>
+        <Text style={styles.bodyText}>
+          {pendingAnnouncementCount
+            ? `${pendingAnnouncementCount} comunicazioni aziendali aspettano conferma.`
+            : 'Non ci sono comunicazioni aziendali in attesa.'}
+        </Text>
+        <PrimaryButton onPress={onOpenAnnouncements} title="Apri comunicazioni" />
+      </Panel>
 
       <Panel kicker="Chat" title="Azienda, reparti e persone">
         <Text style={styles.bodyText}>

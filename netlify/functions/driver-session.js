@@ -132,6 +132,28 @@ function mapTeamChatThread(row = {}) {
   }
 }
 
+function mapCompanyAnnouncement(row = {}) {
+  const acknowledgedAt = row.acknowledged_at ?? ''
+  const readAt = row.read_at ?? ''
+
+  return {
+    acknowledgedAt,
+    audienceType: row.audience_type ?? 'all',
+    body: row.body ?? '',
+    companyId: row.company_id ?? '',
+    createdAt: row.created_at ?? '',
+    id: row.id,
+    isAcknowledged: Boolean(acknowledgedAt),
+    isRead: Boolean(readAt),
+    publishedAt: row.published_at ?? '',
+    readAt,
+    requiresAck: row.requires_ack ?? true,
+    status: row.status ?? 'published',
+    title: row.title ?? 'Comunicazione',
+    updatedAt: row.updated_at ?? '',
+  }
+}
+
 function putCurrentDriverFirst(driver, drivers = []) {
   if (!driver?.id) return drivers
   return [
@@ -238,6 +260,71 @@ const companyProfileBillingSelectColumns = `
 `
 const driverSelectBaseColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
 const driverSelectWithCheckColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
+const companyAnnouncementSelect = 'id, company_id, title, body, audience_type, requires_ack, status, published_at, created_at, updated_at'
+
+function getAnnouncementAudienceTypes({ driver = null, person = null } = {}) {
+  const audiences = new Set(['all'])
+  const department = person?.department
+
+  if (driver?.id || person?.linkedDriverId || department === 'drivers') audiences.add('drivers')
+  if (['office', 'warehouse', 'management'].includes(department)) audiences.add(department)
+  if (person?.personType === 'office') audiences.add('office')
+  if (person?.personType === 'warehouse') audiences.add('warehouse')
+  if (person?.personType === 'management') audiences.add('management')
+
+  return [...audiences]
+}
+
+async function fetchCompanyAnnouncementsForUser(serviceClient, { audiences = ['all'], companyId, userId }) {
+  if (!companyId || !userId) return { data: [], error: null }
+
+  const safeAudiences = [...new Set(['all', ...(audiences ?? [])])].filter(Boolean)
+  const announcementsResult = await serviceClient
+    .from('company_announcements')
+    .select(companyAnnouncementSelect)
+    .eq('company_id', companyId)
+    .eq('status', 'published')
+    .in('audience_type', safeAudiences)
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(80)
+
+  if (announcementsResult.error) {
+    if (['42P01', '42703'].includes(announcementsResult.error.code)) return { data: [], error: null }
+    return { data: [], error: announcementsResult.error }
+  }
+
+  const rows = announcementsResult.data ?? []
+  const ids = rows.map((row) => row.id).filter(Boolean)
+  let readsByAnnouncementId = {}
+
+  if (ids.length) {
+    const readsResult = await serviceClient
+      .from('company_announcement_reads')
+      .select('announcement_id, read_at, acknowledged_at')
+      .eq('company_id', companyId)
+      .eq('user_id', userId)
+      .in('announcement_id', ids)
+
+    if (readsResult.error) {
+      if (!['42P01', '42703'].includes(readsResult.error.code)) return { data: [], error: readsResult.error }
+    } else {
+      readsByAnnouncementId = (readsResult.data ?? []).reduce((reads, row) => ({
+        ...reads,
+        [row.announcement_id]: row,
+      }), {})
+    }
+  }
+
+  return {
+    data: rows.map((row) => mapCompanyAnnouncement({
+      ...row,
+      acknowledged_at: readsByAnnouncementId[row.id]?.acknowledged_at ?? '',
+      read_at: readsByAnnouncementId[row.id]?.read_at ?? '',
+    })),
+    error: null,
+  }
+}
 
 function isMissingBillingColumn(error) {
   return error?.code === '42703' && String(error.message ?? '').includes('billing_')
@@ -381,7 +468,7 @@ async function fetchTeamUnreadCountsForPerson(serviceClient, companyId, personId
   return { data: counts, error: null }
 }
 
-async function fetchCompanyPersonContext(serviceClient, person) {
+async function fetchCompanyPersonContext(serviceClient, person, userId) {
   const companyId = person.company_id
   const currentPerson = mapCompanyPerson(person)
 
@@ -406,6 +493,7 @@ async function fetchCompanyPersonContext(serviceClient, person) {
     driversResult,
     complianceResult,
     teamThreadsResult,
+    announcementsResult,
   ] = await Promise.all([
     fetchCompanyProfile(serviceClient, companyId),
     serviceClient
@@ -430,6 +518,11 @@ async function fetchCompanyPersonContext(serviceClient, person) {
           .neq('status', 'archived')
           .order('last_message_at', { ascending: false, nullsFirst: false })
       : Promise.resolve({ data: [], error: null }),
+    fetchCompanyAnnouncementsForUser(serviceClient, {
+      audiences: getAnnouncementAudienceTypes({ person: currentPerson }),
+      companyId,
+      userId,
+    }),
   ])
 
   const error =
@@ -437,12 +530,14 @@ async function fetchCompanyPersonContext(serviceClient, person) {
     peopleResult.error ||
     driversResult.error ||
     complianceResult.error ||
-    teamThreadsResult.error
+    teamThreadsResult.error ||
+    announcementsResult.error
 
   if (error) return { data: null, error }
 
   return {
     data: {
+      announcements: announcementsResult.data ?? [],
       companyId,
       companyProfile: companyResult.data ? mapCompanyProfile(companyResult.data) : null,
       complianceItems: complianceResult.data.map(mapComplianceItem),
@@ -461,7 +556,7 @@ async function fetchCompanyPersonContext(serviceClient, person) {
   }
 }
 
-async function fetchDriverContext(serviceClient, driver) {
+async function fetchDriverContext(serviceClient, driver, userId) {
   const personResult = await serviceClient
     .from('company_people')
     .select('id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status')
@@ -514,6 +609,7 @@ async function fetchDriverContext(serviceClient, driver) {
     peopleResult,
     driversResult,
     teamThreadsResult,
+    announcementsResult,
   ] = await Promise.all([
     fetchCompanyProfile(serviceClient, driver.company_id),
     serviceClient
@@ -559,6 +655,11 @@ async function fetchDriverContext(serviceClient, driver) {
           .neq('status', 'archived')
           .order('last_message_at', { ascending: false, nullsFirst: false })
       : Promise.resolve({ data: [], error: null }),
+    fetchCompanyAnnouncementsForUser(serviceClient, {
+      audiences: getAnnouncementAudienceTypes({ driver, person: currentPerson }),
+      companyId: driver.company_id,
+      userId,
+    }),
   ])
 
   const error =
@@ -571,7 +672,8 @@ async function fetchDriverContext(serviceClient, driver) {
     faultsResult.error ||
     (peopleResult.error && !['42P01', '42703'].includes(peopleResult.error.code) ? peopleResult.error : null) ||
     driversResult.error ||
-    teamThreadsResult.error
+    teamThreadsResult.error ||
+    announcementsResult.error
 
   if (error) {
     return { data: null, error }
@@ -579,6 +681,7 @@ async function fetchDriverContext(serviceClient, driver) {
 
   return {
     data: {
+      announcements: announcementsResult.data ?? [],
       companyId: driver.company_id,
       companyProfile: companyResult.data ? mapCompanyProfile(companyResult.data) : null,
       complianceItems: complianceResult.data.map(mapComplianceItem),
@@ -677,7 +780,7 @@ export async function handler(event) {
       person = data
     }
 
-    const personContextResult = await fetchCompanyPersonContext(serviceClient, person)
+    const personContextResult = await fetchCompanyPersonContext(serviceClient, person, authData.user.id)
 
     if (personContextResult.error) {
       return jsonResponse(500, { error: personContextResult.error.message })
@@ -718,7 +821,7 @@ export async function handler(event) {
     driver = data
   }
 
-  const contextResult = await fetchDriverContext(serviceClient, driver)
+  const contextResult = await fetchDriverContext(serviceClient, driver, authData.user.id)
 
   if (contextResult.error) {
     return jsonResponse(500, { error: contextResult.error.message })

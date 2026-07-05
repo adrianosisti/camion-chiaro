@@ -110,6 +110,30 @@ export function mapCostEntry(row = {}) {
   }
 }
 
+export function mapCompanyAnnouncement(row = {}) {
+  const acknowledgedAt = row.acknowledged_at ?? row.acknowledgedAt ?? ''
+  const readAt = row.read_at ?? row.readAt ?? ''
+
+  return {
+    acknowledgedAt,
+    acknowledgedCount: Number(row.acknowledged_count ?? row.acknowledgedCount ?? 0),
+    audienceType: row.audience_type ?? row.audienceType ?? 'all',
+    body: row.body ?? '',
+    companyId: row.company_id ?? row.companyId ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    id: row.id,
+    isAcknowledged: Boolean(acknowledgedAt),
+    isRead: Boolean(readAt),
+    publishedAt: row.published_at ?? row.publishedAt ?? '',
+    readAt,
+    readCount: Number(row.read_count ?? row.readCount ?? 0),
+    requiresAck: row.requires_ack ?? row.requiresAck ?? true,
+    status: row.status ?? 'published',
+    title: row.title ?? 'Comunicazione',
+    updatedAt: row.updated_at ?? row.updatedAt ?? '',
+  }
+}
+
 export function mapChatMessage(row = {}) {
   return {
     attachmentPath: row.attachment_path ?? row.attachmentPath ?? '',
@@ -225,6 +249,7 @@ export function mapDriverContext(data = {}) {
     })),
     drivers: (data.drivers ?? []).map(mapDriver),
     costEntries: (data.costEntries ?? []).map(mapCostEntry),
+    announcements: (data.announcements ?? []).map(mapCompanyAnnouncement),
     faultReports: (data.faultReports ?? []).map(mapFaultReport),
     currentPerson: data.currentPerson ? mapCompanyPerson(data.currentPerson) : null,
     people: (data.people ?? []).map(mapCompanyPerson),

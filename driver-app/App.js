@@ -21,6 +21,7 @@ import * as Updates from 'expo-updates'
 import { useShareIntent } from 'expo-share-intent'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { AnnouncementsScreen } from './src/screens/AnnouncementsScreen'
 import { AuthScreen } from './src/screens/AuthScreen'
 import { AssistantModal } from './src/screens/AssistantModal'
 import { CompanyChatScreen } from './src/screens/CompanyChatScreen'
@@ -45,6 +46,7 @@ import {
   createFaultReport,
   createVehicleCheck,
   createVoiceCallSession,
+  acknowledgeCompanyAnnouncement,
   deleteNativePushToken,
   deleteCompanyCostEntry,
   ensureDirectTeamThread,
@@ -954,6 +956,12 @@ function CamionChiaroApp() {
   const unreadTeamMessages = accountType === 'company'
     ? companyContext?.unreadTeamMessages ?? 0
     : context?.unreadTeamMessages ?? 0
+  const pendingAnnouncements = accountType === 'driver'
+    ? (context?.announcements ?? []).filter((announcement) => (
+        announcement.requiresAck ? !announcement.acknowledgedAt : !announcement.readAt
+      ))
+    : []
+  const pendingAnnouncementCount = pendingAnnouncements.length
   const driverTotalUnreadMessages = accountType === 'driver'
     ? unreadCompanyMessages + unreadTeamMessages
     : 0
@@ -2542,6 +2550,45 @@ function CamionChiaroApp() {
     return true
   }
 
+  async function handleAcknowledgeCompanyAnnouncement(announcement, acknowledge = true) {
+    if (!announcement?.id || !currentCompanyId) return false
+
+    const result = await acknowledgeCompanyAnnouncement({
+      acknowledge,
+      announcementId: announcement.id,
+      companyId: currentCompanyId,
+      driverId: driver?.id ?? '',
+      personId: actorPersonId,
+    })
+
+    if (result.error) {
+      Alert.alert('Presa visione non salvata', result.error.message)
+      return false
+    }
+
+    const now = new Date().toISOString()
+    setContext((currentContext) => {
+      if (!currentContext) return currentContext
+
+      return {
+        ...currentContext,
+        announcements: (currentContext.announcements ?? []).map((currentAnnouncement) => (
+          currentAnnouncement.id === announcement.id
+            ? {
+                ...currentAnnouncement,
+                acknowledgedAt: acknowledge ? result.data?.acknowledgedAt ?? now : currentAnnouncement.acknowledgedAt,
+                isAcknowledged: acknowledge ? true : currentAnnouncement.isAcknowledged,
+                isRead: true,
+                readAt: result.data?.readAt ?? currentAnnouncement.readAt ?? now,
+              }
+            : currentAnnouncement
+        )),
+      }
+    })
+
+    return true
+  }
+
   async function disableNativePushForCurrentDevice() {
     let token = ''
 
@@ -4074,6 +4121,16 @@ function CamionChiaroApp() {
       )
     }
 
+    if (activeTab === 'announcements') {
+      return (
+        <AnnouncementsScreen
+          announcements={context?.announcements ?? []}
+          onAcknowledge={handleAcknowledgeCompanyAnnouncement}
+          onRefresh={() => loadDriverData({ silent: true })}
+        />
+      )
+    }
+
     if (activeTab === 'documents') {
       return (
         <DocumentsScreen
@@ -4128,8 +4185,10 @@ function CamionChiaroApp() {
           companyName={companyName}
           context={context}
           language={language}
-	          onOpenChat={() => openDriverChat('list')}
+          onOpenAnnouncements={() => setActiveTab('announcements')}
+          onOpenChat={() => openDriverChat('list')}
           onOpenSettings={() => setActiveTab('settings')}
+          pendingAnnouncementCount={pendingAnnouncementCount}
           unreadChatMessages={driverTotalUnreadMessages}
         />
       )
@@ -4149,6 +4208,7 @@ function CamionChiaroApp() {
           setDocumentFocusId(nextDocumentId || '')
           setActiveTab('documents')
         }}
+        onOpenAnnouncements={() => setActiveTab('announcements')}
         onOpenOperations={() => setActiveTab('operations')}
         onOpenAssistant={() => setIsAssistantOpen(true)}
         onOpenSettings={() => setActiveTab('settings')}
@@ -4157,6 +4217,7 @@ function CamionChiaroApp() {
         selectedDailyVehicleId={selectedDailyVehicleId}
         unreadChatMessages={driverTotalUnreadMessages}
         unreadCompanyMessages={unreadCompanyMessages}
+        pendingAnnouncementCount={pendingAnnouncementCount}
       />
     )
   }, [

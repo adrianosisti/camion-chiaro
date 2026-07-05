@@ -4883,127 +4883,6 @@ function isComplianceActionRequired(item) {
   return days <= 30
 }
 
-function escapeIcsText(value = '') {
-  return String(value ?? '')
-    .replaceAll('\\', '\\\\')
-    .replaceAll(';', '\\;')
-    .replaceAll(',', '\\,')
-    .replace(/\r?\n/g, '\\n')
-}
-
-function foldIcsLine(line = '') {
-  const text = String(line)
-  if (text.length <= 74) return [text]
-
-  const lines = []
-  let remaining = text
-  while (remaining.length > 74) {
-    lines.push(remaining.slice(0, 74))
-    remaining = ` ${remaining.slice(74)}`
-  }
-  lines.push(remaining)
-  return lines
-}
-
-function formatIcsDate(value) {
-  const raw = String(value ?? '').slice(0, 10)
-  const [year, month, day] = raw.split('-')
-  if (year?.length === 4 && month?.length === 2 && day?.length === 2) return `${year}${month}${day}`
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('')
-}
-
-function getIcsEndDate(value) {
-  const raw = String(value ?? '').slice(0, 10)
-  const [year, month, day] = raw.split('-').map((part) => Number(part))
-  if (year && month && day) {
-    const date = new Date(Date.UTC(year, month - 1, day + 1))
-    return [
-      date.getUTCFullYear(),
-      String(date.getUTCMonth() + 1).padStart(2, '0'),
-      String(date.getUTCDate()).padStart(2, '0'),
-    ].join('')
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  date.setDate(date.getDate() + 1)
-  return formatIcsDate(date)
-}
-
-function getIcsTimestamp(date = new Date()) {
-  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
-}
-
-function downloadComplianceCalendar(items = [], companyName = 'Azienda') {
-  const calendarItems = items.filter((item) => item?.dueDate && formatIcsDate(item.dueDate))
-
-  if (!calendarItems.length) {
-    window.alert('Nessuna scadenza esportabile nella vista corrente.')
-    return
-  }
-
-  const now = getIcsTimestamp()
-  const companyLabel = escapeIcsText(companyName || 'Azienda')
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    'PRODID:-//Vygo//Scadenze Aziendali//IT',
-    `X-WR-CALNAME:Vygo - Scadenze ${companyLabel}`,
-  ]
-
-  calendarItems.forEach((item) => {
-    const startDate = formatIcsDate(item.dueDate)
-    const endDate = getIcsEndDate(item.dueDate)
-    const subject = item.assignee || item.owner || companyName || 'Azienda'
-    const summary = `Vygo: ${item.type || 'Scadenza'} - ${subject}`
-    const description = [
-      item.detail,
-      item.documentNumber ? `Documento: ${item.documentNumber}` : '',
-      item.owner ? `Responsabile: ${item.owner}` : '',
-      item.urgency?.label ? `Stato: ${item.urgency.label}` : '',
-      'Promemoria generato da Vygo.',
-    ].filter(Boolean).join('\\n')
-
-    lines.push(
-      'BEGIN:VEVENT',
-      `UID:vygo-${escapeIcsText(item.id || `${startDate}-${summary}`).replace(/[^a-zA-Z0-9_-]/g, '')}@vy-go.com`,
-      `DTSTAMP:${now}`,
-      `DTSTART;VALUE=DATE:${startDate}`,
-      `DTEND;VALUE=DATE:${endDate}`,
-      `SUMMARY:${escapeIcsText(summary)}`,
-      `DESCRIPTION:${escapeIcsText(description)}`,
-      'BEGIN:VALARM',
-      'ACTION:DISPLAY',
-      `DESCRIPTION:${escapeIcsText(`Vygo: ${item.type || 'scadenza'} in arrivo`)}`,
-      'TRIGGER:-P14D',
-      'END:VALARM',
-      'END:VEVENT',
-    )
-  })
-
-  lines.push('END:VCALENDAR')
-  const ics = lines.flatMap(foldIcsLine).join('\r\n')
-  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  const safeCompany = String(companyName || 'azienda').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-  link.href = url
-  link.download = `vygo-scadenze-${safeCompany || 'azienda'}.ics`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
-
 function getDailyMotivation(role, t, date = new Date()) {
   const keys = dailyMotivationKeys[role] ?? dailyMotivationKeys.company
   const dayStart = new Date(date.getFullYear(), 0, 0)
@@ -10882,7 +10761,6 @@ function App() {
                 filteredItems={filteredItems}
                 onToggleShowAll={() => setComplianceShowAll((currentValue) => !currentValue)}
                 onClose={closeItem}
-                onExportCalendar={() => downloadComplianceCalendar(filteredItems, companyName)}
                 onFilter={setActiveFilter}
                 onOpenDetail={setSelectedDeadline}
                 onReminder={sendReminder}
@@ -21648,7 +21526,6 @@ function ComplianceBoard({
   complianceShowAll = false,
   filteredItems,
   onClose,
-  onExportCalendar,
   onFilter,
   onOpenDetail,
   onReminder,
@@ -21671,10 +21548,6 @@ function ComplianceBoard({
           </span>
         </div>
         <div className="panel-header-actions compliance-header-actions">
-          <button className="small-button compliance-toggle-button" type="button" onClick={onExportCalendar}>
-            <Download size={18} />
-            Calendario
-          </button>
           <button className="small-button compliance-toggle-button" type="button" onClick={onToggleShowAll}>
             <Filter size={18} />
             {complianceShowAll ? 'Solo da lavorare' : 'Mostra tutto'}

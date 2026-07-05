@@ -4883,6 +4883,127 @@ function isComplianceActionRequired(item) {
   return days <= 30
 }
 
+function escapeIcsText(value = '') {
+  return String(value ?? '')
+    .replaceAll('\\', '\\\\')
+    .replaceAll(';', '\\;')
+    .replaceAll(',', '\\,')
+    .replace(/\r?\n/g, '\\n')
+}
+
+function foldIcsLine(line = '') {
+  const text = String(line)
+  if (text.length <= 74) return [text]
+
+  const lines = []
+  let remaining = text
+  while (remaining.length > 74) {
+    lines.push(remaining.slice(0, 74))
+    remaining = ` ${remaining.slice(74)}`
+  }
+  lines.push(remaining)
+  return lines
+}
+
+function formatIcsDate(value) {
+  const raw = String(value ?? '').slice(0, 10)
+  const [year, month, day] = raw.split('-')
+  if (year?.length === 4 && month?.length === 2 && day?.length === 2) return `${year}${month}${day}`
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('')
+}
+
+function getIcsEndDate(value) {
+  const raw = String(value ?? '').slice(0, 10)
+  const [year, month, day] = raw.split('-').map((part) => Number(part))
+  if (year && month && day) {
+    const date = new Date(Date.UTC(year, month - 1, day + 1))
+    return [
+      date.getUTCFullYear(),
+      String(date.getUTCMonth() + 1).padStart(2, '0'),
+      String(date.getUTCDate()).padStart(2, '0'),
+    ].join('')
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  date.setDate(date.getDate() + 1)
+  return formatIcsDate(date)
+}
+
+function getIcsTimestamp(date = new Date()) {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
+}
+
+function downloadComplianceCalendar(items = [], companyName = 'Azienda') {
+  const calendarItems = items.filter((item) => item?.dueDate && formatIcsDate(item.dueDate))
+
+  if (!calendarItems.length) {
+    window.alert('Nessuna scadenza esportabile nella vista corrente.')
+    return
+  }
+
+  const now = getIcsTimestamp()
+  const companyLabel = escapeIcsText(companyName || 'Azienda')
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'PRODID:-//Vygo//Scadenze Aziendali//IT',
+    `X-WR-CALNAME:Vygo - Scadenze ${companyLabel}`,
+  ]
+
+  calendarItems.forEach((item) => {
+    const startDate = formatIcsDate(item.dueDate)
+    const endDate = getIcsEndDate(item.dueDate)
+    const subject = item.assignee || item.owner || companyName || 'Azienda'
+    const summary = `Vygo: ${item.type || 'Scadenza'} - ${subject}`
+    const description = [
+      item.detail,
+      item.documentNumber ? `Documento: ${item.documentNumber}` : '',
+      item.owner ? `Responsabile: ${item.owner}` : '',
+      item.urgency?.label ? `Stato: ${item.urgency.label}` : '',
+      'Promemoria generato da Vygo.',
+    ].filter(Boolean).join('\\n')
+
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:vygo-${escapeIcsText(item.id || `${startDate}-${summary}`).replace(/[^a-zA-Z0-9_-]/g, '')}@vy-go.com`,
+      `DTSTAMP:${now}`,
+      `DTSTART;VALUE=DATE:${startDate}`,
+      `DTEND;VALUE=DATE:${endDate}`,
+      `SUMMARY:${escapeIcsText(summary)}`,
+      `DESCRIPTION:${escapeIcsText(description)}`,
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${escapeIcsText(`Vygo: ${item.type || 'scadenza'} in arrivo`)}`,
+      'TRIGGER:-P14D',
+      'END:VALARM',
+      'END:VEVENT',
+    )
+  })
+
+  lines.push('END:VCALENDAR')
+  const ics = lines.flatMap(foldIcsLine).join('\r\n')
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  const safeCompany = String(companyName || 'azienda').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  link.href = url
+  link.download = `vygo-scadenze-${safeCompany || 'azienda'}.ics`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 function getDailyMotivation(role, t, date = new Date()) {
   const keys = dailyMotivationKeys[role] ?? dailyMotivationKeys.company
   const dayStart = new Date(date.getFullYear(), 0, 0)
@@ -10202,30 +10323,7 @@ function App() {
 
   const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => !isArchivedStatus(driver.status)).length
-  const activePeopleCount = personRecords.filter((person) => !isArchivedStatus(person.status)).length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => !isArchivedStatus(vehicle.status)).length
-  const checkEnabledDriverCount = driverRecords.filter((driver) => !isArchivedStatus(driver.status) && driver.canSubmitChecks !== false).length
-  const visibleDocumentRecords = documentRecords.filter((document) => document.visibleToDriver !== false)
-  const documentFileCount = visibleDocumentRecords.filter((document) => Boolean(document.filePath)).length
-  const missingDocumentCount = visibleDocumentRecords.filter((document) => {
-    const status = String(document.status ?? '').toLowerCase()
-    const isExpired = document.expiresAt ? daysUntil(document.expiresAt) < 0 : false
-    return !document.filePath || status.includes('manc') || status.includes('missing') || status.includes('scad') || status.includes('expired') || isExpired
-  }).length
-  const pilotReadiness = buildPilotReadinessSnapshot({
-    activeDriverCount,
-    activePeopleCount,
-    activeVehicleCount,
-    actionableDeadlineCount: actionableComplianceItems.length,
-    chatMessageCount: chatMessageRecords.length + teamChatMessageRecords.length,
-    checkEnabledDriverCount,
-    complianceItemCount: decoratedItems.length,
-    criticalCheckCount,
-    documentFileCount,
-    missingDocumentCount,
-    notificationEnabled: phoneNotificationEnabled,
-    openFaultCount,
-  })
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
 
   if (activeCompanyId && activeView !== 'admin' && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
@@ -10767,6 +10865,7 @@ function App() {
                 filteredItems={filteredItems}
                 onToggleShowAll={() => setComplianceShowAll((currentValue) => !currentValue)}
                 onClose={closeItem}
+                onExportCalendar={() => downloadComplianceCalendar(filteredItems, companyName)}
                 onFilter={setActiveFilter}
                 onOpenDetail={setSelectedDeadline}
                 onReminder={sendReminder}
@@ -10818,7 +10917,6 @@ function App() {
                 onOpenNotifications={() => openNotifications('inbox')}
                 onOpenWork={() => openNotifications('open_work')}
                 openFaultCount={openFaultCount}
-                pilotReadiness={pilotReadiness}
                 summary={summary}
                 t={t}
               />
@@ -14297,112 +14395,6 @@ function getUsageReadinessTone(score = 0) {
   return 'danger'
 }
 
-function buildPilotReadinessSnapshot({
-  activeDriverCount = 0,
-  activePeopleCount = 0,
-  activeVehicleCount = 0,
-  actionableDeadlineCount = 0,
-  chatMessageCount = 0,
-  checkEnabledDriverCount = 0,
-  complianceItemCount = 0,
-  criticalCheckCount = 0,
-  documentFileCount = 0,
-  missingDocumentCount = 0,
-  notificationEnabled = false,
-  openFaultCount = 0,
-} = {}) {
-  const totalPeople = activeDriverCount + activePeopleCount
-  const hasChatTest = chatMessageCount > 0
-  const hasDocuments = documentFileCount > 0
-  const hasDeadlines = complianceItemCount > 0
-  const issuesToWork = actionableDeadlineCount + criticalCheckCount + openFaultCount
-  const checks = [
-    {
-      detail: `${activeDriverCount} autisti · ${activePeopleCount} ufficio/magazzino`,
-      id: 'people',
-      label: 'Persone',
-      ready: totalPeople > 0,
-      todo: 'Inserisci almeno un autista o una persona aziendale.',
-      weight: 18,
-    },
-    {
-      detail: `${activeVehicleCount} mezzi in flotta`,
-      id: 'fleet',
-      label: 'Flotta',
-      ready: activeVehicleCount > 0,
-      todo: 'Carica almeno un mezzo reale della flotta.',
-      weight: 18,
-    },
-    {
-      detail: hasDeadlines ? `${complianceItemCount} scadenze monitorate` : 'Nessuna scadenza caricata',
-      id: 'deadlines',
-      label: 'Scadenze',
-      ready: hasDeadlines,
-      todo: 'Inserisci assicurazioni, revisioni o documenti con data.',
-      weight: 16,
-    },
-    {
-      detail: hasDocuments ? `${documentFileCount} file caricati` : 'Nessun file documento',
-      id: 'documents',
-      label: 'Documenti',
-      ready: hasDocuments,
-      todo: 'Carica almeno patente, libretto o assicurazione reale.',
-      weight: 14,
-    },
-    {
-      detail: hasChatTest ? `${chatMessageCount} messaggi registrati` : 'Chat da provare',
-      id: 'chat',
-      label: 'Chat',
-      ready: hasChatTest,
-      todo: 'Invia un messaggio di prova tra azienda e persona.',
-      weight: 12,
-    },
-    {
-      detail: notificationEnabled ? 'Attive su questo dispositivo' : 'Da attivare sui telefoni',
-      id: 'push',
-      label: 'Notifiche',
-      ready: notificationEnabled,
-      todo: 'Attiva notifiche sui telefoni del test.',
-      weight: 10,
-    },
-    {
-      detail: checkEnabledDriverCount ? `${checkEnabledDriverCount} autisti abilitati` : 'Nessun check abilitato',
-      id: 'checks',
-      label: 'Check',
-      ready: checkEnabledDriverCount > 0,
-      todo: 'Abilita i check mattutini agli autisti pilota.',
-      weight: 8,
-    },
-    {
-      detail: 'Segnalazione guasti disponibile',
-      id: 'faults',
-      label: 'Guasti',
-      ready: activeDriverCount > 0 && activeVehicleCount > 0,
-      todo: 'Serve almeno un autista e un mezzo per testare i guasti.',
-      weight: 4,
-    },
-  ]
-  const totalWeight = checks.reduce((total, item) => total + item.weight, 0)
-  const readyWeight = checks.reduce((total, item) => total + (item.ready ? item.weight : 0), 0)
-  const score = Math.round((readyWeight / totalWeight) * 100)
-  const firstMissing = checks.find((item) => !item.ready)
-  const nextAction = firstMissing?.todo
-    ?? (missingDocumentCount > 0
-      ? `${missingDocumentCount} documenti da controllare o rinnovare.`
-      : issuesToWork > 0
-        ? `${issuesToWork} pratiche aperte da gestire prima del pilota.`
-        : 'Pronta per il test pilota: puoi avviare l azienda.')
-
-  return {
-    readyCount: checks.filter((item) => item.ready).length,
-    score,
-    tasks: checks,
-    tone: getUsageReadinessTone(score),
-    totalCount: checks.length,
-    nextAction,
-  }
-}
-
 function HeroPanel({
   activeDriverCount,
   activeVehicleCount,
@@ -14427,7 +14419,6 @@ function HeroPanel({
   onOpenNotifications,
   onOpenWork,
   openFaultCount,
-  pilotReadiness,
   summary,
   t,
 }) {
@@ -14663,39 +14654,8 @@ function HeroPanel({
           <strong>{radarAction.label}</strong>
           <b>{radarAction.value}</b>
         </button>
-        <PilotReadinessPanel readiness={pilotReadiness} />
       </div>
     </section>
-  )
-}
-
-function PilotReadinessPanel({ readiness }) {
-  if (!readiness) return null
-
-  const visibleTasks = readiness.tasks.slice(0, 4)
-
-  return (
-    <div className={`pilot-readiness tone-${readiness.tone}`} aria-label="Pronto pilota">
-      <div className="pilot-readiness-head">
-        <span>
-          <ClipboardCheck size={16} />
-          Pronto pilota
-        </span>
-        <strong>{readiness.score}%</strong>
-      </div>
-      <div className="pilot-readiness-bar" aria-hidden="true">
-        <span style={{ width: `${readiness.score}%` }} />
-      </div>
-      <div className="pilot-readiness-list">
-        {visibleTasks.map((task) => (
-          <span className={task.ready ? 'is-ready' : 'is-missing'} key={task.id}>
-            {task.ready ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
-            {task.label}
-          </span>
-        ))}
-      </div>
-      <p>{readiness.nextAction}</p>
-    </div>
   )
 }
 
@@ -21670,6 +21630,7 @@ function ComplianceBoard({
   complianceShowAll = false,
   filteredItems,
   onClose,
+  onExportCalendar,
   onFilter,
   onOpenDetail,
   onReminder,
@@ -21691,10 +21652,16 @@ function ComplianceBoard({
               : `${workItemCount} da lavorare`}
           </span>
         </div>
-        <button className="small-button compliance-toggle-button" type="button" onClick={onToggleShowAll}>
-          <Filter size={18} />
-          {complianceShowAll ? 'Solo da lavorare' : 'Mostra tutto'}
-        </button>
+        <div className="panel-header-actions compliance-header-actions">
+          <button className="small-button compliance-toggle-button" type="button" onClick={onExportCalendar}>
+            <Download size={18} />
+            Calendario
+          </button>
+          <button className="small-button compliance-toggle-button" type="button" onClick={onToggleShowAll}>
+            <Filter size={18} />
+            {complianceShowAll ? 'Solo da lavorare' : 'Mostra tutto'}
+          </button>
+        </div>
       </div>
 
       <div className="filter-tabs" role="tablist" aria-label={t('deadline.filterAria')}>

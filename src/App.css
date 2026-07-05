@@ -2167,102 +2167,6 @@
   text-align: center;
 }
 
-.pilot-readiness {
-  display: grid;
-  gap: 7px;
-  padding: 9px;
-  border: 1px solid rgba(186, 230, 253, 0.18);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 3px 0 0 var(--pilot-accent, #12c6df);
-}
-
-.pilot-readiness.tone-success {
-  --pilot-accent: #22c55e;
-  --pilot-soft: rgba(34, 197, 94, 0.18);
-}
-
-.pilot-readiness.tone-warning {
-  --pilot-accent: #f59e0b;
-  --pilot-soft: rgba(245, 158, 11, 0.2);
-}
-
-.pilot-readiness.tone-danger {
-  --pilot-accent: #f43f5e;
-  --pilot-soft: rgba(244, 63, 94, 0.22);
-}
-
-.pilot-readiness-head,
-.pilot-readiness-list {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.pilot-readiness-head span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #67e8f9;
-  font-size: 0.68rem;
-  font-weight: 920;
-  text-transform: uppercase;
-}
-
-.pilot-readiness-head strong {
-  color: var(--pilot-accent, #67e8f9);
-  font-size: 1.18rem;
-  line-height: 1;
-}
-
-.pilot-readiness-bar {
-  overflow: hidden;
-  height: 7px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.4);
-}
-
-.pilot-readiness-bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--pilot-accent, #12c6df), #67e8f9);
-}
-
-.pilot-readiness-list {
-  flex-wrap: wrap;
-  justify-content: flex-start;
-}
-
-.pilot-readiness-list span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  border-radius: 999px;
-  font-size: 0.64rem;
-  font-weight: 850;
-}
-
-.pilot-readiness-list .is-ready {
-  color: #bbf7d0;
-  background: rgba(34, 197, 94, 0.14);
-}
-
-.pilot-readiness-list .is-missing {
-  color: #fed7aa;
-  background: rgba(245, 158, 11, 0.16);
-}
-
-.pilot-readiness p {
-  margin: 0;
-  color: #e0f2fe;
-  font-size: 0.7rem;
-  font-weight: 760;
-  line-height: 1.25;
-}
-
 .home-command-panel {
   display: grid;
   gap: 16px;
@@ -10922,6 +10826,10 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+.compliance-header-actions {
+  flex-wrap: wrap;
 }
 
 .lower-grid {

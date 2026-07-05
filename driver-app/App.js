@@ -4018,7 +4018,6 @@ function CamionChiaroApp() {
           isRefreshing={isRefreshing}
           language={language}
           logoUrl={logoUrl}
-          notificationEnabled={/abilitat|enabled|registered/.test(String(nativePushStatus).toLowerCase())}
           onOpenChat={openNativeChatTab}
           onOpenAssistant={() => setIsAssistantOpen(true)}
           onOpenManagement={openCompanyManagement}

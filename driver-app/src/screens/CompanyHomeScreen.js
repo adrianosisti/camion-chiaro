@@ -210,122 +210,6 @@ function isCheckCritical(check) {
   return !isCheckResolved(check) && (!check.lightsOk || !check.tiresOk || !check.documentsOnBoard)
 }
 
-function isArchivedStatus(status) {
-  return ['archived', 'Archiviato', 'closed'].includes(status)
-}
-
-function getPilotReadinessTone(score = 0) {
-  if (score >= 82) return 'success'
-  if (score >= 58) return 'warning'
-  return 'danger'
-}
-
-function buildPilotReadinessSnapshot({
-  activeDriverCount = 0,
-  activePeopleCount = 0,
-  activeVehicleCount = 0,
-  actionableDeadlineCount = 0,
-  chatMessageCount = 0,
-  checkEnabledDriverCount = 0,
-  complianceItemCount = 0,
-  criticalCheckCount = 0,
-  documentFileCount = 0,
-  missingDocumentCount = 0,
-  notificationEnabled = false,
-  openFaultCount = 0,
-} = {}) {
-  const totalPeople = activeDriverCount + activePeopleCount
-  const hasChatTest = chatMessageCount > 0
-  const hasDeadlines = complianceItemCount > 0
-  const hasDocuments = documentFileCount > 0
-  const issuesToWork = actionableDeadlineCount + criticalCheckCount + openFaultCount
-  const tasks = [
-    {
-      detail: `${activeDriverCount} autisti · ${activePeopleCount} ufficio/magazzino`,
-      id: 'people',
-      label: 'Persone',
-      ready: totalPeople > 0,
-      todo: 'Inserisci almeno una persona pilota.',
-      weight: 18,
-    },
-    {
-      detail: `${activeVehicleCount} mezzi`,
-      id: 'fleet',
-      label: 'Flotta',
-      ready: activeVehicleCount > 0,
-      todo: 'Carica almeno un mezzo reale.',
-      weight: 18,
-    },
-    {
-      detail: hasDeadlines ? `${complianceItemCount} scadenze` : 'Scadenze assenti',
-      id: 'deadlines',
-      label: 'Scadenze',
-      ready: hasDeadlines,
-      todo: 'Inserisci revisioni, assicurazioni o documenti con data.',
-      weight: 16,
-    },
-    {
-      detail: hasDocuments ? `${documentFileCount} file` : 'File assenti',
-      id: 'documents',
-      label: 'Documenti',
-      ready: hasDocuments,
-      todo: 'Carica almeno un documento reale.',
-      weight: 14,
-    },
-    {
-      detail: hasChatTest ? `${chatMessageCount} messaggi` : 'Chat da provare',
-      id: 'chat',
-      label: 'Chat',
-      ready: hasChatTest,
-      todo: 'Invia un messaggio di prova.',
-      weight: 12,
-    },
-    {
-      detail: notificationEnabled ? 'Attive' : 'Da attivare',
-      id: 'push',
-      label: 'Notifiche',
-      ready: notificationEnabled,
-      todo: 'Attiva le notifiche sui telefoni pilota.',
-      weight: 10,
-    },
-    {
-      detail: checkEnabledDriverCount ? `${checkEnabledDriverCount} abilitati` : 'Check non abilitati',
-      id: 'checks',
-      label: 'Check',
-      ready: checkEnabledDriverCount > 0,
-      todo: 'Abilita i check agli autisti pilota.',
-      weight: 8,
-    },
-    {
-      detail: 'Guasti disponibili',
-      id: 'faults',
-      label: 'Guasti',
-      ready: activeDriverCount > 0 && activeVehicleCount > 0,
-      todo: 'Serve un autista e un mezzo per provare i guasti.',
-      weight: 4,
-    },
-  ]
-  const totalWeight = tasks.reduce((total, item) => total + item.weight, 0)
-  const readyWeight = tasks.reduce((total, item) => total + (item.ready ? item.weight : 0), 0)
-  const score = Math.round((readyWeight / totalWeight) * 100)
-  const firstMissing = tasks.find((item) => !item.ready)
-  const nextAction = firstMissing?.todo
-    ?? (missingDocumentCount > 0
-      ? `${missingDocumentCount} documenti da controllare.`
-      : issuesToWork > 0
-        ? `${issuesToWork} pratiche da gestire.`
-        : 'Pronta per il test pilota.')
-
-  return {
-    readyCount: tasks.filter((item) => item.ready).length,
-    score,
-    tasks,
-    tone: getPilotReadinessTone(score),
-    totalCount: tasks.length,
-    nextAction,
-  }
-}
-
 function formatDate(value, language = 'it') {
   if (!value) return ''
   return new Intl.DateTimeFormat(getLocale(language), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value))
@@ -686,46 +570,10 @@ function OperationsDetailPanel({ detail, drivers, isResolving = false, language 
   )
 }
 
-function PilotReadinessStrip({ readiness }) {
-  if (!readiness) return null
-
-  const visibleTasks = readiness.tasks.slice(0, 4)
-
-  return (
-    <View style={[styles.pilotReadinessStrip, styles[`${readiness.tone}PilotReadinessStrip`]]}>
-      <View style={styles.pilotReadinessMain}>
-        <View style={styles.pilotReadinessTitleRow}>
-          <Ionicons color={colors.cyanDark} name="clipboard-outline" size={15} />
-          <Text style={styles.pilotReadinessTitle}>Pronto pilota</Text>
-          <Text style={styles.pilotReadinessCount}>{readiness.readyCount}/{readiness.totalCount}</Text>
-        </View>
-        <View style={styles.pilotReadinessBar} accessibilityLabel={`Pronto pilota ${readiness.score}%`}>
-          <View style={[styles.pilotReadinessBarFill, { width: `${readiness.score}%` }]} />
-        </View>
-        <Text numberOfLines={1} style={styles.pilotReadinessNext}>{readiness.nextAction}</Text>
-        <View style={styles.pilotReadinessTasks}>
-          {visibleTasks.map((task) => (
-            <View key={task.id} style={[styles.pilotReadinessTaskPill, task.ready ? styles.readyPilotTask : styles.missingPilotTask]}>
-              <Ionicons
-                color={task.ready ? '#15803d' : '#b45309'}
-                name={task.ready ? 'checkmark-circle' : 'alert-circle'}
-                size={11}
-              />
-              <Text numberOfLines={1} style={styles.pilotReadinessTaskText}>{task.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-      <Text adjustsFontSizeToFit minimumFontScale={0.75} numberOfLines={1} style={styles.pilotReadinessScore}>{readiness.score}%</Text>
-    </View>
-  )
-}
-
 export function CompanyHomeScreen({
   context,
   language = 'it',
   logoUrl,
-  notificationEnabled = false,
   onOpenAssistant,
   onOpenChat,
   onOpenManagement,
@@ -739,7 +587,7 @@ export function CompanyHomeScreen({
   const drivers = context?.drivers ?? []
   const people = context?.people ?? []
   const peopleCount = people.filter((person) => (
-    !isArchivedStatus(person.status)
+    !['archived', 'Archiviato'].includes(person.status)
       && !['driver', 'drivers'].includes(person.department)
   )).length
   const vehicles = context?.vehicles ?? []
@@ -747,7 +595,6 @@ export function CompanyHomeScreen({
   const faults = context?.faultReports ?? []
   const costEntries = context?.costEntries ?? []
   const complianceItems = context?.complianceItems ?? []
-  const documents = context?.documents ?? []
   const unreadMessages = Number(context?.unreadDriverMessages ?? 0) + Number(context?.unreadTeamMessages ?? 0)
   const openFaults = faults.filter((fault) => !['closed', 'archived'].includes(fault.status))
   const repairCostSummary = getRepairCostSummary(faults, costEntries)
@@ -805,30 +652,6 @@ export function CompanyHomeScreen({
     onPress: () => onOpenManagement?.('news'),
     tone: 'info',
   }
-  const activeDrivers = drivers.filter((driver) => !isArchivedStatus(driver.status))
-  const activeVehicles = vehicles.filter((vehicle) => !isArchivedStatus(vehicle.status))
-  const checkEnabledDriverCount = activeDrivers.filter((driver) => driver.canSubmitChecks !== false).length
-  const visibleDocuments = documents.filter((document) => document.visibleToDriver !== false)
-  const documentFileCount = visibleDocuments.filter((document) => Boolean(document.filePath)).length
-  const missingDocumentCount = visibleDocuments.filter((document) => {
-    const status = String(document.status ?? '').toLowerCase()
-    const isExpired = document.expiresAt ? getDeadlineDays(document.expiresAt) < 0 : false
-    return !document.filePath || status.includes('manc') || status.includes('missing') || status.includes('scad') || status.includes('expired') || isExpired
-  }).length
-  const pilotReadiness = buildPilotReadinessSnapshot({
-    activeDriverCount: activeDrivers.length,
-    activePeopleCount: peopleCount,
-    activeVehicleCount: activeVehicles.length,
-    actionableDeadlineCount: activeDeadlines.length,
-    chatMessageCount: Number(context?.chatMessages?.length ?? 0) + Number(context?.teamChatMessages?.length ?? 0),
-    checkEnabledDriverCount,
-    complianceItemCount: complianceItems.length,
-    criticalCheckCount: criticalChecks.length,
-    documentFileCount,
-    missingDocumentCount,
-    notificationEnabled,
-    openFaultCount: openFaults.length,
-  })
 
   async function resolveSelectedDetail(detail = selectedDetail, repair = undefined) {
     if (!detail?.item?.id) return
@@ -913,7 +736,6 @@ export function CompanyHomeScreen({
             {operationalMeta}. Tocca per aprire la priorita operativa.
           </Text>
         </Pressable>
-        <PilotReadinessStrip readiness={pilotReadiness} />
         <View style={styles.radarTileGrid}>
           <RadarTile
             icon="radio-outline"
@@ -1237,101 +1059,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 10,
-  },
-  pilotReadinessStrip: {
-    alignItems: 'center',
-    borderColor: 'rgba(103, 232, 249, 0.28)',
-    borderRadius: 13,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    minHeight: 60,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  dangerPilotReadinessStrip: {
-    backgroundColor: '#fff7ed',
-    borderColor: '#fed7aa',
-  },
-  successPilotReadinessStrip: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#bbf7d0',
-  },
-  warningPilotReadinessStrip: {
-    backgroundColor: '#fffbeb',
-    borderColor: '#fde68a',
-  },
-  pilotReadinessMain: {
-    flex: 1,
-    gap: 3,
-    minWidth: 0,
-  },
-  pilotReadinessTitleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 5,
-  },
-  pilotReadinessTitle: {
-    color: colors.ink,
-    flex: 1,
-    fontSize: 11,
-    fontWeight: '900',
-    minWidth: 0,
-    textTransform: 'uppercase',
-  },
-  pilotReadinessCount: {
-    color: colors.cyanDark,
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  pilotReadinessBar: {
-    backgroundColor: 'rgba(15, 23, 42, 0.12)',
-    borderRadius: 999,
-    height: 5,
-    overflow: 'hidden',
-  },
-  pilotReadinessBarFill: {
-    backgroundColor: colors.cyanDark,
-    borderRadius: 999,
-    height: '100%',
-  },
-  pilotReadinessNext: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  pilotReadinessTasks: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 3,
-  },
-  pilotReadinessTaskPill: {
-    alignItems: 'center',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 2,
-    maxWidth: 74,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  readyPilotTask: {
-    backgroundColor: '#dcfce7',
-  },
-  missingPilotTask: {
-    backgroundColor: '#ffedd5',
-  },
-  pilotReadinessTaskText: {
-    color: colors.ink,
-    fontSize: 8,
-    fontWeight: '900',
-    maxWidth: 54,
-  },
-  pilotReadinessScore: {
-    color: colors.ink,
-    fontSize: 20,
-    fontWeight: '900',
-    minWidth: 44,
-    textAlign: 'right',
   },
   radarTile: {
     borderRadius: 13,

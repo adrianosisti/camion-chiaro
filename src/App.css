@@ -5681,6 +5681,15 @@
   transform: translateY(-1px);
 }
 
+.transport-news-card.is-read {
+  opacity: 0.78;
+}
+
+.transport-news-card.is-unread {
+  border-top-color: rgba(18, 198, 223, 0.5);
+  box-shadow: 0 14px 30px rgba(18, 198, 223, 0.14);
+}
+
 .transport-news-card.tone-rules {
   border-left-color: #7c3aed;
 }
@@ -5745,10 +5754,18 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  border-radius: 999px;
+  background: rgba(18, 198, 223, 0.1);
   color: #0891b2;
   font-size: 0.78rem;
   font-weight: 900;
+  padding: 5px 8px;
   text-decoration: none;
+}
+
+.transport-news-card.is-read .transport-news-card-foot span {
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .transport-news-detail {

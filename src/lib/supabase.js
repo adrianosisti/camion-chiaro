@@ -3254,7 +3254,7 @@ export async function createDriverDocumentSignedUrl(filePath) {
     return { data: null, error: null }
   }
 
-  const ttlSeconds = 600
+  const ttlSeconds = 86400
   const cacheKey = `${driverDocumentsBucket}:${filePath}`
   const cachedSignedUrl = getCachedSignedUrl(cacheKey)
   if (cachedSignedUrl) return { data: { signedUrl: cachedSignedUrl }, error: null }

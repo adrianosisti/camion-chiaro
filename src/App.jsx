@@ -183,13 +183,13 @@ const documentTypes = [
 
 const driverDocumentStatusOptions = ['Caricato', 'Verificato', 'Scaduto', 'Mancante']
 const maxDriverDocumentFileSize = 10 * 1024 * 1024
-const maxOperationalImageFileSize = 8 * 1024 * 1024
-const maxProfileImageFileSize = 5 * 1024 * 1024
-const maxChatImageFileSize = 8 * 1024 * 1024
-const maxChatAudioFileSize = 16 * 1024 * 1024
-const maxChatVideoFileSize = 64 * 1024 * 1024
-const imageCompressionMaxSide = 1600
-const imageCompressionQuality = 0.76
+const maxOperationalImageFileSize = 5 * 1024 * 1024
+const maxProfileImageFileSize = 2 * 1024 * 1024
+const maxChatImageFileSize = 5 * 1024 * 1024
+const maxChatAudioFileSize = 10 * 1024 * 1024
+const maxChatVideoFileSize = 24 * 1024 * 1024
+const imageCompressionMaxSide = 1280
+const imageCompressionQuality = 0.62
 const storagePlanLimitsBytes = {
   business: 30 * 1024 * 1024 * 1024,
   enterprise: 100 * 1024 * 1024 * 1024,
@@ -9992,6 +9992,12 @@ function App() {
     setIsTransportNewsLoading(false)
 
     if (result.error) {
+      const cachedItems = mergeTransportNewsHistory(loadTransportNewsHistory(), [], 30)
+      if (cachedItems.length) {
+        setTransportNews(cachedItems)
+        setTransportNewsStatus('Radar Vygo aggiornato con le ultime news salvate.')
+        return
+      }
       setTransportNewsStatus(result.error.message)
       return
     }
@@ -10001,22 +10007,24 @@ function App() {
 
     if (!readableCount) {
       items = buildClientRadarFallbackItems()
-      readableCount = items.length
       nextMeta = {
         ...(nextMeta ?? {}),
         generatedAt: new Date().toISOString(),
         issues: [],
         mode: 'client-radar',
-        nextAutomaticUpdate: 'Ogni giorno intorno alle 10:00 ora italiana.',
         retentionDays: nextMeta?.retentionDays ?? 30,
       }
     }
 
-    setTransportNews(items)
+    const retentionDays = nextMeta?.retentionDays ?? 30
+    const mergedItems = mergeTransportNewsHistory(loadTransportNewsHistory(), items, retentionDays)
+    readableCount = mergedItems.filter(hasTransportNewsDisplayText).length
+    saveTransportNewsHistory(mergedItems)
+    setTransportNews(mergedItems)
     setTransportNewsMeta(nextMeta)
     setTransportNewsStatus(
       readableCount
-        ? `Radar Vygo aggiornato: ${readableCount} bollettini disponibili. Prossimo aggiornamento automatico: ${nextMeta?.nextAutomaticUpdate ?? 'giornaliero'}.`
+        ? `Radar Vygo aggiornato: ${readableCount} bollettini disponibili.`
         : 'Nessuna notizia leggibile disponibile in questo momento.',
     )
   }, [])
@@ -12201,6 +12209,84 @@ function hasTransportNewsDisplayText(item = {}) {
   return splitTransportNewsText(getTransportNewsDisplayItem(item).summary).length > 0
 }
 
+const transportNewsHistoryStorageKey = 'vygo-transport-news-history-v1'
+const transportNewsReadStorageKey = 'vygo-transport-news-read-v1'
+
+function getTransportNewsItemKey(item = {}) {
+  return String(item.id || item.url || `${item.title || 'news'}:${item.published_at || item.fetched_at || ''}`)
+}
+
+function getTransportNewsTimestamp(item = {}) {
+  const rawDate = item.published_at || item.fetched_at || item.generatedAt || item.created_at
+  const timestamp = Date.parse(rawDate)
+  return Number.isFinite(timestamp) ? timestamp : Date.now()
+}
+
+function loadTransportNewsHistory() {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(transportNewsHistoryStorageKey) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function saveTransportNewsHistory(items = []) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(transportNewsHistoryStorageKey, JSON.stringify(items.slice(0, 120)))
+  } catch {
+    // Local storage can be unavailable in private browsing; the live feed still works.
+  }
+}
+
+function loadTransportNewsReadKeys() {
+  if (typeof window === 'undefined') return new Set()
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(transportNewsReadStorageKey) || '[]')
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function saveTransportNewsReadKeys(readKeys = new Set()) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(transportNewsReadStorageKey, JSON.stringify([...readKeys].slice(-500)))
+  } catch {
+    // Non-blocking: read state is cosmetic.
+  }
+}
+
+function mergeTransportNewsHistory(previousItems = [], incomingItems = [], retentionDays = 30) {
+  const safeRetentionDays = Math.max(1, Number(retentionDays) || 30)
+  const cutoff = Date.now() - safeRetentionDays * 24 * 60 * 60 * 1000
+  const merged = new Map()
+
+  ;[...previousItems, ...incomingItems]
+    .filter(hasTransportNewsDisplayText)
+    .forEach((item) => {
+      const key = getTransportNewsItemKey(item)
+      const timestamp = getTransportNewsTimestamp(item)
+      if (!key || timestamp < cutoff) return
+
+      merged.set(key, {
+        ...(merged.get(key) ?? {}),
+        ...item,
+      })
+    })
+
+  return [...merged.values()]
+    .sort((first, second) => getTransportNewsTimestamp(second) - getTransportNewsTimestamp(first))
+    .slice(0, 120)
+}
+
 function getClientRadarUpcomingRestriction(schedule = fallbackRestrictionSchedule2026) {
   const todayKey = getLocalDateKey()
   return [...schedule]
@@ -12326,6 +12412,7 @@ function TransportNewsWorkspace({
   statusMessage = '',
 }) {
   const [activeSection, setActiveSection] = useState('all')
+  const [readNewsKeys, setReadNewsKeys] = useState(() => loadTransportNewsReadKeys())
   const [selectedItem, setSelectedItem] = useState(null)
   const updatedAt = meta?.generatedAt ? formatShortDateTime(meta.generatedAt) : ''
   const safeItems = (Array.isArray(items) ? items : []).filter(hasTransportNewsDisplayText)
@@ -12351,6 +12438,17 @@ function TransportNewsWorkspace({
     .filter((restriction) => restriction.date >= getLocalDateKey())
     .slice(0, 8)
 
+  function openTransportNewsItem(item) {
+    const itemKey = getTransportNewsItemKey(item)
+    setReadNewsKeys((currentKeys) => {
+      const nextKeys = new Set(currentKeys)
+      if (itemKey) nextKeys.add(itemKey)
+      saveTransportNewsReadKeys(nextKeys)
+      return nextKeys
+    })
+    setSelectedItem(item)
+  }
+
   if (selectedItem) {
     const displayItem = getTransportNewsDisplayItem(selectedItem)
     const detailParagraphs = splitTransportNewsText(displayItem.summary)
@@ -12371,7 +12469,7 @@ function TransportNewsWorkspace({
             <h2>{displayItem.title}</h2>
             <div className="transport-news-detail-source">
               <strong>{displayItem.source_name || 'Fonte'}</strong>
-              <span>{displayItem.isDigest ? 'Bollettino giornaliero con fonti collegate' : `Disponibile per circa ${retentionDays} giorni`}</span>
+              <span>Letta · {displayItem.isDigest ? 'Bollettino con fonti collegate' : `Disponibile per circa ${retentionDays} giorni`}</span>
             </div>
           </header>
 
@@ -12427,7 +12525,7 @@ function TransportNewsWorkspace({
           <Newspaper size={16} />
           {isFallbackMode
             ? 'Vygo mostra le informazioni disponibili e il calendario fermi aggiornato.'
-            : statusMessage || 'Si aggiorna automaticamente ogni giorno intorno alle 10:00 ora italiana.'}
+            : statusMessage || 'Radar Vygo aggiornato.'}
         </span>
         {updatedAt ? <small>Ultimo controllo {updatedAt}</small> : null}
       </div>
@@ -12571,9 +12669,10 @@ function TransportNewsWorkspace({
         {activeSection !== 'restrictions' && visibleItems.length ? visibleItems.map((item) => {
           const displayItem = getTransportNewsDisplayItem(item)
           const tone = getTransportNewsTone(displayItem.category)
+          const isRead = readNewsKeys.has(getTransportNewsItemKey(displayItem))
 
           return (
-            <button className={`transport-news-card tone-${tone}`} key={displayItem.id || displayItem.url} onClick={() => setSelectedItem(displayItem)} type="button">
+            <button className={`transport-news-card tone-${tone} ${isRead ? 'is-read' : 'is-unread'}`} key={displayItem.id || displayItem.url} onClick={() => openTransportNewsItem(displayItem)} type="button">
               <div className="transport-news-card-head">
                 <span>{displayItem.category || 'Logistica'}</span>
                 <small>{formatTransportNewsDate(displayItem.published_at || displayItem.fetched_at)}</small>
@@ -12582,7 +12681,7 @@ function TransportNewsWorkspace({
               <p>{displayItem.summary}</p>
               <div className="transport-news-card-foot">
                 <strong>{displayItem.source_name || 'Fonte'}</strong>
-                <span>{displayItem.isDigest ? 'Radar' : 'Leggi'}</span>
+                <span>{isRead ? 'Letta' : 'Da leggere'}</span>
               </div>
             </button>
           )

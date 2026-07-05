@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import { fetchTransportNews } from '../services/driverApi'
 import { colors, layout } from '../theme'
@@ -246,9 +247,79 @@ function hasDisplayNewsText(item = {}) {
   return splitNewsText(getDisplayNewsItem(item).summary).length > 0
 }
 
+const newsHistoryStorageKey = 'vygo-transport-news-history-v1'
+const newsReadStorageKey = 'vygo-transport-news-read-v1'
+
+function getNewsItemKey(item = {}) {
+  return String(item.id || item.url || `${item.title || 'news'}:${item.published_at || item.fetched_at || ''}`)
+}
+
+function getNewsTimestamp(item = {}) {
+  const timestamp = Date.parse(item.published_at || item.fetched_at || item.generatedAt || item.created_at)
+  return Number.isFinite(timestamp) ? timestamp : Date.now()
+}
+
+async function loadStoredNewsHistory() {
+  try {
+    const parsed = JSON.parse(await AsyncStorage.getItem(newsHistoryStorageKey) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+async function saveStoredNewsHistory(items = []) {
+  try {
+    await AsyncStorage.setItem(newsHistoryStorageKey, JSON.stringify(items.slice(0, 120)))
+  } catch {
+    // Non-blocking: live news still render if device storage is unavailable.
+  }
+}
+
+async function loadStoredReadNewsKeys() {
+  try {
+    const parsed = JSON.parse(await AsyncStorage.getItem(newsReadStorageKey) || '[]')
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+async function saveStoredReadNewsKeys(readKeys = new Set()) {
+  try {
+    await AsyncStorage.setItem(newsReadStorageKey, JSON.stringify([...readKeys].slice(-500)))
+  } catch {
+    // Non-blocking: read state is cosmetic.
+  }
+}
+
+function mergeNewsHistory(previousItems = [], incomingItems = [], retentionDays = 30) {
+  const safeRetentionDays = Math.max(1, Number(retentionDays) || 30)
+  const cutoff = Date.now() - safeRetentionDays * 24 * 60 * 60 * 1000
+  const merged = new Map()
+
+  ;[...previousItems, ...incomingItems]
+    .filter(hasDisplayNewsText)
+    .forEach((item) => {
+      const key = getNewsItemKey(item)
+      const timestamp = getNewsTimestamp(item)
+      if (!key || timestamp < cutoff) return
+
+      merged.set(key, {
+        ...(merged.get(key) ?? {}),
+        ...item,
+      })
+    })
+
+  return [...merged.values()]
+    .sort((first, second) => getNewsTimestamp(second) - getNewsTimestamp(first))
+    .slice(0, 120)
+}
+
 export function TransportNewsScreen({ language = 'it', onBack }) {
   const [items, setItems] = useState([])
   const [activeSection, setActiveSection] = useState('all')
+  const [readNewsKeys, setReadNewsKeys] = useState(new Set())
   const [selectedItem, setSelectedItem] = useState(null)
   const [status, setStatus] = useState('Caricamento news e fermi...')
   const [isLoading, setIsLoading] = useState(false)
@@ -296,19 +367,52 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
     setIsLoading(false)
 
     if (result.error) {
+      const cachedItems = mergeNewsHistory(await loadStoredNewsHistory(), [], 30)
+      if (cachedItems.length) {
+        setItems(cachedItems)
+        setStatus('Ultime notizie salvate disponibili.')
+        return
+      }
       setStatus(result.error.message)
       return
     }
 
-    const readableCount = nextItems.filter(hasDisplayNewsText).length
-    setItems(nextItems)
-    setMeta(result.data && typeof result.data === 'object' ? result.data : null)
+    const nextMeta = result.data && typeof result.data === 'object' ? result.data : null
+    const retentionDays = nextMeta?.retentionDays ?? 30
+    const mergedItems = mergeNewsHistory(await loadStoredNewsHistory(), nextItems, retentionDays)
+    const readableCount = mergedItems.filter(hasDisplayNewsText).length
+    await saveStoredNewsHistory(mergedItems)
+    setItems(mergedItems)
+    setMeta(nextMeta)
     setStatus(readableCount ? `${readableCount} notizie operative caricate.` : 'Nessuna notizia leggibile disponibile ora.')
   }
 
   useEffect(() => {
     void loadNews()
   }, [])
+
+  useEffect(() => {
+    let isActive = true
+
+    loadStoredReadNewsKeys().then((storedKeys) => {
+      if (isActive) setReadNewsKeys(storedKeys)
+    })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  function openNewsItem(item) {
+    const itemKey = getNewsItemKey(item)
+    setReadNewsKeys((currentKeys) => {
+      const nextKeys = new Set(currentKeys)
+      if (itemKey) nextKeys.add(itemKey)
+      void saveStoredReadNewsKeys(nextKeys)
+      return nextKeys
+    })
+    setSelectedItem(item)
+  }
 
   if (selectedItem) {
     const displayItem = getDisplayNewsItem(selectedItem)
@@ -329,7 +433,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
           </View>
           <Text style={styles.detailTitle}>{displayItem.title}</Text>
           <Text style={styles.detailSource}>
-            {displayItem.source_name || 'Fonte'} · {displayItem.isDigest ? 'bollettino con fonti collegate' : `disponibile per circa ${retentionDays} giorni`}
+            {displayItem.source_name || 'Fonte'} · Letta · {displayItem.isDigest ? 'bollettino con fonti collegate' : `disponibile per circa ${retentionDays} giorni`}
           </Text>
         </View>
 
@@ -395,7 +499,7 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
           <Text style={styles.statusText}>
             {isFallbackMode ? 'Informazioni disponibili e calendario fermi aggiornato.' : status}
           </Text>
-          <Text style={styles.statusMeta}>{meta?.nextAutomaticUpdate ?? 'Aggiornamento automatico ogni giorno intorno alle 10:00 ora italiana.'}</Text>
+          <Text style={styles.statusMeta}>News e fermi restano disponibili anche dopo l'aggiornamento.</Text>
         </View>
         <Pressable disabled={isLoading} onPress={() => loadNews({ force: true })} style={styles.refreshButton}>
           <Ionicons color={colors.white} name="refresh" size={17} />
@@ -512,9 +616,10 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
       {activeSection !== 'restrictions' && visibleItems.map((item) => {
         const displayItem = getDisplayNewsItem(item)
         const tone = getNewsTone(displayItem.category)
+        const isRead = readNewsKeys.has(getNewsItemKey(displayItem))
 
         return (
-          <Pressable key={displayItem.id || displayItem.url} onPress={() => setSelectedItem(displayItem)} style={[styles.newsCard, styles[`${tone}Card`]]}>
+          <Pressable key={displayItem.id || displayItem.url} onPress={() => openNewsItem(displayItem)} style={[styles.newsCard, styles[`${tone}Card`], isRead ? styles.newsCardRead : styles.newsCardUnread]}>
             <View style={styles.newsHead}>
               <Text style={styles.category}>{displayItem.category || 'Logistica'}</Text>
               <Text style={styles.date}>{formatDate(displayItem.published_at || displayItem.fetched_at)}</Text>
@@ -523,9 +628,8 @@ export function TransportNewsScreen({ language = 'it', onBack }) {
             <Text numberOfLines={4} style={styles.summary}>{displayItem.summary}</Text>
             <View style={styles.sourceRow}>
               <Text style={styles.source}>{displayItem.source_name || 'Fonte'}</Text>
-              <View style={styles.sourceAction}>
-                <Text style={styles.sourceActionText}>{displayItem.isFallback ? 'Canale' : 'Fonte'}</Text>
-                <Ionicons color={colors.cyanDark} name="open-outline" size={15} />
+              <View style={[styles.readBadge, isRead ? styles.readBadgeRead : styles.readBadgeUnread]}>
+                <Text style={[styles.readBadgeText, isRead ? styles.readBadgeTextRead : styles.readBadgeTextUnread]}>{isRead ? 'Letta' : 'Da leggere'}</Text>
               </View>
             </View>
           </Pressable>
@@ -687,6 +791,16 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
   },
+  newsCardRead: {
+    opacity: 0.78,
+  },
+  newsCardUnread: {
+    borderColor: 'rgba(18, 198, 223, 0.42)',
+    shadowColor: colors.cyanDark,
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+  },
   newsHead: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -706,6 +820,27 @@ const styles = StyleSheet.create({
     height: 38,
     justifyContent: 'center',
     width: 38,
+  },
+  readBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  readBadgeRead: {
+    backgroundColor: '#f1f5f9',
+  },
+  readBadgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  readBadgeTextRead: {
+    color: colors.muted,
+  },
+  readBadgeTextUnread: {
+    color: colors.cyanDark,
+  },
+  readBadgeUnread: {
+    backgroundColor: 'rgba(18, 198, 223, 0.12)',
   },
   roadsCard: {
     borderLeftColor: '#f97316',

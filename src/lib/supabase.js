@@ -265,6 +265,42 @@ function mapCostEntry(row) {
   }
 }
 
+function mapDeliveryPod(row = {}) {
+  return {
+    code: row.code ?? '',
+    companyId: row.company_id ?? '',
+    createdAt: row.created_at ?? '',
+    customerName: row.customer_name ?? '',
+    deliveryDate: row.delivery_date ?? '',
+    driverId: row.driver_id ?? '',
+    id: row.id,
+    notes: row.notes ?? '',
+    proofFileBucket: row.proof_file_bucket ?? '',
+    proofFilePath: row.proof_file_path ?? '',
+    signatureName: row.signature_name ?? '',
+    status: row.status ?? 'open',
+    updatedAt: row.updated_at ?? '',
+    vehicleId: row.vehicle_id ?? '',
+  }
+}
+
+function mapCompanyAnnouncement(row = {}) {
+  return {
+    acknowledgedCount: Number(row.acknowledged_count ?? row.acknowledgedCount ?? 0),
+    audienceType: row.audience_type ?? 'all',
+    body: row.body ?? '',
+    companyId: row.company_id ?? '',
+    createdAt: row.created_at ?? '',
+    id: row.id,
+    publishedAt: row.published_at ?? '',
+    readCount: Number(row.read_count ?? row.readCount ?? 0),
+    requiresAck: Boolean(row.requires_ack ?? row.requiresAck ?? true),
+    status: row.status ?? 'published',
+    title: row.title ?? 'Comunicazione',
+    updatedAt: row.updated_at ?? '',
+  }
+}
+
 function mapCompanyProfile(row) {
   return {
     billingActivatedAt: row.billing_activated_at ?? '',
@@ -1870,6 +1906,53 @@ export async function fetchCompanyCostEntries(companyId = configuredCompanyId) {
   return { data: data?.map(mapCostEntry) ?? [], error }
 }
 
+export async function fetchDeliveryPods(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('delivery_pods')
+    .select(
+      'id, company_id, code, customer_name, delivery_date, driver_id, vehicle_id, status, signature_name, notes, proof_file_bucket, proof_file_path, created_at, updated_at',
+    )
+    .eq('company_id', companyId)
+    .order('delivery_date', { ascending: false })
+    .limit(120)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapDeliveryPod) ?? [], error }
+}
+
+export async function fetchCompanyAnnouncements(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('company_announcements_with_counts')
+    .select(
+      'id, company_id, title, body, audience_type, requires_ack, status, published_at, read_count, acknowledged_count, created_at, updated_at',
+    )
+    .eq('company_id', companyId)
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(80)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapCompanyAnnouncement) ?? [], error }
+}
+
 export async function fetchChatThreads(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -2556,6 +2639,114 @@ export async function createCostEntryRecord(entry, companyId = configuredCompany
   }
 
   return { data: data ? mapCostEntry(data) : null, error }
+}
+
+export async function createDeliveryPodRecord(pod, companyId = configuredCompanyId, proofFile = null) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  let proofFilePath = pod.proofFilePath ?? ''
+
+  if (proofFile) {
+    const cleanFileName = sanitizeStorageFileName(proofFile.name ?? `pod-${Date.now()}`)
+    proofFilePath = `${companyId}/pods/${Date.now()}-${cleanFileName}`
+    const { error: uploadError } = await supabase.storage.from(companyAssetsBucket).upload(proofFilePath, proofFile, {
+      cacheControl: '31536000',
+      contentType: proofFile.type || undefined,
+      upsert: false,
+    })
+
+    if (uploadError) {
+      return { data: null, error: uploadError }
+    }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const payload = {
+    code: pod.code?.trim() || null,
+    company_id: companyId,
+    created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
+    customer_name: pod.customerName?.trim() || null,
+    delivery_date: pod.deliveryDate || new Date().toISOString().slice(0, 10),
+    driver_id: pod.driverId || null,
+    notes: pod.notes?.trim() || null,
+    proof_file_bucket: companyAssetsBucket,
+    proof_file_path: proofFilePath || null,
+    signature_name: pod.signatureName?.trim() || null,
+    status: pod.status || (proofFilePath || pod.signatureName ? 'completed' : 'open'),
+    vehicle_id: pod.vehicleId || null,
+  }
+
+  const { data, error } = await supabase
+    .from('delivery_pods')
+    .insert(payload)
+    .select(
+      'id, company_id, code, customer_name, delivery_date, driver_id, vehicle_id, status, signature_name, notes, proof_file_bucket, proof_file_path, created_at, updated_at',
+    )
+    .single()
+
+  if (error && proofFilePath) {
+    await supabase.storage.from(companyAssetsBucket).remove([proofFilePath])
+  }
+
+  if (!error && proofFile && proofFilePath) {
+    await registerCompanyStorageFile({
+      bucket: companyAssetsBucket,
+      category: 'document',
+      companyId,
+      file: proofFile,
+      filePath: proofFilePath,
+    })
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'POD digitale non ancora attivo. Esegui il file SQL 58 e riprova.' },
+    }
+  }
+
+  return { data: data ? mapDeliveryPod(data) : null, error }
+}
+
+export async function createCompanyAnnouncementRecord(announcement, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const payload = {
+    audience_type: announcement.audienceType || 'all',
+    body: announcement.body?.trim() || '',
+    company_id: companyId,
+    created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
+    published_at: new Date().toISOString(),
+    requires_ack: announcement.requiresAck !== false,
+    status: 'published',
+    title: announcement.title?.trim() || 'Comunicazione aziendale',
+  }
+
+  const { data, error } = await supabase
+    .from('company_announcements')
+    .insert(payload)
+    .select(
+      'id, company_id, title, body, audience_type, requires_ack, status, published_at, created_at, updated_at',
+    )
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Presa visione non ancora attiva. Esegui il file SQL 58 e riprova.' },
+    }
+  }
+
+  return { data: data ? mapCompanyAnnouncement(data) : null, error }
 }
 
 export async function updateCostEntryRecord(entryId, updates = {}, companyId = configuredCompanyId, receiptFile = null, previousFilePath = '') {

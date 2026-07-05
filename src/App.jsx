@@ -68,8 +68,10 @@ import {
   createCompanyAssetRecord as createSupabaseCompanyAsset,
   createCompanyPerson as createSupabaseCompanyPerson,
   createCompanyInvoiceSignedUrl,
+  createCompanyAnnouncementRecord as createSupabaseCompanyAnnouncement,
   createComplianceItemRecord as createSupabaseComplianceItem,
   createCostEntryRecord as createSupabaseCostEntry,
+  createDeliveryPodRecord as createSupabaseDeliveryPod,
   fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
   createTeamChatMessageRecord as createSupabaseTeamChatMessage,
@@ -95,9 +97,11 @@ import {
   fetchTeamChatThreads,
   fetchComplianceItems,
   fetchCompanyCostEntries,
+  fetchCompanyAnnouncements,
   fetchCompanyInvoices,
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
+  fetchDeliveryPods,
   fetchTransportNews,
   fetchLegalAcceptanceStatus,
   fetchAdminOverview,
@@ -619,7 +623,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'deadlines', 'documents', 'drivers', 'fleet', 'news', 'notifications', 'records', 'reports', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'news', 'notifications', 'passports', 'records', 'reports', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -827,6 +831,10 @@ const translations = {
     'language.short': 'Lingua',
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
+    'nav.daily': 'Giornata',
+    'nav.passports': 'Passaporti',
+    'nav.control': 'Controllo',
+    'nav.evidence': 'Prove',
     'nav.deadlines': 'Scadenze',
     'nav.news': 'Radar Vygo',
     'nav.notifications': 'Notifiche',
@@ -1047,6 +1055,10 @@ const translations = {
     'language.short': 'Language',
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
+    'nav.daily': 'Today',
+    'nav.passports': 'Passports',
+    'nav.control': 'Control',
+    'nav.evidence': 'Evidence',
     'nav.deadlines': 'Deadlines',
     'nav.news': 'Radar Vygo',
     'nav.notifications': 'Notifications',
@@ -1188,6 +1200,10 @@ const translations = {
     'language.short': 'Idioma',
     'nav.chat': 'Chat',
     'nav.dashboard': 'Panel',
+    'nav.daily': 'Dia',
+    'nav.passports': 'Pasaportes',
+    'nav.control': 'Control',
+    'nav.evidence': 'Pruebas',
     'nav.deadlines': 'Vencimientos',
     'nav.news': 'Radar Vygo',
     'nav.notifications': 'Avisos',
@@ -1329,6 +1345,10 @@ const translations = {
     'language.short': 'Langue',
     'nav.chat': 'Chat',
     'nav.dashboard': 'Tableau',
+    'nav.daily': 'Journee',
+    'nav.passports': 'Passeports',
+    'nav.control': 'Controle',
+    'nav.evidence': 'Preuves',
     'nav.deadlines': 'Echeances',
     'nav.news': 'Radar Vygo',
     'nav.notifications': 'Alertes',
@@ -1470,6 +1490,10 @@ const translations = {
     'language.short': 'Sprache',
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
+    'nav.daily': 'Tag',
+    'nav.passports': 'Paesse',
+    'nav.control': 'Kontrolle',
+    'nav.evidence': 'Nachweise',
     'nav.deadlines': 'Fristen',
     'nav.news': 'Radar Vygo',
     'nav.notifications': 'Hinweise',
@@ -4090,6 +4114,10 @@ const regionalTranslations = {
     'language.short': 'Limba',
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
+    'nav.daily': 'Ziua',
+    'nav.passports': 'Pasapoarte',
+    'nav.control': 'Control',
+    'nav.evidence': 'Dovezi',
     'nav.deadlines': 'Scadente',
     'nav.news': 'Radar Vygo',
     'nav.notifications': 'Notificari',
@@ -4152,6 +4180,10 @@ const regionalTranslations = {
     'language.short': 'Jezyk',
     'nav.chat': 'Chat',
     'nav.dashboard': 'Dashboard',
+    'nav.daily': 'Dzien',
+    'nav.passports': 'Paszporty',
+    'nav.control': 'Kontrola',
+    'nav.evidence': 'Dowody',
     'nav.deadlines': 'Terminy',
     'nav.news': 'Radar Vygo',
     'nav.notifications': 'Powiadomienia',
@@ -6737,6 +6769,8 @@ function App() {
   const [chatLiveState, setChatLiveState] = useState(emptyChatLiveState)
   const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [costEntryRecords, setCostEntryRecords] = useState([])
+  const [deliveryPodRecords, setDeliveryPodRecords] = useState([])
+  const [announcementRecords, setAnnouncementRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
   const [companyStorageSummary, setCompanyStorageSummary] = useState(emptyCompanyStorageSummary)
   const [adminOverview, setAdminOverview] = useState(null)
@@ -7011,6 +7045,8 @@ function App() {
       setCompanyProfile(getInitialCompanyProfile())
     }
     setCostEntryRecords([])
+    setDeliveryPodRecords([])
+    setAnnouncementRecords([])
     setCompanyInvoiceRecords([])
     setCompanyStorageSummary(emptyCompanyStorageSummary)
     setLegalAcceptanceStatus({
@@ -7044,6 +7080,8 @@ function App() {
     setVehicleCheckRecords([])
     setFaultReportRecords([])
     setCostEntryRecords([])
+    setDeliveryPodRecords([])
+    setAnnouncementRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
     setTeamChatThreadRecords([])
@@ -7064,6 +7102,8 @@ function App() {
     setVehicleCheckRecords([])
     setFaultReportRecords([])
     setCostEntryRecords([])
+    setDeliveryPodRecords([])
+    setAnnouncementRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
     setTeamChatThreadRecords([])
@@ -7633,6 +7673,8 @@ function App() {
         documentEventsResult,
         companyInvoicesResult,
         costEntriesResult,
+        deliveryPodsResult,
+        announcementsResult,
         checksResult,
         faultsResult,
         chatThreadsResult,
@@ -7650,6 +7692,8 @@ function App() {
         fetchDriverDocumentEvents(companyId),
         fetchCompanyInvoices(companyId),
         fetchCompanyCostEntries(companyId),
+        fetchDeliveryPods(companyId),
+        fetchCompanyAnnouncements(companyId),
         fetchVehicleChecks(companyId),
         fetchFaultReports(companyId),
         fetchChatThreads(companyId),
@@ -7679,6 +7723,8 @@ function App() {
       if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
       if (companyInvoicesResult.data) setCompanyInvoiceRecords(companyInvoicesResult.data)
       if (costEntriesResult.data) setCostEntryRecords(costEntriesResult.data)
+      if (deliveryPodsResult.data) setDeliveryPodRecords(deliveryPodsResult.data)
+      if (announcementsResult.data) setAnnouncementRecords(announcementsResult.data)
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
@@ -8668,6 +8714,80 @@ function App() {
     setCostEntryRecords((currentEntries) => [localEntry, ...currentEntries])
     setOperationsSyncStatus('Spesa aggiunta su questo dispositivo.')
     return localEntry
+  }
+
+  async function addDeliveryPodRecord(pod, proofFile = null) {
+    const cleanPod = {
+      ...pod,
+      deliveryDate: pod.deliveryDate || new Date().toISOString().slice(0, 10),
+      status: proofFile || pod.signatureName ? 'completed' : 'open',
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Salvataggio POD digitale...')
+      const result = await createSupabaseDeliveryPod(cleanPod, activeCompanyId, proofFile)
+
+      if (result.error) {
+        setOperationsSyncStatus(`POD non salvato: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) {
+        setDeliveryPodRecords((currentRecords) => [result.data, ...currentRecords])
+        void refreshStorageSummary(activeCompanyId)
+      }
+      setOperationsSyncStatus('POD digitale salvato.')
+      return result.data
+    }
+
+    const localPod = {
+      ...cleanPod,
+      companyId: activeCompanyId,
+      createdAt: new Date().toISOString(),
+      id: `pod-${Date.now()}`,
+      proofFilePath: proofFile ? URL.createObjectURL(proofFile) : '',
+      updatedAt: new Date().toISOString(),
+    }
+    setDeliveryPodRecords((currentRecords) => [localPod, ...currentRecords])
+    setOperationsSyncStatus('POD salvato su questo dispositivo.')
+    return localPod
+  }
+
+  async function addAnnouncementRecord(announcement) {
+    const cleanAnnouncement = {
+      ...announcement,
+      audienceType: announcement.audienceType || 'all',
+      requiresAck: announcement.requiresAck !== false,
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Pubblicazione comunicazione...')
+      const result = await createSupabaseCompanyAnnouncement(cleanAnnouncement, activeCompanyId)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Comunicazione non pubblicata: ${result.error.message}`)
+        return false
+      }
+
+      if (result.data) setAnnouncementRecords((currentRecords) => [result.data, ...currentRecords])
+      setOperationsSyncStatus('Comunicazione pubblicata.')
+      return result.data
+    }
+
+    const localAnnouncement = {
+      ...cleanAnnouncement,
+      acknowledgedCount: 0,
+      companyId: activeCompanyId,
+      createdAt: new Date().toISOString(),
+      id: `announcement-${Date.now()}`,
+      publishedAt: new Date().toISOString(),
+      readCount: 0,
+      status: 'published',
+      updatedAt: new Date().toISOString(),
+    }
+    setAnnouncementRecords((currentRecords) => [localAnnouncement, ...currentRecords])
+    setOperationsSyncStatus('Comunicazione pubblicata su questo dispositivo.')
+    return localAnnouncement
   }
 
   async function editCostEntryRecord(entryId, updates, receiptFile = null, previousEntry = null) {
@@ -10607,6 +10727,55 @@ function App() {
             sessionEmail={session.email}
             statusMessage={adminOverviewStatus}
           />
+        ) : activeView === 'daily' ? (
+          <DailyOperationsWorkspace
+            announcementRecords={announcementRecords}
+            assetPreviewUrl={getAssetPreviewUrl}
+            companyName={companyName}
+            complianceItems={decoratedItems}
+            costEntryRecords={costEntryRecords}
+            deliveryPodRecords={deliveryPodRecords}
+            documentRecords={documentRecords}
+            driverRecords={driverRecords}
+            faultReportRecords={visibleFaultReportRecords}
+            onCreateAnnouncement={addAnnouncementRecord}
+            onCreatePod={addDeliveryPodRecord}
+            onOpenChat={openCompanyChat}
+            onOpenDeadlines={() => openComplianceFilter('urgent')}
+            onOpenReports={openReports}
+            operationsStatus={operationsSyncStatus}
+            vehicleCheckRecords={vehicleCheckRecords}
+            vehicleRecords={vehicleRecords}
+          />
+        ) : activeView === 'passports' ? (
+          <VehiclePassportWorkspace
+            assetPreviewUrl={getAssetPreviewUrl}
+            complianceItems={decoratedItems}
+            costEntryRecords={costEntryRecords}
+            driverRecords={driverRecords}
+            faultReportRecords={visibleFaultReportRecords}
+            vehicleCheckRecords={vehicleCheckRecords}
+            vehicleRecords={vehicleRecords}
+          />
+        ) : activeView === 'control' ? (
+          <ControlModeWorkspace
+            complianceItems={decoratedItems}
+            documentRecords={documentRecords}
+            driverRecords={driverRecords}
+            faultReportRecords={visibleFaultReportRecords}
+            vehicleCheckRecords={vehicleCheckRecords}
+            vehicleRecords={vehicleRecords}
+          />
+        ) : activeView === 'evidence' ? (
+          <EvidenceRegisterWorkspace
+            assetPreviewUrl={getAssetPreviewUrl}
+            costEntryRecords={costEntryRecords}
+            documentEvents={documentEventRecords}
+            driverRecords={driverRecords}
+            faultReportRecords={visibleFaultReportRecords}
+            vehicleCheckRecords={vehicleCheckRecords}
+            vehicleRecords={vehicleRecords}
+          />
         ) : activeView === 'news' ? (
           <TransportNewsWorkspace
             isLoading={isTransportNewsLoading}
@@ -11928,6 +12097,10 @@ function AuthScreen({ isPasswordRecoveryMode = false, language, onAuthenticated,
 function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false, notificationCount, onHome, onNavigate, onSignOut, session, t }) {
   const navItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { id: 'daily', label: t('nav.daily'), icon: ClipboardCheck },
+    { id: 'passports', label: t('nav.passports'), icon: Truck },
+    { id: 'control', label: t('nav.control'), icon: ShieldCheck },
+    { id: 'evidence', label: t('nav.evidence'), icon: BadgeCheck },
     { id: 'news', label: t('nav.news'), icon: Newspaper },
     { id: 'records', label: t('nav.records'), icon: Users },
     { id: 'deadlines', label: t('nav.deadlines'), icon: CalendarClock },
@@ -13820,6 +13993,1012 @@ function AdminWorkspace({
         </aside>
       </div>
     </section>
+  )
+}
+
+function getDriverLabelById(driverRecords = [], driverId = '') {
+  const driver = driverRecords.find((currentDriver) => currentDriver.id === driverId)
+  return driver ? driver.name || driver.fullName || driver.username || 'Autista' : 'Non assegnato'
+}
+
+function getVehicleLabelById(vehicleRecords = [], vehicleId = '') {
+  const vehicle = vehicleRecords.find((currentVehicle) => currentVehicle.id === vehicleId)
+  return vehicle ? [vehicle.plate, getFleetTypeLabel(vehicle.fleetType), vehicle.model].filter(Boolean).join(' · ') : 'Non assegnato'
+}
+
+function getSmartDeadlineSignal(item = {}) {
+  const days = getDaysUntil(item.dueDate)
+  const type = String(item.type ?? '').toLowerCase()
+  const isExpired = Number.isFinite(days) && days < 0
+  const isSoon = Number.isFinite(days) && days >= 0 && days <= 15
+  const blocksVehicle = item.scope === 'vehicle' && /(revis|assicur|libretto|adr|atp|tachigrafo|cronotachigrafo)/.test(type)
+  const blocksDriver = item.scope === 'driver' && /(patente|cqc|visita|medic|adr|carta conducente)/.test(type)
+  const fineRisk = /(assicur|revis|bollo|patente|cqc|carta conducente|tachigrafo|licenza|adr)/.test(type)
+
+  if (isExpired && blocksVehicle) {
+    return { detail: 'Da lavorare prima di usare la targa.', label: 'Blocca il mezzo', tone: 'danger' }
+  }
+
+  if (isExpired && blocksDriver) {
+    return { detail: 'Verifica prima di assegnare servizi.', label: 'Blocca la persona', tone: 'danger' }
+  }
+
+  if ((isExpired || isSoon) && fineRisk) {
+    return { detail: 'Rischio sanzione o contestazione.', label: 'Puo generare multa', tone: isExpired ? 'danger' : 'warning' }
+  }
+
+  if (isSoon) {
+    return { detail: 'Da programmare senza aspettare l ultimo giorno.', label: 'Da pianificare', tone: 'warning' }
+  }
+
+  return { detail: 'Scadenza monitorata.', label: 'Monitorata', tone: 'info' }
+}
+
+function buildCostAnomalyRows({ costRows = [], driverRecords = [], vehicleRecords = [] } = {}) {
+  const targetRows = costRows.flatMap((row) => {
+    if (row.vehicleId) {
+      return [{
+        id: `vehicle:${row.vehicleId}`,
+        kind: 'vehicle',
+        label: getVehicleLabelById(vehicleRecords, row.vehicleId),
+        row,
+      }]
+    }
+
+    if (row.driverId) {
+      return [{
+        id: `driver:${row.driverId}`,
+        kind: 'driver',
+        label: getDriverLabelById(driverRecords, row.driverId),
+        row,
+      }]
+    }
+
+    return []
+  })
+  const grouped = new Map()
+
+  targetRows.forEach(({ id, kind, label, row }) => {
+    const current = grouped.get(id) ?? { count: 0, id, kind, label, rows: [], totalCents: 0 }
+    current.count += 1
+    current.rows.push(row)
+    current.totalCents += Number(row.amountCents ?? 0)
+    grouped.set(id, current)
+  })
+
+  const groups = [...grouped.values()].filter((group) => group.totalCents > 0)
+  const averages = groups.reduce((map, group) => {
+    const current = map.get(group.kind) ?? { count: 0, totalCents: 0 }
+    current.count += 1
+    current.totalCents += group.totalCents
+    map.set(group.kind, current)
+    return map
+  }, new Map())
+
+  return groups
+    .map((group) => {
+      const average = averages.get(group.kind)
+      const averageCents = average?.count ? Math.round(average.totalCents / average.count) : 0
+      const ratio = averageCents ? group.totalCents / averageCents : 0
+      const isAnomaly = averageCents > 0 && group.totalCents >= averageCents * 1.6 && group.totalCents >= 30000
+
+      return {
+        ...group,
+        averageCents,
+        isAnomaly,
+        ratio,
+        tone: isAnomaly ? 'danger' : group.totalCents >= averageCents * 1.2 ? 'warning' : 'success',
+      }
+    })
+    .filter((group) => group.isAnomaly || group.tone === 'warning')
+    .sort((first, second) => second.ratio - first.ratio || second.totalCents - first.totalCents)
+}
+
+function VehiclePassportWorkspace({
+  assetPreviewUrl = () => '',
+  complianceItems = [],
+  costEntryRecords = [],
+  driverRecords = [],
+  faultReportRecords = [],
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+}) {
+  const [selectedVehicleId, setSelectedVehicleId] = useState('')
+  const effectiveVehicleId = vehicleRecords.some((vehicle) => vehicle.id === selectedVehicleId)
+    ? selectedVehicleId
+    : vehicleRecords[0]?.id ?? ''
+  const selectedVehicle = vehicleRecords.find((vehicle) => vehicle.id === effectiveVehicleId)
+  const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
+  const vehicleDeadlines = complianceItems
+    .filter((item) => item.vehicleId === effectiveVehicleId)
+    .sort((first, second) => getDaysUntil(first.dueDate) - getDaysUntil(second.dueDate))
+  const vehicleFaults = faultReportRecords.filter((report) => report.vehicleId === effectiveVehicleId || report.semitrailerId === effectiveVehicleId)
+  const vehicleChecks = vehicleCheckRecords.filter((check) => check.tractorId === effectiveVehicleId || check.semitrailerId === effectiveVehicleId)
+  const vehicleCosts = costRows.filter((row) => row.vehicleId === effectiveVehicleId)
+  const vehicleFines = vehicleCosts.filter((row) => row.category === 'fine')
+  const totalCostCents = vehicleCosts.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const photoEvidenceCount = vehicleFaults.filter((report) => report.photoPath).length
+    + vehicleCosts.filter((row) => row.source?.filePath).length
+    + vehicleDeadlines.filter((item) => item.filePath).length
+  const anomaly = buildCostAnomalyRows({ costRows, driverRecords, vehicleRecords })
+    .find((row) => row.id === `vehicle:${effectiveVehicleId}`)
+  const criticalDeadlines = vehicleDeadlines.filter((item) => getSmartDeadlineSignal(item).tone === 'danger')
+  const latestFault = vehicleFaults[0]
+  const latestFaultPhotoUrl = latestFault?.photoPath ? assetPreviewUrl(latestFault.photoPath) : ''
+
+  if (!vehicleRecords.length) {
+    return (
+      <section className="strategic-workspace">
+        <div className="panel strategic-empty">
+          <Truck size={28} />
+          <h2>Passaporto mezzo</h2>
+          <p>Aggiungi almeno una targa in Anagrafiche per vedere lo storico completo del mezzo.</p>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="strategic-workspace" aria-label="Passaporto mezzo">
+      <div className="panel strategic-hero-panel">
+        <div>
+          <p className="overline">Passaporto mezzo</p>
+          <h2>{selectedVehicle?.plate || 'Seleziona targa'}</h2>
+          <span>Documenti, scadenze, guasti, check, costi, foto, multe e storico in una sola scheda.</span>
+        </div>
+        <label className="strategic-selector">
+          Targa
+          <select value={effectiveVehicleId} onChange={(event) => setSelectedVehicleId(event.target.value)}>
+            {vehicleRecords.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="strategic-kpi-grid">
+        <StrategicKpi label="Scadenze critiche" tone={criticalDeadlines.length ? 'danger' : 'success'} value={criticalDeadlines.length} />
+        <StrategicKpi label="Guasti storici" tone={vehicleFaults.some((report) => !isFaultArchived(report)) ? 'danger' : 'info'} value={vehicleFaults.length} />
+        <StrategicKpi label="Costi totali" tone={anomaly ? 'danger' : 'info'} value={formatMoneyCents(totalCostCents, vehicleCosts[0]?.currency || 'EUR')} />
+        <StrategicKpi label="Multe" tone={vehicleFines.length ? 'warning' : 'success'} value={vehicleFines.length} />
+        <StrategicKpi label="Prove salvate" tone="info" value={photoEvidenceCount} />
+      </div>
+
+      {anomaly ? (
+        <div className="strategic-alert tone-danger">
+          <AlertTriangle size={18} />
+          <strong>Allarme costi anomali</strong>
+          <span>Questa targa costa {anomaly.ratio.toFixed(1)} volte la media delle targhe monitorate.</span>
+        </div>
+      ) : null}
+
+      <div className="strategic-grid">
+        <section className="panel strategic-panel">
+          <StrategicSectionTitle icon={CalendarClock} overline="Scadenze intelligenti" title="Priorita documentali" />
+          <div className="strategic-list">
+            {vehicleDeadlines.slice(0, 8).map((item) => {
+              const signal = getSmartDeadlineSignal(item)
+              return (
+                <article className={`strategic-row tone-${signal.tone}`} key={item.id}>
+                  <div>
+                    <strong>{item.type}</strong>
+                    <small>{formatOptionalDate(item.dueDate)} · {signal.detail}</small>
+                  </div>
+                  <b>{signal.label}</b>
+                </article>
+              )
+            })}
+            {!vehicleDeadlines.length && <StrategicEmptyLine label="Nessuna scadenza collegata a questa targa." />}
+          </div>
+        </section>
+
+        <section className="panel strategic-panel">
+          <StrategicSectionTitle icon={Wrench} overline="Guasti e manutenzioni" title="Storico operativo" />
+          <div className="strategic-list">
+            {vehicleFaults.slice(0, 6).map((report) => (
+              <article className={`strategic-row tone-${isFaultArchived(report) ? 'success' : 'danger'}`} key={report.id}>
+                <div>
+                  <strong>{report.title || 'Guasto'}</strong>
+                  <small>{getDriverLabelById(driverRecords, report.driverId)} · {formatShortDateTime(report.createdAt)}</small>
+                </div>
+                <b>{isFaultArchived(report) ? 'Archiviato' : 'Aperto'}</b>
+              </article>
+            ))}
+            {!vehicleFaults.length && <StrategicEmptyLine label="Nessun guasto registrato." />}
+          </div>
+          {latestFaultPhotoUrl ? (
+            <a className="strategic-photo-link" href={latestFaultPhotoUrl} rel="noreferrer" target="_blank">
+              <Camera size={16} />
+              Apri ultima foto guasto
+            </a>
+          ) : null}
+        </section>
+
+        <section className="panel strategic-panel">
+          <StrategicSectionTitle icon={Banknote} overline="Centro costi" title="Costi, multe e ricevute" />
+          <div className="strategic-list">
+            {vehicleCosts.slice(0, 7).map((row) => (
+              <article className={`strategic-row tone-${row.category === 'fine' ? 'warning' : 'info'}`} key={row.id}>
+                <div>
+                  <strong>{row.title || getCostCategoryLabel(row.category)}</strong>
+                  <small>{formatShortDateTime(row.date)} · {getCostCategoryLabel(row.category)}</small>
+                </div>
+                <b>{formatMoneyCents(row.amountCents, row.currency || 'EUR')}</b>
+              </article>
+            ))}
+            {!vehicleCosts.length && <StrategicEmptyLine label="Nessun costo collegato alla targa." />}
+          </div>
+        </section>
+
+        <section className="panel strategic-panel">
+          <StrategicSectionTitle icon={ClipboardCheck} overline="Check mattutini" title="Ultimi controlli" />
+          <div className="strategic-list">
+            {vehicleChecks.slice(0, 7).map((check) => {
+              const issues = getCheckIssues(check)
+              return (
+                <article className={`strategic-row tone-${issues.length ? 'danger' : 'success'}`} key={check.id}>
+                  <div>
+                    <strong>{issues.length ? issues.join(', ') : 'Tutto regolare'}</strong>
+                    <small>{getDriverLabelById(driverRecords, check.driverId)} · {formatShortDateTime(check.createdAt)}</small>
+                  </div>
+                  <b>{issues.length ? 'Critico' : 'Ok'}</b>
+                </article>
+              )
+            })}
+            {!vehicleChecks.length && <StrategicEmptyLine label="Nessun check collegato alla targa." />}
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function ControlModeWorkspace({
+  complianceItems = [],
+  documentRecords = [],
+  driverRecords = [],
+  faultReportRecords = [],
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+}) {
+  const [driverId, setDriverId] = useState(driverRecords[0]?.id ?? '')
+  const [vehicleId, setVehicleId] = useState(vehicleRecords.find((vehicle) => vehicle.fleetType !== 'semirimorchio')?.id ?? vehicleRecords[0]?.id ?? '')
+  const [trailerId, setTrailerId] = useState('')
+  const trailers = vehicleRecords.filter((vehicle) => vehicle.fleetType === 'semirimorchio')
+  const driverDocuments = documentRecords.filter((document) => document.driverId === driverId)
+  const vehicleDeadlines = complianceItems.filter((item) => item.vehicleId === vehicleId)
+  const trailerDeadlines = complianceItems.filter((item) => item.vehicleId === trailerId)
+  const selectedFaults = faultReportRecords.filter((report) => (
+    !isFaultArchived(report)
+    && [vehicleId, trailerId].filter(Boolean).some((targetId) => [report.vehicleId, report.semitrailerId].includes(targetId))
+  ))
+  const selectedChecks = vehicleCheckRecords.filter((check) => (
+    !isVehicleCheckArchived(check)
+    && [vehicleId, trailerId].filter(Boolean).some((targetId) => [check.tractorId, check.semitrailerId].includes(targetId))
+  ))
+  const rows = [
+    ...driverDocuments.map((document) => ({
+      id: `doc-${document.id}`,
+      label: document.type,
+      meta: `${getDriverLabelById(driverRecords, document.driverId)} · ${formatOptionalDate(document.expiresAt)}`,
+      signal: getSmartDeadlineSignal({ dueDate: document.expiresAt, scope: 'driver', type: document.type }),
+    })),
+    ...vehicleDeadlines.map((item) => ({
+      id: `veh-${item.id}`,
+      label: item.type,
+      meta: `${getVehicleLabelById(vehicleRecords, item.vehicleId)} · ${formatOptionalDate(item.dueDate)}`,
+      signal: getSmartDeadlineSignal(item),
+    })),
+    ...trailerDeadlines.map((item) => ({
+      id: `trl-${item.id}`,
+      label: item.type,
+      meta: `${getVehicleLabelById(vehicleRecords, item.vehicleId)} · ${formatOptionalDate(item.dueDate)}`,
+      signal: getSmartDeadlineSignal(item),
+    })),
+  ].sort((first, second) => {
+    const score = { danger: 0, warning: 1, info: 2, success: 3 }
+    return score[first.signal.tone] - score[second.signal.tone]
+  })
+  const dangerCount = rows.filter((row) => row.signal.tone === 'danger').length + selectedFaults.length + selectedChecks.filter(hasCheckIssues).length
+  const warningCount = rows.filter((row) => row.signal.tone === 'warning').length
+  const controlTone = dangerCount ? 'danger' : warningCount ? 'warning' : 'success'
+
+  return (
+    <section className="strategic-workspace" aria-label="Modalita controllo">
+      <div className={`panel strategic-hero-panel control-tone-${controlTone}`}>
+        <div>
+          <p className="overline">Modalita controllo</p>
+          <h2>Prepara controllo</h2>
+          <span>Seleziona autista, mezzo e semirimorchio: Vygo mostra subito documenti, scadenze e criticita prima di un controllo.</span>
+        </div>
+        <div className={`control-result-badge tone-${controlTone}`}>
+          <ShieldCheck size={24} />
+          <strong>{dangerCount ? 'Non partire' : warningCount ? 'Verifica prima' : 'Pronto'}</strong>
+          <small>{dangerCount + warningCount} punti da controllare</small>
+        </div>
+      </div>
+
+      <div className="control-picker-grid">
+        <label>
+          Autista
+          <select value={driverId} onChange={(event) => setDriverId(event.target.value)}>
+            <option value="">Seleziona autista</option>
+            {driverRecords.map((driver) => (
+              <option key={driver.id} value={driver.id}>{driver.name || driver.username}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Mezzo
+          <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
+            <option value="">Seleziona mezzo</option>
+            {vehicleRecords.filter((vehicle) => vehicle.fleetType !== 'semirimorchio').map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Semirimorchio
+          <select value={trailerId} onChange={(event) => setTrailerId(event.target.value)}>
+            <option value="">Non agganciato</option>
+            {trailers.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · Semirimorchio</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="strategic-grid">
+        <section className="panel strategic-panel strategic-panel-wide">
+          <StrategicSectionTitle icon={ShieldCheck} overline="Checklist controllo" title="Documenti e criticita" />
+          <div className="strategic-list">
+            {rows.map((row) => (
+              <article className={`strategic-row tone-${row.signal.tone}`} key={row.id}>
+                <div>
+                  <strong>{row.label}</strong>
+                  <small>{row.meta} · {row.signal.detail}</small>
+                </div>
+                <b>{row.signal.label}</b>
+              </article>
+            ))}
+            {!rows.length && <StrategicEmptyLine label="Seleziona autista e mezzo per preparare il controllo." />}
+          </div>
+        </section>
+
+        <section className="panel strategic-panel">
+          <StrategicSectionTitle icon={AlertTriangle} overline="Alert operativi" title="Guasti e check aperti" />
+          <div className="strategic-list">
+            {selectedFaults.map((fault) => (
+              <article className="strategic-row tone-danger" key={fault.id}>
+                <div>
+                  <strong>{fault.title || 'Guasto aperto'}</strong>
+                  <small>{getFaultSeverityLabel(fault.severity)} · {formatShortDateTime(fault.createdAt)}</small>
+                </div>
+                <b>Guasto</b>
+              </article>
+            ))}
+            {selectedChecks.filter(hasCheckIssues).map((check) => (
+              <article className="strategic-row tone-danger" key={check.id}>
+                <div>
+                  <strong>{getCheckIssues(check).join(', ')}</strong>
+                  <small>{getDriverLabelById(driverRecords, check.driverId)} · {formatShortDateTime(check.createdAt)}</small>
+                </div>
+                <b>Check</b>
+              </article>
+            ))}
+            {!selectedFaults.length && !selectedChecks.filter(hasCheckIssues).length && <StrategicEmptyLine label="Nessun guasto o check critico aperto." />}
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function EvidenceRegisterWorkspace({
+  assetPreviewUrl = () => '',
+  costEntryRecords = [],
+  documentEvents = [],
+  driverRecords = [],
+  faultReportRecords = [],
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+}) {
+  const [filter, setFilter] = useState('all')
+  const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
+  const events = [
+    ...faultReportRecords.map((fault) => ({
+      createdAt: fault.createdAt,
+      filePath: fault.photoPath,
+      id: `fault-${fault.id}`,
+      kind: 'fault',
+      meta: `${getVehicleLabelById(vehicleRecords, fault.vehicleId)} · ${getDriverLabelById(driverRecords, fault.driverId)}`,
+      status: isFaultArchived(fault) ? 'Archiviato' : 'Aperto',
+      title: fault.title || 'Segnalazione guasto',
+      tone: isFaultArchived(fault) ? 'success' : 'danger',
+    })),
+    ...vehicleCheckRecords.map((check) => {
+      const issues = getCheckIssues(check)
+      return {
+        createdAt: check.createdAt,
+        filePath: '',
+        id: `check-${check.id}`,
+        kind: 'check',
+        meta: `${getVehicleLabelById(vehicleRecords, check.tractorId)} · ${getDriverLabelById(driverRecords, check.driverId)}`,
+        status: issues.length ? 'Critico' : 'Ok',
+        title: issues.length ? issues.join(', ') : 'Check regolare',
+        tone: issues.length ? 'danger' : 'success',
+      }
+    }),
+    ...documentEvents.map((event) => ({
+      createdAt: event.createdAt,
+      filePath: event.filePath,
+      id: `doc-${event.id}`,
+      kind: 'document',
+      meta: `${getDriverLabelById(driverRecords, event.driverId)} · ${event.documentType || 'Documento'}`,
+      status: event.eventType || 'Evento',
+      title: event.documentNumber ? `${event.documentType} · ${event.documentNumber}` : event.documentType || 'Documento',
+      tone: 'info',
+    })),
+    ...costRows.map((row) => ({
+      createdAt: row.date,
+      filePath: row.source?.filePath || '',
+      id: `cost-${row.id}`,
+      kind: 'cost',
+      meta: `${row.vehicleId ? getVehicleLabelById(vehicleRecords, row.vehicleId) : getDriverLabelById(driverRecords, row.driverId)} · ${formatMoneyCents(row.amountCents, row.currency || 'EUR')}`,
+      status: getCostCategoryLabel(row.category),
+      title: row.title || getCostCategoryLabel(row.category),
+      tone: row.category === 'fine' ? 'warning' : 'info',
+    })),
+  ].sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))
+  const filteredEvents = filter === 'all' ? events : events.filter((event) => event.kind === filter)
+  const filters = [
+    ['all', 'Tutto'],
+    ['fault', 'Guasti'],
+    ['check', 'Check'],
+    ['document', 'Documenti'],
+    ['cost', 'Costi'],
+  ]
+
+  return (
+    <section className="strategic-workspace" aria-label="Registro prove">
+      <div className="panel strategic-hero-panel">
+        <div>
+          <p className="overline">Registro prove</p>
+          <h2>Storico tracciabile</h2>
+          <span>Data, ora, utente, targa, stato, foto e file disponibili per contestazioni, assicurazioni e responsabilita operative.</span>
+        </div>
+        <div className="daily-hero-badge">
+          <BadgeCheck size={22} />
+          <strong>{events.length}</strong>
+          <small>prove</small>
+        </div>
+      </div>
+
+      <div className="evidence-filter-bar">
+        {filters.map(([id, label]) => (
+          <button className={filter === id ? 'is-active' : ''} key={id} onClick={() => setFilter(id)} type="button">
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <section className="panel strategic-panel">
+        <div className="evidence-table">
+          {filteredEvents.map((event) => {
+            const fileUrl = event.filePath ? assetPreviewUrl(event.filePath) : ''
+            return (
+              <article className={`evidence-row tone-${event.tone}`} key={event.id}>
+                <div>
+                  <strong>{event.title}</strong>
+                  <small>{event.meta}</small>
+                </div>
+                <span>{formatShortDateTime(event.createdAt)}</span>
+                <b>{event.status}</b>
+                {fileUrl ? (
+                  <a href={fileUrl} rel="noreferrer" target="_blank">
+                    <Camera size={15} />
+                    Prova
+                  </a>
+                ) : (
+                  <em>Tracciato</em>
+                )}
+              </article>
+            )
+          })}
+          {!filteredEvents.length && <StrategicEmptyLine label="Nessuna prova in questa vista." />}
+        </div>
+      </section>
+    </section>
+  )
+}
+
+function StrategicKpi({ label, tone = 'info', value }) {
+  return (
+    <article className={`strategic-kpi tone-${tone}`}>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </article>
+  )
+}
+
+function StrategicSectionTitle({ icon: Icon, overline, title }) {
+  return (
+    <div className="daily-panel-head">
+      <div>
+        <p className="overline">{overline}</p>
+        <h3>{title}</h3>
+      </div>
+      <Icon size={20} />
+    </div>
+  )
+}
+
+function StrategicEmptyLine({ label }) {
+  return (
+    <div className="strategic-empty-line">
+      <CheckCircle2 size={17} />
+      <span>{label}</span>
+    </div>
+  )
+}
+
+function DailyOperationsWorkspace({
+  announcementRecords = [],
+  companyName = 'Azienda',
+  complianceItems = [],
+  costEntryRecords = [],
+  deliveryPodRecords = [],
+  documentRecords = [],
+  driverRecords = [],
+  faultReportRecords = [],
+  onCreateAnnouncement,
+  onCreatePod,
+  onOpenChat,
+  onOpenDeadlines,
+  onOpenReports,
+  operationsStatus = '',
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+}) {
+  const todayKey = getDateInputToday()
+  const [podForm, setPodForm] = useState({
+    code: '',
+    customerName: '',
+    deliveryDate: todayKey,
+    driverId: '',
+    notes: '',
+    signatureName: '',
+    vehicleId: '',
+  })
+  const [podFile, setPodFile] = useState(null)
+  const [announcementForm, setAnnouncementForm] = useState({
+    audienceType: 'all',
+    body: '',
+    requiresAck: true,
+    title: '',
+  })
+  const [isSavingPod, setIsSavingPod] = useState(false)
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false)
+  const [localStatus, setLocalStatus] = useState('')
+
+  const driverById = useMemo(() => new Map(driverRecords.map((driver) => [driver.id, driver])), [driverRecords])
+  const vehicleById = useMemo(() => new Map(vehicleRecords.map((vehicle) => [vehicle.id, vehicle])), [vehicleRecords])
+  const activeDrivers = useMemo(() => driverRecords.filter((driver) => !isArchivedStatus(driver.status)), [driverRecords])
+  const checkEnabledDrivers = useMemo(
+    () => activeDrivers.filter((driver) => driver.canSubmitChecks !== false),
+    [activeDrivers],
+  )
+  const todaysChecks = useMemo(
+    () => vehicleCheckRecords.filter((check) => String(check.createdAt ?? '').slice(0, 10) === todayKey),
+    [todayKey, vehicleCheckRecords],
+  )
+  const checkedDriverIds = useMemo(() => new Set(todaysChecks.map((check) => check.driverId).filter(Boolean)), [todaysChecks])
+  const missingCheckDrivers = checkEnabledDrivers.filter((driver) => !checkedDriverIds.has(driver.id))
+  const openFaults = faultReportRecords.filter((report) => !isFaultArchived(report))
+  const criticalChecks = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check) && hasCheckIssues(check))
+  const actionableDeadlines = complianceItems.filter(isComplianceActionRequired)
+  const expiredDeadlines = actionableDeadlines.filter((item) => getDaysUntil(item.dueDate) < 0)
+  const pendingPods = deliveryPodRecords.filter((pod) => pod.status !== 'archived')
+  const openPods = pendingPods.filter((pod) => pod.status !== 'completed')
+  const companyAnnouncements = announcementRecords.filter((announcement) => announcement.status !== 'archived')
+  const ackMissingAnnouncements = companyAnnouncements.filter((announcement) => {
+    if (!announcement.requiresAck) return false
+    return Number(announcement.acknowledgedCount ?? 0) < Math.max(1, Number(announcement.readCount ?? 0))
+  })
+  const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
+  const fleetHealthRows = getFleetHealthRows({
+    complianceItems,
+    costRows,
+    faultReportRecords,
+    vehicleCheckRecords,
+    vehicleRecords,
+  })
+  const weakFleetRows = fleetHealthRows.filter((row) => row.score < 82).slice(0, 5)
+  const documentsToComplete = documentRecords
+    .filter((document) => {
+      const missingFile = !document.filePath
+      const missingExpiry = !document.expiresAt
+      const missingNumber = !document.documentNumber
+      const expired = document.expiresAt && getDaysUntil(document.expiresAt) < 0
+      return missingFile || missingExpiry || missingNumber || expired
+    })
+    .slice(0, 6)
+
+  const driverLabel = (driverId) => {
+    const driver = driverById.get(driverId)
+    return driver ? driver.fullName || driver.name || driver.username || 'Autista' : 'Non assegnato'
+  }
+  const vehicleLabel = (vehicleId) => {
+    const vehicle = vehicleById.get(vehicleId)
+    return vehicle ? [vehicle.plate, getFleetTypeLabel(vehicle.fleetType), vehicle.model].filter(Boolean).join(' · ') : 'Non assegnato'
+  }
+  const updatePodField = (field, value) => setPodForm((current) => ({ ...current, [field]: value }))
+  const updateAnnouncementField = (field, value) => setAnnouncementForm((current) => ({ ...current, [field]: value }))
+  const handlePodSubmit = async (event) => {
+    event.preventDefault()
+    setLocalStatus('')
+
+    if (!podForm.code.trim() && !podForm.customerName.trim()) {
+      setLocalStatus('Inserisci almeno codice consegna o cliente.')
+      return
+    }
+
+    setIsSavingPod(true)
+    const result = await onCreatePod?.(
+      {
+        code: podForm.code.trim(),
+        customerName: podForm.customerName.trim(),
+        deliveryDate: podForm.deliveryDate,
+        driverId: podForm.driverId || null,
+        notes: podForm.notes.trim(),
+        signatureName: podForm.signatureName.trim(),
+        vehicleId: podForm.vehicleId || null,
+      },
+      podFile,
+    )
+    setIsSavingPod(false)
+
+    if (result) {
+      setPodForm({
+        code: '',
+        customerName: '',
+        deliveryDate: todayKey,
+        driverId: '',
+        notes: '',
+        signatureName: '',
+        vehicleId: '',
+      })
+      setPodFile(null)
+      setLocalStatus('POD salvato nella giornata operativa.')
+    }
+  }
+  const handleAnnouncementSubmit = async (event) => {
+    event.preventDefault()
+    setLocalStatus('')
+
+    if (!announcementForm.title.trim() || !announcementForm.body.trim()) {
+      setLocalStatus('Titolo e messaggio sono obbligatori.')
+      return
+    }
+
+    setIsSavingAnnouncement(true)
+    const result = await onCreateAnnouncement?.({
+      audienceType: announcementForm.audienceType,
+      body: announcementForm.body.trim(),
+      requiresAck: announcementForm.requiresAck,
+      title: announcementForm.title.trim(),
+    })
+    setIsSavingAnnouncement(false)
+
+    if (result) {
+      setAnnouncementForm({
+        audienceType: 'all',
+        body: '',
+        requiresAck: true,
+        title: '',
+      })
+      setLocalStatus('Comunicazione pubblicata.')
+    }
+  }
+
+  const dailyActions = [
+    missingCheckDrivers.length
+      ? {
+          icon: ClipboardCheck,
+          label: `${missingCheckDrivers.length} check mancanti`,
+          meta: missingCheckDrivers.slice(0, 3).map((driver) => driver.fullName || driver.username).join(', '),
+          tone: 'warning',
+          onClick: onOpenChat,
+        }
+      : null,
+    expiredDeadlines.length
+      ? {
+          icon: CalendarClock,
+          label: `${expiredDeadlines.length} scadenze critiche`,
+          meta: 'Da rinnovare o sollecitare',
+          tone: 'danger',
+          onClick: onOpenDeadlines,
+        }
+      : null,
+    openFaults.length
+      ? {
+          icon: Wrench,
+          label: `${openFaults.length} guasti aperti`,
+          meta: 'Da prendere in carico o archiviare con costo',
+          tone: 'danger',
+          onClick: onOpenReports,
+        }
+      : null,
+    documentsToComplete.length
+      ? {
+          icon: FileText,
+          label: `${documentsToComplete.length} documenti da completare`,
+          meta: 'File, numero o scadenza da verificare',
+          tone: 'info',
+          onClick: onOpenDeadlines,
+        }
+      : null,
+  ].filter(Boolean)
+
+  const kpis = [
+    { label: 'Check oggi', value: `${todaysChecks.length}/${checkEnabledDrivers.length}`, tone: missingCheckDrivers.length ? 'warning' : 'success' },
+    { label: 'Check critici', value: criticalChecks.length, tone: criticalChecks.length ? 'danger' : 'success' },
+    { label: 'Guasti aperti', value: openFaults.length, tone: openFaults.length ? 'danger' : 'success' },
+    { label: 'Scadenze critiche', value: expiredDeadlines.length, tone: expiredDeadlines.length ? 'danger' : 'success' },
+    { label: 'POD aperti', value: openPods.length, tone: openPods.length ? 'warning' : 'success' },
+    { label: 'Presa visione', value: ackMissingAnnouncements.length, tone: ackMissingAnnouncements.length ? 'warning' : 'success' },
+  ]
+
+  return (
+    <section className="daily-workspace" aria-label="Giornata operativa">
+      <div className="panel daily-hero-panel">
+        <div>
+          <p className="overline">Giornata operativa</p>
+          <h2>{companyName}</h2>
+          <span>{operationsStatus || 'Vygo tiene insieme check, consegne, comunicazioni, documenti e criticita della giornata.'}</span>
+        </div>
+        <div className="daily-hero-badge">
+          <Clock3 size={22} />
+          <strong>{formatDate(todayKey)}</strong>
+          <small>Oggi</small>
+        </div>
+      </div>
+
+      <div className="daily-kpi-grid">
+        {kpis.map((kpi) => (
+          <article className={`daily-kpi-card tone-${kpi.tone}`} key={kpi.label}>
+            <strong>{kpi.value}</strong>
+            <span>{kpi.label}</span>
+          </article>
+        ))}
+      </div>
+
+      <div className="daily-main-grid">
+        <section className="panel daily-panel daily-action-panel">
+          <div className="daily-panel-head">
+            <div>
+              <p className="overline">Priorita</p>
+              <h3>Cosa guardare adesso</h3>
+            </div>
+            <BadgeCheck size={20} />
+          </div>
+          <div className="daily-action-list">
+            {dailyActions.length > 0 ? (
+              dailyActions.map((action) => {
+                const ActionIcon = action.icon
+                return (
+                  <button className={`daily-action-card tone-${action.tone}`} key={action.label} onClick={action.onClick} type="button">
+                    <ActionIcon size={20} />
+                    <span>
+                      <strong>{action.label}</strong>
+                      <small>{action.meta}</small>
+                    </span>
+                    <ChevronRight size={18} />
+                  </button>
+                )
+              })
+            ) : (
+              <div className="daily-empty-state">
+                <CheckCircle2 size={24} />
+                <strong>Giornata sotto controllo</strong>
+                <span>Non ci sono criticita urgenti da lavorare.</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel daily-panel">
+          <div className="daily-panel-head">
+            <div>
+              <p className="overline">POD digitale</p>
+              <h3>Prova consegna rapida</h3>
+            </div>
+            <Truck size={20} />
+          </div>
+          <form className="daily-form" onSubmit={handlePodSubmit}>
+            <div className="daily-form-grid">
+              <label>
+                Codice consegna
+                <input value={podForm.code} onChange={(event) => updatePodField('code', event.target.value)} placeholder="POD-1024" />
+              </label>
+              <label>
+                Cliente
+                <input value={podForm.customerName} onChange={(event) => updatePodField('customerName', event.target.value)} placeholder="Cliente destinatario" />
+              </label>
+              <label>
+                Data
+                <input type="date" value={podForm.deliveryDate} onChange={(event) => updatePodField('deliveryDate', event.target.value)} />
+              </label>
+              <label>
+                Firmatario
+                <input value={podForm.signatureName} onChange={(event) => updatePodField('signatureName', event.target.value)} placeholder="Nome e cognome" />
+              </label>
+              <label>
+                Autista
+                <select value={podForm.driverId} onChange={(event) => updatePodField('driverId', event.target.value)}>
+                  <option value="">Non assegnato</option>
+                  {activeDrivers.map((driver) => (
+                    <option key={driver.id} value={driver.id}>{driver.fullName || driver.username}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Mezzo
+                <select value={podForm.vehicleId} onChange={(event) => updatePodField('vehicleId', event.target.value)}>
+                  <option value="">Non assegnato</option>
+                  {vehicleRecords.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label>
+              Note
+              <textarea rows={3} value={podForm.notes} onChange={(event) => updatePodField('notes', event.target.value)} placeholder="Esito consegna, riserva, colli, ora..." />
+            </label>
+            <label className="daily-file-control">
+              <Paperclip size={16} />
+              <span>{podFile ? podFile.name : 'Allega firma, foto o documento consegna'}</span>
+              <input accept="image/*,.pdf" onChange={(event) => setPodFile(event.target.files?.[0] ?? null)} type="file" />
+            </label>
+            <button className="primary-button compact-button" disabled={isSavingPod} type="submit">
+              <Save size={16} />
+              {isSavingPod ? 'Salvataggio...' : 'Salva POD'}
+            </button>
+          </form>
+          <DailyMiniList
+            emptyLabel="Nessun POD registrato."
+            rows={deliveryPodRecords.slice(0, 4).map((pod) => ({
+              id: pod.id,
+              title: pod.code || pod.customerName || 'POD senza codice',
+              meta: [formatDate(pod.deliveryDate), pod.customerName, driverLabel(pod.driverId), vehicleLabel(pod.vehicleId)].filter(Boolean).join(' · '),
+              tone: pod.status === 'completed' ? 'success' : 'warning',
+            }))}
+          />
+        </section>
+
+        <section className="panel daily-panel">
+          <div className="daily-panel-head">
+            <div>
+              <p className="overline">Presa visione</p>
+              <h3>Comunicazioni aziendali</h3>
+            </div>
+            <Bell size={20} />
+          </div>
+          <form className="daily-form" onSubmit={handleAnnouncementSubmit}>
+            <div className="daily-form-grid">
+              <label>
+                Titolo
+                <input value={announcementForm.title} onChange={(event) => updateAnnouncementField('title', event.target.value)} placeholder="Circolare del giorno" />
+              </label>
+              <label>
+                Destinatari
+                <select value={announcementForm.audienceType} onChange={(event) => updateAnnouncementField('audienceType', event.target.value)}>
+                  <option value="all">Tutta l azienda</option>
+                  <option value="drivers">Autisti</option>
+                  <option value="office">Ufficio</option>
+                  <option value="warehouse">Magazzino</option>
+                  <option value="management">Direzione</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              Messaggio
+              <textarea rows={4} value={announcementForm.body} onChange={(event) => updateAnnouncementField('body', event.target.value)} placeholder="Scrivi una disposizione, avviso o procedura da confermare." />
+            </label>
+            <label className="daily-checkbox">
+              <input checked={announcementForm.requiresAck} onChange={(event) => updateAnnouncementField('requiresAck', event.target.checked)} type="checkbox" />
+              Richiedi conferma di lettura
+            </label>
+            <button className="primary-button compact-button" disabled={isSavingAnnouncement} type="submit">
+              <Send size={16} />
+              {isSavingAnnouncement ? 'Pubblicazione...' : 'Pubblica'}
+            </button>
+          </form>
+          <DailyMiniList
+            emptyLabel="Nessuna comunicazione pubblicata."
+            rows={companyAnnouncements.slice(0, 4).map((announcement) => ({
+              id: announcement.id,
+              title: announcement.title,
+              meta: `${announcement.audienceType === 'all' ? 'Tutti' : announcement.audienceType} · lette ${announcement.readCount ?? 0} · confermate ${announcement.acknowledgedCount ?? 0}`,
+              tone: announcement.requiresAck && Number(announcement.acknowledgedCount ?? 0) === 0 ? 'warning' : 'success',
+            }))}
+          />
+        </section>
+
+        <section className="panel daily-panel">
+          <div className="daily-panel-head">
+            <div>
+              <p className="overline">Documenti intelligenti</p>
+              <h3>Dati da completare</h3>
+            </div>
+            <FileText size={20} />
+          </div>
+          <DailyMiniList
+            emptyLabel="Documenti completi o nessun documento caricato."
+            rows={documentsToComplete.map((document) => ({
+              id: document.id,
+              title: document.type || 'Documento',
+              meta: `${driverLabel(document.driverId)} · scadenza ${formatOptionalDate(document.expiresAt)}${document.filePath ? '' : ' · file mancante'}`,
+              tone: document.expiresAt && getDaysUntil(document.expiresAt) < 0 ? 'danger' : 'warning',
+            }))}
+          />
+          <p className="daily-note">Vygo evidenzia subito file, numeri e scadenze mancanti. Il riconoscimento automatico dei dati sara collegabile quando attiveremo un motore OCR/AI dedicato.</p>
+        </section>
+
+        <section className="panel daily-panel">
+          <div className="daily-panel-head">
+            <div>
+              <p className="overline">Manutenzione intelligente</p>
+              <h3>Mezzi da controllare</h3>
+            </div>
+            <Gauge size={20} />
+          </div>
+          <DailyMiniList
+            emptyLabel="Nessun mezzo sotto attenzione."
+            rows={weakFleetRows.map((row) => ({
+              id: row.vehicle.id,
+              title: `${row.vehicle.plate || 'Mezzo'} · ${row.score}%`,
+              meta: row.issues.length ? row.issues.join(' · ') : 'Controllo regolare',
+              tone: row.tone,
+            }))}
+          />
+          <button className="secondary-button compact-button" onClick={onOpenReports} type="button">
+            <FileText size={16} />
+            Apri report costi
+          </button>
+        </section>
+      </div>
+
+      {(localStatus || operationsStatus) && (
+        <p className="daily-status-line">{localStatus || operationsStatus}</p>
+      )}
+    </section>
+  )
+}
+
+function DailyMiniList({ emptyLabel, rows = [] }) {
+  if (!rows.length) {
+    return (
+      <div className="daily-mini-empty">
+        <CheckCircle2 size={18} />
+        <span>{emptyLabel}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="daily-mini-list">
+      {rows.map((row) => (
+        <article className={`daily-mini-row tone-${row.tone || 'info'}`} key={row.id}>
+          <span />
+          <div>
+            <strong>{row.title}</strong>
+            <small>{row.meta}</small>
+          </div>
+        </article>
+      ))}
+    </div>
   )
 }
 

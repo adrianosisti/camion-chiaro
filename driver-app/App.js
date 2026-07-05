@@ -4246,6 +4246,16 @@ function CamionChiaroApp() {
     )
   }
 
+  const screenResetKey = [
+    accountType,
+    activeTab,
+    activeTab === 'chat' ? driverChatMode : '',
+    activeTab === 'manage' || activeTab === 'archive' ? managementInitialSection : '',
+    selectedCompanyDriverId,
+    selectedCompanyTeamThreadId,
+    selectedDriverTeamThreadId,
+  ].join(':')
+
   return (
     <View style={styles.shell}>
       <ExpoStatusBar backgroundColor={colors.night} style="light" translucent={false} />
@@ -4292,14 +4302,8 @@ function CamionChiaroApp() {
         style={styles.content}
       >
         <ScreenErrorBoundary
-          resetKey={[
-            accountType,
-            activeTab,
-            selectedCompanyDriverId,
-            selectedCompanyTeamThreadId,
-            driverChatMode,
-            selectedDriverTeamThreadId,
-          ].join(':')}
+          key={screenResetKey}
+          resetKey={screenResetKey}
         >
           {activeScreen}
         </ScreenErrorBoundary>

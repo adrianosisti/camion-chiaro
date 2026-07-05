@@ -10204,6 +10204,17 @@ function App() {
     return () => window.clearTimeout(timerId)
   }, [activeView, refreshTransportNews])
 
+  useEffect(() => {
+    if (!session || activeView === 'chat') return
+
+    const timerId = window.setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' })
+      document.querySelector('.workspace')?.scrollTo?.({ top: 0, behavior: 'auto' })
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
+  }, [activeView, session])
+
   if (isPasswordRecoveryMode) {
     return (
       <I18nContext.Provider value={i18nValue}>
@@ -10387,7 +10398,13 @@ function App() {
 
     setActiveView(shouldStartAdding ? 'newCost' : 'costs')
     window.setTimeout(() => {
-      document.getElementById('fault-cost-report')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (shouldStartAdding) {
+        document.getElementById('fault-cost-report')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+
+      window.scrollTo({ behavior: 'auto', top: 0 })
+      document.querySelector('.workspace')?.scrollTo?.({ behavior: 'auto', top: 0 })
     }, 0)
   }
 
@@ -12035,6 +12052,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'news', label: t('nav.news'), icon: Newspaper },
     { id: 'records', label: t('nav.records'), icon: Users },
+    { id: 'deadlines', label: t('nav.deadlines'), icon: CalendarClock },
     { id: 'notifications', label: t('nav.notifications'), icon: Bell },
     { id: 'chat', label: t('nav.chat'), icon: Mail },
     { id: 'reports', label: t('nav.reports'), icon: FileText },
@@ -14002,7 +14020,7 @@ function ReportsWorkspace({
             <p>Un punteggio rapido che combina guasti, check critici, scadenze e costi del mese.</p>
           </div>
           <strong className={`fleet-health-main-score tone-${averageFleetHealthScore >= 82 ? 'success' : averageFleetHealthScore >= 62 ? 'warning' : 'danger'}`}>
-            {averageFleetHealthScore}
+            {averageFleetHealthScore}%
           </strong>
         </div>
         {fleetHealthRows.length > 0 ? (
@@ -14013,7 +14031,7 @@ function ReportsWorkspace({
                   <strong>{row.vehicle.plate || 'Targa non inserita'}</strong>
                   <span>{[getFleetTypeLabel(row.vehicle.fleetType), row.vehicle.model].filter(Boolean).join(' · ') || 'Mezzo'}</span>
                 </div>
-                <b>{row.score}</b>
+                <b>{row.score}%</b>
                 <p>{row.issues.length ? row.issues.join(' · ') : 'Nessuna criticita rilevante'}</p>
               </article>
             ))}

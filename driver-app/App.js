@@ -1953,6 +1953,7 @@ function CamionChiaroApp() {
 
   useEffect(() => {
     if (accountType === 'company' && ['news', 'settings'].includes(activeTab)) return
+    if (accountType === 'driver' && activeTab === 'announcements') return
 
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab('home')

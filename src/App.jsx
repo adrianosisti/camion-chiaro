@@ -98,6 +98,7 @@ import {
   fetchComplianceItems,
   fetchCompanyCostEntries,
   fetchCompanyAnnouncements,
+  fetchCompanyAnnouncementReadReceipts,
   fetchCompanyInvoices,
   fetchCompanyPeople,
   fetchCompanyStorageSummary,
@@ -6769,6 +6770,7 @@ function App() {
   const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [costEntryRecords, setCostEntryRecords] = useState([])
   const [announcementRecords, setAnnouncementRecords] = useState([])
+  const [announcementReadRecords, setAnnouncementReadRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
   const [companyStorageSummary, setCompanyStorageSummary] = useState(emptyCompanyStorageSummary)
   const [adminOverview, setAdminOverview] = useState(null)
@@ -7716,7 +7718,14 @@ function App() {
       if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
       if (companyInvoicesResult.data) setCompanyInvoiceRecords(companyInvoicesResult.data)
       if (costEntriesResult.data) setCostEntryRecords(costEntriesResult.data)
-      if (announcementsResult.data) setAnnouncementRecords(announcementsResult.data)
+      if (announcementsResult.data) {
+        setAnnouncementRecords(announcementsResult.data)
+        const readsResult = await fetchCompanyAnnouncementReadReceipts(
+          companyId,
+          announcementsResult.data.map((announcement) => announcement.id),
+        )
+        if (isMounted && readsResult.data) setAnnouncementReadRecords(readsResult.data)
+      }
       if (checksResult.data) setVehicleCheckRecords(checksResult.data)
       if (faultsResult.data) setFaultReportRecords(faultsResult.data)
       if (chatThreadsResult.data) setChatThreadRecords(chatThreadsResult.data)
@@ -7974,6 +7983,16 @@ function App() {
               : 'Nuovo check mattutino ricevuto dall app autista.',
           )
         }
+      },
+      onAnnouncement: (announcement) => {
+        if (!isMounted) return
+
+        setAnnouncementRecords((currentRecords) => upsertRecordById(currentRecords, announcement))
+      },
+      onAnnouncementRead: (read) => {
+        if (!isMounted) return
+
+        setAnnouncementReadRecords((currentReads) => upsertRecordById(currentReads, read))
       },
     }).then((cleanup) => {
       unsubscribeOperations = cleanup
@@ -8724,7 +8743,10 @@ function App() {
         return false
       }
 
-      if (result.data) setAnnouncementRecords((currentRecords) => [result.data, ...currentRecords])
+      if (result.data) {
+        setAnnouncementRecords((currentRecords) => [result.data, ...currentRecords])
+        setAnnouncementReadRecords((currentReads) => currentReads.filter((read) => read.announcementId !== result.data.id))
+      }
 
       const pushResult = await notifyPhone({
         body: cleanAnnouncement.body || 'Nuova comunicazione aziendale da leggere.',
@@ -10699,6 +10721,7 @@ function App() {
           />
         ) : activeView === 'daily' ? (
           <DailyOperationsWorkspace
+            announcementReadRecords={announcementReadRecords}
             announcementRecords={announcementRecords}
             assetPreviewUrl={getAssetPreviewUrl}
             companyName={companyName}
@@ -10712,6 +10735,7 @@ function App() {
             onOpenDeadlines={() => openComplianceFilter('urgent')}
             onOpenReports={openReports}
             operationsStatus={operationsSyncStatus}
+            personRecords={personRecords}
             vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
           />
@@ -14656,6 +14680,7 @@ function StrategicEmptyLine({ label }) {
 }
 
 function DailyOperationsWorkspace({
+  announcementReadRecords = [],
   announcementRecords = [],
   companyName = 'Azienda',
   complianceItems = [],
@@ -14668,6 +14693,7 @@ function DailyOperationsWorkspace({
   onOpenDeadlines,
   onOpenReports,
   operationsStatus = '',
+  personRecords = [],
   vehicleCheckRecords = [],
   vehicleRecords = [],
 }) {
@@ -14680,9 +14706,11 @@ function DailyOperationsWorkspace({
   })
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false)
   const [localStatus, setLocalStatus] = useState('')
+  const [selectedAnnouncementId, setSelectedAnnouncementId] = useState('')
 
   const driverById = useMemo(() => new Map(driverRecords.map((driver) => [driver.id, driver])), [driverRecords])
   const activeDrivers = useMemo(() => driverRecords.filter((driver) => !isArchivedStatus(driver.status)), [driverRecords])
+  const activePeople = useMemo(() => personRecords.filter((person) => !isArchivedStatus(person.status)), [personRecords])
   const checkEnabledDrivers = useMemo(
     () => activeDrivers.filter((driver) => driver.canSubmitChecks !== false),
     [activeDrivers],
@@ -14698,10 +14726,7 @@ function DailyOperationsWorkspace({
   const actionableDeadlines = complianceItems.filter(isComplianceActionRequired)
   const expiredDeadlines = actionableDeadlines.filter((item) => getDaysUntil(item.dueDate) < 0)
   const companyAnnouncements = announcementRecords.filter((announcement) => announcement.status !== 'archived')
-  const ackMissingAnnouncements = companyAnnouncements.filter((announcement) => {
-    if (!announcement.requiresAck) return false
-    return Number(announcement.acknowledgedCount ?? 0) < Math.max(1, Number(announcement.readCount ?? 0))
-  })
+  const selectedAnnouncement = companyAnnouncements.find((announcement) => announcement.id === selectedAnnouncementId) ?? companyAnnouncements[0] ?? null
   const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
   const fleetHealthRows = getFleetHealthRows({
     complianceItems,
@@ -14725,6 +14750,101 @@ function DailyOperationsWorkspace({
     const driver = driverById.get(driverId)
     return driver ? driver.fullName || driver.name || driver.username || 'Autista' : 'Non assegnato'
   }
+  const getAnnouncementRecipients = (announcement) => {
+    if (!announcement) return []
+
+    const audienceType = announcement.audienceType || 'all'
+    const recipients = []
+
+    if (audienceType === 'all' || audienceType === 'drivers') {
+      activeDrivers.forEach((driver) => {
+        recipients.push({
+          department: 'Autista',
+          driverId: driver.id,
+          id: `driver-${driver.id}`,
+          name: driver.fullName || driver.name || driver.username || 'Autista',
+          phone: driver.phone || '',
+          userId: driver.userId || '',
+        })
+      })
+    }
+
+    if (audienceType === 'all' || ['office', 'warehouse', 'management'].includes(audienceType)) {
+      activePeople
+        .filter((person) => {
+          if (audienceType === 'all') {
+            return person.department !== 'drivers' && person.personType !== 'driver' && !person.linkedDriverId
+          }
+          return person.department === audienceType || person.personType === audienceType
+        })
+        .forEach((person) => {
+          const department = person.department === 'warehouse'
+            ? 'Magazzino'
+            : person.department === 'office'
+              ? 'Ufficio'
+              : person.department === 'management'
+                ? 'Direzione'
+                : person.personType || 'Persona'
+
+          recipients.push({
+            department,
+            id: `person-${person.id}`,
+            name: person.fullName || person.name || person.username || 'Persona',
+            personId: person.id,
+            phone: person.phone || '',
+            userId: person.userId || '',
+          })
+        })
+    }
+
+    return recipients
+  }
+  const getAnnouncementRecipientRows = (announcement) => {
+    if (!announcement) return []
+
+    const announcementReads = announcementReadRecords.filter((read) => read.announcementId === announcement.id)
+    const readsByUserId = new Map(announcementReads.filter((read) => read.userId).map((read) => [read.userId, read]))
+    const readsByDriverId = new Map(announcementReads.filter((read) => read.driverId).map((read) => [read.driverId, read]))
+    const readsByPersonId = new Map(announcementReads.filter((read) => read.personId).map((read) => [read.personId, read]))
+
+    return getAnnouncementRecipients(announcement).map((recipient) => {
+      const read = (recipient.userId && readsByUserId.get(recipient.userId))
+        || (recipient.driverId && readsByDriverId.get(recipient.driverId))
+        || (recipient.personId && readsByPersonId.get(recipient.personId))
+        || null
+
+      const status = read?.acknowledgedAt
+        ? 'confirmed'
+        : read?.readAt
+          ? 'read'
+          : 'missing'
+
+      return {
+        ...recipient,
+        acknowledgedAt: read?.acknowledgedAt ?? '',
+        readAt: read?.readAt ?? '',
+        status,
+      }
+    })
+  }
+  const getAnnouncementSummary = (recipientRows = []) => ({
+    confirmed: recipientRows.filter((row) => row.status === 'confirmed').length,
+    missing: recipientRows.filter((row) => row.status === 'missing').length,
+    read: recipientRows.filter((row) => row.status === 'read').length,
+    total: recipientRows.length,
+  })
+  const announcementSummaryById = new Map(companyAnnouncements.map((announcement) => {
+    const recipientRows = getAnnouncementRecipientRows(announcement)
+    return [announcement.id, getAnnouncementSummary(recipientRows)]
+  }))
+  const selectedAnnouncementRecipientRows = getAnnouncementRecipientRows(selectedAnnouncement)
+  const selectedAnnouncementSummary = selectedAnnouncement
+    ? announcementSummaryById.get(selectedAnnouncement.id) ?? getAnnouncementSummary(selectedAnnouncementRecipientRows)
+    : getAnnouncementSummary([])
+  const ackMissingAnnouncements = companyAnnouncements.filter((announcement) => {
+    if (!announcement.requiresAck) return false
+    return (announcementSummaryById.get(announcement.id)?.missing ?? 0) > 0
+  })
   const updateAnnouncementField = (field, value) => setAnnouncementForm((current) => ({ ...current, [field]: value }))
   const handleAnnouncementSubmit = async (event) => {
     event.preventDefault()
@@ -14923,14 +15043,13 @@ function DailyOperationsWorkspace({
               {isSavingAnnouncement ? 'Pubblicazione...' : 'Pubblica'}
             </button>
           </form>
-          <DailyMiniList
-            emptyLabel="Nessuna comunicazione pubblicata."
-            rows={companyAnnouncements.slice(0, 4).map((announcement) => ({
-              id: announcement.id,
-              title: announcement.title,
-              meta: `${announcement.audienceType === 'all' ? 'Tutti' : announcement.audienceType} · lette ${announcement.readCount ?? 0} · confermate ${announcement.acknowledgedCount ?? 0}`,
-              tone: announcement.requiresAck && Number(announcement.acknowledgedCount ?? 0) === 0 ? 'warning' : 'success',
-            }))}
+          <AnnouncementTrackingPanel
+            announcements={companyAnnouncements}
+            onSelect={setSelectedAnnouncementId}
+            recipients={selectedAnnouncementRecipientRows}
+            selectedAnnouncement={selectedAnnouncement}
+            summaryByAnnouncementId={announcementSummaryById}
+            summary={selectedAnnouncementSummary}
           />
         </section>
 
@@ -15006,6 +15125,102 @@ function DailyMiniList({ emptyLabel, rows = [] }) {
           </div>
         </article>
       ))}
+    </div>
+  )
+}
+
+function AnnouncementTrackingPanel({
+  announcements = [],
+  onSelect,
+  recipients = [],
+  selectedAnnouncement,
+  summary = { confirmed: 0, missing: 0, read: 0, total: 0 },
+  summaryByAnnouncementId = new Map(),
+}) {
+  if (!announcements.length) {
+    return (
+      <div className="daily-mini-empty">
+        <CheckCircle2 size={18} />
+        <span>Nessuna comunicazione pubblicata.</span>
+      </div>
+    )
+  }
+
+  const statusLabels = {
+    confirmed: 'Confermato',
+    missing: 'Manca',
+    read: 'Letto',
+  }
+  const statusMeta = {
+    confirmed: 'Presa visione registrata',
+    missing: 'Non ancora aperta o confermata',
+    read: 'Letta, manca conferma',
+  }
+
+  return (
+    <div className="announcement-tracking">
+      <div className="announcement-list">
+        {announcements.slice(0, 6).map((announcement) => {
+          const isSelected = selectedAnnouncement?.id === announcement.id
+          const rowSummary = summaryByAnnouncementId.get(announcement.id) ?? {
+            confirmed: Number(announcement.acknowledgedCount ?? 0),
+            read: Number(announcement.readCount ?? 0),
+            total: 0,
+          }
+          const isPending = announcement.requiresAck && rowSummary.confirmed < Math.max(1, rowSummary.total)
+
+          return (
+            <button
+              className={isSelected ? 'announcement-row is-selected' : 'announcement-row'}
+              key={announcement.id}
+              onClick={() => onSelect?.(announcement.id)}
+              type="button"
+            >
+              <span className={isPending ? 'announcement-row-marker tone-warning' : 'announcement-row-marker tone-success'} />
+              <span>
+                <strong>{announcement.title}</strong>
+                <small>
+                  {(announcement.audienceType === 'all' ? 'Tutti' : announcement.audienceType)} · lette {rowSummary.read} · confermate {rowSummary.confirmed}/{rowSummary.total || '-'}
+                </small>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="announcement-detail">
+        <div className="announcement-detail-head">
+          <div>
+            <p className="overline">Dettaglio presa visione</p>
+            <h4>{selectedAnnouncement?.title || 'Comunicazione'}</h4>
+          </div>
+          <div className="announcement-summary-pills">
+            <span>{summary.confirmed}/{summary.total} confermati</span>
+            <span>{summary.read} letti</span>
+            <span>{summary.missing} mancanti</span>
+          </div>
+        </div>
+
+        <div className="announcement-recipient-list">
+          {recipients.length ? recipients.map((recipient) => (
+            <article className={`announcement-recipient tone-${recipient.status}`} key={recipient.id}>
+              <div>
+                <strong>{recipient.name}</strong>
+                <small>{recipient.department}{recipient.phone ? ` · ${recipient.phone}` : ''}</small>
+              </div>
+              <span>
+                <b>{statusLabels[recipient.status]}</b>
+                <small>{recipient.acknowledgedAt || recipient.readAt ? formatOptionalDate(recipient.acknowledgedAt || recipient.readAt) : statusMeta[recipient.status]}</small>
+              </span>
+            </article>
+          )) : (
+            <div className="daily-mini-empty">
+              <AlertTriangle size={18} />
+              <span>Nessun destinatario trovato per questo pubblico.</span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

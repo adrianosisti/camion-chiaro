@@ -104,6 +104,7 @@ function mapDriver(row) {
     canSubmitChecks: row.can_submit_checks ?? row.canSubmitChecks ?? true,
     status: driverStatusLabels[row.status] ?? row.status,
     username: row.username,
+    userId: row.user_id ?? row.userId ?? '',
     vehicleId: '',
   }
 }
@@ -156,6 +157,7 @@ function mapCompanyPerson(row) {
     phone: row.phone ?? '',
     status: row.status ?? 'active',
     username: row.username ?? '',
+    userId: row.user_id ?? row.userId ?? '',
   }
 }
 
@@ -298,6 +300,19 @@ function mapCompanyAnnouncement(row = {}) {
     status: row.status ?? 'published',
     title: row.title ?? 'Comunicazione',
     updatedAt: row.updated_at ?? '',
+  }
+}
+
+function mapCompanyAnnouncementRead(row = {}) {
+  return {
+    acknowledgedAt: row.acknowledged_at ?? '',
+    announcementId: row.announcement_id ?? '',
+    companyId: row.company_id ?? '',
+    driverId: row.driver_id ?? '',
+    id: `${row.announcement_id ?? 'announcement'}-${row.user_id ?? row.driver_id ?? row.person_id ?? 'reader'}`,
+    personId: row.person_id ?? '',
+    readAt: row.read_at ?? '',
+    userId: row.user_id ?? '',
   }
 }
 
@@ -681,8 +696,8 @@ function isMissingWorkforceSchemaError(error) {
   return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error?.code)
 }
 
-const driverSelectBaseColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
-const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, access_password, status'
+const driverSelectBaseColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
+const driverSelectWithCheckColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, access_password, status'
 const companyPersonSelectBaseColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status'
 const companyPersonSelectWithAccessColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, access_password, status'
 
@@ -1951,6 +1966,27 @@ export async function fetchCompanyAnnouncements(companyId = configuredCompanyId)
   }
 
   return { data: data?.map(mapCompanyAnnouncement) ?? [], error }
+}
+
+export async function fetchCompanyAnnouncementReadReceipts(companyId = configuredCompanyId, announcementIds = []) {
+  const supabase = await getSupabaseClient()
+  const safeIds = [...new Set((announcementIds ?? []).filter(Boolean))]
+
+  if (!supabase || !companyId || !safeIds.length) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('company_announcement_reads')
+    .select('announcement_id, company_id, user_id, driver_id, person_id, read_at, acknowledged_at')
+    .eq('company_id', companyId)
+    .in('announcement_id', safeIds)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapCompanyAnnouncementRead) ?? [], error }
 }
 
 export async function fetchChatThreads(companyId = configuredCompanyId) {
@@ -3754,6 +3790,30 @@ export async function subscribeToOperationalUpdates(companyId, handlers = {}) {
       },
       (payload) => {
         if (payload.new) handlers.onFaultReportUpdate?.(mapFaultReport(payload.new))
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'company_announcements',
+      },
+      (payload) => {
+        if (payload.new) handlers.onAnnouncement?.(mapCompanyAnnouncement(payload.new), payload)
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'company_announcement_reads',
+      },
+      (payload) => {
+        if (payload.new) handlers.onAnnouncementRead?.(mapCompanyAnnouncementRead(payload.new), payload)
       },
     )
     .subscribe()

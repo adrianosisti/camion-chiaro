@@ -10644,6 +10644,17 @@ function App() {
     window.localStorage.setItem(liveOnboardingStorageKey, 'hidden')
   }
 
+  function showLiveOnboardingGuide() {
+    if (liveOnboardingStorageKey && typeof window !== 'undefined') {
+      window.localStorage.removeItem(liveOnboardingStorageKey)
+    }
+
+    setLiveOnboardingDismissedKey('')
+    setLiveOnboardingFocus('dashboard')
+    setActiveView('dashboard')
+    window.setTimeout(() => setLiveOnboardingFocus(''), 2400)
+  }
+
   function openLiveOnboardingStep(step) {
     if (!step) return
 
@@ -11176,6 +11187,7 @@ function App() {
                   unreadChatCount: companyUnreadChatCount,
                 }}
                 language={language}
+                onOpenOnboarding={showLiveOnboardingGuide}
                 onOpenSupport={() => setActiveView('support')}
                 topics={homeAssistantTopics}
                 t={t}
@@ -16630,6 +16642,7 @@ function HomeAssistantStrip({
   companyName = 'Azienda',
   contextSummary = {},
   language = defaultLanguage,
+  onOpenOnboarding,
   onOpenSupport,
   topics = [],
   t,
@@ -16764,6 +16777,10 @@ function HomeAssistantStrip({
         </span>
       </div>
       <div className="home-assistant-actions">
+        <button className="secondary-button compact-button" onClick={onOpenOnboarding} type="button">
+          <ClipboardCheck size={15} />
+          Setup guidato
+        </button>
         <button className="primary-button compact-button" onClick={() => setIsOpen(true)} type="button">
           <Send size={15} />
           {t('homeAssistant.openAssistant')}

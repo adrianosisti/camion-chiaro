@@ -623,7 +623,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'news', 'notifications', 'passports', 'records', 'reports', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -840,6 +840,7 @@ const translations = {
     'nav.notifications': 'Notifiche',
     'nav.records': 'Anagrafiche',
     'nav.reports': 'Report',
+    'nav.savings': 'Radar Risparmio',
     'nav.costs': 'Centro costi',
     'nav.newCost': 'Nuova spesa',
     'nav.settings': 'Impostazioni',
@@ -1064,6 +1065,7 @@ const translations = {
     'nav.notifications': 'Notifications',
     'nav.records': 'Records',
     'nav.reports': 'Reports',
+    'nav.savings': 'Savings Radar',
     'nav.costs': 'Cost center',
     'nav.newCost': 'New expense',
     'nav.settings': 'Settings',
@@ -1209,6 +1211,7 @@ const translations = {
     'nav.notifications': 'Avisos',
     'nav.records': 'Ficheros',
     'nav.reports': 'Informes',
+    'nav.savings': 'Radar ahorro',
     'nav.costs': 'Centro costes',
     'nav.newCost': 'Nuevo coste',
     'nav.settings': 'Ajustes',
@@ -1354,6 +1357,7 @@ const translations = {
     'nav.notifications': 'Alertes',
     'nav.records': 'Fiches',
     'nav.reports': 'Rapports',
+    'nav.savings': 'Radar economies',
     'nav.costs': 'Centre couts',
     'nav.newCost': 'Nouvelle depense',
     'nav.settings': 'Reglages',
@@ -1499,6 +1503,7 @@ const translations = {
     'nav.notifications': 'Hinweise',
     'nav.records': 'Stammdaten',
     'nav.reports': 'Berichte',
+    'nav.savings': 'Sparradar',
     'nav.costs': 'Kostenstelle',
     'nav.newCost': 'Neue Ausgabe',
     'nav.settings': 'Einstellungen',
@@ -4123,6 +4128,7 @@ const regionalTranslations = {
     'nav.notifications': 'Notificari',
     'nav.records': 'Date',
     'nav.reports': 'Rapoarte',
+    'nav.savings': 'Radar economii',
     'nav.costs': 'Centru costuri',
     'nav.newCost': 'Cheltuiala noua',
     'nav.settings': 'Setari',
@@ -4189,6 +4195,7 @@ const regionalTranslations = {
     'nav.notifications': 'Powiadomienia',
     'nav.records': 'Kartoteki',
     'nav.reports': 'Raporty',
+    'nav.savings': 'Radar oszczednosci',
     'nav.costs': 'Centrum kosztow',
     'nav.newCost': 'Nowy koszt',
     'nav.settings': 'Ustawienia',
@@ -10590,6 +10597,16 @@ function App() {
       return
     }
 
+    if (viewId === 'savings') {
+      if (!canUseCurrentPlanFeature('costCenter')) {
+        showPlanFeatureLimit('costCenter', setOperationsSyncStatus)
+        return
+      }
+
+      setActiveView('savings')
+      return
+    }
+
     if (viewId === 'newCost') {
       openCostReport({ add: true })
       return
@@ -10776,6 +10793,28 @@ function App() {
             onRefresh={() => refreshTransportNews({ force: true })}
             statusMessage={transportNewsStatus}
           />
+        ) : activeView === 'savings' ? (
+          planFeatureAccess.costCenter ? (
+            <SavingsRadarWorkspace
+              complianceItems={decoratedItems}
+              costEntryRecords={costEntryRecords}
+              driverRecords={driverRecords}
+              faultReportRecords={visibleFaultReportRecords}
+              onOpenCostReport={openCostReport}
+              onOpenDeadlines={() => openComplianceFilter('urgent')}
+              onOpenOperations={() => openNotifications('inbox')}
+              onOpenReports={openReports}
+              vehicleCheckRecords={vehicleCheckRecords}
+              vehicleRecords={vehicleRecords}
+            />
+          ) : (
+            <FeatureUpgradeGate
+              description="Radar Risparmio usa costi, multe, scadenze, guasti e salute flotta. Se lo vedi bloccato, controlla lo stato pagamento o l attivazione azienda."
+              featureName="Radar Risparmio"
+              icon={Banknote}
+              onUpgrade={openBillingSettings}
+            />
+          )
         ) : activeView === 'records' ? (
           <RecordsWorkspace
             acknowledgedCheckIds={acknowledgedCheckIds}
@@ -12116,6 +12155,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
       id: 'business',
       label: 'Costi e report',
       items: [
+        { id: 'savings', label: t('nav.savings'), icon: Gauge },
         { id: 'reports', label: t('nav.reports'), icon: FileText },
         { id: 'costs', label: t('nav.costs'), icon: Banknote },
         { id: 'newCost', label: t('nav.newCost'), icon: Plus },
@@ -14161,6 +14201,302 @@ function buildCostAnomalyRows({ costRows = [], driverRecords = [], vehicleRecord
     })
     .filter((group) => group.isAnomaly || group.tone === 'warning')
     .sort((first, second) => second.ratio - first.ratio || second.totalCents - first.totalCents)
+}
+
+function buildSavingsRadarData({
+  complianceItems = [],
+  costRows = [],
+  driverRecords = [],
+  faultReportRecords = [],
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+} = {}) {
+  const monthStart = getFaultCostPeriodStart('month')
+  const monthRows = costRows.filter((row) => new Date(row.date) >= monthStart)
+  const monthTotalCents = monthRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const anomalyRows = buildCostAnomalyRows({ costRows, driverRecords, vehicleRecords })
+  const fineRows = costRows.filter((row) => row.category === 'fine')
+  const monthFineRows = fineRows.filter((row) => new Date(row.date) >= monthStart)
+  const fineTotalCents = fineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const openFaults = faultReportRecords.filter((report) => !isFaultArchived(report))
+  const criticalChecks = vehicleCheckRecords.filter((check) => !isVehicleCheckArchived(check) && hasCheckIssues(check))
+  const smartRiskDeadlines = complianceItems
+    .filter((item) => !isComplianceClosed(item))
+    .map((item) => ({ item, signal: getSmartDeadlineSignal(item) }))
+    .filter(({ signal }) => ['danger', 'warning'].includes(signal.tone))
+    .sort((first, second) => {
+      const toneScore = { danger: 0, warning: 1, info: 2, success: 3 }
+      return toneScore[first.signal.tone] - toneScore[second.signal.tone]
+    })
+  const fleetHealthRows = getFleetHealthRows({
+    complianceItems,
+    costRows,
+    faultReportRecords,
+    vehicleCheckRecords,
+    vehicleRecords,
+  })
+  const weakFleetRows = fleetHealthRows.filter((row) => row.score < 82)
+  const recurringFaultRows = Array.from(faultReportRecords.reduce((groups, report) => {
+    const vehicleId = report.vehicleId || report.semitrailerId
+    if (!vehicleId) return groups
+    const current = groups.get(vehicleId) ?? {
+      count: 0,
+      label: getVehicleLabelById(vehicleRecords, vehicleId),
+      openCount: 0,
+      vehicleId,
+    }
+    current.count += 1
+    if (!isFaultArchived(report)) current.openCount += 1
+    groups.set(vehicleId, current)
+    return groups
+  }, new Map()).values())
+    .filter((row) => row.count >= 2 || row.openCount > 0)
+    .sort((first, second) => second.openCount - first.openCount || second.count - first.count)
+
+  const driverFineRanking = buildCostRanking(fineRows, (row) => {
+    if (row.driverId) return { key: row.driverId, name: getDriverLabelById(driverRecords, row.driverId) }
+    if (row.vehicleId) return { key: `vehicle-${row.vehicleId}`, name: getVehicleLabelById(vehicleRecords, row.vehicleId) }
+    return { key: 'unassigned', name: 'Non assegnate' }
+  })
+  const vehicleCostRanking = buildCostRanking(costRows.filter((row) => row.vehicleId), (row) => ({
+    key: row.vehicleId,
+    name: getVehicleLabelById(vehicleRecords, row.vehicleId),
+  }))
+  const anomalyRiskCents = anomalyRows.reduce((total, row) => (
+    total + Math.max(0, Number(row.totalCents ?? 0) - Number(row.averageCents ?? 0))
+  ), 0)
+  const moneyUnderWatchCents = anomalyRiskCents + fineTotalCents
+  const riskScore = Math.min(
+    100,
+    anomalyRows.length * 13
+      + openFaults.length * 9
+      + criticalChecks.length * 10
+      + smartRiskDeadlines.filter(({ signal }) => signal.tone === 'danger').length * 12
+      + smartRiskDeadlines.filter(({ signal }) => signal.tone === 'warning').length * 5
+      + weakFleetRows.length * 8
+      + monthFineRows.length * 7,
+  )
+  const savingsScore = Math.max(0, 100 - riskScore)
+  const actions = [
+    anomalyRows[0] ? {
+      body: `${anomalyRows[0].label} costa ${anomalyRows[0].ratio.toFixed(1)} volte la media del suo gruppo.`,
+      cta: 'Apri centro costi',
+      icon: Banknote,
+      id: 'anomaly',
+      tone: 'danger',
+      title: 'Costo anomalo da verificare',
+    } : null,
+    smartRiskDeadlines[0] ? {
+      body: `${smartRiskDeadlines[0].item.type}: ${smartRiskDeadlines[0].signal.detail}`,
+      cta: 'Apri scadenze',
+      icon: CalendarClock,
+      id: 'deadline',
+      tone: smartRiskDeadlines[0].signal.tone,
+      title: smartRiskDeadlines[0].signal.label,
+    } : null,
+    driverFineRanking[0] ? {
+      body: `${driverFineRanking[0].name}: ${driverFineRanking[0].count} sanzioni per ${formatMoneyCents(driverFineRanking[0].totalCents, fineRows[0]?.currency || 'EUR')}.`,
+      cta: 'Apri report',
+      icon: AlertTriangle,
+      id: 'fines',
+      tone: 'warning',
+      title: 'Multe da leggere per persona o targa',
+    } : null,
+    recurringFaultRows[0] ? {
+      body: `${recurringFaultRows[0].label}: ${recurringFaultRows[0].count} guasti storici, ${recurringFaultRows[0].openCount} ancora aperti.`,
+      cta: 'Apri notifiche',
+      icon: Wrench,
+      id: 'faults',
+      tone: recurringFaultRows[0].openCount ? 'danger' : 'warning',
+      title: 'Guasti ricorrenti',
+    } : null,
+    criticalChecks[0] ? {
+      body: `${getDriverLabelById(driverRecords, criticalChecks[0].driverId)} ha segnalato ${getCheckIssues(criticalChecks[0]).join(', ')}.`,
+      cta: 'Apri check',
+      icon: ClipboardCheck,
+      id: 'checks',
+      tone: 'danger',
+      title: 'Anomalia da check',
+    } : null,
+  ].filter(Boolean)
+
+  if (!actions.length) {
+    actions.push({
+      body: 'Non emergono costi anomali o rischi economici urgenti. Continua a registrare spese, guasti e sanzioni per rendere il radar sempre piu preciso.',
+      cta: 'Continua cosi',
+      icon: CheckCircle2,
+      id: 'clear',
+      tone: 'success',
+      title: 'Nessuna perdita evidente',
+    })
+  }
+
+  return {
+    actions,
+    anomalyRows,
+    criticalChecks,
+    driverFineRanking,
+    fineRows,
+    fineTotalCents,
+    moneyUnderWatchCents,
+    monthRows,
+    monthTotalCents,
+    openFaults,
+    recurringFaultRows,
+    savingsScore,
+    smartRiskDeadlines,
+    vehicleCostRanking,
+    weakFleetRows,
+  }
+}
+
+function SavingsRadarWorkspace({
+  complianceItems = [],
+  costEntryRecords = [],
+  driverRecords = [],
+  faultReportRecords = [],
+  onOpenCostReport,
+  onOpenDeadlines,
+  onOpenOperations,
+  onOpenReports,
+  vehicleCheckRecords = [],
+  vehicleRecords = [],
+}) {
+  const costRows = buildCostReportRows(faultReportRecords, costEntryRecords)
+  const radar = buildSavingsRadarData({
+    complianceItems,
+    costRows,
+    driverRecords,
+    faultReportRecords,
+    vehicleCheckRecords,
+    vehicleRecords,
+  })
+  const primaryTone = radar.savingsScore >= 82 ? 'success' : radar.savingsScore >= 62 ? 'warning' : 'danger'
+  const defaultCurrency = costRows[0]?.currency || 'EUR'
+  const actionHandlers = {
+    anomaly: onOpenCostReport,
+    checks: onOpenOperations,
+    deadline: onOpenDeadlines,
+    faults: onOpenOperations,
+    fines: onOpenReports,
+  }
+
+  return (
+    <section className="savings-radar-workspace" aria-label="Radar Risparmio">
+      <div className={`panel savings-radar-hero tone-${primaryTone}`}>
+        <div>
+          <p className="overline">Radar Risparmio</p>
+          <h2>Dove l azienda sta perdendo soldi</h2>
+          <span>Vygo incrocia costi, guasti, sanzioni, check, scadenze e salute flotta per trasformare i dati operativi in azioni economiche.</span>
+        </div>
+        <div className={`savings-score tone-${primaryTone}`}>
+          <strong>{radar.savingsScore}%</strong>
+          <small>controllo risparmio</small>
+        </div>
+      </div>
+
+      <div className="savings-kpi-grid">
+        <StrategicKpi label="Soldi sotto osservazione" tone={radar.moneyUnderWatchCents ? 'danger' : 'success'} value={formatMoneyCents(radar.moneyUnderWatchCents, defaultCurrency)} />
+        <StrategicKpi label="Spese mese" tone={radar.monthTotalCents ? 'info' : 'success'} value={formatMoneyCents(radar.monthTotalCents, defaultCurrency)} />
+        <StrategicKpi label="Costi anomali" tone={radar.anomalyRows.length ? 'danger' : 'success'} value={radar.anomalyRows.length} />
+        <StrategicKpi label="Sanzioni" tone={radar.fineRows.length ? 'warning' : 'success'} value={radar.fineRows.length} />
+        <StrategicKpi label="Mezzi sotto soglia" tone={radar.weakFleetRows.length ? 'warning' : 'success'} value={radar.weakFleetRows.length} />
+      </div>
+
+      <section className="panel savings-action-panel">
+        <div className="savings-section-head">
+          <div>
+            <p className="overline">Azioni consigliate</p>
+            <h3>Le prime cose da controllare</h3>
+          </div>
+          <Gauge size={22} />
+        </div>
+        <div className="savings-action-grid">
+          {radar.actions.map((action) => {
+            const ActionIcon = action.icon
+            const handler = actionHandlers[action.id]
+
+            return (
+              <button className={`savings-action-card tone-${action.tone}`} key={action.id} onClick={handler} type="button">
+                <ActionIcon size={21} />
+                <span>
+                  <strong>{action.title}</strong>
+                  <small>{action.body}</small>
+                </span>
+                <b>{action.cta}</b>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      <div className="savings-grid">
+        <section className="panel savings-panel">
+          <StrategicSectionTitle icon={Banknote} overline="Classifica costi" title="Mezzi e targhe piu costosi" />
+          <div className="strategic-list">
+            {radar.vehicleCostRanking.slice(0, 6).map((row) => (
+              <article className="strategic-row tone-info" key={row.key}>
+                <div>
+                  <strong>{row.name}</strong>
+                  <small>{row.count} voci registrate</small>
+                </div>
+                <b>{formatMoneyCents(row.totalCents, defaultCurrency)}</b>
+              </article>
+            ))}
+            {!radar.vehicleCostRanking.length && <StrategicEmptyLine label="Registra costi collegati a targhe per vedere la classifica." />}
+          </div>
+        </section>
+
+        <section className="panel savings-panel">
+          <StrategicSectionTitle icon={AlertTriangle} overline="Sanzioni" title="Multe per persona o targa" />
+          <div className="strategic-list">
+            {radar.driverFineRanking.slice(0, 6).map((row) => (
+              <article className="strategic-row tone-warning" key={row.key}>
+                <div>
+                  <strong>{row.name}</strong>
+                  <small>{row.count} sanzioni registrate</small>
+                </div>
+                <b>{formatMoneyCents(row.totalCents, defaultCurrency)}</b>
+              </article>
+            ))}
+            {!radar.driverFineRanking.length && <StrategicEmptyLine label="Nessuna sanzione registrata." />}
+          </div>
+        </section>
+
+        <section className="panel savings-panel">
+          <StrategicSectionTitle icon={CalendarClock} overline="Rischio multa" title="Scadenze che possono costare" />
+          <div className="strategic-list">
+            {radar.smartRiskDeadlines.slice(0, 7).map(({ item, signal }) => (
+              <article className={`strategic-row tone-${signal.tone}`} key={item.id}>
+                <div>
+                  <strong>{item.type}</strong>
+                  <small>{item.vehicleId ? getVehicleLabelById(vehicleRecords, item.vehicleId) : getDriverLabelById(driverRecords, item.driverId)} · {formatOptionalDate(item.dueDate)}</small>
+                </div>
+                <b>{signal.label}</b>
+              </article>
+            ))}
+            {!radar.smartRiskDeadlines.length && <StrategicEmptyLine label="Nessuna scadenza economica critica rilevata." />}
+          </div>
+        </section>
+
+        <section className="panel savings-panel">
+          <StrategicSectionTitle icon={Wrench} overline="Guasti ricorrenti" title="Mezzi che richiedono attenzione" />
+          <div className="strategic-list">
+            {radar.recurringFaultRows.slice(0, 7).map((row) => (
+              <article className={`strategic-row tone-${row.openCount ? 'danger' : 'warning'}`} key={row.vehicleId}>
+                <div>
+                  <strong>{row.label}</strong>
+                  <small>{row.count} guasti storici · {row.openCount} aperti</small>
+                </div>
+                <b>{row.openCount ? 'Da lavorare' : 'Storico'}</b>
+              </article>
+            ))}
+            {!radar.recurringFaultRows.length && <StrategicEmptyLine label="Nessun guasto ricorrente rilevato." />}
+          </div>
+        </section>
+      </div>
+    </section>
+  )
 }
 
 function VehiclePassportWorkspace({

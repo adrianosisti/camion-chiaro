@@ -15156,6 +15156,32 @@ function AnnouncementTrackingPanel({
     missing: 'Non ancora aperta o confermata',
     read: 'Letta, manca conferma',
   }
+  const confirmedRecipients = recipients.filter((recipient) => recipient.status === 'confirmed')
+  const readRecipients = recipients.filter((recipient) => recipient.status === 'read')
+  const missingRecipients = recipients.filter((recipient) => recipient.status === 'missing')
+  const confirmedNames = confirmedRecipients.map((recipient) => recipient.name).filter(Boolean)
+  const renderRecipientGroup = (title, rows, emptyLabel) => (
+    <section className="announcement-recipient-group">
+      <div className="announcement-recipient-group-head">
+        <strong>{title}</strong>
+        <span>{rows.length}</span>
+      </div>
+      {rows.length ? rows.map((recipient) => (
+        <article className={`announcement-recipient tone-${recipient.status}`} key={recipient.id}>
+          <div>
+            <strong>{recipient.name}</strong>
+            <small>{recipient.department}{recipient.phone ? ` · ${recipient.phone}` : ''}</small>
+          </div>
+          <span>
+            <b>{statusLabels[recipient.status]}</b>
+            <small>{recipient.acknowledgedAt || recipient.readAt ? formatShortDateTime(recipient.acknowledgedAt || recipient.readAt) : statusMeta[recipient.status]}</small>
+          </span>
+        </article>
+      )) : (
+        <div className="announcement-recipient-empty">{emptyLabel}</div>
+      )}
+    </section>
+  )
 
   return (
     <div className="announcement-tracking">
@@ -15193,6 +15219,16 @@ function AnnouncementTrackingPanel({
           <div>
             <p className="overline">Dettaglio presa visione</p>
             <h4>{selectedAnnouncement?.title || 'Comunicazione'}</h4>
+            {confirmedNames.length ? (
+              <p className="announcement-confirmed-strip">
+                Hanno confermato: {confirmedNames.slice(0, 4).join(', ')}
+                {confirmedNames.length > 4 ? ` e altri ${confirmedNames.length - 4}` : ''}
+              </p>
+            ) : (
+              <p className="announcement-confirmed-strip tone-empty">
+                Nessuna presa visione confermata per ora.
+              </p>
+            )}
           </div>
           <div className="announcement-summary-pills">
             <span>{summary.confirmed}/{summary.total} confermati</span>
@@ -15202,18 +15238,13 @@ function AnnouncementTrackingPanel({
         </div>
 
         <div className="announcement-recipient-list">
-          {recipients.length ? recipients.map((recipient) => (
-            <article className={`announcement-recipient tone-${recipient.status}`} key={recipient.id}>
-              <div>
-                <strong>{recipient.name}</strong>
-                <small>{recipient.department}{recipient.phone ? ` · ${recipient.phone}` : ''}</small>
-              </div>
-              <span>
-                <b>{statusLabels[recipient.status]}</b>
-                <small>{recipient.acknowledgedAt || recipient.readAt ? formatShortDateTime(recipient.acknowledgedAt || recipient.readAt) : statusMeta[recipient.status]}</small>
-              </span>
-            </article>
-          )) : (
+          {recipients.length ? (
+            <>
+              {renderRecipientGroup('Hanno confermato', confirmedRecipients, 'Nessuna conferma registrata.')}
+              {renderRecipientGroup('Letto ma manca conferma', readRecipients, 'Nessuno in attesa dopo la lettura.')}
+              {renderRecipientGroup('Mancano', missingRecipients, 'Nessun destinatario mancante.')}
+            </>
+          ) : (
             <div className="daily-mini-empty">
               <AlertTriangle size={18} />
               <span>Nessun destinatario trovato per questo pubblico.</span>

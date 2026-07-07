@@ -8733,7 +8733,7 @@ function App() {
         targetAudience: cleanAnnouncement.audienceType,
         targetRole: 'announcement',
         title: cleanAnnouncement.title || 'Comunicazione aziendale',
-        url: '/?view=dashboard',
+        url: '/?view=announcements',
       })
 
       setOperationsSyncStatus(
@@ -12063,24 +12063,90 @@ function AuthScreen({ isPasswordRecoveryMode = false, language, onAuthenticated,
 }
 
 function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false, notificationCount, onHome, onNavigate, onSignOut, session, t }) {
-  const navItems = [
+  const [expandedNavGroups, setExpandedNavGroups] = useState({})
+  const mainNavItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-    { id: 'daily', label: t('nav.daily'), icon: ClipboardCheck },
-    { id: 'passports', label: t('nav.passports'), icon: Truck },
-    { id: 'control', label: t('nav.control'), icon: ShieldCheck },
-    { id: 'evidence', label: t('nav.evidence'), icon: BadgeCheck },
-    { id: 'news', label: t('nav.news'), icon: Newspaper },
-    { id: 'records', label: t('nav.records'), icon: Users },
-    { id: 'deadlines', label: t('nav.deadlines'), icon: CalendarClock },
-    { id: 'notifications', label: t('nav.notifications'), icon: Bell },
     { id: 'chat', label: t('nav.chat'), icon: Mail },
-    { id: 'reports', label: t('nav.reports'), icon: FileText },
-    { id: 'costs', label: t('nav.costs'), icon: Banknote },
-    { id: 'newCost', label: t('nav.newCost'), icon: Plus },
-    { id: 'support', label: t('nav.support'), icon: BookOpen },
-    { id: 'settings', label: t('nav.settings'), icon: SettingsIcon },
-    ...(isAdminSession ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck }] : []),
+    { id: 'notifications', label: t('nav.notifications'), icon: Bell },
   ]
+  const navGroups = [
+    {
+      id: 'operations',
+      label: 'Operativita',
+      items: [
+        { id: 'daily', label: t('nav.daily'), icon: ClipboardCheck },
+        { id: 'deadlines', label: t('nav.deadlines'), icon: CalendarClock },
+        { id: 'records', label: t('nav.records'), icon: Users },
+      ],
+    },
+    {
+      id: 'control',
+      label: 'Controllo',
+      items: [
+        { id: 'passports', label: t('nav.passports'), icon: Truck },
+        { id: 'control', label: t('nav.control'), icon: ShieldCheck },
+        { id: 'evidence', label: t('nav.evidence'), icon: BadgeCheck },
+      ],
+    },
+    {
+      id: 'business',
+      label: 'Costi e report',
+      items: [
+        { id: 'reports', label: t('nav.reports'), icon: FileText },
+        { id: 'costs', label: t('nav.costs'), icon: Banknote },
+        { id: 'newCost', label: t('nav.newCost'), icon: Plus },
+      ],
+    },
+    {
+      id: 'support',
+      label: 'News e guida',
+      items: [
+        { id: 'news', label: t('nav.news'), icon: Newspaper },
+        { id: 'support', label: t('nav.support'), icon: BookOpen },
+        { id: 'settings', label: t('nav.settings'), icon: SettingsIcon },
+      ],
+    },
+    ...(isAdminSession
+      ? [{
+          id: 'admin',
+          label: 'Admin',
+          items: [{ id: 'admin', label: 'Admin', icon: ShieldCheck }],
+        }]
+      : []),
+  ]
+  function isGroupActive(group) {
+    return group.items.some((item) => item.id === activeView)
+  }
+
+  function isGroupOpen(group) {
+    return expandedNavGroups[group.id] ?? isGroupActive(group)
+  }
+
+  function toggleGroup(group) {
+    setExpandedNavGroups((currentGroups) => ({
+      ...currentGroups,
+      [group.id]: !(currentGroups[group.id] ?? isGroupActive(group)),
+    }))
+  }
+
+  function renderNavItem(item, { nested = false } = {}) {
+    return (
+      <button
+        className={[
+          activeView === item.id ? 'nav-item is-active' : 'nav-item',
+          nested ? 'is-nested' : '',
+        ].filter(Boolean).join(' ')}
+        key={item.id}
+        onClick={() => onNavigate(item.id)}
+        type="button"
+      >
+        <item.icon size={nested ? 16 : 18} strokeWidth={2.1} />
+        <span>{item.label}</span>
+        {item.id === 'notifications' && notificationCount > 0 && <strong className="nav-badge">{notificationCount}</strong>}
+        {item.id === 'chat' && chatNotificationCount > 0 && <strong className="nav-badge">{chatNotificationCount}</strong>}
+      </button>
+    )
+  }
 
   return (
     <aside className="sidebar" aria-label="Navigazione principale">
@@ -12091,19 +12157,28 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
       </button>
 
       <nav className="nav-list">
-        {navItems.map((item) => (
-          <button
-            className={activeView === item.id ? 'nav-item is-active' : 'nav-item'}
-            key={item.label}
-            onClick={() => onNavigate(item.id)}
-            type="button"
-          >
-            <item.icon size={18} strokeWidth={2.1} />
-            <span>{item.label}</span>
-            {item.id === 'notifications' && notificationCount > 0 && <strong className="nav-badge">{notificationCount}</strong>}
-            {item.id === 'chat' && chatNotificationCount > 0 && <strong className="nav-badge">{chatNotificationCount}</strong>}
-          </button>
-        ))}
+        {mainNavItems.map((item) => renderNavItem(item))}
+        {navGroups.map((group) => {
+          const groupOpen = isGroupOpen(group)
+          const groupActive = isGroupActive(group)
+
+          return (
+            <section className={groupActive ? 'nav-group is-active' : 'nav-group'} key={group.id}>
+              <button
+                aria-expanded={groupOpen}
+                className="nav-group-trigger"
+                onClick={() => toggleGroup(group)}
+                type="button"
+              >
+                <span>{group.label}</span>
+                <ChevronRight className="nav-group-chevron" size={15} />
+              </button>
+              <div className={groupOpen ? 'nav-group-items is-open' : 'nav-group-items'}>
+                {group.items.map((item) => renderNavItem(item, { nested: true }))}
+              </div>
+            </section>
+          )
+        })}
       </nav>
 
       <div className="sync-card">

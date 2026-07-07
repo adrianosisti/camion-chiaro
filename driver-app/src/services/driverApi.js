@@ -2398,6 +2398,42 @@ export function subscribeToOperationalUpdates({ companyId, driverId, handlers = 
   }
 }
 
+export function subscribeToCompanyAnnouncements({ companyId, onChange }) {
+  if (!isSupabaseConfigured || !companyId) return () => {}
+
+  const channel = supabase
+    .channel(`company-announcements-${companyId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'company_announcements',
+      },
+      (payload) => {
+        onChange?.({ payload, type: 'announcement' })
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'company_announcement_reads',
+      },
+      (payload) => {
+        onChange?.({ payload, type: 'announcement_read' })
+      },
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
 export function subscribeToDriverPresence({ actor, companyId, handlers = {} }) {
   if (!isSupabaseConfigured || !companyId || !actor?.actorId) {
     return {

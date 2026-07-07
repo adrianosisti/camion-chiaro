@@ -17,6 +17,7 @@ import {
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import { useAudioPlayer } from 'expo-audio'
 import * as Haptics from 'expo-haptics'
+import * as Notifications from 'expo-notifications'
 import * as Updates from 'expo-updates'
 import { useShareIntent } from 'expo-share-intent'
 import { Ionicons } from '@expo/vector-icons'
@@ -71,6 +72,7 @@ import {
   sendPushNotification,
   signOutDriver,
   subscribeToDriverChatMessages,
+  subscribeToCompanyAnnouncements,
   subscribeToTeamChatMessages,
   subscribeToOperationalUpdates,
   subscribeToDriverPresence,
@@ -1998,6 +2000,55 @@ function CamionChiaroApp() {
       subscription.remove()
     }
   }, [accountType, session?.user?.id])
+
+  useEffect(() => {
+    const companyId = driver?.companyId ?? currentPerson?.companyId
+    if (accountType !== 'driver' || !session || !companyId) return undefined
+
+    let refreshTimer = null
+    function scheduleAnnouncementRefresh() {
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        if (AppState.currentState === 'active') void loadDriverData({ silent: true })
+      }, 350)
+    }
+
+    const unsubscribe = subscribeToCompanyAnnouncements({
+      companyId,
+      onChange: scheduleAnnouncementRefresh,
+    })
+
+    return () => {
+      unsubscribe?.()
+      if (refreshTimer) clearTimeout(refreshTimer)
+    }
+  }, [accountType, currentPerson?.companyId, driver?.companyId, session?.user?.id])
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response?.notification?.request?.content?.data ?? {}
+      const notificationType = String(data.notificationType ?? '')
+      const url = String(data.url ?? '')
+
+      if (notificationType === 'announcement' || url.includes('view=announcements')) {
+        if (accountType === 'driver') setActiveTab('announcements')
+        return
+      }
+
+      if (['chat', 'team_chat'].includes(notificationType) || url.includes('view=chat')) {
+        setActiveTab('chat')
+        return
+      }
+
+      if (url.includes('view=documents')) {
+        setActiveTab('documents')
+      }
+    })
+
+    return () => {
+      subscription.remove()
+    }
+  }, [accountType])
 
   useEffect(() => {
     if (accountType !== 'driver' || !session || activeTab === 'chat') return undefined

@@ -6282,6 +6282,38 @@ body:has(.app-shell) {
   gap: 10px;
 }
 
+.savings-kpi-button {
+  border: 1px solid #c8edf5;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.savings-kpi-button:hover,
+.savings-kpi-button:focus-visible {
+  border-color: #13c5df;
+  box-shadow: 0 12px 28px rgba(8, 145, 178, 0.16);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.savings-kpi-button::after {
+  color: #075985;
+  content: "Apri dettaglio";
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.savings-panel {
+  scroll-margin-top: 96px;
+}
+
+.savings-action-panel {
+  scroll-margin-top: 96px;
+}
+
 .savings-action-panel,
 .savings-panel {
   display: grid;

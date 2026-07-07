@@ -14380,6 +14380,9 @@ function SavingsRadarWorkspace({
     faults: onOpenOperations,
     fines: onOpenReports,
   }
+  const scrollToSavingsSection = (sectionId) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <section className="savings-radar-workspace" aria-label="Radar Risparmio">
@@ -14396,14 +14399,14 @@ function SavingsRadarWorkspace({
       </div>
 
       <div className="savings-kpi-grid">
-        <StrategicKpi label="Soldi sotto osservazione" tone={radar.moneyUnderWatchCents ? 'danger' : 'success'} value={formatMoneyCents(radar.moneyUnderWatchCents, defaultCurrency)} />
-        <StrategicKpi label="Spese mese" tone={radar.monthTotalCents ? 'info' : 'success'} value={formatMoneyCents(radar.monthTotalCents, defaultCurrency)} />
-        <StrategicKpi label="Costi anomali" tone={radar.anomalyRows.length ? 'danger' : 'success'} value={radar.anomalyRows.length} />
-        <StrategicKpi label="Sanzioni" tone={radar.fineRows.length ? 'warning' : 'success'} value={radar.fineRows.length} />
-        <StrategicKpi label="Mezzi sotto soglia" tone={radar.weakFleetRows.length ? 'warning' : 'success'} value={radar.weakFleetRows.length} />
+        <SavingsKpiButton label="Soldi sotto osservazione" onClick={() => scrollToSavingsSection('savings-actions')} tone={radar.moneyUnderWatchCents ? 'danger' : 'success'} value={formatMoneyCents(radar.moneyUnderWatchCents, defaultCurrency)} />
+        <SavingsKpiButton label="Spese mese" onClick={() => scrollToSavingsSection('savings-cost-ranking')} tone={radar.monthTotalCents ? 'info' : 'success'} value={formatMoneyCents(radar.monthTotalCents, defaultCurrency)} />
+        <SavingsKpiButton label="Costi anomali" onClick={() => scrollToSavingsSection('savings-anomalies')} tone={radar.anomalyRows.length ? 'danger' : 'success'} value={radar.anomalyRows.length} />
+        <SavingsKpiButton label="Sanzioni" onClick={() => scrollToSavingsSection('savings-fines')} tone={radar.fineRows.length ? 'warning' : 'success'} value={radar.fineRows.length} />
+        <SavingsKpiButton label="Mezzi sotto soglia" onClick={() => scrollToSavingsSection('savings-fleet-health')} tone={radar.weakFleetRows.length ? 'warning' : 'success'} value={radar.weakFleetRows.length} />
       </div>
 
-      <section className="panel savings-action-panel">
+      <section className="panel savings-action-panel" id="savings-actions">
         <div className="savings-section-head">
           <div>
             <p className="overline">Azioni consigliate</p>
@@ -14431,7 +14434,7 @@ function SavingsRadarWorkspace({
       </section>
 
       <div className="savings-grid">
-        <section className="panel savings-panel">
+        <section className="panel savings-panel" id="savings-cost-ranking">
           <StrategicSectionTitle icon={Banknote} overline="Classifica costi" title="Mezzi e targhe piu costosi" />
           <div className="strategic-list">
             {radar.vehicleCostRanking.slice(0, 6).map((row) => (
@@ -14447,7 +14450,23 @@ function SavingsRadarWorkspace({
           </div>
         </section>
 
-        <section className="panel savings-panel">
+        <section className="panel savings-panel" id="savings-anomalies">
+          <StrategicSectionTitle icon={Gauge} overline="Allarme costi" title="Costi anomali rilevati" />
+          <div className="strategic-list">
+            {radar.anomalyRows.slice(0, 7).map((row) => (
+              <article className={`strategic-row tone-${row.tone}`} key={row.id}>
+                <div>
+                  <strong>{row.label}</strong>
+                  <small>{formatMoneyCents(row.totalCents, defaultCurrency)} · media {formatMoneyCents(row.averageCents, defaultCurrency)}</small>
+                </div>
+                <b>{row.ratio.toFixed(1)}x</b>
+              </article>
+            ))}
+            {!radar.anomalyRows.length && <StrategicEmptyLine label="Nessun costo anomalo rispetto alla media." />}
+          </div>
+        </section>
+
+        <section className="panel savings-panel" id="savings-fines">
           <StrategicSectionTitle icon={AlertTriangle} overline="Sanzioni" title="Multe per persona o targa" />
           <div className="strategic-list">
             {radar.driverFineRanking.slice(0, 6).map((row) => (
@@ -14463,7 +14482,23 @@ function SavingsRadarWorkspace({
           </div>
         </section>
 
-        <section className="panel savings-panel">
+        <section className="panel savings-panel" id="savings-fleet-health">
+          <StrategicSectionTitle icon={Truck} overline="Salute flotta" title="Mezzi sotto soglia economica" />
+          <div className="strategic-list">
+            {radar.weakFleetRows.slice(0, 7).map((row) => (
+              <article className={`strategic-row tone-${row.tone}`} key={row.vehicle.id}>
+                <div>
+                  <strong>{row.vehicle.plate || 'Targa non inserita'}</strong>
+                  <small>{row.issues.length ? row.issues.join(' · ') : 'Mezzo da monitorare'}</small>
+                </div>
+                <b>{row.score}%</b>
+              </article>
+            ))}
+            {!radar.weakFleetRows.length && <StrategicEmptyLine label="Nessun mezzo sotto soglia attenzione." />}
+          </div>
+        </section>
+
+        <section className="panel savings-panel" id="savings-deadlines">
           <StrategicSectionTitle icon={CalendarClock} overline="Rischio multa" title="Scadenze che possono costare" />
           <div className="strategic-list">
             {radar.smartRiskDeadlines.slice(0, 7).map(({ item, signal }) => (
@@ -14479,7 +14514,7 @@ function SavingsRadarWorkspace({
           </div>
         </section>
 
-        <section className="panel savings-panel">
+        <section className="panel savings-panel" id="savings-faults">
           <StrategicSectionTitle icon={Wrench} overline="Guasti ricorrenti" title="Mezzi che richiedono attenzione" />
           <div className="strategic-list">
             {radar.recurringFaultRows.slice(0, 7).map((row) => (
@@ -14496,6 +14531,15 @@ function SavingsRadarWorkspace({
         </section>
       </div>
     </section>
+  )
+}
+
+function SavingsKpiButton({ label, onClick, tone = 'info', value }) {
+  return (
+    <button className={`strategic-kpi savings-kpi-button tone-${tone}`} onClick={onClick} type="button">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </button>
   )
 }
 

@@ -627,6 +627,7 @@ const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines',
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
+const liveOnboardingStoragePrefix = 'vygoLiveOnboardingV1'
 const voiceCallsLaunchReady = false
 const chatMediaAccept = 'image/*,video/*,audio/*'
 const chatGalleryMediaAccept = 'image/*,video/*'
@@ -648,6 +649,10 @@ const languageOptions = [
   { code: 'pl', label: 'Polski', shortLabel: 'PL' },
 ]
 const supportedLanguageCodes = new Set(languageOptions.map((option) => option.code))
+
+function getLiveOnboardingStorageKey(companyKey = '') {
+  return `${liveOnboardingStoragePrefix}:${companyKey || 'company'}`
+}
 const currencyByLanguage = {
   de: 'EUR',
   en: 'EUR',
@@ -6797,6 +6802,8 @@ function App() {
   const [phoneNotificationEnabled, setPhoneNotificationEnabled] = useState(false)
   const [phoneNotificationStatus, setPhoneNotificationStatus] = useState('')
   const [activeView, setActiveView] = useState(getInitialActiveView)
+  const [liveOnboardingDismissedKey, setLiveOnboardingDismissedKey] = useState('')
+  const [liveOnboardingFocus, setLiveOnboardingFocus] = useState('')
   const [costReportStartAddingKey, setCostReportStartAddingKey] = useState(0)
   const [costReportResetKey, setCostReportResetKey] = useState(0)
   const [recordsTab, setRecordsTab] = useState(getInitialRecordsTab)
@@ -10332,8 +10339,17 @@ function App() {
 
   const companyName = getDisplayCompanyName(companyProfile.name || session.name || company.name || 'Azienda')
   const activeDriverCount = driverRecords.filter((driver) => !isArchivedStatus(driver.status)).length
+  const activePersonCount = personRecords.filter((person) => !isArchivedStatus(person.status)).length
   const activeVehicleCount = vehicleRecords.filter((vehicle) => !isArchivedStatus(vehicle.status)).length
   const showCompanyInstallAction = isAppleMobileDevice() || Boolean(installPromptEvent) || isStandaloneMode
+  const liveOnboardingStorageKey = session.role === 'company' ? getLiveOnboardingStorageKey(activeCompanyId || session.email) : ''
+  const isLiveOnboardingHidden = Boolean(
+    liveOnboardingStorageKey
+      && (
+        liveOnboardingDismissedKey === liveOnboardingStorageKey
+        || (typeof window !== 'undefined' && window.localStorage.getItem(liveOnboardingStorageKey) === 'hidden')
+      ),
+  )
 
   if (activeCompanyId && activeView !== 'admin' && (!legalAcceptanceStatus.accepted || legalAcceptanceStatus.loading)) {
     return (
@@ -10620,6 +10636,38 @@ function App() {
     setActiveView(viewId)
   }
 
+  function dismissLiveOnboardingGuide() {
+    if (!liveOnboardingStorageKey) return
+
+    setLiveOnboardingDismissedKey(liveOnboardingStorageKey)
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(liveOnboardingStorageKey, 'hidden')
+  }
+
+  function openLiveOnboardingStep(step) {
+    if (!step) return
+
+    setLiveOnboardingFocus(step.targetView || step.id)
+
+    if (step.id === 'profile' || step.id === 'notifications') {
+      setActiveView('settings')
+    } else if (step.id === 'people') {
+      openRecords('people')
+    } else if (step.id === 'fleet') {
+      openRecords('fleet')
+    } else if (step.id === 'documents' || step.id === 'deadlines') {
+      openRecords('documents')
+    } else if (step.id === 'chat') {
+      openCompanyChat()
+    } else if (step.id === 'costs') {
+      openCostReport({ add: true })
+    } else {
+      navigateCompanyView(step.targetView || 'dashboard')
+    }
+
+    window.setTimeout(() => setLiveOnboardingFocus(''), 3600)
+  }
+
   const pushSupportStatus = getPushSupportStatus()
   const homeNotificationStatus = phoneNotificationEnabled
     ? { tone: 'success', value: t('homeStatus.ready') }
@@ -10685,6 +10733,106 @@ function App() {
       label: t('homeAssistant.mobileApp'),
     },
   ]
+  const liveOnboardingSteps = [
+    {
+      actionLabel: 'Apri impostazioni',
+      body: 'Completa nome azienda, sede, logo e dati base: sono quelli che vedranno titolare, ufficio e dipendenti.',
+      done: Boolean(companyProfile.name && (companyProfile.headquarters || companyProfile.logoPath || companyProfile.vatNumber)),
+      id: 'profile',
+      targetView: 'settings',
+      title: 'Profilo azienda',
+    },
+    {
+      actionLabel: 'Aggiungi persone',
+      body: 'Crea autisti, ufficio e magazzino con username e password da consegnare a ognuno.',
+      done: activeDriverCount + activePersonCount > 0,
+      id: 'people',
+      targetView: 'records',
+      title: 'Persone e accessi',
+    },
+    {
+      actionLabel: 'Aggiungi flotta',
+      body: 'Inserisci furgoni, motrici, trattori, semirimorchi, muletti e attrezzature operative.',
+      done: activeVehicleCount + assetRecords.length > 0,
+      id: 'fleet',
+      targetView: 'records',
+      title: 'Flotta e strumenti',
+    },
+    {
+      actionLabel: 'Carica documenti',
+      body: 'Associa patenti, CQC, assicurazioni, revisioni, libretti e visite mediche alle persone o ai mezzi.',
+      done: documentRecords.length > 0,
+      id: 'documents',
+      targetView: 'records',
+      title: 'Documenti',
+    },
+    {
+      actionLabel: 'Crea scadenze',
+      body: 'Metti le date importanti: Vygo le trasforma in priorita, notifiche e lavoro da seguire.',
+      done: decoratedItems.length > 0,
+      id: 'deadlines',
+      targetView: 'records',
+      title: 'Scadenze',
+    },
+    {
+      actionLabel: 'Apri chat',
+      body: 'Prova una chat o una comunicazione aziendale: da qui partono conferme, foto, audio, video e notifiche.',
+      done: chatMessageRecords.length + teamChatMessageRecords.length + announcementRecords.length > 0,
+      id: 'chat',
+      targetView: 'chat',
+      title: 'Comunicazione',
+    },
+    {
+      actionLabel: 'Aggiungi spesa',
+      body: 'Registra almeno una spesa, multa o manutenzione: poi Vygo costruisce report e anomalie.',
+      done: costEntryRecords.length > 0 || visibleFaultReportRecords.some((report) => Number(report.repairCostCents || 0) > 0),
+      id: 'costs',
+      targetView: 'newCost',
+      title: 'Centro costi',
+    },
+  ]
+  const liveTourSteps = [
+    {
+      actionLabel: 'Vedi dashboard',
+      body: 'Radar direzione, priorita e salute flotta: il titolare capisce subito dove intervenire.',
+      done: activeView === 'dashboard',
+      id: 'tour-dashboard',
+      targetView: 'dashboard',
+      title: 'Dashboard',
+    },
+    {
+      actionLabel: 'Apri Radar Risparmio',
+      body: 'Costi anomali, multe, targhe costose e scadenze che possono generare spese.',
+      done: activeView === 'savings',
+      id: 'tour-savings',
+      targetView: 'savings',
+      title: 'Radar Risparmio',
+    },
+    {
+      actionLabel: 'Apri News e fermi',
+      body: 'Bollettini, fermi ministeriali e aggiornamenti del trasporto raccolti in un unico posto.',
+      done: activeView === 'news',
+      id: 'tour-news',
+      targetView: 'news',
+      title: 'News e fermi',
+    },
+    {
+      actionLabel: 'Apri Giornata',
+      body: 'Comunicazioni aziendali, presa visione e controllo di chi ha letto o confermato.',
+      done: activeView === 'daily',
+      id: 'tour-daily',
+      targetView: 'daily',
+      title: 'Giornata operativa',
+    },
+    {
+      actionLabel: 'Apri report',
+      body: 'Esporta dati filtrati, costi, sanzioni e andamento operativo per periodo, targa o persona.',
+      done: activeView === 'reports',
+      id: 'tour-reports',
+      targetView: 'reports',
+      title: 'Report',
+    },
+  ]
 
   return (
     <I18nContext.Provider value={i18nValue}>
@@ -10693,6 +10841,7 @@ function App() {
         activeView={activeView}
         chatNotificationCount={companyUnreadChatCount}
         isAdminSession={isAdminSession}
+        liveGuideTarget={liveOnboardingFocus}
         notificationCount={notificationCount}
         onHome={openDashboardHome}
         onNavigate={navigateCompanyView}
@@ -11036,6 +11185,15 @@ function App() {
           </>
         )}
       </main>
+      {session.role === 'company' && activeView !== 'admin' && !isLiveOnboardingHidden ? (
+        <LiveOnboardingGuide
+          companyName={companyName}
+          onDismiss={dismissLiveOnboardingGuide}
+          onOpenStep={openLiveOnboardingStep}
+          setupSteps={liveOnboardingSteps}
+          tourSteps={liveTourSteps}
+        />
+      ) : null}
       <footer className="mobile-logout-footer" aria-label="Uscita area azienda">
         <button className="logout-button" onClick={handleSignOut} type="button">
           <LogOut size={17} />
@@ -12125,7 +12283,7 @@ function AuthScreen({ isPasswordRecoveryMode = false, language, onAuthenticated,
   )
 }
 
-function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false, notificationCount, onHome, onNavigate, onSignOut, session, t }) {
+function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false, liveGuideTarget = '', notificationCount, onHome, onNavigate, onSignOut, session, t }) {
   const [expandedNavGroups, setExpandedNavGroups] = useState({})
   const mainNavItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -12199,7 +12357,9 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
         className={[
           activeView === item.id ? 'nav-item is-active' : 'nav-item',
           nested ? 'is-nested' : '',
+          liveGuideTarget === item.id ? 'is-live-guide-target' : '',
         ].filter(Boolean).join(' ')}
+        data-view-id={item.id}
         key={item.id}
         onClick={() => onNavigate(item.id)}
         type="button"
@@ -12257,6 +12417,86 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
         <LogOut size={17} />
         {t('session.signOut')}
       </button>
+    </aside>
+  )
+}
+
+function LiveOnboardingGuide({ companyName, onDismiss, onOpenStep, setupSteps = [], tourSteps = [] }) {
+  const [isExpanded, setIsExpanded] = useState(true)
+  const completedSetupCount = setupSteps.filter((step) => step.done).length
+  const setupComplete = setupSteps.length > 0 && completedSetupCount === setupSteps.length
+  const activeSteps = setupComplete ? tourSteps : setupSteps
+  const nextStep = activeSteps.find((step) => !step.done) ?? activeSteps[0]
+  const progressValue = setupSteps.length ? Math.round((completedSetupCount / setupSteps.length) * 100) : 0
+
+  if (!setupSteps.length || !nextStep) return null
+
+  if (!isExpanded) {
+    return (
+      <button className="live-onboarding-guide is-collapsed" onClick={() => setIsExpanded(true)} type="button">
+        <Bot size={18} />
+        <span>{setupComplete ? 'Tour Vygo' : `Setup ${progressValue}%`}</span>
+      </button>
+    )
+  }
+
+  return (
+    <aside className="live-onboarding-guide" aria-label="Assistente primo avvio Vygo">
+      <div className="live-onboarding-head">
+        <span className="live-onboarding-icon">
+          <Bot size={19} />
+        </span>
+        <div>
+          <small>{setupComplete ? 'Tour di scoperta' : 'Setup guidato'}</small>
+          <strong>{setupComplete ? 'Scopri le funzioni chiave' : `Partiamo da zero, ${companyName}`}</strong>
+        </div>
+        <button aria-label="Riduci assistente" className="icon-button ghost-button" onClick={() => setIsExpanded(false)} type="button">
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
+      <div className="live-onboarding-progress" aria-label={`Setup completato al ${progressValue}%`}>
+        <span style={{ width: `${progressValue}%` }} />
+      </div>
+
+      <p className="live-onboarding-copy">
+        {setupComplete
+          ? 'La base e pronta. Ora fai un giro veloce nelle aree che danno valore al titolare.'
+          : 'Clicca un passo: Vygo apre la pagina corretta, tu compili, e la checklist si aggiorna da sola.'}
+      </p>
+
+      <div className="live-onboarding-list">
+        {activeSteps.map((step, index) => (
+          <button
+            className={[
+              'live-onboarding-step',
+              step.done ? 'is-done' : '',
+              step.id === nextStep.id ? 'is-current' : '',
+            ].filter(Boolean).join(' ')}
+            key={step.id}
+            onClick={() => onOpenStep(step)}
+            type="button"
+          >
+            <span className="live-onboarding-step-mark">
+              {step.done ? <Check size={15} /> : index + 1}
+            </span>
+            <span className="live-onboarding-step-text">
+              <strong>{step.title}</strong>
+              <small>{step.body}</small>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+        ))}
+      </div>
+
+      <div className="live-onboarding-actions">
+        <button className="primary-button" onClick={() => onOpenStep(nextStep)} type="button">
+          {setupComplete ? nextStep.actionLabel : `Guidami: ${nextStep.title}`}
+        </button>
+        <button className="secondary-button" onClick={onDismiss} type="button">
+          Nascondi
+        </button>
+      </div>
     </aside>
   )
 }

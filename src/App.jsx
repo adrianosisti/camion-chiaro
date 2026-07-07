@@ -15210,7 +15210,7 @@ function AnnouncementTrackingPanel({
               </div>
               <span>
                 <b>{statusLabels[recipient.status]}</b>
-                <small>{recipient.acknowledgedAt || recipient.readAt ? formatOptionalDate(recipient.acknowledgedAt || recipient.readAt) : statusMeta[recipient.status]}</small>
+                <small>{recipient.acknowledgedAt || recipient.readAt ? formatShortDateTime(recipient.acknowledgedAt || recipient.readAt) : statusMeta[recipient.status]}</small>
               </span>
             </article>
           )) : (

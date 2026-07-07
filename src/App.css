@@ -6731,6 +6731,19 @@ body:has(.app-shell) {
   padding: 8px 10px;
 }
 
+.transport-news-controls {
+  display: grid;
+  gap: 8px;
+  position: relative;
+  z-index: 0;
+}
+
+.transport-news-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 42px;
+}
+
 .transport-news-status span,
 .transport-news-issues span {
   display: inline-flex;
@@ -6738,6 +6751,7 @@ body:has(.app-shell) {
   gap: 8px;
   font-size: 0.82rem;
   font-weight: 850;
+  min-width: 0;
 }
 
 .transport-news-status small {
@@ -6876,9 +6890,12 @@ body:has(.app-shell) {
 .transport-news-tabs {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
+  overflow: visible;
   padding: 2px 0 4px;
+  position: relative;
+  z-index: 1;
   scrollbar-width: thin;
 }
 
@@ -14012,6 +14029,10 @@ body:has(.app-shell) {
   .transport-restrictions-preview-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .transport-news-status {
+    grid-template-columns: 1fr;
   }
 
   .admin-layout {

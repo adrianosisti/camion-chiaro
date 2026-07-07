@@ -12778,39 +12778,41 @@ function TransportNewsWorkspace({
         </button>
       </div>
 
-      <div className="transport-news-status">
-        <span>
-          <Newspaper size={16} />
-          {isFallbackMode
-            ? 'Vygo mostra le informazioni disponibili e il calendario fermi aggiornato.'
-            : statusMessage || 'Radar Vygo aggiornato.'}
-        </span>
-        {updatedAt ? <small>Ultimo controllo {updatedAt}</small> : null}
-      </div>
-
-      {issues.length && !visibleItems.length && activeSection !== 'restrictions' ? (
-        <div className="transport-news-issues">
-          <AlertTriangle size={16} />
-          <span>News in aggiornamento: alcune fonti non sono disponibili in questo momento.</span>
+      <div className="transport-news-controls">
+        <div className="transport-news-status">
+          <span>
+            <Newspaper size={16} />
+            {isFallbackMode
+              ? 'Vygo mostra le informazioni disponibili e il calendario fermi aggiornato.'
+              : statusMessage || 'Radar Vygo aggiornato.'}
+          </span>
+          {updatedAt ? <small>Ultimo controllo {updatedAt}</small> : null}
         </div>
-      ) : null}
 
-      <div className="transport-news-tabs" aria-label="Sezioni News e fermi">
-        {transportNewsSections.map((section) => (
-          <button
-            className={activeSection === section.id ? 'is-active' : ''}
-            key={section.id}
-            onClick={() => {
-              setActiveSection(section.id)
-              setSelectedItem(null)
-            }}
-            type="button"
-          >
-            {section.id === 'restrictions' ? <CalendarClock size={15} /> : <Newspaper size={15} />}
-            <span>{section.label}</span>
-            <strong>{sectionCounts[section.id] ?? 0}</strong>
-          </button>
-        ))}
+        {issues.length && !visibleItems.length && activeSection !== 'restrictions' ? (
+          <div className="transport-news-issues">
+            <AlertTriangle size={16} />
+            <span>News in aggiornamento: alcune fonti non sono disponibili in questo momento.</span>
+          </div>
+        ) : null}
+
+        <div className="transport-news-tabs" aria-label="Sezioni News e fermi">
+          {transportNewsSections.map((section) => (
+            <button
+              className={activeSection === section.id ? 'is-active' : ''}
+              key={section.id}
+              onClick={() => {
+                setActiveSection(section.id)
+                setSelectedItem(null)
+              }}
+              type="button"
+            >
+              {section.id === 'restrictions' ? <CalendarClock size={15} /> : <Newspaper size={15} />}
+              <span>{section.label}</span>
+              <strong>{sectionCounts[section.id] ?? 0}</strong>
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeSection === 'all' && upcomingRestrictions.length ? (

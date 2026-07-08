@@ -633,7 +633,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'managementEntries', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'managementEntries', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support', 'telematics'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -858,6 +858,7 @@ const translations = {
     'nav.savings': 'Radar Risparmio',
     'nav.management': 'Controllo gestione',
     'nav.managementEntries': 'Inserimenti gestione',
+    'nav.telematics': 'GPS e telemetria',
     'nav.costs': 'Centro costi',
     'nav.newCost': 'Nuova spesa',
     'nav.settings': 'Impostazioni',
@@ -1085,6 +1086,7 @@ const translations = {
     'nav.savings': 'Savings Radar',
     'nav.management': 'Management control',
     'nav.managementEntries': 'Management entries',
+    'nav.telematics': 'GPS and telematics',
     'nav.costs': 'Cost center',
     'nav.newCost': 'New expense',
     'nav.settings': 'Settings',
@@ -1233,6 +1235,7 @@ const translations = {
     'nav.savings': 'Radar ahorro',
     'nav.management': 'Control gestion',
     'nav.managementEntries': 'Altas gestion',
+    'nav.telematics': 'GPS y telemetria',
     'nav.costs': 'Centro costes',
     'nav.newCost': 'Nuevo coste',
     'nav.settings': 'Ajustes',
@@ -1381,6 +1384,7 @@ const translations = {
     'nav.savings': 'Radar economies',
     'nav.management': 'Controle gestion',
     'nav.managementEntries': 'Saisies gestion',
+    'nav.telematics': 'GPS et telematique',
     'nav.costs': 'Centre couts',
     'nav.newCost': 'Nouvelle depense',
     'nav.settings': 'Reglages',
@@ -1529,6 +1533,7 @@ const translations = {
     'nav.savings': 'Sparradar',
     'nav.management': 'Managementkontrolle',
     'nav.managementEntries': 'Eingaben',
+    'nav.telematics': 'GPS und Telematik',
     'nav.costs': 'Kostenstelle',
     'nav.newCost': 'Neue Ausgabe',
     'nav.settings': 'Einstellungen',
@@ -4158,6 +4163,7 @@ const regionalTranslations = {
     'nav.savings': 'Radar economii',
     'nav.management': 'Control management',
     'nav.managementEntries': 'Introduceri management',
+    'nav.telematics': 'GPS si telematica',
     'nav.costs': 'Centru costuri',
     'nav.newCost': 'Cheltuiala noua',
     'nav.settings': 'Setari',
@@ -4227,6 +4233,7 @@ const regionalTranslations = {
     'nav.savings': 'Radar oszczednosci',
     'nav.management': 'Kontrola zarzadzania',
     'nav.managementEntries': 'Wpisy zarzadzania',
+    'nav.telematics': 'GPS i telematyka',
     'nav.costs': 'Centrum kosztow',
     'nav.newCost': 'Nowy koszt',
     'nav.settings': 'Ustawienia',
@@ -6841,7 +6848,7 @@ function App() {
   const [activeView, setActiveView] = useState(getInitialActiveView)
   const [liveOnboardingDismissedKey, setLiveOnboardingDismissedKey] = useState('')
   const [liveOnboardingFocus, setLiveOnboardingFocus] = useState('')
-  const [liveOnboardingPanelOpen, setLiveOnboardingPanelOpen] = useState(true)
+  const [liveOnboardingPanelOpen, setLiveOnboardingPanelOpen] = useState(false)
   const [costReportStartAddingKey, setCostReportStartAddingKey] = useState(0)
   const [costReportResetKey, setCostReportResetKey] = useState(0)
   const [recordsTab, setRecordsTab] = useState(getInitialRecordsTab)
@@ -11188,6 +11195,8 @@ function App() {
             vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
           />
+        ) : activeView === 'telematics' ? (
+          <TelematicsWorkspace vehicleRecords={vehicleRecords} />
         ) : activeView === 'evidence' ? (
           <EvidenceRegisterWorkspace
             assetPreviewUrl={getAssetPreviewUrl}
@@ -12621,6 +12630,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
       label: 'Controllo',
       items: [
         { id: 'passports', label: t('nav.passports'), icon: Truck },
+        { id: 'telematics', label: t('nav.telematics'), icon: RadioTower },
         { id: 'control', label: t('nav.control'), icon: ShieldCheck },
         { id: 'evidence', label: t('nav.evidence'), icon: BadgeCheck },
       ],
@@ -14904,6 +14914,110 @@ function buildSavingsRadarData({
     vehicleCostRanking,
     weakFleetRows,
   }
+}
+
+function TelematicsWorkspace({ vehicleRecords = [] }) {
+  const activeVehicles = vehicleRecords.filter((vehicle) => !['archived', 'Archiviato'].includes(vehicle.status))
+  const mappedVehicles = activeVehicles.filter((vehicle) => vehicle.plate).length
+  const pendingVehicles = Math.max(0, activeVehicles.length - mappedVehicles)
+  const setupSteps = [
+    {
+      body: 'Serve sapere se Flottaweb espone API, token, utente tecnico o esportazione automatica delle posizioni.',
+      title: 'Credenziali API Flottaweb',
+    },
+    {
+      body: 'Ogni mezzo deve avere la stessa targa su Vygo e su Flottaweb. La targa diventa la chiave per agganciare posizione, km e dati mezzo.',
+      title: 'Mappatura targhe',
+    },
+    {
+      body: 'Le chiamate a Flottaweb devono passare da una funzione server Vygo, non dal browser, cosi le credenziali restano protette.',
+      title: 'Connettore sicuro',
+    },
+    {
+      body: 'La mappa live usera posizione, ultimo aggiornamento, velocita/stato se disponibili. I dati storici potranno alimentare consumi e controllo gestione.',
+      title: 'Mappa e dati operativi',
+    },
+  ]
+
+  return (
+    <section className="telematics-workspace" aria-label="GPS e telemetria">
+      <div className="panel telematics-hero-panel">
+        <div>
+          <p className="overline">GPS e telemetria</p>
+          <h2>Flottaweb live dentro Vygo</h2>
+          <span>
+            Qui collegheremo posizione mezzi, km e stato operativo. Flottaweb resta il GPS; Vygo usa quei dati per controllo, costi, consumi e decisioni.
+          </span>
+        </div>
+        <div className="telematics-live-pill">
+          <RadioTower size={18} />
+          <strong>Da collegare</strong>
+          <small>in attesa API</small>
+        </div>
+      </div>
+
+      <div className="management-kpi-grid">
+        <StrategicKpi label="Mezzi Vygo" tone="info" value={activeVehicles.length} />
+        <StrategicKpi label="Targhe pronte" tone={mappedVehicles ? 'success' : 'warning'} value={mappedVehicles} />
+        <StrategicKpi label="Da verificare" tone={pendingVehicles ? 'warning' : 'success'} value={pendingVehicles} />
+        <StrategicKpi label="Mappa live" tone="warning" value="API" />
+        <StrategicKpi label="Storico tratte" tone="warning" value="Fase 2" />
+      </div>
+
+      <div className="telematics-grid">
+        <section className="panel telematics-map-panel">
+          <div className="telematics-map-head">
+            <span>
+              <RadioTower size={17} />
+              Mappa live
+            </span>
+            <b>Non collegata</b>
+          </div>
+          <div className="telematics-map-canvas" aria-label="Anteprima mappa GPS">
+            <span className="telematics-map-road road-one" />
+            <span className="telematics-map-road road-two" />
+            <span className="telematics-map-point point-one"><Truck size={17} /></span>
+            <span className="telematics-map-point point-two"><Truck size={17} /></span>
+            <span className="telematics-map-point point-three"><Truck size={17} /></span>
+          </div>
+          <p>
+            Quando Flottaweb fornisce accesso dati, qui vedrai mezzi in tempo reale, ultimo segnale, targa, autista assegnato e stato viaggio.
+          </p>
+        </section>
+
+        <section className="panel telematics-panel">
+          <StrategicSectionTitle icon={KeyRound} overline="Integrazione" title="Cosa chiedere a Flottaweb" />
+          <div className="telematics-checklist">
+            {setupSteps.map((step, index) => (
+              <article key={step.title}>
+                <span>{index + 1}</span>
+                <div>
+                  <strong>{step.title}</strong>
+                  <small>{step.body}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel telematics-panel telematics-wide-panel">
+          <StrategicSectionTitle icon={Truck} overline="Mappatura" title="Mezzi pronti per collegamento GPS" />
+          <div className="telematics-vehicle-list">
+            {activeVehicles.map((vehicle) => (
+              <article key={vehicle.id}>
+                <div>
+                  <strong>{vehicle.plate || 'Targa mancante'}</strong>
+                  <small>{vehicle.model || 'Modello non indicato'} · {getFleetTypeLabel(vehicle.fleetType)}</small>
+                </div>
+                <b>{vehicle.plate ? 'Pronta' : 'Completa targa'}</b>
+              </article>
+            ))}
+            {!activeVehicles.length ? <StrategicEmptyLine label="Aggiungi mezzi in anagrafica per prepararli al collegamento GPS." /> : null}
+          </div>
+        </section>
+      </div>
+    </section>
+  )
 }
 
 function SavingsRadarWorkspace({

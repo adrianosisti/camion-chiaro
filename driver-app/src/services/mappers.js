@@ -138,10 +138,27 @@ export function mapFuelMovement(row = {}) {
     odometerKm: row.odometer_km ?? row.odometerKm ?? '',
     personId: row.person_id ?? row.personId ?? '',
     supplier: row.supplier ?? '',
+    supplierId: row.supplier_id ?? row.supplierId ?? '',
     tankId: row.tank_id ?? row.tankId ?? '',
     totalCostCents: Number(row.total_cost_cents ?? row.totalCostCents ?? 0),
     unitPriceCents: row.unit_price_cents == null && row.unitPriceCents == null ? '' : Number(row.unit_price_cents ?? row.unitPriceCents),
     vehicleId: row.vehicle_id ?? row.vehicleId ?? '',
+  }
+}
+
+export function mapFuelSupplier(row = {}) {
+  return {
+    companyId: row.company_id ?? row.companyId ?? '',
+    contactName: row.contact_name ?? row.contactName ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    email: row.email ?? '',
+    id: row.id,
+    name: row.name ?? 'Fornitore gasolio',
+    notes: row.notes ?? '',
+    phone: row.phone ?? '',
+    status: row.status ?? 'active',
+    updatedAt: row.updated_at ?? row.updatedAt ?? '',
+    vatNumber: row.vat_number ?? row.vatNumber ?? '',
   }
 }
 
@@ -285,6 +302,7 @@ export function mapDriverContext(data = {}) {
     drivers: (data.drivers ?? []).map(mapDriver),
     costEntries: (data.costEntries ?? []).map(mapCostEntry),
     fuelMovements: (data.fuelMovements ?? []).map(mapFuelMovement),
+    fuelSuppliers: (data.fuelSuppliers ?? []).map(mapFuelSupplier),
     fuelTanks: (data.fuelTanks ?? []).map(mapFuelTank),
     announcements: (data.announcements ?? []).map(mapCompanyAnnouncement),
     faultReports: (data.faultReports ?? []).map(mapFaultReport),

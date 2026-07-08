@@ -300,11 +300,28 @@ function mapFuelMovement(row = {}) {
     odometerKm: row.odometer_km ?? '',
     personId: row.person_id ?? '',
     supplier: row.supplier ?? '',
+    supplierId: row.supplier_id ?? '',
     tankId: row.tank_id ?? '',
     totalCostCents: Number(row.total_cost_cents ?? 0),
     unitPriceCents: row.unit_price_cents == null ? '' : Number(row.unit_price_cents),
     updatedAt: row.updated_at ?? '',
     vehicleId: row.vehicle_id ?? '',
+  }
+}
+
+function mapFuelSupplier(row = {}) {
+  return {
+    companyId: row.company_id ?? '',
+    contactName: row.contact_name ?? '',
+    createdAt: row.created_at ?? '',
+    email: row.email ?? '',
+    id: row.id,
+    name: row.name ?? 'Fornitore gasolio',
+    notes: row.notes ?? '',
+    phone: row.phone ?? '',
+    status: row.status ?? 'active',
+    updatedAt: row.updated_at ?? '',
+    vatNumber: row.vat_number ?? '',
   }
 }
 
@@ -765,6 +782,7 @@ const fuelMovementSelectColumns = `
   vehicle_id,
   driver_id,
   person_id,
+  supplier_id,
   movement_type,
   liters,
   unit_price_cents,
@@ -775,6 +793,20 @@ const fuelMovementSelectColumns = `
   document_number,
   occurred_at,
   notes,
+  created_at,
+  updated_at
+`
+
+const fuelSupplierSelectColumns = `
+  id,
+  company_id,
+  name,
+  vat_number,
+  contact_name,
+  phone,
+  email,
+  notes,
+  status,
   created_at,
   updated_at
 `
@@ -2108,6 +2140,28 @@ export async function fetchCompanyFuelMovements(companyId = configuredCompanyId)
   return { data: data?.map(mapFuelMovement) ?? [], error }
 }
 
+export async function fetchCompanyFuelSuppliers(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('fuel_suppliers')
+    .select(fuelSupplierSelectColumns)
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('name', { ascending: true })
+    .limit(100)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapFuelSupplier) ?? [], error }
+}
+
 export async function fetchCompanyBusinessEntries(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -2949,6 +3003,7 @@ export async function createFuelMovementRecord(movement, companyId = configuredC
     odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
     person_id: movement.personId || null,
     supplier: movement.supplier?.trim() || null,
+    supplier_id: movement.supplierId || null,
     tank_id: movement.tankId || null,
     total_cost_cents: totalCostCents,
     unit_price_cents: unitPriceCents,
@@ -2969,6 +3024,44 @@ export async function createFuelMovementRecord(movement, companyId = configuredC
   }
 
   return { data: data ? mapFuelMovement(data) : null, error }
+}
+
+export async function createFuelSupplierRecord(supplier, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const payload = {
+    company_id: companyId,
+    contact_name: supplier.contactName?.trim() || null,
+    email: supplier.email?.trim() || null,
+    name: supplier.name?.trim(),
+    notes: supplier.notes?.trim() || null,
+    phone: supplier.phone?.trim() || null,
+    status: 'active',
+    vat_number: supplier.vatNumber?.trim() || null,
+  }
+
+  if (!payload.name) {
+    return { data: null, error: { message: 'Inserisci il nome del fornitore gasolio.' } }
+  }
+
+  const { data, error } = await supabase
+    .from('fuel_suppliers')
+    .insert(payload)
+    .select(fuelSupplierSelectColumns)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Anagrafica fornitori gasolio non ancora attiva. Esegui il file SQL 62 e riprova.' },
+    }
+  }
+
+  return { data: data ? mapFuelSupplier(data) : null, error }
 }
 
 export async function createBusinessEntryRecord(entry, companyId = configuredCompanyId) {

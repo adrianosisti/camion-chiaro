@@ -11,6 +11,7 @@ import {
   mapDriverDocument,
   mapFaultReport,
   mapFuelMovement,
+  mapFuelSupplier,
   mapFuelTank,
   mapTeamChatMessage,
   mapTeamChatThread,
@@ -118,7 +119,8 @@ const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full
 const companyPersonSelectBaseColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status'
 const companyPersonSelectWithAccessColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, access_password, status'
 const fuelTankSelectColumns = 'id, company_id, name, location, capacity_liters, warning_threshold_liters, initial_liters, status'
-const fuelMovementSelectColumns = 'id, company_id, tank_id, vehicle_id, driver_id, person_id, movement_type, liters, unit_price_cents, total_cost_cents, currency, odometer_km, supplier, document_number, occurred_at, notes, created_at'
+const fuelMovementSelectColumns = 'id, company_id, tank_id, vehicle_id, driver_id, person_id, supplier_id, movement_type, liters, unit_price_cents, total_cost_cents, currency, odometer_km, supplier, document_number, occurred_at, notes, created_at'
+const fuelSupplierSelectColumns = 'id, company_id, name, vat_number, contact_name, phone, email, notes, status, created_at, updated_at'
 
 async function runDriverSelect(configureQuery) {
   let result = await configureQuery(supabase.from('drivers').select(driverSelectWithCheckColumns))
@@ -163,6 +165,21 @@ async function fetchCompanyFuelMovements(companyId) {
 
   if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
   return { data: (data ?? []).map(mapFuelMovement), error }
+}
+
+async function fetchCompanyFuelSuppliers(companyId) {
+  if (!companyId) return { data: [], error: null }
+
+  const { data, error } = await supabase
+    .from('fuel_suppliers')
+    .select(fuelSupplierSelectColumns)
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('name', { ascending: true })
+    .limit(100)
+
+  if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
+  return { data: (data ?? []).map(mapFuelSupplier), error }
 }
 const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
@@ -1362,6 +1379,7 @@ export async function fetchCompanyContext() {
     teamUnreadCountsResult,
     fuelTanksResult,
     fuelMovementsResult,
+    fuelSuppliersResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -1424,6 +1442,7 @@ export async function fetchCompanyContext() {
     fetchTeamUnreadCounts(companyId),
     fetchCompanyFuelTanks(companyId),
     fetchCompanyFuelMovements(companyId),
+    fetchCompanyFuelSuppliers(companyId),
   ])
 
   const firstError = [
@@ -1443,6 +1462,7 @@ export async function fetchCompanyContext() {
     teamUnreadCountsResult.error,
     fuelTanksResult.error,
     fuelMovementsResult.error,
+    fuelSuppliersResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -1473,6 +1493,7 @@ export async function fetchCompanyContext() {
       costEntries: costEntriesResult.data ?? [],
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
       fuelMovements: fuelMovementsResult.data ?? [],
+      fuelSuppliers: fuelSuppliersResult.data ?? [],
       fuelTanks: fuelTanksResult.data ?? [],
       membership: membershipResult.data,
       people: companyPeopleRows.map(mapCompanyPerson),
@@ -2981,6 +3002,7 @@ export async function createFuelMovement({ companyId, movement }) {
     odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
     person_id: normalizePersonUuid(movement.personId),
     supplier: movementType === 'dispense' ? null : movement.supplier?.trim() || null,
+    supplier_id: movementType === 'dispense' ? null : normalizeUuid(movement.supplierId),
     tank_id: normalizeUuid(movement.tankId),
     total_cost_cents: movementType === 'dispense' ? null : totalCostCents,
     unit_price_cents: movementType === 'dispense' ? null : unitPriceCents,
@@ -2998,6 +3020,38 @@ export async function createFuelMovement({ companyId, movement }) {
   }
 
   return { data: data ? mapFuelMovement(data) : null, error }
+}
+
+export async function createFuelSupplier({ companyId, supplier }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
+
+  const payload = {
+    company_id: companyId,
+    contact_name: supplier.contactName?.trim() || null,
+    email: supplier.email?.trim() || null,
+    name: supplier.name?.trim(),
+    notes: supplier.notes?.trim() || null,
+    phone: supplier.phone?.trim() || null,
+    status: 'active',
+    vat_number: supplier.vatNumber?.trim() || null,
+  }
+
+  if (!payload.name) {
+    return { data: null, error: { message: 'Inserisci il nome del fornitore gasolio.' } }
+  }
+
+  const { data, error } = await supabase
+    .from('fuel_suppliers')
+    .insert(payload)
+    .select(fuelSupplierSelectColumns)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: { message: 'Anagrafica fornitori gasolio non ancora attiva. Esegui SQL 62 in Supabase.' } }
+  }
+
+  return { data: data ? mapFuelSupplier(data) : null, error }
 }
 
 export async function createFuelTank({ companyId, tank }) {

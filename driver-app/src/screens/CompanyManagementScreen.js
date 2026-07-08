@@ -1041,6 +1041,7 @@ export function CompanyManagementScreen({
   onCreateCostEntry,
   onCreateDriver,
   onCreateFuelMovement,
+  onCreateFuelSupplier,
   onCreateFuelTank,
   onCreatePerson,
   onCreateVehicle,
@@ -1064,6 +1065,7 @@ export function CompanyManagementScreen({
   const costEntries = context?.costEntries ?? []
   const fuelTanks = context?.fuelTanks ?? []
   const fuelMovements = context?.fuelMovements ?? []
+  const fuelSuppliers = context?.fuelSuppliers ?? []
   const checks = context?.vehicleChecks ?? []
   const defaultCurrency = getDefaultCurrency(language)
   const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
@@ -1182,10 +1184,19 @@ export function CompanyManagementScreen({
     odometerKm: '',
     personId: '',
     supplier: '',
+    supplierId: '',
     tankId: '',
     totalAmount: '',
     unitPrice: '',
     vehicleId: '',
+  })
+  const [fuelSupplierForm, setFuelSupplierForm] = useState({
+    contactName: '',
+    email: '',
+    name: '',
+    notes: '',
+    phone: '',
+    vatNumber: '',
   })
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingCost, setIsSavingCost] = useState(false)
@@ -1303,6 +1314,17 @@ export function CompanyManagementScreen({
       })),
     ],
     [allPeople],
+  )
+  const fuelSupplierOptions = useMemo(
+    () => [
+      { id: '', label: 'Non assegnato', subtitle: 'Fornitore da indicare dopo' },
+      ...fuelSuppliers.map((supplier) => ({
+        id: supplier.id,
+        label: supplier.name,
+        subtitle: supplier.phone || supplier.vatNumber || supplier.contactName || '',
+      })),
+    ],
+    [fuelSuppliers],
   )
   const deadlineAssignees = useMemo(() => {
     if (deadlineForm.scope === 'driver') return drivers
@@ -1644,6 +1666,15 @@ export function CompanyManagementScreen({
 
   function updateFuelMovementForm(field, value) {
     setFuelMovementForm((currentForm) => {
+      if (field === 'supplierId') {
+        const supplier = fuelSuppliers.find((row) => row.id === value)
+        return {
+          ...currentForm,
+          supplier: supplier?.name ?? '',
+          supplierId: supplier?.id ?? '',
+        }
+      }
+
       if (field === 'movementType') {
         return {
           ...currentForm,
@@ -1654,6 +1685,10 @@ export function CompanyManagementScreen({
 
       return { ...currentForm, [field]: value }
     })
+  }
+
+  function updateFuelSupplierForm(field, value) {
+    setFuelSupplierForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
   function getFuelTankLevel(tank = {}) {
@@ -1728,7 +1763,8 @@ export function CompanyManagementScreen({
       occurredAt: fuelMovementForm.occurredDate ? `${fuelMovementForm.occurredDate}T10:00:00.000Z` : new Date().toISOString(),
       odometerKm: movementType === 'dispense' ? fuelMovementForm.odometerKm.trim() : '',
       personId: fuelMovementForm.personId,
-      supplier: fuelMovementForm.supplier.trim(),
+      supplier: movementType === 'dispense' ? '' : fuelMovementForm.supplier.trim(),
+      supplierId: movementType === 'dispense' ? '' : fuelMovementForm.supplierId,
       tankId: activeTankId,
       totalCostCents: parseMoneyToCents(fuelMovementForm.totalAmount),
       unitPriceCents: parseMoneyToCents(fuelMovementForm.unitPrice),
@@ -1746,11 +1782,49 @@ export function CompanyManagementScreen({
         liters: '',
         notes: '',
         odometerKm: '',
-        supplier: '',
+        supplier: currentForm.supplier,
+        supplierId: currentForm.supplierId,
         totalAmount: '',
         unitPrice: '',
       }))
       Alert.alert('Movimento salvato', movementType === 'dispense' ? 'Rifornimento collegato alla targa.' : 'Cisterna aggiornata.')
+    }
+  }
+
+  async function submitFuelSupplier() {
+    const payload = {
+      contactName: fuelSupplierForm.contactName.trim(),
+      email: fuelSupplierForm.email.trim(),
+      name: fuelSupplierForm.name.trim(),
+      notes: fuelSupplierForm.notes.trim(),
+      phone: fuelSupplierForm.phone.trim(),
+      vatNumber: fuelSupplierForm.vatNumber.trim(),
+    }
+
+    if (!payload.name) {
+      Alert.alert('Dati mancanti', 'Inserisci il nome del fornitore gasolio.')
+      return
+    }
+
+    setIsSaving(true)
+    const savedSupplier = await onCreateFuelSupplier?.(payload)
+    setIsSaving(false)
+
+    if (savedSupplier) {
+      setFuelSupplierForm({
+        contactName: '',
+        email: '',
+        name: '',
+        notes: '',
+        phone: '',
+        vatNumber: '',
+      })
+      setFuelMovementForm((currentForm) => ({
+        ...currentForm,
+        supplier: savedSupplier.name,
+        supplierId: savedSupplier.id,
+      }))
+      Alert.alert('Fornitore salvato', `${savedSupplier.name} e disponibile nei carichi cisterna.`)
     }
   }
 
@@ -2216,6 +2290,30 @@ export function CompanyManagementScreen({
       ? fuelMovementForm.vehicleId
       : activeVehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')?.id ?? ''
     const recentFuelMovements = fuelMovements.slice(0, 12)
+    const supplierNameById = new Map(fuelSuppliers.map((supplier) => [supplier.id, supplier.name]))
+    const supplierRankingRows = Array.from(fuelMovements
+      .filter((movement) => movement.movementType === 'load' && (movement.supplierId || movement.supplier) && Number(movement.liters ?? 0) > 0)
+      .reduce((ranking, movement) => {
+        const key = movement.supplierId || `text:${movement.supplier}`
+        const current = ranking.get(key) ?? {
+          averageCentsPerLiter: 0,
+          liters: 0,
+          name: supplierNameById.get(movement.supplierId) || movement.supplier || 'Fornitore',
+          totalCents: 0,
+        }
+        const nextLiters = current.liters + Number(movement.liters ?? 0)
+        const nextTotalCents = current.totalCents + Number(movement.totalCostCents ?? 0)
+
+        ranking.set(key, {
+          ...current,
+          averageCentsPerLiter: nextLiters && nextTotalCents ? Math.round(nextTotalCents / nextLiters) : 0,
+          liters: nextLiters,
+          totalCents: nextTotalCents,
+        })
+        return ranking
+      }, new Map())
+      .values())
+      .sort((first, second) => second.totalCents - first.totalCents)
 
     return (
       <View style={styles.archiveList}>
@@ -2236,6 +2334,25 @@ export function CompanyManagementScreen({
           <TextField label="Posizione" onChangeText={(value) => updateFuelTankForm('location', value)} placeholder="Deposito, piazzale, sede..." value={fuelTankForm.location} />
           <TextField label="Note cisterna" multiline onChangeText={(value) => updateFuelTankForm('notes', value)} placeholder="Opzionale" value={fuelTankForm.notes} />
           <PrimaryButton loading={isSaving} onPress={submitFuelTank} title="Crea cisterna" />
+        </View>
+
+        <View style={styles.costReportCard}>
+          <View style={styles.registryHeader}>
+            <View style={styles.listIcon}>
+              <Ionicons color={colors.cyanDark} name="business-outline" size={18} />
+            </View>
+            <View style={styles.listCopy}>
+              <Text style={styles.listTitle}>Fornitori gasolio</Text>
+              <Text style={styles.listMeta}>Salva chi rifornisce la cisterna per confrontare prezzi e spese.</Text>
+            </View>
+          </View>
+          <TextField label="Ragione sociale" onChangeText={(value) => updateFuelSupplierForm('name', value)} placeholder="ENI, Q8, fornitore locale..." value={fuelSupplierForm.name} />
+          <TextField label="Partita IVA" onChangeText={(value) => updateFuelSupplierForm('vatNumber', value)} placeholder="Opzionale" value={fuelSupplierForm.vatNumber} />
+          <TextField label="Referente" onChangeText={(value) => updateFuelSupplierForm('contactName', value)} placeholder="Opzionale" value={fuelSupplierForm.contactName} />
+          <TextField keyboardType="phone-pad" label="Telefono" onChangeText={(value) => updateFuelSupplierForm('phone', value)} placeholder="Opzionale" value={fuelSupplierForm.phone} />
+          <TextField keyboardType="email-address" label="Email" onChangeText={(value) => updateFuelSupplierForm('email', value)} placeholder="Opzionale" value={fuelSupplierForm.email} />
+          <TextField label="Note trattativa" multiline onChangeText={(value) => updateFuelSupplierForm('notes', value)} placeholder="Sconti, condizioni, tempi consegna..." value={fuelSupplierForm.notes} />
+          <PrimaryButton loading={isSaving} onPress={submitFuelSupplier} title="Salva fornitore" />
         </View>
 
         <View style={styles.costReportCard}>
@@ -2312,9 +2429,19 @@ export function CompanyManagementScreen({
               ) : null}
               {movementType !== 'dispense' ? (
                 <>
+                  <WheelPickerField
+                    label="Fornitore"
+                    onPress={() => openWheelPicker({
+                      onSelect: (value) => updateFuelMovementForm('supplierId', value),
+                      options: fuelSupplierOptions,
+                      title: 'Fornitore gasolio',
+                      value: fuelMovementForm.supplierId,
+                    })}
+                    value={getWheelOptionLabel(fuelSupplierOptions, fuelMovementForm.supplierId)}
+                  />
                   <TextField keyboardType="decimal-pad" label="Prezzo litro" onChangeText={(value) => updateFuelMovementForm('unitPrice', value)} placeholder="1,72" value={fuelMovementForm.unitPrice} />
                   <TextField keyboardType="decimal-pad" label="Totale euro" onChangeText={(value) => updateFuelMovementForm('totalAmount', value)} placeholder="350,00" value={fuelMovementForm.totalAmount} />
-                  <TextField label="Fornitore" onChangeText={(value) => updateFuelMovementForm('supplier', value)} placeholder="Opzionale" value={fuelMovementForm.supplier} />
+                  <TextField label="Fornitore libero" onChangeText={(value) => updateFuelMovementForm('supplier', value)} placeholder="Solo se non e in anagrafica" value={fuelMovementForm.supplier} />
                   <TextField label="Numero documento" onChangeText={(value) => updateFuelMovementForm('documentNumber', value)} placeholder="DDT o fattura" value={fuelMovementForm.documentNumber} />
                 </>
               ) : null}
@@ -2372,6 +2499,25 @@ export function CompanyManagementScreen({
             </View>
           ))}
           {!recentFuelMovements.length ? <Text style={styles.emptyText}>Nessun movimento gasolio registrato.</Text> : null}
+        </View>
+
+        <View style={styles.archiveList}>
+          <Text style={styles.groupTitle}>Fornitori gasolio</Text>
+          {supplierRankingRows.slice(0, 8).map((row) => (
+            <View key={row.name} style={styles.registryCard}>
+              <View style={styles.registryHeader}>
+                <View style={styles.listIconMuted}>
+                  <Ionicons color={colors.muted} name="business-outline" size={18} />
+                </View>
+                <View style={styles.listCopy}>
+                  <Text style={styles.listTitle}>{row.name}</Text>
+                  <Text style={styles.listMeta}>{formatLiters(row.liters)} · medio {formatMoneyCents(row.averageCentsPerLiter, defaultCurrency)}/L</Text>
+                </View>
+                <Text style={styles.costRowAmount}>{formatMoneyCents(row.totalCents, defaultCurrency)}</Text>
+              </View>
+            </View>
+          ))}
+          {!supplierRankingRows.length ? <Text style={styles.emptyText}>Carica gasolio indicando il fornitore per confrontare prezzi e spese.</Text> : null}
         </View>
       </View>
     )

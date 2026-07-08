@@ -75,6 +75,7 @@ import {
   createComplianceItemRecord as createSupabaseComplianceItem,
   createCostEntryRecord as createSupabaseCostEntry,
   createFuelMovementRecord as createSupabaseFuelMovement,
+  createFuelSupplierRecord as createSupabaseFuelSupplier,
   createFuelTankRecord as createSupabaseFuelTank,
   fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
@@ -103,6 +104,7 @@ import {
   fetchCompanyCostEntries,
   fetchCompanyBusinessEntries,
   fetchCompanyFuelMovements,
+  fetchCompanyFuelSuppliers,
   fetchCompanyFuelTanks,
   fetchCompanyAnnouncements,
   fetchCompanyAnnouncementReadReceipts,
@@ -6807,6 +6809,7 @@ function App() {
   const [costEntryRecords, setCostEntryRecords] = useState([])
   const [fuelTankRecords, setFuelTankRecords] = useState([])
   const [fuelMovementRecords, setFuelMovementRecords] = useState([])
+  const [fuelSupplierRecords, setFuelSupplierRecords] = useState([])
   const [businessEntryRecords, setBusinessEntryRecords] = useState([])
   const [announcementRecords, setAnnouncementRecords] = useState([])
   const [announcementReadRecords, setAnnouncementReadRecords] = useState([])
@@ -7723,6 +7726,7 @@ function App() {
         costEntriesResult,
         fuelTanksResult,
         fuelMovementsResult,
+        fuelSuppliersResult,
         businessEntriesResult,
         announcementsResult,
         checksResult,
@@ -7744,6 +7748,7 @@ function App() {
         fetchCompanyCostEntries(companyId),
         fetchCompanyFuelTanks(companyId),
         fetchCompanyFuelMovements(companyId),
+        fetchCompanyFuelSuppliers(companyId),
         fetchCompanyBusinessEntries(companyId),
         fetchCompanyAnnouncements(companyId),
         fetchVehicleChecks(companyId),
@@ -7777,6 +7782,7 @@ function App() {
       if (costEntriesResult.data) setCostEntryRecords(costEntriesResult.data)
       if (fuelTanksResult.data) setFuelTankRecords(fuelTanksResult.data)
       if (fuelMovementsResult.data) setFuelMovementRecords(fuelMovementsResult.data)
+      if (fuelSuppliersResult.data) setFuelSupplierRecords(fuelSuppliersResult.data)
       if (businessEntriesResult.data) setBusinessEntryRecords(businessEntriesResult.data)
       if (announcementsResult.data) {
         setAnnouncementRecords(announcementsResult.data)
@@ -8871,6 +8877,50 @@ function App() {
     setFuelTankRecords((currentTanks) => applyFuelMovementToTankSnapshot(currentTanks, localMovement))
     setOperationsSyncStatus('Movimento gasolio aggiunto su questo dispositivo.')
     return localMovement
+  }
+
+  async function addFuelSupplierRecord(supplier) {
+    if (!canUseCurrentPlanFeature('costCenter')) {
+      setOperationsSyncStatus('Controllo gestione non disponibile con lo stato attuale dell azienda.')
+      return false
+    }
+
+    const cleanSupplier = {
+      ...supplier,
+      name: supplier.name?.trim() || '',
+    }
+
+    if (!cleanSupplier.name) {
+      setOperationsSyncStatus('Inserisci il nome del fornitore gasolio.')
+      return false
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Salvataggio fornitore gasolio...')
+      const result = await createSupabaseFuelSupplier(cleanSupplier, activeCompanyId)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Fornitore gasolio non salvato: ${result.error.message}`)
+        return false
+      }
+
+      setFuelSupplierRecords((currentSuppliers) => [result.data, ...currentSuppliers])
+      setOperationsSyncStatus('Fornitore gasolio salvato.')
+      return result.data
+    }
+
+    const localSupplier = {
+      ...cleanSupplier,
+      companyId: activeCompanyId,
+      createdAt: new Date().toISOString(),
+      id: `fuel-supplier-${Date.now()}`,
+      status: 'active',
+      updatedAt: new Date().toISOString(),
+    }
+
+    setFuelSupplierRecords((currentSuppliers) => [localSupplier, ...currentSuppliers])
+    setOperationsSyncStatus('Fornitore gasolio aggiunto su questo dispositivo.')
+    return localSupplier
   }
 
   async function addBusinessEntryRecord(entry) {
@@ -11168,9 +11218,11 @@ function App() {
               costEntryRecords={costEntryRecords}
               driverRecords={driverRecords}
               fuelMovementRecords={fuelMovementRecords}
+              fuelSupplierRecords={fuelSupplierRecords}
               fuelTankRecords={fuelTankRecords}
               onCreateBusinessEntry={addBusinessEntryRecord}
               onCreateFuelMovement={addFuelMovementRecord}
+              onCreateFuelSupplier={addFuelSupplierRecord}
               onCreateFuelTank={addFuelTankRecord}
               personRecords={personRecords}
               vehicleRecords={vehicleRecords}
@@ -16281,6 +16333,7 @@ function buildManagementControlData({
   businessEntryRecords = [],
   costEntryRecords = [],
   fuelMovementRecords = [],
+  fuelSupplierRecords = [],
   fuelTankRecords = [],
   vehicleRecords = [],
 } = {}) {
@@ -16340,6 +16393,33 @@ function buildManagementControlData({
   const anomalyRows = averageKmPerLiter
     ? validConsumptionRows.filter((row) => row.kmPerLiter < averageKmPerLiter * 0.8)
     : []
+  const supplierNameById = new Map(fuelSupplierRecords.map((supplier) => [supplier.id, supplier.name]))
+  const supplierRankingRows = Array.from(currentMonthFuelMovements
+    .filter((movement) => movement.movementType === 'load' && (movement.supplierId || movement.supplier) && Number(movement.liters ?? 0) > 0)
+    .reduce((ranking, movement) => {
+      const key = movement.supplierId || `text:${movement.supplier}`
+      const current = ranking.get(key) ?? {
+        averageCentsPerLiter: 0,
+        lastAt: movement.occurredAt,
+        liters: 0,
+        name: supplierNameById.get(movement.supplierId) || movement.supplier || 'Fornitore',
+        supplierId: movement.supplierId || '',
+        totalCents: 0,
+      }
+      const nextLiters = current.liters + Number(movement.liters ?? 0)
+      const nextTotalCents = current.totalCents + Number(movement.totalCostCents ?? 0)
+
+      ranking.set(key, {
+        ...current,
+        averageCentsPerLiter: nextLiters && nextTotalCents ? Math.round(nextTotalCents / nextLiters) : 0,
+        lastAt: new Date(movement.occurredAt) > new Date(current.lastAt) ? movement.occurredAt : current.lastAt,
+        liters: nextLiters,
+        totalCents: nextTotalCents,
+      })
+      return ranking
+    }, new Map())
+    .values())
+    .sort((first, second) => second.totalCents - first.totalCents)
 
   return {
     anomalyRows,
@@ -16352,6 +16432,7 @@ function buildManagementControlData({
     recentBusinessEntries: businessEntryRecords.slice(0, 6),
     recentFuelMovements: fuelMovementRecords.slice(0, 8),
     revenueCents,
+    supplierRankingRows,
     totalCostCents,
     vehicleConsumptionRows,
   }
@@ -16362,9 +16443,11 @@ function ManagementControlWorkspace({
   costEntryRecords = [],
   driverRecords = [],
   fuelMovementRecords = [],
+  fuelSupplierRecords = [],
   fuelTankRecords = [],
   onCreateBusinessEntry,
   onCreateFuelMovement,
+  onCreateFuelSupplier,
   onCreateFuelTank,
   personRecords = [],
   vehicleRecords = [],
@@ -16389,10 +16472,19 @@ function ManagementControlWorkspace({
     odometerKm: '',
     personId: '',
     supplier: '',
+    supplierId: '',
     tankId: fuelTankRecords[0]?.id ?? '',
     totalAmount: '',
     unitPrice: '',
     vehicleId: vehicleRecords[0]?.id ?? '',
+  })
+  const [supplierForm, setSupplierForm] = useState({
+    contactName: '',
+    email: '',
+    name: '',
+    notes: '',
+    phone: '',
+    vatNumber: '',
   })
   const [businessForm, setBusinessForm] = useState({
     amount: '',
@@ -16410,12 +16502,14 @@ function ManagementControlWorkspace({
     businessEntryRecords,
     costEntryRecords,
     fuelMovementRecords,
+    fuelSupplierRecords,
     fuelTankRecords,
     vehicleRecords,
   })
   const primaryTone = data.marginCents >= 0 ? 'success' : 'danger'
   const activeTankId = fuelTankRecords.some((tank) => tank.id === fuelForm.tankId) ? fuelForm.tankId : fuelTankRecords[0]?.id ?? ''
   const activeVehicleId = vehicleRecords.some((vehicle) => vehicle.id === fuelForm.vehicleId) ? fuelForm.vehicleId : vehicleRecords[0]?.id ?? ''
+  const activeSupplierId = fuelSupplierRecords.some((supplier) => supplier.id === fuelForm.supplierId) ? fuelForm.supplierId : ''
   const fuelOperatorRecords = personRecords.filter((person) => (
     !['Archiviato', 'archived'].includes(person.status)
     && (person.personType === 'mechanic' || person.department === 'warehouse')
@@ -16427,6 +16521,10 @@ function ManagementControlWorkspace({
 
   function updateFuelForm(field, value) {
     setFuelForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  function updateSupplierForm(field, value) {
+    setSupplierForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
   function updateBusinessForm(field, value) {
@@ -16477,6 +16575,8 @@ function ManagementControlWorkspace({
       liters: Number(fuelForm.liters),
       movementType,
       odometerKm: fuelForm.odometerKm ? Number(fuelForm.odometerKm) : '',
+      supplier: movementType === 'dispense' ? '' : fuelForm.supplier,
+      supplierId: movementType === 'dispense' ? '' : fuelForm.supplierId,
       tankId,
       totalCostCents: parseMoneyToCents(fuelForm.totalAmount),
       unitPriceCents: fuelForm.unitPrice ? parseMoneyToCents(fuelForm.unitPrice) : '',
@@ -16492,10 +16592,37 @@ function ManagementControlWorkspace({
         occurredAt: new Date().toISOString().slice(0, 16),
         odometerKm: '',
         supplier: '',
+        supplierId: currentForm.supplierId,
         totalAmount: '',
         unitPrice: '',
       }))
       setStatus('Movimento gasolio salvato.')
+    }
+  }
+
+  async function handleSupplierSubmit(event) {
+    event.preventDefault()
+    if (!supplierForm.name.trim()) {
+      setStatus('Inserisci il nome del fornitore gasolio.')
+      return
+    }
+
+    const result = await onCreateFuelSupplier({
+      ...supplierForm,
+      name: supplierForm.name.trim(),
+    })
+
+    if (result) {
+      setFuelForm((currentForm) => ({ ...currentForm, supplier: result.name, supplierId: result.id }))
+      setSupplierForm({
+        contactName: '',
+        email: '',
+        name: '',
+        notes: '',
+        phone: '',
+        vatNumber: '',
+      })
+      setStatus('Fornitore gasolio salvato.')
     }
   }
 
@@ -16573,6 +16700,17 @@ function ManagementControlWorkspace({
           <button className="primary-button full-button" type="submit"><Save size={16} /> Salva cisterna</button>
         </form>
 
+        <form className="panel management-form-card" onSubmit={handleSupplierSubmit}>
+          <StrategicSectionTitle icon={Building2} overline="Fornitori" title="Nuovo fornitore gasolio" />
+          <label>Ragione sociale<input value={supplierForm.name} onChange={(event) => updateSupplierForm('name', event.target.value)} placeholder="Es. ENI, Q8, fornitore locale..." /></label>
+          <label>Partita IVA<input value={supplierForm.vatNumber} onChange={(event) => updateSupplierForm('vatNumber', event.target.value)} placeholder="Opzionale" /></label>
+          <label>Referente<input value={supplierForm.contactName} onChange={(event) => updateSupplierForm('contactName', event.target.value)} placeholder="Opzionale" /></label>
+          <label>Telefono<input value={supplierForm.phone} onChange={(event) => updateSupplierForm('phone', event.target.value)} placeholder="Opzionale" /></label>
+          <label>Email<input value={supplierForm.email} onChange={(event) => updateSupplierForm('email', event.target.value)} placeholder="Opzionale" /></label>
+          <label className="management-form-wide">Note trattativa<textarea value={supplierForm.notes} onChange={(event) => updateSupplierForm('notes', event.target.value)} placeholder="Sconto, condizioni, giorni consegna..." /></label>
+          <button className="primary-button full-button" type="submit"><Save size={16} /> Salva fornitore</button>
+        </form>
+
         <form className="panel management-form-card" onSubmit={handleFuelSubmit}>
           <StrategicSectionTitle icon={Fuel} overline="Gasolio" title="Carico o scarico" />
           <label>Tipo<select value={fuelForm.movementType} onChange={(event) => updateFuelForm('movementType', event.target.value)}>
@@ -16600,9 +16738,21 @@ function ManagementControlWorkspace({
           </select></label>
           <label>Litri<input min="0" step="0.01" type="number" value={fuelForm.liters} onChange={(event) => updateFuelForm('liters', event.target.value)} /></label>
           <label>Km mezzo<input min="0" type="number" value={fuelForm.odometerKm} onChange={(event) => updateFuelForm('odometerKm', event.target.value)} /></label>
-          <label>Prezzo litro<input value={fuelForm.unitPrice} onChange={(event) => updateFuelForm('unitPrice', event.target.value)} placeholder="Es. 1,72" /></label>
-          <label>Totale euro<input value={fuelForm.totalAmount} onChange={(event) => updateFuelForm('totalAmount', event.target.value)} placeholder="Es. 350,00" /></label>
-          <label>Fornitore<input value={fuelForm.supplier} onChange={(event) => updateFuelForm('supplier', event.target.value)} /></label>
+          {fuelForm.movementType !== 'dispense' ? (
+            <>
+              <label>Fornitore<select value={activeSupplierId} onChange={(event) => {
+                const supplier = fuelSupplierRecords.find((row) => row.id === event.target.value)
+                updateFuelForm('supplierId', supplier?.id ?? '')
+                updateFuelForm('supplier', supplier?.name ?? '')
+              }}>
+                <option value="">Non assegnato</option>
+                {fuelSupplierRecords.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+              </select></label>
+              <label>Fornitore libero<input value={fuelForm.supplier} onChange={(event) => updateFuelForm('supplier', event.target.value)} placeholder="Solo se non è in anagrafica" /></label>
+              <label>Prezzo litro<input value={fuelForm.unitPrice} onChange={(event) => updateFuelForm('unitPrice', event.target.value)} placeholder="Es. 1,72" /></label>
+              <label>Totale euro<input value={fuelForm.totalAmount} onChange={(event) => updateFuelForm('totalAmount', event.target.value)} placeholder="Es. 350,00" /></label>
+            </>
+          ) : null}
           <label>Data<input type="datetime-local" value={fuelForm.occurredAt} onChange={(event) => updateFuelForm('occurredAt', event.target.value)} /></label>
           <label className="management-form-wide">Note<textarea value={fuelForm.notes} onChange={(event) => updateFuelForm('notes', event.target.value)} /></label>
           <button className="primary-button full-button" type="submit"><Save size={16} /> Salva movimento</button>
@@ -16679,6 +16829,22 @@ function ManagementControlWorkspace({
             <span><small>Costi aziendali</small><strong>{formatMoneyCents(data.businessCostCents, defaultCurrency)}</strong></span>
             <span><small>Costi mezzi gia registrati</small><strong>{formatMoneyCents(data.operationalCostCents, defaultCurrency)}</strong></span>
             <span><small>Gasolio</small><strong>{formatMoneyCents(data.fuelCostCents, defaultCurrency)}</strong></span>
+          </div>
+        </section>
+
+        <section className="panel management-panel">
+          <StrategicSectionTitle icon={Building2} overline="Fornitori" title="Gasolio per fornitore" />
+          <div className="management-list">
+            {data.supplierRankingRows.slice(0, 8).map((row) => (
+              <article className="strategic-row tone-info" key={row.supplierId || row.name}>
+                <div>
+                  <strong>{row.name}</strong>
+                  <small>{formatLiters(row.liters)} · prezzo medio {formatMoneyCents(row.averageCentsPerLiter, defaultCurrency)}/L</small>
+                </div>
+                <b>{formatMoneyCents(row.totalCents, defaultCurrency)}</b>
+              </article>
+            ))}
+            {!data.supplierRankingRows.length && <StrategicEmptyLine label="Registra carichi cisterna con fornitore e prezzo per confrontare chi ti tratta meglio." />}
           </div>
         </section>
 

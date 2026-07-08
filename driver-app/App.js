@@ -46,6 +46,7 @@ import {
   createCompanyWarehouseAsset,
   createDriverDocument,
   createFuelMovement,
+  createFuelSupplier,
   createFuelTank,
   createFaultReport,
   createVehicleCheck,
@@ -3718,6 +3719,32 @@ function CamionChiaroApp() {
     return result.data
   }
 
+  async function handleCreateCompanyFuelSupplier(payload) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+    if (!canUseNativePlanFeature('costCenter')) {
+      showNativePlanFeatureLimit('costCenter')
+      return null
+    }
+
+    const result = await createFuelSupplier({
+      companyId,
+      supplier: payload,
+    })
+
+    if (result.error) {
+      Alert.alert('Fornitore non salvato', result.error.message)
+      return null
+    }
+
+    setCompanyContext((currentContext) => (
+      currentContext
+        ? { ...currentContext, fuelSuppliers: [result.data, ...(currentContext.fuelSuppliers ?? [])] }
+        : currentContext
+    ))
+    return result.data
+  }
+
   async function handleUpdateCompanyCostEntry(entryId, payload, file = null, previousEntry = null) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !entryId) return null
@@ -4184,6 +4211,7 @@ function CamionChiaroApp() {
             onCreateCostEntry={handleCreateCompanyCostEntry}
             onCreateDriver={handleCreateCompanyDriver}
             onCreateFuelMovement={handleCreateCompanyFuelMovement}
+            onCreateFuelSupplier={handleCreateCompanyFuelSupplier}
             onCreateFuelTank={handleCreateCompanyFuelTank}
             onCreatePerson={handleCreateCompanyPerson}
             onCreateVehicle={handleCreateCompanyVehicle}

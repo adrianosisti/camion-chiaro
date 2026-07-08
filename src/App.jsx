@@ -6804,6 +6804,7 @@ function App() {
   const [activeView, setActiveView] = useState(getInitialActiveView)
   const [liveOnboardingDismissedKey, setLiveOnboardingDismissedKey] = useState('')
   const [liveOnboardingFocus, setLiveOnboardingFocus] = useState('')
+  const [liveOnboardingPanelOpen, setLiveOnboardingPanelOpen] = useState(true)
   const [costReportStartAddingKey, setCostReportStartAddingKey] = useState(0)
   const [costReportResetKey, setCostReportResetKey] = useState(0)
   const [recordsTab, setRecordsTab] = useState(getInitialRecordsTab)
@@ -10640,6 +10641,7 @@ function App() {
     if (!liveOnboardingStorageKey) return
 
     setLiveOnboardingDismissedKey(liveOnboardingStorageKey)
+    setLiveOnboardingPanelOpen(false)
     if (typeof window === 'undefined') return
     window.localStorage.setItem(liveOnboardingStorageKey, 'hidden')
   }
@@ -10651,6 +10653,7 @@ function App() {
 
     setLiveOnboardingDismissedKey('')
     setLiveOnboardingFocus('dashboard')
+    setLiveOnboardingPanelOpen(true)
     setActiveView('dashboard')
     window.setTimeout(() => setLiveOnboardingFocus(''), 2400)
   }
@@ -10878,7 +10881,9 @@ function App() {
             onAcknowledgeCheck={acknowledgeCheck}
             onMarkCheckUnread={markCheckUnread}
             onOpenNotifications={() => openNotifications('inbox')}
+            onOpenOnboarding={showLiveOnboardingGuide}
             onUpdateFaultStatus={updateFaultReportStatus}
+            onboardingLabel={liveOnboardingSteps.every((step) => step.done) ? 'Tour Vygo' : 'Setup guidato'}
             query={query}
             setQuery={setQuery}
             t={t}
@@ -11200,7 +11205,9 @@ function App() {
       {session.role === 'company' && activeView !== 'admin' && !isLiveOnboardingHidden ? (
         <LiveOnboardingGuide
           companyName={companyName}
+          isOpen={liveOnboardingPanelOpen}
           onDismiss={dismissLiveOnboardingGuide}
+          onMinimize={() => setLiveOnboardingPanelOpen(false)}
           onOpenStep={openLiveOnboardingStep}
           setupSteps={liveOnboardingSteps}
           tourSteps={liveTourSteps}
@@ -12433,8 +12440,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
   )
 }
 
-function LiveOnboardingGuide({ companyName, onDismiss, onOpenStep, setupSteps = [], tourSteps = [] }) {
-  const [isExpanded, setIsExpanded] = useState(true)
+function LiveOnboardingGuide({ companyName, isOpen = true, onDismiss, onMinimize, onOpenStep, setupSteps = [], tourSteps = [] }) {
   const completedSetupCount = setupSteps.filter((step) => step.done).length
   const setupComplete = setupSteps.length > 0 && completedSetupCount === setupSteps.length
   const activeSteps = setupComplete ? tourSteps : setupSteps
@@ -12443,14 +12449,7 @@ function LiveOnboardingGuide({ companyName, onDismiss, onOpenStep, setupSteps = 
 
   if (!setupSteps.length || !nextStep) return null
 
-  if (!isExpanded) {
-    return (
-      <button className="live-onboarding-guide is-collapsed" onClick={() => setIsExpanded(true)} type="button">
-        <Bot size={18} />
-        <span>{setupComplete ? 'Tour Vygo' : `Setup ${progressValue}%`}</span>
-      </button>
-    )
-  }
+  if (!isOpen) return null
 
   return (
     <aside className="live-onboarding-guide" aria-label="Assistente primo avvio Vygo">
@@ -12462,7 +12461,7 @@ function LiveOnboardingGuide({ companyName, onDismiss, onOpenStep, setupSteps = 
           <small>{setupComplete ? 'Tour di scoperta' : 'Setup guidato'}</small>
           <strong>{setupComplete ? 'Scopri le funzioni chiave' : `Partiamo da zero, ${companyName}`}</strong>
         </div>
-        <button aria-label="Riduci assistente" className="icon-button ghost-button" onClick={() => setIsExpanded(false)} type="button">
+        <button aria-label="Riduci assistente" className="icon-button ghost-button" onClick={onMinimize} type="button">
           <ChevronRight size={18} />
         </button>
       </div>
@@ -13258,7 +13257,9 @@ function Topbar({
   onAcknowledgeCheck,
   onMarkCheckUnread,
   onOpenNotifications,
+  onOpenOnboarding,
   onUpdateFaultStatus,
+  onboardingLabel = 'Setup guidato',
   query,
   setQuery,
   t,
@@ -13289,6 +13290,10 @@ function Topbar({
             placeholder={t('topbar.searchPlaceholder')}
           />
         </label>
+        <button className="topbar-tour-button" onClick={onOpenOnboarding} type="button">
+          <ClipboardCheck size={16} />
+          <span>{onboardingLabel}</span>
+        </button>
         <TopbarNotifications
           acknowledgedCheckIds={acknowledgedCheckIds}
           assetPreviewUrl={assetPreviewUrl}

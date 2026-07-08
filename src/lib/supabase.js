@@ -797,6 +797,26 @@ const fuelMovementSelectColumns = `
   updated_at
 `
 
+const fuelMovementBaseSelectColumns = `
+  id,
+  company_id,
+  tank_id,
+  vehicle_id,
+  driver_id,
+  person_id,
+  movement_type,
+  liters,
+  unit_price_cents,
+  total_cost_cents,
+  currency,
+  odometer_km,
+  supplier,
+  document_number,
+  occurred_at,
+  notes,
+  created_at
+`
+
 const fuelSupplierSelectColumns = `
   id,
   company_id,
@@ -870,6 +890,10 @@ function isMissingDriverCheckPermissionColumn(error) {
 
 function isMissingWorkforceSchemaError(error) {
   return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error?.code)
+}
+
+function shouldRetryWithBaseFuelMovementColumns(error) {
+  return ['42703', 'PGRST200', 'PGRST204'].includes(error?.code)
 }
 
 const driverSelectBaseColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
@@ -2137,18 +2161,39 @@ export async function fetchCompanyFuelMovements(companyId = configuredCompanyId)
     return { data: [], error: null }
   }
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from('fuel_movements')
     .select(fuelMovementSelectColumns)
     .eq('company_id', companyId)
     .order('occurred_at', { ascending: false })
     .limit(1000)
 
-  if (isMissingWorkforceSchemaError(error)) {
+  if (shouldRetryWithBaseFuelMovementColumns(result.error)) {
+    result = await supabase
+      .from('fuel_movements')
+      .select(fuelMovementBaseSelectColumns)
+      .eq('company_id', companyId)
+      .order('occurred_at', { ascending: false })
+      .limit(1000)
+  }
+
+  if (!result.error && result.data?.length) {
+    return { data: result.data.map(mapFuelMovement), error: null }
+  }
+
+  const rpcResult = await supabase.rpc('get_company_fuel_movements_for_user', {
+    target_company_id: companyId,
+  })
+
+  if (!rpcResult.error && rpcResult.data?.length) {
+    return { data: rpcResult.data.map(mapFuelMovement), error: null }
+  }
+
+  if (isMissingWorkforceSchemaError(result.error)) {
     return { data: [], error: null, missingSchema: true }
   }
 
-  return { data: data?.map(mapFuelMovement) ?? [], error }
+  return { data: result.data?.map(mapFuelMovement) ?? [], error: result.error }
 }
 
 export async function fetchCompanyFuelSuppliers(companyId = configuredCompanyId) {

@@ -16408,7 +16408,8 @@ function ReportsWorkspace({
     if (fleetDashboardDriverId === 'all') return true
     return getMovementDriverId({ driverId, personId }) === fleetDashboardDriverId
   }
-  const allDispenseFuelRows = fuelMovementRecords.filter((movement) => movement.movementType === 'dispense')
+  const allFuelMovementRows = fuelMovementRecords
+  const allDispenseFuelRows = allFuelMovementRows.filter((movement) => movement.movementType === 'dispense')
   const dashboardCostRows = reportRows.filter((row) => (
     matchesFleetDashboardVehicle(row.vehicleId)
     && matchesFleetDashboardDriver(row.driverId)
@@ -16584,7 +16585,7 @@ function ReportsWorkspace({
           <small>Cruscotto mezzo</small>
           <strong>{dashboardTitle}</strong>
           <em>
-            {dashboardFuelMonthCount} rif. mese · {dashboardFuelTotalCount} rif. storico · {allDispenseFuelRows.length} salvati · {dashboardFuelOutsideSelectionCount ? `${dashboardFuelOutsideSelectionCount} fuori selezione · ` : ''}{dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
+            {dashboardFuelMonthCount} rif. mese · {dashboardFuelTotalCount} rif. storico · {allFuelMovementRows.length} mov. totali · {dashboardFuelOutsideSelectionCount ? `${dashboardFuelOutsideSelectionCount} fuori selezione · ` : ''}{dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
           </em>
         </span>
         <span className="fleet-dashboard-launch-action">{isFleetDashboardOpen ? 'Chiudi' : 'Apri'}</span>
@@ -16666,6 +16667,7 @@ function ReportsWorkspace({
             <div className="fleet-dashboard-mini-grid">
               <span><small>Rif. mese</small><strong>{dashboardFuelMonthCount}</strong></span>
               <span><small>Rif. storico</small><strong>{dashboardFuelTotalCount}</strong></span>
+              <span><small>Mov. totali</small><strong>{allFuelMovementRows.length}</strong></span>
               <span><small>Rif. salvati</small><strong>{allDispenseFuelRows.length}</strong></span>
               <span><small>Fuori selezione</small><strong>{dashboardFuelOutsideSelectionCount}</strong></span>
               <span><small>Litri mese</small><strong>{formatLiters(dashboardFuelMonthLiters)}</strong></span>

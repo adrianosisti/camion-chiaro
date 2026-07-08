@@ -120,7 +120,12 @@ const companyPersonSelectBaseColumns = 'id, company_id, user_id, linked_driver_i
 const companyPersonSelectWithAccessColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, access_password, status'
 const fuelTankSelectColumns = 'id, company_id, name, location, capacity_liters, warning_threshold_liters, initial_liters, status'
 const fuelMovementSelectColumns = 'id, company_id, tank_id, vehicle_id, driver_id, person_id, supplier_id, movement_type, liters, unit_price_cents, total_cost_cents, currency, odometer_km, supplier, document_number, occurred_at, notes, created_at'
+const fuelMovementBaseSelectColumns = 'id, company_id, tank_id, vehicle_id, driver_id, person_id, movement_type, liters, unit_price_cents, total_cost_cents, currency, odometer_km, supplier, document_number, occurred_at, notes, created_at'
 const fuelSupplierSelectColumns = 'id, company_id, name, vat_number, contact_name, phone, email, notes, status, created_at, updated_at'
+
+function shouldRetryWithBaseFuelMovementColumns(error) {
+  return ['42703', 'PGRST200', 'PGRST204'].includes(error?.code)
+}
 
 async function runDriverSelect(configureQuery) {
   let result = await configureQuery(supabase.from('drivers').select(driverSelectWithCheckColumns))
@@ -156,15 +161,32 @@ async function fetchCompanyFuelTanks(companyId) {
 async function fetchCompanyFuelMovements(companyId) {
   if (!companyId) return { data: [], error: null }
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from('fuel_movements')
     .select(fuelMovementSelectColumns)
     .eq('company_id', companyId)
     .order('occurred_at', { ascending: false })
     .limit(1000)
 
-  if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
-  return { data: (data ?? []).map(mapFuelMovement), error }
+  if (shouldRetryWithBaseFuelMovementColumns(result.error)) {
+    result = await supabase
+      .from('fuel_movements')
+      .select(fuelMovementBaseSelectColumns)
+      .eq('company_id', companyId)
+      .order('occurred_at', { ascending: false })
+      .limit(1000)
+  }
+
+  if (!result.error && result.data?.length) return { data: result.data.map(mapFuelMovement), error: null }
+
+  const rpcResult = await supabase.rpc('get_company_fuel_movements_for_user', {
+    target_company_id: companyId,
+  })
+
+  if (!rpcResult.error && rpcResult.data?.length) return { data: rpcResult.data.map(mapFuelMovement), error: null }
+
+  if (isMissingWorkforceSchemaError(result.error)) return { data: [], error: null, missingSchema: true }
+  return { data: (result.data ?? []).map(mapFuelMovement), error: result.error }
 }
 
 async function fetchCompanyFuelSuppliers(companyId) {

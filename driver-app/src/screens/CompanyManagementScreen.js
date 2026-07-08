@@ -2310,10 +2310,14 @@ export function CompanyManagementScreen({
               {movementType === 'dispense' ? (
                 <TextField keyboardType="number-pad" label="Km mezzo" onChangeText={(value) => updateFuelMovementForm('odometerKm', value)} placeholder="Opzionale" value={fuelMovementForm.odometerKm} />
               ) : null}
-              <TextField keyboardType="decimal-pad" label="Prezzo litro" onChangeText={(value) => updateFuelMovementForm('unitPrice', value)} placeholder="1,72" value={fuelMovementForm.unitPrice} />
-              <TextField keyboardType="decimal-pad" label="Totale euro" onChangeText={(value) => updateFuelMovementForm('totalAmount', value)} placeholder="350,00" value={fuelMovementForm.totalAmount} />
-              <TextField label="Fornitore" onChangeText={(value) => updateFuelMovementForm('supplier', value)} placeholder="Opzionale" value={fuelMovementForm.supplier} />
-              <TextField label="Numero documento" onChangeText={(value) => updateFuelMovementForm('documentNumber', value)} placeholder="DDT o fattura" value={fuelMovementForm.documentNumber} />
+              {movementType !== 'dispense' ? (
+                <>
+                  <TextField keyboardType="decimal-pad" label="Prezzo litro" onChangeText={(value) => updateFuelMovementForm('unitPrice', value)} placeholder="1,72" value={fuelMovementForm.unitPrice} />
+                  <TextField keyboardType="decimal-pad" label="Totale euro" onChangeText={(value) => updateFuelMovementForm('totalAmount', value)} placeholder="350,00" value={fuelMovementForm.totalAmount} />
+                  <TextField label="Fornitore" onChangeText={(value) => updateFuelMovementForm('supplier', value)} placeholder="Opzionale" value={fuelMovementForm.supplier} />
+                  <TextField label="Numero documento" onChangeText={(value) => updateFuelMovementForm('documentNumber', value)} placeholder="DDT o fattura" value={fuelMovementForm.documentNumber} />
+                </>
+              ) : null}
               <DateField label="Data movimento" language={language} onChange={(value) => updateFuelMovementForm('occurredDate', value)} value={fuelMovementForm.occurredDate} />
               <TextField label="Note" multiline onChangeText={(value) => updateFuelMovementForm('notes', value)} placeholder="Opzionale" value={fuelMovementForm.notes} />
               <PrimaryButton loading={isSaving} onPress={submitFuelMovement} title="Salva movimento gasolio" />

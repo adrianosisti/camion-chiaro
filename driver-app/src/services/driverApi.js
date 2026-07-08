@@ -2945,6 +2945,16 @@ export async function createFuelMovement({ companyId, movement }) {
     const parsed = Number.parseFloat(String(value ?? '').replace(/\s/g, '').replace(',', '.'))
     return Number.isFinite(parsed) ? parsed : 0
   }
+  const normalizeUuid = (value) => {
+    const cleanValue = String(value ?? '').trim()
+    if (!cleanValue) return null
+    return cleanValue.replace(/^(driver|person|vehicle|asset|tank)-/, '')
+  }
+  const normalizePersonUuid = (value) => {
+    const cleanValue = String(value ?? '').trim()
+    if (!cleanValue || cleanValue.startsWith('driver-')) return null
+    return normalizeUuid(cleanValue)
+  }
   const liters = parseFuelNumber(movement.liters)
   const movementType = movement.movementType || 'dispense'
   if (!movement.tankId || liters <= 0 || (movementType === 'dispense' && !movement.vehicleId)) {
@@ -2962,19 +2972,19 @@ export async function createFuelMovement({ companyId, movement }) {
     company_id: companyId,
     created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
     currency: movement.currency || 'EUR',
-    document_number: movement.documentNumber?.trim() || null,
-    driver_id: movement.driverId || null,
+    document_number: movementType === 'dispense' ? null : movement.documentNumber?.trim() || null,
+    driver_id: movementType === 'dispense' ? normalizeUuid(movement.driverId) : null,
     liters,
     movement_type: movementType,
     notes: movement.notes?.trim() || null,
     occurred_at: movement.occurredAt || new Date().toISOString(),
     odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
-    person_id: movement.personId || null,
-    supplier: movement.supplier?.trim() || null,
-    tank_id: movement.tankId,
-    total_cost_cents: totalCostCents,
-    unit_price_cents: unitPriceCents,
-    vehicle_id: movementType === 'dispense' ? movement.vehicleId : null,
+    person_id: normalizePersonUuid(movement.personId),
+    supplier: movementType === 'dispense' ? null : movement.supplier?.trim() || null,
+    tank_id: normalizeUuid(movement.tankId),
+    total_cost_cents: movementType === 'dispense' ? null : totalCostCents,
+    unit_price_cents: movementType === 'dispense' ? null : unitPriceCents,
+    vehicle_id: movementType === 'dispense' ? normalizeUuid(movement.vehicleId) : null,
   }
 
   const { data, error } = await supabase

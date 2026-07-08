@@ -16609,7 +16609,7 @@ function ReportsWorkspace({
           <span>voci collegate ad autisti</span>
         </article>
       </div>
-      <section className="fleet-health-panel" aria-label="Indice salute flotta">
+      {reportViewMode === 'reports' ? <section className="fleet-health-panel" aria-label="Indice salute flotta">
         <div className="fleet-health-head">
           <div>
             <span>Controllo direzionale</span>
@@ -16640,7 +16640,7 @@ function ReportsWorkspace({
           <span>{criticalFleetHealthRows.length} mezzi sotto soglia attenzione</span>
           <span>{fleetHealthRows.length ? `${fleetHealthRows.length} mezzi analizzati` : 'Nessun mezzo analizzato'}</span>
         </div>
-      </section>
+      </section> : null}
       {reportViewMode === 'fleet-dashboard' ? <button
         aria-expanded={isFleetDashboardOpen}
         className={`fleet-dashboard-launch tone-${dashboardSignalTone}`}

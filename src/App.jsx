@@ -16408,17 +16408,21 @@ function ReportsWorkspace({
     if (fleetDashboardDriverId === 'all') return true
     return getMovementDriverId({ driverId, personId }) === fleetDashboardDriverId
   }
+  const allDispenseFuelRows = fuelMovementRecords.filter((movement) => movement.movementType === 'dispense')
   const dashboardCostRows = reportRows.filter((row) => (
     matchesFleetDashboardVehicle(row.vehicleId)
     && matchesFleetDashboardDriver(row.driverId)
   ))
   const dashboardMonthCostRows = dashboardCostRows.filter((row) => new Date(row.date) >= monthStart)
   const dashboardFineRows = dashboardCostRows.filter((row) => row.category === 'fine')
-  const dashboardFuelRows = fuelMovementRecords.filter((movement) => (
-    movement.movementType === 'dispense'
-    && matchesFleetDashboardVehicle(movement.vehicleId)
+  const dashboardFuelRows = allDispenseFuelRows.filter((movement) => (
+    matchesFleetDashboardVehicle(movement.vehicleId)
     && matchesFleetDashboardDriver(movement.driverId, movement.personId)
   ))
+  const dashboardFuelOutsideSelectionCount = Math.max(0, allDispenseFuelRows.length - dashboardFuelRows.length)
+  const dashboardFuelUnlinkedCount = allDispenseFuelRows.filter((movement) => (
+    !movement.vehicleId || !activeVehicles.some((vehicle) => vehicle.id === movement.vehicleId)
+  )).length
   const dashboardVehicleConsumptionRows = (selectedFleetVehicle ? [selectedFleetVehicle] : activeVehicles)
     .map((vehicle) => buildVehicleFuelConsumption(vehicle, dashboardFuelRows, monthStart))
     .filter((row) => row.totalLiters > 0 || row.movementCount > 0 || row.kmPerLiter > 0)
@@ -16580,7 +16584,7 @@ function ReportsWorkspace({
           <small>Cruscotto mezzo</small>
           <strong>{dashboardTitle}</strong>
           <em>
-            {dashboardFuelMonthCount} rif. mese · {dashboardFuelTotalCount} rif. storico · {formatLiters(dashboardFuelTotalLiters)} · {dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
+            {dashboardFuelMonthCount} rif. mese · {dashboardFuelTotalCount} rif. storico · {allDispenseFuelRows.length} salvati · {dashboardFuelOutsideSelectionCount ? `${dashboardFuelOutsideSelectionCount} fuori selezione · ` : ''}{dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
           </em>
         </span>
         <span className="fleet-dashboard-launch-action">{isFleetDashboardOpen ? 'Chiudi' : 'Apri'}</span>
@@ -16662,8 +16666,11 @@ function ReportsWorkspace({
             <div className="fleet-dashboard-mini-grid">
               <span><small>Rif. mese</small><strong>{dashboardFuelMonthCount}</strong></span>
               <span><small>Rif. storico</small><strong>{dashboardFuelTotalCount}</strong></span>
+              <span><small>Rif. salvati</small><strong>{allDispenseFuelRows.length}</strong></span>
+              <span><small>Fuori selezione</small><strong>{dashboardFuelOutsideSelectionCount}</strong></span>
               <span><small>Litri mese</small><strong>{formatLiters(dashboardFuelMonthLiters)}</strong></span>
               <span><small>Litri storico</small><strong>{formatLiters(dashboardFuelTotalLiters || dashboardFuelLiters)}</strong></span>
+              <span><small>Da collegare</small><strong>{dashboardFuelUnlinkedCount}</strong></span>
             </div>
           </section>
           <section>

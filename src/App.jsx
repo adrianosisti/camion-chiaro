@@ -11377,8 +11377,8 @@ function App() {
               onUpgrade={openBillingSettings}
             />
           )
-        ) : ['reports', 'costs', 'newCost'].includes(activeView) ? (
-          planFeatureAccess.costCenter || planFeatureAccess.reports ? (
+        ) : activeView === 'reports' ? (
+          planFeatureAccess.reports ? (
             <ReportsWorkspace
               acknowledgedCheckIds={acknowledgedCheckIds}
               assetRecords={assetRecords}
@@ -11400,8 +11400,35 @@ function App() {
             />
           ) : (
             <FeatureUpgradeGate
-              description="Centro costi, multe, manutenzioni, CSV, stampa e report filtrati sono inclusi nei piani attivi. Se li vedi bloccati, controlla lo stato pagamento o l attivazione azienda."
-              featureName="Centro costi e report"
+              description="Report avanzati, CSV, stampa e cruscotti filtrati sono inclusi nei piani attivi. Se li vedi bloccati, controlla lo stato pagamento o l attivazione azienda."
+              featureName="Report avanzati"
+              icon={FileText}
+              onUpgrade={openBillingSettings}
+            />
+          )
+        ) : ['costs', 'newCost'].includes(activeView) ? (
+          planFeatureAccess.costCenter ? (
+            <FaultCostReport
+              assetRecords={assetRecords}
+              companyName={getDisplayCompanyName(companyProfile.name || companyName || company.name)}
+              complianceItems={decoratedItems}
+              costEntryRecords={costEntryRecords}
+              driverRecords={driverRecords}
+              faultReportRecords={visibleFaultReportRecords}
+              onCreateCostEntry={addCostEntryRecord}
+              onDeleteCostEntry={removeCostEntryRecord}
+              onUpdateCostEntry={editCostEntryRecord}
+              onUpdateFaultStatus={updateFaultReportStatus}
+              reportMode="costs"
+              resetCostFormKey={costReportResetKey}
+              startAddingCostKey={costReportStartAddingKey}
+              vehicleCheckRecords={vehicleCheckRecords}
+              vehicleRecords={vehicleRecords}
+            />
+          ) : (
+            <FeatureUpgradeGate
+              description="Centro costi, multe, manutenzioni e spese libere sono inclusi nei piani attivi. Se li vedi bloccati, controlla lo stato pagamento o l attivazione azienda."
+              featureName="Centro costi"
               icon={Banknote}
               onUpgrade={openBillingSettings}
             />

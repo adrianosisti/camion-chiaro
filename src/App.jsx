@@ -20,6 +20,7 @@ import Download from 'lucide-react/dist/esm/icons/download.mjs'
 import ExternalLink from 'lucide-react/dist/esm/icons/external-link.mjs'
 import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
 import Filter from 'lucide-react/dist/esm/icons/filter.mjs'
+import Fuel from 'lucide-react/dist/esm/icons/fuel.mjs'
 import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
 import Globe2 from 'lucide-react/dist/esm/icons/globe-2.mjs'
 import ImageIcon from 'lucide-react/dist/esm/icons/image.mjs'
@@ -70,8 +71,11 @@ import {
   createCompanyPerson as createSupabaseCompanyPerson,
   createCompanyInvoiceSignedUrl,
   createCompanyAnnouncementRecord as createSupabaseCompanyAnnouncement,
+  createBusinessEntryRecord as createSupabaseBusinessEntry,
   createComplianceItemRecord as createSupabaseComplianceItem,
   createCostEntryRecord as createSupabaseCostEntry,
+  createFuelMovementRecord as createSupabaseFuelMovement,
+  createFuelTankRecord as createSupabaseFuelTank,
   fetchCompanyAssets,
   createChatMessageRecord as createSupabaseChatMessage,
   createTeamChatMessageRecord as createSupabaseTeamChatMessage,
@@ -97,6 +101,9 @@ import {
   fetchTeamChatThreads,
   fetchComplianceItems,
   fetchCompanyCostEntries,
+  fetchCompanyBusinessEntries,
+  fetchCompanyFuelMovements,
+  fetchCompanyFuelTanks,
   fetchCompanyAnnouncements,
   fetchCompanyAnnouncementReadReceipts,
   fetchCompanyInvoices,
@@ -623,7 +630,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -846,6 +853,7 @@ const translations = {
     'nav.records': 'Anagrafiche',
     'nav.reports': 'Report',
     'nav.savings': 'Radar Risparmio',
+    'nav.management': 'Controllo gestione',
     'nav.costs': 'Centro costi',
     'nav.newCost': 'Nuova spesa',
     'nav.settings': 'Impostazioni',
@@ -1071,6 +1079,7 @@ const translations = {
     'nav.records': 'Records',
     'nav.reports': 'Reports',
     'nav.savings': 'Savings Radar',
+    'nav.management': 'Management control',
     'nav.costs': 'Cost center',
     'nav.newCost': 'New expense',
     'nav.settings': 'Settings',
@@ -1217,6 +1226,7 @@ const translations = {
     'nav.records': 'Ficheros',
     'nav.reports': 'Informes',
     'nav.savings': 'Radar ahorro',
+    'nav.management': 'Control gestion',
     'nav.costs': 'Centro costes',
     'nav.newCost': 'Nuevo coste',
     'nav.settings': 'Ajustes',
@@ -1363,6 +1373,7 @@ const translations = {
     'nav.records': 'Fiches',
     'nav.reports': 'Rapports',
     'nav.savings': 'Radar economies',
+    'nav.management': 'Controle gestion',
     'nav.costs': 'Centre couts',
     'nav.newCost': 'Nouvelle depense',
     'nav.settings': 'Reglages',
@@ -1509,6 +1520,7 @@ const translations = {
     'nav.records': 'Stammdaten',
     'nav.reports': 'Berichte',
     'nav.savings': 'Sparradar',
+    'nav.management': 'Managementkontrolle',
     'nav.costs': 'Kostenstelle',
     'nav.newCost': 'Neue Ausgabe',
     'nav.settings': 'Einstellungen',
@@ -1564,23 +1576,23 @@ const publicLandingCopy = {
     problem: {
       overline: 'Perche nasce Vygo',
       title: 'Il caos operativo costa piu del canone.',
-      body: 'Molte aziende di trasporto lavorano ancora tra WhatsApp, Excel, telefonate, email e cartelle sparse. Il risultato e tempo perso, documenti dimenticati, scadenze scoperte e poca visibilita sui costi.',
+      body: 'Molte aziende di trasporto lavorano ancora tra WhatsApp, Excel, telefonate, email, cartelle sparse e software separati. Il risultato e tempo perso, documenti dimenticati, scadenze scoperte e poca visibilita su margini, gasolio, pedaggi e costi reali dei mezzi.',
       cards: [
         { title: 'Messaggi dispersi', body: 'Le decisioni restano nelle chat personali e diventano difficili da ritrovare.' },
         { title: 'Scadenze fragili', body: 'Patenti, revisioni, assicurazioni e visite mediche si ricordano spesso troppo tardi.' },
         { title: 'Documenti sparsi', body: 'Autisti, mezzi e ufficio non hanno sempre lo stesso archivio aggiornato.' },
-        { title: 'Costi invisibili', body: 'Guasti, multe e manutenzioni si vedono davvero solo quando ormai hanno pesato sul bilancio.' },
+        { title: 'Costi invisibili', body: 'Guasti, multe, gasolio, pedaggi e manutenzioni si vedono davvero solo quando ormai hanno pesato sul bilancio.' },
       ],
     },
     value: {
       overline: 'Vygo',
       title: 'Un sistema operativo per tutta l azienda di trasporto.',
-      body: 'Vygo unisce dashboard, app mobile, chat, documenti, check, guasti, scadenze e centro costi. Ogni reparto lavora nello stesso ambiente, con storico e notifiche.',
+      body: 'Vygo unisce dashboard, app mobile, chat, documenti, check, guasti, scadenze, centro costi, gasolio e controllo gestione. I sistemi GPS e pedaggi diventano fonti dati: Vygo li trasforma in margini, consumi, anomalie e decisioni.',
       cards: [
         { title: 'Scadenze e documenti', body: 'Patenti, CQC, visite mediche, libretti, revisioni, assicurazioni e file sempre collegati al soggetto giusto.' },
         { title: 'Chat aziendale', body: 'Conversazioni singole e gruppi per autisti, ufficio, magazzino e direzione, separate dal caos personale.' },
         { title: 'Check e guasti', body: 'L autista segnala, l azienda vede, lavora, archivia e mantiene uno storico consultabile.' },
-        { title: 'Centro costi e report', body: 'Spese, multe, manutenzioni e riparazioni filtrabili per periodo, targa, persona o attrezzatura.' },
+        { title: 'Controllo gestione', body: 'Ricavi, costi fissi, gasolio, multe, pedaggi, manutenzioni e consumi per capire se una targa rende o sta bruciando soldi.' },
       ],
     },
     setup: {
@@ -1603,7 +1615,7 @@ const publicLandingCopy = {
         { cta: 'Richiedi attivazione', description: 'Stesse funzioni complete, piu mezzi, piu account e piu spazio per aziende strutturate.', featured: false, items: ['Tutte le funzioni Vygo', '20, 30 o 50 mezzi', 'Strumenti e muletti inclusi', 'Account proporzionati alla flotta', 'Storage da 30 GB in su'], name: 'Fleet 20+', price: 'da 699 euro/mese + IVA' },
       ],
       extras: [
-        { title: 'Funzioni incluse', body: 'Tutti i piani hanno chat, gruppi, guasti, check, documenti, scadenze, centro costi e report.' },
+        { title: 'Funzioni incluse', body: 'Tutti i piani hanno chat, gruppi, guasti, check, documenti, scadenze, centro costi, controllo gestione e report.' },
         { title: 'Avviamento', body: 'Start-up kit una tantum per configurazione, anagrafiche iniziali, scadenze e formazione.' },
         { title: 'Storage extra', body: '20 GB 49 euro/mese + IVA, 50 GB 99 euro/mese + IVA, 100 GB 179 euro/mese + IVA.' },
         { title: 'Nessun modulo nascosto', body: 'Il prezzo cresce con dimensione flotta, persone e spazio, non con funzioni tagliate.' },
@@ -1613,7 +1625,8 @@ const publicLandingCopy = {
       overline: 'FAQ',
       title: 'Domande veloci prima di mettere ordine.',
       items: [
-        { title: 'Cosa cambia davvero rispetto a oggi?', body: 'Invece di cercare informazioni tra WhatsApp, fogli, telefono e cartelle, apri Vygo e vedi cosa scade, cosa manca, chi deve agire e quali mezzi hanno problemi.' },
+        { title: 'Cosa cambia davvero rispetto a oggi?', body: 'Invece di cercare informazioni tra WhatsApp, fogli, telefono, GPS e cartelle, apri Vygo e vedi cosa scade, cosa manca, chi deve agire, quali mezzi hanno problemi e dove l azienda sta spendendo troppo.' },
+        { title: 'Se ho gia un GPS tipo Flottaweb?', body: 'Il GPS resta utile per posizione e telemetria. Vygo serve a trasformare quei dati in controllo economico: km, consumi, costi, margini e anomalie per targa.' },
         { title: 'L autista deve scaricare un app?', body: 'Si. Vygo e previsto come app iOS/Android per autisti, magazzino e azienda. L azienda puo lavorare anche da browser desktop.' },
         { title: 'Arrivano notifiche sul telefono?', body: 'Si, dopo l attivazione sul dispositivo. Chat, guasti e check critici possono avvisare anche con app chiusa.' },
         { title: 'Posso usarlo dall ufficio e dal telefono?', body: 'Si. L ufficio lavora da PC, mentre titolare, autisti e personale possono usare l app su telefono.' },
@@ -1627,23 +1640,23 @@ const publicLandingCopy = {
     problem: {
       overline: 'Why Vygo',
       title: 'Operational chaos costs more than the subscription.',
-      body: 'Many transport companies still run work through WhatsApp, spreadsheets, calls, emails and scattered folders. That means wasted time, missing documents, forgotten deadlines and poor cost visibility.',
+      body: 'Many transport companies still run work through WhatsApp, spreadsheets, calls, emails, scattered folders and separate systems. That means wasted time, missing documents, forgotten deadlines and poor visibility on margins, fuel, tolls and real vehicle costs.',
       cards: [
         { title: 'Scattered messages', body: 'Decisions stay inside personal chats and become hard to find later.' },
         { title: 'Fragile deadlines', body: 'Licences, inspections, insurance and medical checks are often remembered too late.' },
         { title: 'Fragmented documents', body: 'Drivers, vehicles and office teams do not always share the same updated archive.' },
-        { title: 'Hidden costs', body: 'Faults, fines and maintenance become visible only after they hit the accounts.' },
+        { title: 'Hidden costs', body: 'Faults, fines, fuel, tolls and maintenance become visible only after they hit the accounts.' },
       ],
     },
     value: {
       overline: 'Vygo',
       title: 'An operating system for the whole transport company.',
-      body: 'Vygo brings together dashboard, mobile app, chat, documents, checks, faults, deadlines and cost center. Every team works in one shared environment with history and alerts.',
+      body: 'Vygo brings together dashboard, mobile app, chat, documents, checks, faults, deadlines, cost center, fuel and management control. GPS and toll systems become data sources: Vygo turns them into margins, consumption, anomalies and decisions.',
       cards: [
         { title: 'Deadlines and documents', body: 'Licences, medical checks, vehicle documents, inspections, insurance and files connected to the right record.' },
         { title: 'Company chat', body: 'Direct and group chats for drivers, office, warehouse and management, away from personal noise.' },
         { title: 'Checks and faults', body: 'The worker reports, the company sees, handles, archives and keeps a searchable history.' },
-        { title: 'Costs and reports', body: 'Expenses, fines, maintenance and repairs filtered by period, plate, person or equipment.' },
+        { title: 'Management control', body: 'Revenue, fixed costs, fuel, fines, tolls, maintenance and consumption to understand whether a vehicle is making money or burning it.' },
       ],
     },
     setup: {
@@ -1666,7 +1679,7 @@ const publicLandingCopy = {
         { cta: 'Request activation', description: 'Full functions, more vehicles, more accounts and more storage for structured companies.', featured: false, items: ['All Vygo functions', '20, 30 or 50 vehicles', 'Tools and forklifts included', 'Accounts sized to fleet', 'Storage from 30 GB'], name: 'Fleet 20+', price: 'from 699 euro/month + VAT' },
       ],
       extras: [
-        { title: 'Functions included', body: 'Every plan includes chat, groups, faults, checks, documents, deadlines, cost center and reports.' },
+        { title: 'Functions included', body: 'Every plan includes chat, groups, faults, checks, documents, deadlines, cost center, management control and reports.' },
         { title: 'Start-up kit', body: 'One-time setup for company records, first deadlines and training.' },
         { title: 'Extra storage', body: '20 GB 49 euro/month + VAT, 50 GB 99 euro/month + VAT, 100 GB 179 euro/month + VAT.' },
         { title: 'No hidden modules', body: 'Price grows with company size and storage, not by cutting core features.' },
@@ -1676,7 +1689,8 @@ const publicLandingCopy = {
       overline: 'FAQ',
       title: 'Quick questions before putting order in place.',
       items: [
-        { title: 'What really changes?', body: 'Instead of searching across WhatsApp, sheets, calls and folders, you open Vygo and see deadlines, missing items, actions and vehicle issues.' },
+        { title: 'What really changes?', body: 'Instead of searching across WhatsApp, sheets, calls, GPS and folders, you open Vygo and see deadlines, missing items, actions, vehicle issues and where the company is overspending.' },
+        { title: 'What if I already use fleet GPS?', body: 'GPS remains useful for position and telematics. Vygo turns that data into economic control: km, consumption, costs, margins and anomalies by vehicle.' },
         { title: 'Do workers install an app?', body: 'Yes. Vygo is built as an iOS/Android app for drivers, warehouse and company. The office can also work from desktop browser.' },
         { title: 'Do phone notifications work?', body: 'Yes, after enabling them on the device. Chat, faults and critical checks can alert even when the app is closed.' },
         { title: 'Can I use it from office and phone?', body: 'Yes. Office works from PC, owners and staff can use the phone app.' },
@@ -4134,6 +4148,7 @@ const regionalTranslations = {
     'nav.records': 'Date',
     'nav.reports': 'Rapoarte',
     'nav.savings': 'Radar economii',
+    'nav.management': 'Control management',
     'nav.costs': 'Centru costuri',
     'nav.newCost': 'Cheltuiala noua',
     'nav.settings': 'Setari',
@@ -4201,6 +4216,7 @@ const regionalTranslations = {
     'nav.records': 'Kartoteki',
     'nav.reports': 'Raporty',
     'nav.savings': 'Radar oszczednosci',
+    'nav.management': 'Kontrola zarzadzania',
     'nav.costs': 'Centrum kosztow',
     'nav.newCost': 'Nowy koszt',
     'nav.settings': 'Ustawienia',
@@ -6781,6 +6797,9 @@ function App() {
   const [chatLiveState, setChatLiveState] = useState(emptyChatLiveState)
   const [documentEventRecords, setDocumentEventRecords] = useState([])
   const [costEntryRecords, setCostEntryRecords] = useState([])
+  const [fuelTankRecords, setFuelTankRecords] = useState([])
+  const [fuelMovementRecords, setFuelMovementRecords] = useState([])
+  const [businessEntryRecords, setBusinessEntryRecords] = useState([])
   const [announcementRecords, setAnnouncementRecords] = useState([])
   const [announcementReadRecords, setAnnouncementReadRecords] = useState([])
   const [companyInvoiceRecords, setCompanyInvoiceRecords] = useState([])
@@ -7060,6 +7079,9 @@ function App() {
       setCompanyProfile(getInitialCompanyProfile())
     }
     setCostEntryRecords([])
+    setFuelTankRecords([])
+    setFuelMovementRecords([])
+    setBusinessEntryRecords([])
     setAnnouncementRecords([])
     setCompanyInvoiceRecords([])
     setCompanyStorageSummary(emptyCompanyStorageSummary)
@@ -7094,6 +7116,9 @@ function App() {
     setVehicleCheckRecords([])
     setFaultReportRecords([])
     setCostEntryRecords([])
+    setFuelTankRecords([])
+    setFuelMovementRecords([])
+    setBusinessEntryRecords([])
     setAnnouncementRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
@@ -7115,6 +7140,9 @@ function App() {
     setVehicleCheckRecords([])
     setFaultReportRecords([])
     setCostEntryRecords([])
+    setFuelTankRecords([])
+    setFuelMovementRecords([])
+    setBusinessEntryRecords([])
     setAnnouncementRecords([])
     setChatThreadRecords([])
     setChatMessageRecords([])
@@ -7685,6 +7713,9 @@ function App() {
         documentEventsResult,
         companyInvoicesResult,
         costEntriesResult,
+        fuelTanksResult,
+        fuelMovementsResult,
+        businessEntriesResult,
         announcementsResult,
         checksResult,
         faultsResult,
@@ -7703,6 +7734,9 @@ function App() {
         fetchDriverDocumentEvents(companyId),
         fetchCompanyInvoices(companyId),
         fetchCompanyCostEntries(companyId),
+        fetchCompanyFuelTanks(companyId),
+        fetchCompanyFuelMovements(companyId),
+        fetchCompanyBusinessEntries(companyId),
         fetchCompanyAnnouncements(companyId),
         fetchVehicleChecks(companyId),
         fetchFaultReports(companyId),
@@ -7733,6 +7767,9 @@ function App() {
       if (documentEventsResult.data) setDocumentEventRecords(documentEventsResult.data)
       if (companyInvoicesResult.data) setCompanyInvoiceRecords(companyInvoicesResult.data)
       if (costEntriesResult.data) setCostEntryRecords(costEntriesResult.data)
+      if (fuelTanksResult.data) setFuelTankRecords(fuelTanksResult.data)
+      if (fuelMovementsResult.data) setFuelMovementRecords(fuelMovementsResult.data)
+      if (businessEntriesResult.data) setBusinessEntryRecords(businessEntriesResult.data)
       if (announcementsResult.data) {
         setAnnouncementRecords(announcementsResult.data)
         const readsResult = await fetchCompanyAnnouncementReadReceipts(
@@ -8739,6 +8776,132 @@ function App() {
 
     setCostEntryRecords((currentEntries) => [localEntry, ...currentEntries])
     setOperationsSyncStatus('Spesa aggiunta su questo dispositivo.')
+    return localEntry
+  }
+
+  async function addFuelTankRecord(tank) {
+    if (!canUseCurrentPlanFeature('costCenter')) {
+      setOperationsSyncStatus('Controllo gestione non disponibile con lo stato attuale dell azienda.')
+      return false
+    }
+
+    const cleanTank = {
+      ...tank,
+      capacityLiters: Number(tank.capacityLiters ?? 0),
+      initialLiters: Number(tank.initialLiters ?? 0),
+      warningThresholdLiters: Number(tank.warningThresholdLiters ?? 0),
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Salvataggio cisterna...')
+      const result = await createSupabaseFuelTank(cleanTank, activeCompanyId)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Cisterna non salvata: ${result.error.message}`)
+        return false
+      }
+
+      setFuelTankRecords((currentTanks) => [result.data, ...currentTanks])
+      setOperationsSyncStatus('Cisterna salvata.')
+      return result.data
+    }
+
+    const localTank = {
+      ...cleanTank,
+      companyId: activeCompanyId,
+      createdAt: new Date().toISOString(),
+      currentLiters: cleanTank.initialLiters,
+      id: `fuel-tank-${Date.now()}`,
+      status: cleanTank.status || 'active',
+      updatedAt: new Date().toISOString(),
+    }
+
+    setFuelTankRecords((currentTanks) => [localTank, ...currentTanks])
+    setOperationsSyncStatus('Cisterna aggiunta su questo dispositivo.')
+    return localTank
+  }
+
+  async function addFuelMovementRecord(movement) {
+    if (!canUseCurrentPlanFeature('costCenter')) {
+      setOperationsSyncStatus('Controllo gestione non disponibile con lo stato attuale dell azienda.')
+      return false
+    }
+
+    const cleanMovement = {
+      ...movement,
+      currency: movement.currency || getDefaultCurrency(language),
+      liters: Number(movement.liters ?? 0),
+      occurredAt: movement.occurredAt || new Date().toISOString().slice(0, 16),
+      totalCostCents: Number(movement.totalCostCents ?? 0),
+      unitPriceCents: movement.unitPriceCents === '' ? '' : Number(movement.unitPriceCents ?? 0),
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Salvataggio movimento gasolio...')
+      const result = await createSupabaseFuelMovement(cleanMovement, activeCompanyId)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Movimento gasolio non salvato: ${result.error.message}`)
+        return false
+      }
+
+      setFuelMovementRecords((currentMovements) => [result.data, ...currentMovements])
+      setFuelTankRecords((currentTanks) => applyFuelMovementToTankSnapshot(currentTanks, result.data))
+      setOperationsSyncStatus('Movimento gasolio salvato.')
+      return result.data
+    }
+
+    const localMovement = {
+      ...cleanMovement,
+      companyId: activeCompanyId,
+      createdAt: new Date().toISOString(),
+      id: `fuel-movement-${Date.now()}`,
+      updatedAt: new Date().toISOString(),
+    }
+
+    setFuelMovementRecords((currentMovements) => [localMovement, ...currentMovements])
+    setFuelTankRecords((currentTanks) => applyFuelMovementToTankSnapshot(currentTanks, localMovement))
+    setOperationsSyncStatus('Movimento gasolio aggiunto su questo dispositivo.')
+    return localMovement
+  }
+
+  async function addBusinessEntryRecord(entry) {
+    if (!canUseCurrentPlanFeature('costCenter')) {
+      setOperationsSyncStatus('Controllo gestione non disponibile con lo stato attuale dell azienda.')
+      return false
+    }
+
+    const cleanEntry = {
+      ...entry,
+      amountCents: Number(entry.amountCents ?? 0),
+      currency: entry.currency || getDefaultCurrency(language),
+      occurredAt: entry.occurredAt || new Date().toISOString().slice(0, 10),
+    }
+
+    if (hasCompanyDataConnection && session?.role === 'company') {
+      setOperationsSyncStatus('Salvataggio voce economica...')
+      const result = await createSupabaseBusinessEntry(cleanEntry, activeCompanyId)
+
+      if (result.error) {
+        setOperationsSyncStatus(`Voce economica non salvata: ${result.error.message}`)
+        return false
+      }
+
+      setBusinessEntryRecords((currentEntries) => [result.data, ...currentEntries])
+      setOperationsSyncStatus('Voce economica salvata.')
+      return result.data
+    }
+
+    const localEntry = {
+      ...cleanEntry,
+      companyId: activeCompanyId,
+      createdAt: new Date().toISOString(),
+      id: `business-entry-${Date.now()}`,
+      updatedAt: new Date().toISOString(),
+    }
+
+    setBusinessEntryRecords((currentEntries) => [localEntry, ...currentEntries])
+    setOperationsSyncStatus('Voce economica aggiunta su questo dispositivo.')
     return localEntry
   }
 
@@ -10624,6 +10787,16 @@ function App() {
       return
     }
 
+    if (viewId === 'management') {
+      if (!canUseCurrentPlanFeature('costCenter')) {
+        showPlanFeatureLimit('costCenter', setOperationsSyncStatus)
+        return
+      }
+
+      setActiveView('management')
+      return
+    }
+
     if (viewId === 'newCost') {
       openCostReport({ add: true })
       return
@@ -10976,6 +11149,27 @@ function App() {
             <FeatureUpgradeGate
               description="Radar Risparmio usa costi, multe, scadenze, guasti e salute flotta. Se lo vedi bloccato, controlla lo stato pagamento o l attivazione azienda."
               featureName="Radar Risparmio"
+              icon={Banknote}
+              onUpgrade={openBillingSettings}
+            />
+          )
+        ) : activeView === 'management' ? (
+          planFeatureAccess.costCenter || planFeatureAccess.reports ? (
+            <ManagementControlWorkspace
+              businessEntryRecords={businessEntryRecords}
+              costEntryRecords={costEntryRecords}
+              driverRecords={driverRecords}
+              fuelMovementRecords={fuelMovementRecords}
+              fuelTankRecords={fuelTankRecords}
+              onCreateBusinessEntry={addBusinessEntryRecord}
+              onCreateFuelMovement={addFuelMovementRecord}
+              onCreateFuelTank={addFuelTankRecord}
+              vehicleRecords={vehicleRecords}
+            />
+          ) : (
+            <FeatureUpgradeGate
+              description="Controllo gestione, gasolio e margine aziendale sono inclusi nei piani Vygo attivi. Se li vedi bloccati, controlla lo stato pagamento o l attivazione azienda."
+              featureName="Controllo gestione"
               icon={Banknote}
               onUpgrade={openBillingSettings}
             />
@@ -12332,6 +12526,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
       id: 'business',
       label: 'Costi e report',
       items: [
+        { id: 'management', label: t('nav.management'), icon: Banknote },
         { id: 'savings', label: t('nav.savings'), icon: Gauge },
         { id: 'reports', label: t('nav.reports'), icon: FileText },
         { id: 'costs', label: t('nav.costs'), icon: Banknote },
@@ -16012,6 +16207,474 @@ function ReportsWorkspace({
         vehicleCheckRecords={vehicleCheckRecords}
         vehicleRecords={vehicleRecords}
       />
+    </section>
+  )
+}
+
+const fuelMovementTypeOptions = [
+  { label: 'Scarico su mezzo', value: 'dispense' },
+  { label: 'Carico cisterna', value: 'load' },
+  { label: 'Rettifica giacenza', value: 'adjustment' },
+]
+
+const businessEntryTypeOptions = [
+  { label: 'Ricavo', value: 'revenue' },
+  { label: 'Costo fisso', value: 'fixed_cost' },
+  { label: 'Costo variabile', value: 'variable_cost' },
+]
+
+const businessCategoryOptions = [
+  { label: 'Viaggi / servizi', value: 'transport_revenue' },
+  { label: 'Cliente / commessa', value: 'customer' },
+  { label: 'Affitto o mutuo', value: 'rent_mortgage' },
+  { label: 'Personale', value: 'payroll' },
+  { label: 'Bollette e utenze', value: 'utilities' },
+  { label: 'Assicurazioni', value: 'insurance' },
+  { label: 'Pedaggi', value: 'toll' },
+  { label: 'Carburante', value: 'fuel' },
+  { label: 'Manutenzioni', value: 'maintenance' },
+  { label: 'Altro', value: 'other' },
+]
+
+function applyFuelMovementToTankSnapshot(tanks = [], movement = {}) {
+  if (!movement.tankId) return tanks
+
+  const liters = Number(movement.liters ?? 0)
+  const multiplier = movement.movementType === 'dispense' ? -1 : 1
+
+  return tanks.map((tank) => {
+    if (tank.id !== movement.tankId) return tank
+
+    return {
+      ...tank,
+      currentLiters: Math.max(0, Number(tank.currentLiters ?? tank.initialLiters ?? 0) + liters * multiplier),
+      lastMovementAt: movement.occurredAt || new Date().toISOString(),
+    }
+  })
+}
+
+function formatLiters(value = 0) {
+  return `${new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1 }).format(Number(value) || 0)} L`
+}
+
+function getTankLevelPercent(tank = {}) {
+  const capacity = Number(tank.capacityLiters ?? 0)
+  if (!capacity) return 0
+
+  return Math.max(0, Math.min(100, Math.round((Number(tank.currentLiters ?? tank.initialLiters ?? 0) / capacity) * 100)))
+}
+
+function getBusinessEntryTypeLabel(value = 'fixed_cost') {
+  return businessEntryTypeOptions.find((option) => option.value === value)?.label ?? 'Voce'
+}
+
+function buildManagementControlData({
+  businessEntryRecords = [],
+  costEntryRecords = [],
+  fuelMovementRecords = [],
+  fuelTankRecords = [],
+  vehicleRecords = [],
+} = {}) {
+  const monthStart = getFaultCostPeriodStart('month')
+  const currentMonthBusinessEntries = businessEntryRecords.filter((entry) => new Date(entry.occurredAt) >= monthStart)
+  const currentMonthCostEntries = costEntryRecords.filter((entry) => new Date(getCostEntryDate(entry)) >= monthStart)
+  const currentMonthFuelMovements = fuelMovementRecords.filter((movement) => new Date(movement.occurredAt) >= monthStart)
+  const revenueCents = currentMonthBusinessEntries
+    .filter((entry) => entry.entryType === 'revenue')
+    .reduce((total, entry) => total + Number(entry.amountCents ?? 0), 0)
+  const businessCostCents = currentMonthBusinessEntries
+    .filter((entry) => entry.entryType !== 'revenue')
+    .reduce((total, entry) => total + Number(entry.amountCents ?? 0), 0)
+  const operationalCostCents = currentMonthCostEntries.reduce((total, entry) => total + Number(entry.amountCents ?? 0), 0)
+  const fuelLoadRows = currentMonthFuelMovements.filter((movement) => movement.movementType === 'load' && Number(movement.totalCostCents ?? 0) > 0)
+  const fuelCostSourceRows = fuelLoadRows.length
+    ? fuelLoadRows
+    : currentMonthFuelMovements.filter((movement) => movement.movementType === 'dispense')
+  const fuelCostCents = fuelCostSourceRows.reduce((total, movement) => total + Number(movement.totalCostCents ?? 0), 0)
+  const totalCostCents = businessCostCents + operationalCostCents + fuelCostCents
+  const marginCents = revenueCents - totalCostCents
+  const lowTankRows = fuelTankRecords.filter((tank) => (
+    tank.status !== 'archived'
+    && Number(tank.warningThresholdLiters ?? 0) > 0
+    && Number(tank.currentLiters ?? tank.initialLiters ?? 0) <= Number(tank.warningThresholdLiters ?? 0)
+  ))
+  const vehicleConsumptionRows = vehicleRecords
+    .map((vehicle) => {
+      const movements = fuelMovementRecords
+        .filter((movement) => movement.vehicleId === vehicle.id && movement.movementType === 'dispense')
+        .sort((first, second) => new Date(first.occurredAt) - new Date(second.occurredAt))
+      const monthMovements = movements.filter((movement) => new Date(movement.occurredAt) >= monthStart)
+      const totalLiters = monthMovements.reduce((total, movement) => total + Number(movement.liters ?? 0), 0)
+      const totalFuelCents = monthMovements.reduce((total, movement) => total + Number(movement.totalCostCents ?? 0), 0)
+      const odometerRows = movements.filter((movement) => Number(movement.odometerKm ?? 0) > 0)
+      const firstOdometer = Number(odometerRows[0]?.odometerKm ?? 0)
+      const lastOdometer = Number(odometerRows.at(-1)?.odometerKm ?? 0)
+      const kmDelta = Math.max(0, lastOdometer - firstOdometer)
+      const kmPerLiter = kmDelta > 0 && totalLiters > 0 ? kmDelta / totalLiters : 0
+
+      return {
+        kmDelta,
+        kmPerLiter,
+        lastOdometer,
+        movementCount: monthMovements.length,
+        totalFuelCents,
+        totalLiters,
+        vehicle,
+      }
+    })
+    .filter((row) => row.totalLiters > 0 || row.movementCount > 0)
+    .sort((first, second) => second.totalFuelCents - first.totalFuelCents || first.kmPerLiter - second.kmPerLiter)
+  const validConsumptionRows = vehicleConsumptionRows.filter((row) => row.kmPerLiter > 0)
+  const averageKmPerLiter = validConsumptionRows.length
+    ? validConsumptionRows.reduce((total, row) => total + row.kmPerLiter, 0) / validConsumptionRows.length
+    : 0
+  const anomalyRows = averageKmPerLiter
+    ? validConsumptionRows.filter((row) => row.kmPerLiter < averageKmPerLiter * 0.8)
+    : []
+
+  return {
+    anomalyRows,
+    averageKmPerLiter,
+    businessCostCents,
+    fuelCostCents,
+    lowTankRows,
+    marginCents,
+    operationalCostCents,
+    recentBusinessEntries: businessEntryRecords.slice(0, 6),
+    recentFuelMovements: fuelMovementRecords.slice(0, 8),
+    revenueCents,
+    totalCostCents,
+    vehicleConsumptionRows,
+  }
+}
+
+function ManagementControlWorkspace({
+  businessEntryRecords = [],
+  costEntryRecords = [],
+  driverRecords = [],
+  fuelMovementRecords = [],
+  fuelTankRecords = [],
+  onCreateBusinessEntry,
+  onCreateFuelMovement,
+  onCreateFuelTank,
+  vehicleRecords = [],
+}) {
+  const { language } = useI18n()
+  const defaultCurrency = getDefaultCurrency(language)
+  const [tankForm, setTankForm] = useState({
+    capacityLiters: '',
+    initialLiters: '',
+    location: '',
+    name: 'Cisterna gasolio',
+    notes: '',
+    warningThresholdLiters: '',
+  })
+  const [fuelForm, setFuelForm] = useState({
+    documentNumber: '',
+    driverId: '',
+    liters: '',
+    movementType: 'dispense',
+    notes: '',
+    occurredAt: new Date().toISOString().slice(0, 16),
+    odometerKm: '',
+    supplier: '',
+    tankId: fuelTankRecords[0]?.id ?? '',
+    totalAmount: '',
+    unitPrice: '',
+    vehicleId: vehicleRecords[0]?.id ?? '',
+  })
+  const [businessForm, setBusinessForm] = useState({
+    amount: '',
+    category: 'transport_revenue',
+    counterparty: '',
+    entryType: 'revenue',
+    notes: '',
+    occurredAt: getDateInputToday(),
+    recurring: false,
+    title: '',
+    vehicleId: '',
+  })
+  const [status, setStatus] = useState('')
+  const data = buildManagementControlData({
+    businessEntryRecords,
+    costEntryRecords,
+    fuelMovementRecords,
+    fuelTankRecords,
+    vehicleRecords,
+  })
+  const primaryTone = data.marginCents >= 0 ? 'success' : 'danger'
+  const activeTankId = fuelTankRecords.some((tank) => tank.id === fuelForm.tankId) ? fuelForm.tankId : fuelTankRecords[0]?.id ?? ''
+  const activeVehicleId = vehicleRecords.some((vehicle) => vehicle.id === fuelForm.vehicleId) ? fuelForm.vehicleId : vehicleRecords[0]?.id ?? ''
+
+  function updateTankForm(field, value) {
+    setTankForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  function updateFuelForm(field, value) {
+    setFuelForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  function updateBusinessForm(field, value) {
+    setBusinessForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  async function handleTankSubmit(event) {
+    event.preventDefault()
+    if (!tankForm.name.trim() || Number(tankForm.capacityLiters) <= 0) {
+      setStatus('Inserisci nome cisterna e capienza.')
+      return
+    }
+
+    const result = await onCreateFuelTank({
+      ...tankForm,
+      capacityLiters: Number(tankForm.capacityLiters),
+      initialLiters: Number(tankForm.initialLiters || 0),
+      warningThresholdLiters: Number(tankForm.warningThresholdLiters || 0),
+    })
+
+    if (result) {
+      setTankForm({
+        capacityLiters: '',
+        initialLiters: '',
+        location: '',
+        name: 'Cisterna gasolio',
+        notes: '',
+        warningThresholdLiters: '',
+      })
+      setStatus('Cisterna salvata.')
+    }
+  }
+
+  async function handleFuelSubmit(event) {
+    event.preventDefault()
+    const movementType = fuelForm.movementType || 'dispense'
+    const tankId = activeTankId
+    const vehicleId = activeVehicleId
+
+    if (!tankId || Number(fuelForm.liters) <= 0 || (movementType === 'dispense' && !vehicleId)) {
+      setStatus('Inserisci cisterna, litri e targa quando scarichi su un mezzo.')
+      return
+    }
+
+    const result = await onCreateFuelMovement({
+      ...fuelForm,
+      currency: defaultCurrency,
+      liters: Number(fuelForm.liters),
+      movementType,
+      odometerKm: fuelForm.odometerKm ? Number(fuelForm.odometerKm) : '',
+      tankId,
+      totalCostCents: parseMoneyToCents(fuelForm.totalAmount),
+      unitPriceCents: fuelForm.unitPrice ? parseMoneyToCents(fuelForm.unitPrice) : '',
+      vehicleId: movementType === 'dispense' ? vehicleId : '',
+    })
+
+    if (result) {
+      setFuelForm((currentForm) => ({
+        ...currentForm,
+        documentNumber: '',
+        liters: '',
+        notes: '',
+        occurredAt: new Date().toISOString().slice(0, 16),
+        odometerKm: '',
+        supplier: '',
+        totalAmount: '',
+        unitPrice: '',
+      }))
+      setStatus('Movimento gasolio salvato.')
+    }
+  }
+
+  async function handleBusinessSubmit(event) {
+    event.preventDefault()
+    const amountCents = parseMoneyToCents(businessForm.amount)
+
+    if (!businessForm.title.trim() || !amountCents) {
+      setStatus('Inserisci descrizione e importo.')
+      return
+    }
+
+    const result = await onCreateBusinessEntry({
+      ...businessForm,
+      amountCents,
+      currency: defaultCurrency,
+      vehicleId: businessForm.vehicleId,
+    })
+
+    if (result) {
+      setBusinessForm({
+        amount: '',
+        category: businessForm.category,
+        counterparty: '',
+        entryType: businessForm.entryType,
+        notes: '',
+        occurredAt: getDateInputToday(),
+        recurring: false,
+        title: '',
+        vehicleId: '',
+      })
+      setStatus('Voce economica salvata.')
+    }
+  }
+
+  return (
+    <section className="management-workspace" aria-label="Controllo gestione">
+      <div className={`panel management-hero-panel tone-${primaryTone}`}>
+        <div>
+          <p className="overline">Controllo gestione</p>
+          <h2>Quanto sta rendendo l azienda</h2>
+          <span>Ricavi, costi fissi, costi mezzi, gasolio e consumi in un solo quadro. Le integrazioni GPS e pedaggi diventeranno fonti dati, non schermate doppie.</span>
+        </div>
+        <div className="management-hero-score">
+          <strong>{formatMoneyCents(data.marginCents, defaultCurrency)}</strong>
+          <small>margine mese stimato</small>
+        </div>
+      </div>
+
+      <div className="management-kpi-grid">
+        <StrategicKpi label="Ricavi mese" tone="success" value={formatMoneyCents(data.revenueCents, defaultCurrency)} />
+        <StrategicKpi label="Costi mese" tone={data.totalCostCents ? 'warning' : 'success'} value={formatMoneyCents(data.totalCostCents, defaultCurrency)} />
+        <StrategicKpi label="Gasolio mese" tone={data.fuelCostCents ? 'info' : 'success'} value={formatMoneyCents(data.fuelCostCents, defaultCurrency)} />
+        <StrategicKpi label="Cisterne sotto soglia" tone={data.lowTankRows.length ? 'danger' : 'success'} value={data.lowTankRows.length} />
+        <StrategicKpi label="Consumo medio" tone={data.averageKmPerLiter ? 'info' : 'warning'} value={data.averageKmPerLiter ? `${data.averageKmPerLiter.toFixed(2)} km/L` : 'Da calcolare'} />
+      </div>
+
+      <StrategicGuide
+        title="Perche cambia tutto"
+        body="Il GPS dice dove si trova il mezzo. Vygo deve dire quanto quel mezzo rende, consuma, costa e quando sta diventando un problema economico."
+        items={['Registra ricavi e costi ricorrenti aziendali.', 'Carica cisterna e scarichi gasolio con km mezzo.', 'Controlla consumo per targa e anomalie rispetto alla media.']}
+      />
+
+      {status && <div className="management-status">{status}</div>}
+
+      <div className="management-form-grid">
+        <form className="panel management-form-card" onSubmit={handleTankSubmit}>
+          <StrategicSectionTitle icon={Fuel} overline="Cisterna" title="Nuova cisterna gasolio" />
+          <label>Nome<input value={tankForm.name} onChange={(event) => updateTankForm('name', event.target.value)} /></label>
+          <label>Luogo<input value={tankForm.location} onChange={(event) => updateTankForm('location', event.target.value)} placeholder="Es. deposito principale" /></label>
+          <label>Capienza litri<input min="0" step="0.01" type="number" value={tankForm.capacityLiters} onChange={(event) => updateTankForm('capacityLiters', event.target.value)} /></label>
+          <label>Litri iniziali<input min="0" step="0.01" type="number" value={tankForm.initialLiters} onChange={(event) => updateTankForm('initialLiters', event.target.value)} /></label>
+          <label>Soglia alert litri<input min="0" step="0.01" type="number" value={tankForm.warningThresholdLiters} onChange={(event) => updateTankForm('warningThresholdLiters', event.target.value)} /></label>
+          <label className="management-form-wide">Note<textarea value={tankForm.notes} onChange={(event) => updateTankForm('notes', event.target.value)} /></label>
+          <button className="primary-button full-button" type="submit"><Save size={16} /> Salva cisterna</button>
+        </form>
+
+        <form className="panel management-form-card" onSubmit={handleFuelSubmit}>
+          <StrategicSectionTitle icon={Fuel} overline="Gasolio" title="Carico o scarico" />
+          <label>Tipo<select value={fuelForm.movementType} onChange={(event) => updateFuelForm('movementType', event.target.value)}>
+            {fuelMovementTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select></label>
+          <label>Cisterna<select value={activeTankId} onChange={(event) => updateFuelForm('tankId', event.target.value)}>
+            {!fuelTankRecords.length && <option value="">Crea prima una cisterna</option>}
+            {fuelTankRecords.map((tank) => <option key={tank.id} value={tank.id}>{tank.name}</option>)}
+          </select></label>
+          <label>Mezzo<select disabled={fuelForm.movementType !== 'dispense'} value={activeVehicleId} onChange={(event) => updateFuelForm('vehicleId', event.target.value)}>
+            {!vehicleRecords.length && <option value="">Nessun mezzo</option>}
+            {vehicleRecords.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {getFleetTypeLabel(vehicle.fleetType)}</option>)}
+          </select></label>
+          <label>Autista<select value={fuelForm.driverId} onChange={(event) => updateFuelForm('driverId', event.target.value)}>
+            <option value="">Non assegnato</option>
+            {driverRecords.map((driver) => <option key={driver.id} value={driver.id}>{driver.name}</option>)}
+          </select></label>
+          <label>Litri<input min="0" step="0.01" type="number" value={fuelForm.liters} onChange={(event) => updateFuelForm('liters', event.target.value)} /></label>
+          <label>Km mezzo<input min="0" type="number" value={fuelForm.odometerKm} onChange={(event) => updateFuelForm('odometerKm', event.target.value)} /></label>
+          <label>Prezzo litro<input value={fuelForm.unitPrice} onChange={(event) => updateFuelForm('unitPrice', event.target.value)} placeholder="Es. 1,72" /></label>
+          <label>Totale euro<input value={fuelForm.totalAmount} onChange={(event) => updateFuelForm('totalAmount', event.target.value)} placeholder="Es. 350,00" /></label>
+          <label>Fornitore<input value={fuelForm.supplier} onChange={(event) => updateFuelForm('supplier', event.target.value)} /></label>
+          <label>Data<input type="datetime-local" value={fuelForm.occurredAt} onChange={(event) => updateFuelForm('occurredAt', event.target.value)} /></label>
+          <label className="management-form-wide">Note<textarea value={fuelForm.notes} onChange={(event) => updateFuelForm('notes', event.target.value)} /></label>
+          <button className="primary-button full-button" type="submit"><Save size={16} /> Salva movimento</button>
+        </form>
+
+        <form className="panel management-form-card" onSubmit={handleBusinessSubmit}>
+          <StrategicSectionTitle icon={Banknote} overline="Economia" title="Ricavo o costo aziendale" />
+          <label>Tipo<select value={businessForm.entryType} onChange={(event) => updateBusinessForm('entryType', event.target.value)}>
+            {businessEntryTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select></label>
+          <label>Categoria<select value={businessForm.category} onChange={(event) => updateBusinessForm('category', event.target.value)}>
+            {businessCategoryOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select></label>
+          <label>Descrizione<input value={businessForm.title} onChange={(event) => updateBusinessForm('title', event.target.value)} placeholder="Es. fatturato cliente, affitto, bolletta" /></label>
+          <label>Importo euro<input value={businessForm.amount} onChange={(event) => updateBusinessForm('amount', event.target.value)} placeholder="Es. 1200,00" /></label>
+          <label>Data<input type="date" value={businessForm.occurredAt} onChange={(event) => updateBusinessForm('occurredAt', event.target.value)} /></label>
+          <label>Controparte<input value={businessForm.counterparty} onChange={(event) => updateBusinessForm('counterparty', event.target.value)} placeholder="Cliente o fornitore" /></label>
+          <label>Collega targa<select value={businessForm.vehicleId} onChange={(event) => updateBusinessForm('vehicleId', event.target.value)}>
+            <option value="">Azienda generale</option>
+            {vehicleRecords.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.plate}</option>)}
+          </select></label>
+          <label className="checkbox-field management-checkbox"><input checked={businessForm.recurring} onChange={(event) => updateBusinessForm('recurring', event.target.checked)} type="checkbox" /> Ricorrente</label>
+          <label className="management-form-wide">Note<textarea value={businessForm.notes} onChange={(event) => updateBusinessForm('notes', event.target.value)} /></label>
+          <button className="primary-button full-button" type="submit"><Save size={16} /> Salva voce</button>
+        </form>
+      </div>
+
+      <div className="management-grid">
+        <section className="panel management-panel">
+          <StrategicSectionTitle icon={Fuel} overline="Giacenza" title="Cisterne e soglie" />
+          <div className="management-list">
+            {fuelTankRecords.map((tank) => {
+              const percent = getTankLevelPercent(tank)
+              const isLow = Number(tank.warningThresholdLiters ?? 0) > 0 && Number(tank.currentLiters ?? 0) <= Number(tank.warningThresholdLiters ?? 0)
+
+              return (
+                <article className={`management-tank-row ${isLow ? 'is-low' : ''}`} key={tank.id}>
+                  <div>
+                    <strong>{tank.name}</strong>
+                    <small>{tank.location || 'Deposito'} · soglia {formatLiters(tank.warningThresholdLiters)}</small>
+                  </div>
+                  <b>{formatLiters(tank.currentLiters)}</b>
+                  <span><i style={{ width: `${percent}%` }} /></span>
+                </article>
+              )
+            })}
+            {!fuelTankRecords.length && <StrategicEmptyLine label="Crea una cisterna per iniziare a controllare giacenza e alert." />}
+          </div>
+        </section>
+
+        <section className="panel management-panel">
+          <StrategicSectionTitle icon={Gauge} overline="Consumi" title="Km/litro per targa" />
+          <div className="management-list">
+            {data.vehicleConsumptionRows.slice(0, 8).map((row) => {
+              const isAnomaly = data.anomalyRows.some((anomaly) => anomaly.vehicle.id === row.vehicle.id)
+
+              return (
+                <article className={`strategic-row tone-${isAnomaly ? 'danger' : 'info'}`} key={row.vehicle.id}>
+                  <div>
+                    <strong>{row.vehicle.plate || 'Targa non inserita'}</strong>
+                    <small>{formatLiters(row.totalLiters)} · {formatMoneyCents(row.totalFuelCents, defaultCurrency)} · {row.kmDelta || 0} km letti</small>
+                  </div>
+                  <b>{row.kmPerLiter ? `${row.kmPerLiter.toFixed(2)} km/L` : 'Km mancanti'}</b>
+                </article>
+              )
+            })}
+            {!data.vehicleConsumptionRows.length && <StrategicEmptyLine label="Registra scarichi gasolio con km mezzo per calcolare i consumi." />}
+          </div>
+        </section>
+
+        <section className="panel management-panel">
+          <StrategicSectionTitle icon={Banknote} overline="Costi" title="Composizione mese" />
+          <div className="management-breakdown">
+            <span><small>Costi aziendali</small><strong>{formatMoneyCents(data.businessCostCents, defaultCurrency)}</strong></span>
+            <span><small>Costi mezzi gia registrati</small><strong>{formatMoneyCents(data.operationalCostCents, defaultCurrency)}</strong></span>
+            <span><small>Gasolio</small><strong>{formatMoneyCents(data.fuelCostCents, defaultCurrency)}</strong></span>
+          </div>
+        </section>
+
+        <section className="panel management-panel">
+          <StrategicSectionTitle icon={FileText} overline="Ultime voci" title="Movimenti economici" />
+          <div className="management-list">
+            {data.recentBusinessEntries.map((entry) => (
+              <article className={`strategic-row tone-${entry.entryType === 'revenue' ? 'success' : 'warning'}`} key={entry.id}>
+                <div>
+                  <strong>{entry.title}</strong>
+                  <small>{getBusinessEntryTypeLabel(entry.entryType)} · {formatOptionalDate(entry.occurredAt)}</small>
+                </div>
+                <b>{formatMoneyCents(entry.amountCents, entry.currency || defaultCurrency)}</b>
+              </article>
+            ))}
+            {!data.recentBusinessEntries.length && <StrategicEmptyLine label="Registra ricavi, affitti, bollette o costi generali per vedere il margine." />}
+          </div>
+        </section>
+      </div>
     </section>
   )
 }

@@ -267,6 +267,68 @@ function mapCostEntry(row) {
   }
 }
 
+function mapFuelTank(row = {}) {
+  return {
+    capacityLiters: Number(row.capacity_liters ?? 0),
+    companyId: row.company_id ?? '',
+    createdAt: row.created_at ?? '',
+    currentLiters: Number(row.current_liters ?? row.initial_liters ?? 0),
+    id: row.id,
+    initialLiters: Number(row.initial_liters ?? 0),
+    lastMovementAt: row.last_movement_at ?? '',
+    location: row.location ?? '',
+    name: row.name ?? 'Cisterna',
+    notes: row.notes ?? '',
+    status: row.status ?? 'active',
+    updatedAt: row.updated_at ?? '',
+    warningThresholdLiters: Number(row.warning_threshold_liters ?? 0),
+  }
+}
+
+function mapFuelMovement(row = {}) {
+  return {
+    companyId: row.company_id ?? '',
+    createdAt: row.created_at ?? '',
+    currency: row.currency ?? 'EUR',
+    documentNumber: row.document_number ?? '',
+    driverId: row.driver_id ?? '',
+    id: row.id,
+    liters: Number(row.liters ?? 0),
+    movementType: row.movement_type ?? 'dispense',
+    notes: row.notes ?? '',
+    occurredAt: row.occurred_at ?? '',
+    odometerKm: row.odometer_km ?? '',
+    supplier: row.supplier ?? '',
+    tankId: row.tank_id ?? '',
+    totalCostCents: Number(row.total_cost_cents ?? 0),
+    unitPriceCents: row.unit_price_cents == null ? '' : Number(row.unit_price_cents),
+    updatedAt: row.updated_at ?? '',
+    vehicleId: row.vehicle_id ?? '',
+  }
+}
+
+function mapBusinessEntry(row = {}) {
+  return {
+    amountCents: Number(row.amount_cents ?? 0),
+    assetId: row.asset_id ?? '',
+    category: row.category ?? 'other',
+    companyId: row.company_id ?? '',
+    counterparty: row.counterparty ?? '',
+    createdAt: row.created_at ?? '',
+    currency: row.currency ?? 'EUR',
+    driverId: row.driver_id ?? '',
+    entryType: row.entry_type ?? 'fixed_cost',
+    id: row.id,
+    notes: row.notes ?? '',
+    occurredAt: row.occurred_at ?? '',
+    periodMonth: row.period_month ?? '',
+    recurring: Boolean(row.recurring),
+    title: row.title ?? 'Voce economica',
+    updatedAt: row.updated_at ?? '',
+    vehicleId: row.vehicle_id ?? '',
+  }
+}
+
 function mapDeliveryPod(row = {}) {
   return {
     code: row.code ?? '',
@@ -662,6 +724,75 @@ const costEntrySelectColumns = `
   notes,
   file_bucket,
   file_path,
+  created_at,
+  updated_at
+`
+
+const fuelTankSelectColumns = `
+  id,
+  company_id,
+  name,
+  location,
+  capacity_liters,
+  warning_threshold_liters,
+  initial_liters,
+  current_liters,
+  last_movement_at,
+  status,
+  created_at,
+  updated_at
+`
+
+const fuelTankBaseSelectColumns = `
+  id,
+  company_id,
+  name,
+  location,
+  capacity_liters,
+  warning_threshold_liters,
+  initial_liters,
+  status,
+  notes,
+  created_at,
+  updated_at
+`
+
+const fuelMovementSelectColumns = `
+  id,
+  company_id,
+  tank_id,
+  vehicle_id,
+  driver_id,
+  movement_type,
+  liters,
+  unit_price_cents,
+  total_cost_cents,
+  currency,
+  odometer_km,
+  supplier,
+  document_number,
+  occurred_at,
+  notes,
+  created_at,
+  updated_at
+`
+
+const businessEntrySelectColumns = `
+  id,
+  company_id,
+  entry_type,
+  category,
+  title,
+  amount_cents,
+  currency,
+  occurred_at,
+  period_month,
+  vehicle_id,
+  asset_id,
+  driver_id,
+  counterparty,
+  recurring,
+  notes,
   created_at,
   updated_at
 `
@@ -1921,6 +2052,81 @@ export async function fetchCompanyCostEntries(companyId = configuredCompanyId) {
   return { data: data?.map(mapCostEntry) ?? [], error }
 }
 
+export async function fetchCompanyFuelTanks(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  let { data, error } = await supabase
+    .from('fuel_tank_levels')
+    .select(fuelTankSelectColumns)
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    const fallbackResult = await supabase
+      .from('fuel_tanks')
+      .select(fuelTankBaseSelectColumns)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapFuelTank) ?? [], error }
+}
+
+export async function fetchCompanyFuelMovements(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('fuel_movements')
+    .select(fuelMovementSelectColumns)
+    .eq('company_id', companyId)
+    .order('occurred_at', { ascending: false })
+    .limit(300)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapFuelMovement) ?? [], error }
+}
+
+export async function fetchCompanyBusinessEntries(companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from('business_entries')
+    .select(businessEntrySelectColumns)
+    .eq('company_id', companyId)
+    .order('occurred_at', { ascending: false })
+    .limit(300)
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: [], error: null, missingSchema: true }
+  }
+
+  return { data: data?.map(mapBusinessEntry) ?? [], error }
+}
+
 export async function fetchDeliveryPods(companyId = configuredCompanyId) {
   const supabase = await getSupabaseClient()
 
@@ -2675,6 +2881,133 @@ export async function createCostEntryRecord(entry, companyId = configuredCompany
   }
 
   return { data: data ? mapCostEntry(data) : null, error }
+}
+
+export async function createFuelTankRecord(tank, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const payload = {
+    capacity_liters: Number(tank.capacityLiters ?? 0),
+    company_id: companyId,
+    created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
+    initial_liters: Number(tank.initialLiters ?? 0),
+    location: tank.location?.trim() || null,
+    name: tank.name?.trim() || 'Cisterna gasolio',
+    notes: tank.notes?.trim() || null,
+    status: tank.status || 'active',
+    warning_threshold_liters: Number(tank.warningThresholdLiters ?? 0),
+  }
+
+  const { data, error } = await supabase
+    .from('fuel_tanks')
+    .insert(payload)
+    .select(fuelTankBaseSelectColumns)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Modulo gasolio non ancora attivo. Esegui il file SQL 60 e riprova.' },
+    }
+  }
+
+  return { data: data ? mapFuelTank(data) : null, error }
+}
+
+export async function createFuelMovementRecord(movement, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const liters = Number(movement.liters ?? 0)
+  const unitPriceCents = movement.unitPriceCents === '' || movement.unitPriceCents == null
+    ? null
+    : Number(movement.unitPriceCents)
+  const totalCostCents = movement.totalCostCents === '' || movement.totalCostCents == null
+    ? unitPriceCents && liters ? Math.round(unitPriceCents * liters) : null
+    : Number(movement.totalCostCents)
+  const payload = {
+    company_id: companyId,
+    created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
+    currency: movement.currency || 'EUR',
+    document_number: movement.documentNumber?.trim() || null,
+    driver_id: movement.driverId || null,
+    liters,
+    movement_type: movement.movementType || 'dispense',
+    notes: movement.notes?.trim() || null,
+    occurred_at: movement.occurredAt || new Date().toISOString(),
+    odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
+    supplier: movement.supplier?.trim() || null,
+    tank_id: movement.tankId || null,
+    total_cost_cents: totalCostCents,
+    unit_price_cents: unitPriceCents,
+    vehicle_id: movement.vehicleId || null,
+  }
+
+  const { data, error } = await supabase
+    .from('fuel_movements')
+    .insert(payload)
+    .select(fuelMovementSelectColumns)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Modulo gasolio non ancora attivo. Esegui il file SQL 60 e riprova.' },
+    }
+  }
+
+  return { data: data ? mapFuelMovement(data) : null, error }
+}
+
+export async function createBusinessEntryRecord(entry, companyId = configuredCompanyId) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase || !companyId) {
+    return { data: null, error: null }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const payload = {
+    amount_cents: Number(entry.amountCents ?? 0),
+    asset_id: entry.assetId || null,
+    category: entry.category?.trim() || 'other',
+    company_id: companyId,
+    counterparty: entry.counterparty?.trim() || null,
+    created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
+    currency: entry.currency || 'EUR',
+    driver_id: entry.driverId || null,
+    entry_type: entry.entryType || 'fixed_cost',
+    notes: entry.notes?.trim() || null,
+    occurred_at: entry.occurredAt || new Date().toISOString().slice(0, 10),
+    period_month: entry.periodMonth || null,
+    recurring: Boolean(entry.recurring),
+    title: entry.title?.trim() || 'Voce economica',
+    vehicle_id: entry.vehicleId || null,
+  }
+
+  const { data, error } = await supabase
+    .from('business_entries')
+    .insert(payload)
+    .select(businessEntrySelectColumns)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return {
+      data: null,
+      error: { message: 'Controllo gestione non ancora attivo. Esegui il file SQL 60 e riprova.' },
+    }
+  }
+
+  return { data: data ? mapBusinessEntry(data) : null, error }
 }
 
 export async function createDeliveryPodRecord(pod, companyId = configuredCompanyId, proofFile = null) {

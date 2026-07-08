@@ -16408,8 +16408,15 @@ function ReportsWorkspace({
     if (fleetDashboardDriverId === 'all') return true
     return getMovementDriverId({ driverId, personId }) === fleetDashboardDriverId
   }
+  const isFleetDashboardFiltered = fleetDashboardVehicleId !== 'all' || fleetDashboardDriverId !== 'all'
   const allFuelMovementRows = fuelMovementRecords
   const allDispenseFuelRows = allFuelMovementRows.filter((movement) => movement.movementType === 'dispense')
+  const matchesFuelMovementSelection = (movement = {}) => {
+    if (movement.movementType !== 'dispense') return !isFleetDashboardFiltered
+
+    return matchesFleetDashboardVehicle(movement.vehicleId)
+      && matchesFleetDashboardDriver(movement.driverId, movement.personId)
+  }
   const dashboardCostRows = reportRows.filter((row) => (
     matchesFleetDashboardVehicle(row.vehicleId)
     && matchesFleetDashboardDriver(row.driverId)
@@ -16420,8 +16427,9 @@ function ReportsWorkspace({
     matchesFleetDashboardVehicle(movement.vehicleId)
     && matchesFleetDashboardDriver(movement.driverId, movement.personId)
   ))
-  const dashboardFuelOutsideSelectionCount = Math.max(0, allDispenseFuelRows.length - dashboardFuelRows.length)
-  const dashboardFuelUnlinkedCount = allDispenseFuelRows.filter((movement) => (
+  const dashboardFuelMovementRows = allFuelMovementRows.filter(matchesFuelMovementSelection)
+  const dashboardFuelOutsideSelectionCount = isFleetDashboardFiltered ? Math.max(0, allDispenseFuelRows.length - dashboardFuelRows.length) : 0
+  const dashboardFuelUnlinkedCount = dashboardFuelRows.filter((movement) => (
     !movement.vehicleId || !activeVehicles.some((vehicle) => vehicle.id === movement.vehicleId)
   )).length
   const dashboardVehicleConsumptionRows = (selectedFleetVehicle ? [selectedFleetVehicle] : activeVehicles)
@@ -16585,7 +16593,7 @@ function ReportsWorkspace({
           <small>Cruscotto mezzo</small>
           <strong>{dashboardTitle}</strong>
           <em>
-            {dashboardFuelMonthCount} rif. mese · {dashboardFuelTotalCount} rif. storico · {allFuelMovementRows.length} mov. totali · {dashboardFuelOutsideSelectionCount ? `${dashboardFuelOutsideSelectionCount} fuori selezione · ` : ''}{dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
+            {dashboardFuelMonthCount} rif. mese · {dashboardFuelTotalCount} rif. storico · {dashboardFuelMovementRows.length} mov. selezione · {dashboardFuelOutsideSelectionCount ? `${dashboardFuelOutsideSelectionCount} fuori filtro · ` : ''}{dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
           </em>
         </span>
         <span className="fleet-dashboard-launch-action">{isFleetDashboardOpen ? 'Chiudi' : 'Apri'}</span>
@@ -16667,9 +16675,9 @@ function ReportsWorkspace({
             <div className="fleet-dashboard-mini-grid">
               <span><small>Rif. mese</small><strong>{dashboardFuelMonthCount}</strong></span>
               <span><small>Rif. storico</small><strong>{dashboardFuelTotalCount}</strong></span>
-              <span><small>Mov. totali</small><strong>{allFuelMovementRows.length}</strong></span>
-              <span><small>Rif. salvati</small><strong>{allDispenseFuelRows.length}</strong></span>
-              <span><small>Fuori selezione</small><strong>{dashboardFuelOutsideSelectionCount}</strong></span>
+              <span><small>Mov. selezione</small><strong>{dashboardFuelMovementRows.length}</strong></span>
+              <span><small>Rif. selezione</small><strong>{dashboardFuelRows.length}</strong></span>
+              <span><small>Fuori filtro</small><strong>{dashboardFuelOutsideSelectionCount}</strong></span>
               <span><small>Litri mese</small><strong>{formatLiters(dashboardFuelMonthLiters)}</strong></span>
               <span><small>Litri storico</small><strong>{formatLiters(dashboardFuelTotalLiters || dashboardFuelLiters)}</strong></span>
               <span><small>Da collegare</small><strong>{dashboardFuelUnlinkedCount}</strong></span>

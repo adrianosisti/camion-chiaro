@@ -16482,6 +16482,57 @@ function getTankLevelPercent(tank = {}) {
   return Math.max(0, Math.min(100, Math.round((Number(tank.currentLiters ?? tank.initialLiters ?? 0) / capacity) * 100)))
 }
 
+function buildVehicleFuelConsumption(vehicle = {}, fuelMovementRecords = [], monthStart = getFaultCostPeriodStart('month')) {
+  const movements = fuelMovementRecords
+    .filter((movement) => movement.vehicleId === vehicle.id && movement.movementType === 'dispense')
+    .sort((first, second) => new Date(first.occurredAt) - new Date(second.occurredAt))
+  const monthMovements = movements.filter((movement) => new Date(movement.occurredAt) >= monthStart)
+  const totalLiters = monthMovements.reduce((total, movement) => total + Number(movement.liters ?? 0), 0)
+  const totalFuelCents = monthMovements.reduce((total, movement) => total + Number(movement.totalCostCents ?? 0), 0)
+  const odometerRows = movements.filter((movement) => Number(movement.odometerKm ?? 0) > 0)
+  const firstOdometerRow = odometerRows[0]
+  const lastOdometerRow = odometerRows.at(-1)
+  const firstOdometer = Number(firstOdometerRow?.odometerKm ?? 0)
+  const lastOdometer = Number(lastOdometerRow?.odometerKm ?? 0)
+  const kmDelta = Math.max(0, lastOdometer - firstOdometer)
+  const intervalLiters = firstOdometerRow && lastOdometerRow
+    ? movements
+      .filter((movement) => {
+        const movementDate = new Date(movement.occurredAt)
+        return movementDate > new Date(firstOdometerRow.occurredAt) && movementDate <= new Date(lastOdometerRow.occurredAt)
+      })
+      .reduce((total, movement) => total + Number(movement.liters ?? 0), 0)
+    : 0
+  const litersForCalculation = intervalLiters || (odometerRows.length >= 2 ? totalLiters : 0)
+  const kmPerLiter = kmDelta > 0 && litersForCalculation > 0 ? kmDelta / litersForCalculation : 0
+  let consumptionStatus
+
+  if (!movements.length) {
+    consumptionStatus = 'Nessun rifornimento collegato alla targa.'
+  } else if (odometerRows.length < 2) {
+    consumptionStatus = 'Servono due letture km sullo stesso mezzo.'
+  } else if (kmDelta <= 0) {
+    consumptionStatus = 'Il secondo km deve essere maggiore del primo.'
+  } else if (litersForCalculation <= 0) {
+    consumptionStatus = 'Litri mancanti nel periodo tra le due letture km.'
+  } else {
+    consumptionStatus = `${kmDelta.toLocaleString('it-IT')} km su ${formatLiters(litersForCalculation)}`
+  }
+
+  return {
+    consumptionStatus,
+    firstOdometer,
+    kmDelta,
+    kmPerLiter,
+    lastOdometer,
+    litersForCalculation,
+    movementCount: monthMovements.length,
+    totalFuelCents,
+    totalLiters,
+    vehicle,
+  }
+}
+
 function getBusinessEntryTypeLabel(value = 'fixed_cost') {
   return businessEntryTypeOptions.find((option) => option.value === value)?.label ?? 'Voce'
 }
@@ -16518,29 +16569,7 @@ function buildManagementControlData({
     && Number(tank.currentLiters ?? tank.initialLiters ?? 0) <= Number(tank.warningThresholdLiters ?? 0)
   ))
   const vehicleConsumptionRows = vehicleRecords
-    .map((vehicle) => {
-      const movements = fuelMovementRecords
-        .filter((movement) => movement.vehicleId === vehicle.id && movement.movementType === 'dispense')
-        .sort((first, second) => new Date(first.occurredAt) - new Date(second.occurredAt))
-      const monthMovements = movements.filter((movement) => new Date(movement.occurredAt) >= monthStart)
-      const totalLiters = monthMovements.reduce((total, movement) => total + Number(movement.liters ?? 0), 0)
-      const totalFuelCents = monthMovements.reduce((total, movement) => total + Number(movement.totalCostCents ?? 0), 0)
-      const odometerRows = movements.filter((movement) => Number(movement.odometerKm ?? 0) > 0)
-      const firstOdometer = Number(odometerRows[0]?.odometerKm ?? 0)
-      const lastOdometer = Number(odometerRows.at(-1)?.odometerKm ?? 0)
-      const kmDelta = Math.max(0, lastOdometer - firstOdometer)
-      const kmPerLiter = kmDelta > 0 && totalLiters > 0 ? kmDelta / totalLiters : 0
-
-      return {
-        kmDelta,
-        kmPerLiter,
-        lastOdometer,
-        movementCount: monthMovements.length,
-        totalFuelCents,
-        totalLiters,
-        vehicle,
-      }
-    })
+    .map((vehicle) => buildVehicleFuelConsumption(vehicle, fuelMovementRecords, monthStart))
     .filter((row) => row.totalLiters > 0 || row.movementCount > 0)
     .sort((first, second) => second.totalFuelCents - first.totalFuelCents || first.kmPerLiter - second.kmPerLiter)
   const validConsumptionRows = vehicleConsumptionRows.filter((row) => row.kmPerLiter > 0)
@@ -16979,7 +17008,7 @@ function ManagementControlWorkspace({
                 <article className={`strategic-row tone-${isAnomaly ? 'danger' : 'info'}`} key={row.vehicle.id}>
                   <div>
                     <strong>{row.vehicle.plate || 'Targa non inserita'}</strong>
-                    <small>{formatLiters(row.totalLiters)} · {formatMoneyCents(row.totalFuelCents, defaultCurrency)} · {row.kmDelta || 0} km letti</small>
+                    <small>{formatLiters(row.totalLiters)} mese · {formatMoneyCents(row.totalFuelCents, defaultCurrency)} · {row.consumptionStatus}</small>
                   </div>
                   <b>{row.kmPerLiter ? `${row.kmPerLiter.toFixed(2)} km/L` : 'Km mancanti'}</b>
                 </article>

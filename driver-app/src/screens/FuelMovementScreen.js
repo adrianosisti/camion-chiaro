@@ -15,6 +15,11 @@ function getDefaultVehicleId({ selectedVehicleId = '', vehicles = [] }) {
   return vehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')?.id ?? vehicles[0]?.id ?? ''
 }
 
+function parseDecimalInput(value = '') {
+  const parsed = Number.parseFloat(String(value).replace(/\s/g, '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 export function FuelMovementScreen({
   context,
   currentPerson,
@@ -52,14 +57,20 @@ export function FuelMovementScreen({
   })
   const [isSaving, setIsSaving] = useState(false)
   const [wheelPicker, setWheelPicker] = useState(null)
-  const activeVehicle = vehicles.find((vehicle) => vehicle.id === form.vehicleId)
+  const activeTankId = tanks.some((tank) => tank.id === form.tankId) ? form.tankId : tankOptions[0]?.id ?? ''
+  const activeVehicleId = vehicles.some((vehicle) => vehicle.id === form.vehicleId)
+    ? form.vehicleId
+    : getDefaultVehicleId({ selectedVehicleId, vehicles })
+  const activeVehicle = vehicles.find((vehicle) => vehicle.id === activeVehicleId)
 
   function updateForm(field, value) {
     setForm((currentForm) => ({ ...currentForm, [field]: value }))
   }
 
   async function submitFuelMovement() {
-    if (!form.tankId || !form.vehicleId || Number(form.liters) <= 0) {
+    const liters = parseDecimalInput(form.liters)
+
+    if (!activeTankId || !activeVehicleId || liters <= 0) {
       Alert.alert('Dati mancanti', 'Seleziona cisterna, mezzo e litri riforniti.')
       return
     }
@@ -67,13 +78,13 @@ export function FuelMovementScreen({
     setIsSaving(true)
     const result = await onSubmit?.({
       driverId: driver?.id ?? currentPerson?.linkedDriverId ?? '',
-      liters: Number(form.liters),
+      liters,
       movementType: 'dispense',
       notes: form.notes,
       odometerKm: form.odometerKm,
       personId: currentPerson?.id ?? '',
-      tankId: form.tankId,
-      vehicleId: form.vehicleId,
+      tankId: activeTankId,
+      vehicleId: activeVehicleId,
     })
     setIsSaving(false)
 
@@ -115,9 +126,9 @@ export function FuelMovementScreen({
                 onSelect: (value) => updateForm('tankId', value),
                 options: tankOptions,
                 title: 'Scegli cisterna',
-                value: form.tankId,
+                value: activeTankId,
               })}
-              value={getWheelOptionLabel(tankOptions, form.tankId, 'Scegli cisterna')}
+              value={getWheelOptionLabel(tankOptions, activeTankId, 'Scegli cisterna')}
             />
             <WheelPickerField
               label="Mezzo"
@@ -125,9 +136,9 @@ export function FuelMovementScreen({
                 onSelect: (value) => updateForm('vehicleId', value),
                 options: vehicleOptions,
                 title: 'Scegli mezzo',
-                value: form.vehicleId,
+                value: activeVehicleId,
               })}
-              value={getWheelOptionLabel(vehicleOptions, form.vehicleId, 'Scegli mezzo')}
+              value={getWheelOptionLabel(vehicleOptions, activeVehicleId, 'Scegli mezzo')}
             />
             <TextInput
               keyboardType="decimal-pad"

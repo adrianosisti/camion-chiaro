@@ -7823,6 +7823,7 @@ body:has(.app-shell) {
   align-items: center;
   justify-content: center;
   gap: 7px;
+  min-width: 0;
   min-height: 40px;
   border: 1px solid #d6eef5;
   border-radius: 8px;
@@ -9624,7 +9625,7 @@ body:has(.app-shell) {
 
 .report-active-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 8px;
   padding: 10px;
   border: 1px solid #c8edf5;
@@ -9713,6 +9714,7 @@ body:has(.app-shell) {
 .report-export-footer {
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   border-top: 1px solid #d6eef5;
 }
 
@@ -9938,13 +9940,14 @@ body:has(.app-shell) {
 
 .report-question-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
 }
 
 .report-question-card {
   display: grid;
   gap: 4px;
+  min-width: 0;
   min-height: 122px;
   border: 1px solid #bcecf5;
   border-radius: 8px;
@@ -10033,7 +10036,7 @@ body:has(.app-shell) {
 
 .report-action-board {
   display: grid;
-  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 2.1fr);
+  grid-template-columns: minmax(220px, 0.82fr) minmax(0, 2.18fr);
   gap: 12px;
   align-items: stretch;
   border: 1px solid #bcecf5;
@@ -10069,7 +10072,7 @@ body:has(.app-shell) {
 
 .report-action-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
   gap: 8px;
 }
 
@@ -10077,6 +10080,7 @@ body:has(.app-shell) {
   display: grid;
   align-content: start;
   gap: 6px;
+  min-width: 0;
   min-height: 118px;
   border: 1px solid #c8edf5;
   border-radius: 8px;
@@ -10179,6 +10183,28 @@ body:has(.app-shell) {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.fault-cost-report-actions .compact-button,
+.report-export-footer .compact-button,
+.monthly-report-buttons .compact-button {
+  justify-content: center;
+  min-width: 144px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.report-action-button strong,
+.report-action-button span,
+.report-question-card strong,
+.report-question-card em,
+.report-question-card span {
+  min-width: 0;
+}
+
+.report-action-button span,
+.report-question-card span {
+  overflow-wrap: anywhere;
 }
 
 .monthly-archive-panel {

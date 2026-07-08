@@ -831,6 +831,12 @@ const businessEntrySelectColumns = `
   updated_at
 `
 
+function normalizeOptionalUuid(value) {
+  const cleanValue = String(value ?? '').trim()
+  if (!cleanValue) return null
+  return cleanValue.replace(/^(driver|person|vehicle|asset|tank|supplier)-/, '')
+}
+
 const faultReportLegacySelectColumns = `
   id,
   company_id,
@@ -2995,19 +3001,19 @@ export async function createFuelMovementRecord(movement, companyId = configuredC
     created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
     currency: movement.currency || 'EUR',
     document_number: movement.documentNumber?.trim() || null,
-    driver_id: movement.driverId || null,
+    driver_id: normalizeOptionalUuid(movement.driverId),
     liters,
     movement_type: movement.movementType || 'dispense',
     notes: movement.notes?.trim() || null,
     occurred_at: movement.occurredAt || new Date().toISOString(),
     odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
-    person_id: movement.personId || null,
+    person_id: normalizeOptionalUuid(movement.personId),
     supplier: movement.supplier?.trim() || null,
-    supplier_id: movement.supplierId || null,
-    tank_id: movement.tankId || null,
+    supplier_id: normalizeOptionalUuid(movement.supplierId),
+    tank_id: normalizeOptionalUuid(movement.tankId),
     total_cost_cents: totalCostCents,
     unit_price_cents: unitPriceCents,
-    vehicle_id: movement.vehicleId || null,
+    vehicle_id: normalizeOptionalUuid(movement.vehicleId),
   }
 
   const { data, error } = await supabase

@@ -16421,6 +16421,16 @@ function ReportsWorkspace({
       ? 'warning'
       : 'success'
   const dashboardLatestRows = [
+    ...dashboardFuelRows.slice(0, 5).map((movement) => ({
+      amount: formatLiters(movement.liters),
+      date: movement.occurredAt,
+      meta: [
+        movement.vehicleId ? getVehicleLabelById(vehicleRecords, movement.vehicleId) : '',
+        movement.driverId ? getDriverLabelById(driverRecords, movement.driverId) : '',
+      ].filter(Boolean).join(' · ') || 'Gasolio',
+      title: 'Rifornimento gasolio',
+      tone: 'info',
+    })),
     ...dashboardCostRows.slice(0, 5).map((row) => ({
       amount: formatMoneyCents(row.amountCents, row.currency || defaultCurrency),
       date: row.date,

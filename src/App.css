@@ -7570,6 +7570,35 @@ body:has(.app-shell) {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
+.reports-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.reports-mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #bdeaf3;
+  border-radius: 10px;
+  background: #f8fdff;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.reports-mode-switch button.active {
+  border-color: #13c5df;
+  background: linear-gradient(135deg, #073246 0%, #0c5368 62%, #13c5df 100%);
+  color: #ffffff;
+  box-shadow: 0 14px 34px rgba(8, 47, 73, 0.16);
+}
+
 .fleet-dashboard-launch:hover {
   box-shadow: 0 22px 52px rgba(8, 47, 73, 0.22);
   transform: translateY(-1px);
@@ -7702,7 +7731,7 @@ body:has(.app-shell) {
 
 .fleet-dashboard-filters {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 10px;
 }
 

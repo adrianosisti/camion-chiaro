@@ -16339,8 +16339,9 @@ function ReportsWorkspace({
 }) {
   const { language } = useI18n()
   const defaultCurrency = getDefaultCurrency(language)
+  const [reportViewMode, setReportViewMode] = useState('reports')
   const [fleetDashboardVehicleId, setFleetDashboardVehicleId] = useState('all')
-  const [fleetDashboardDriverId, setFleetDashboardDriverId] = useState('all')
+  const [driverDashboardDriverId, setDriverDashboardDriverId] = useState('all')
   const [isFleetDashboardOpen, setIsFleetDashboardOpen] = useState(false)
   const normalizeDashboardIdentity = (value = '') => String(value ?? '').trim().toLowerCase()
   const personById = useMemo(() => new Map(
@@ -16378,7 +16379,7 @@ function ReportsWorkspace({
   const criticalFleetHealthRows = fleetHealthRows.filter((row) => row.score < 62)
   const activeVehicles = vehicleRecords.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
   const selectedFleetVehicle = activeVehicles.find((vehicle) => vehicle.id === fleetDashboardVehicleId) ?? null
-  const selectedFleetDriver = driverRecords.find((driver) => driver.id === fleetDashboardDriverId) ?? null
+  const selectedDriverDashboardDriver = driverRecords.find((driver) => driver.id === driverDashboardDriverId) ?? null
   const getMovementDriverId = (movement = {}) => {
     if (movement.driverId) return movement.driverId
     const linkedDriverId = driverIdByPersonId.get(movement.personId)
@@ -16404,31 +16405,27 @@ function ReportsWorkspace({
     return matchedDriver?.id ?? ''
   }
   const matchesFleetDashboardVehicle = (vehicleId) => fleetDashboardVehicleId === 'all' || vehicleId === fleetDashboardVehicleId
-  const matchesFleetDashboardDriver = (driverId, personId = '') => {
-    if (fleetDashboardDriverId === 'all') return true
-    return getMovementDriverId({ driverId, personId }) === fleetDashboardDriverId
+  const matchesDriverDashboardDriver = (driverId = '', personId = '') => {
+    if (driverDashboardDriverId === 'all') return true
+    return (driverId || getMovementDriverId({ personId })) === driverDashboardDriverId
   }
-  const isFleetDashboardFiltered = fleetDashboardVehicleId !== 'all' || fleetDashboardDriverId !== 'all'
+  const isFleetDashboardFiltered = fleetDashboardVehicleId !== 'all'
   const allFuelMovementRows = fuelMovementRecords
   const allDispenseFuelRows = allFuelMovementRows.filter((movement) => movement.movementType === 'dispense')
   const matchesFuelMovementSelection = (movement = {}) => {
     if (movement.movementType !== 'dispense') return !isFleetDashboardFiltered
 
     return matchesFleetDashboardVehicle(movement.vehicleId)
-      && matchesFleetDashboardDriver(movement.driverId, movement.personId)
   }
   const dashboardCostRows = reportRows.filter((row) => (
     matchesFleetDashboardVehicle(row.vehicleId)
-    && matchesFleetDashboardDriver(row.driverId)
   ))
   const dashboardMonthCostRows = dashboardCostRows.filter((row) => new Date(row.date) >= monthStart)
   const dashboardFineRows = dashboardCostRows.filter((row) => row.category === 'fine')
   const dashboardFuelRows = allDispenseFuelRows.filter((movement) => (
     matchesFleetDashboardVehicle(movement.vehicleId)
-    && matchesFleetDashboardDriver(movement.driverId, movement.personId)
   ))
   const dashboardFuelMovementRows = allFuelMovementRows.filter(matchesFuelMovementSelection)
-  const dashboardFuelOutsideSelectionCount = isFleetDashboardFiltered ? Math.max(0, allDispenseFuelRows.length - dashboardFuelRows.length) : 0
   const dashboardFuelUnlinkedCount = dashboardFuelRows.filter((movement) => (
     !movement.vehicleId || !activeVehicles.some((vehicle) => vehicle.id === movement.vehicleId)
   )).length
@@ -16440,21 +16437,16 @@ function ReportsWorkspace({
   const dashboardKmPerLiter = dashboardKmDelta > 0 && dashboardFuelLiters > 0 ? dashboardKmDelta / dashboardFuelLiters : 0
   const dashboardFaultRows = faultReportRecords.filter((report) => (
     matchesFleetDashboardVehicle(report.vehicleId)
-    && matchesFleetDashboardDriver(report.driverId)
   ))
   const dashboardOpenFaultRows = dashboardFaultRows.filter(isFaultUnread)
   const dashboardCheckRows = vehicleCheckRecords.filter((check) => (
     matchesFleetDashboardVehicle(check.tractorId)
-    && matchesFleetDashboardDriver(check.driverId)
   ))
   const dashboardCriticalCheckRows = dashboardCheckRows.filter((check) => !isVehicleCheckArchived(check) && hasCheckIssues(check))
   const dashboardDeadlineRows = complianceItems.filter((item) => (
     !isComplianceClosed(item)
     && (
       fleetDashboardVehicleId === 'all' || item.vehicleId === fleetDashboardVehicleId
-    )
-    && (
-      fleetDashboardDriverId === 'all' || item.driverId === fleetDashboardDriverId
     )
   ))
   const dashboardExpiredDeadlines = dashboardDeadlineRows.filter((item) => {
@@ -16474,6 +16466,46 @@ function ReportsWorkspace({
   const dashboardFuelMonthCount = dashboardFuelRows.filter((movement) => new Date(movement.occurredAt) >= monthStart).length
   const dashboardFuelTotalCount = dashboardFuelRows.length
   const dashboardFuelTotalLiters = dashboardFuelRows.reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
+  const driverDashboardFuelRows = allDispenseFuelRows.filter((movement) => matchesDriverDashboardDriver(movement.driverId, movement.personId))
+  const driverDashboardFuelMonthRows = driverDashboardFuelRows.filter((movement) => new Date(movement.occurredAt) >= monthStart)
+  const driverDashboardCostRows = reportRows.filter((row) => matchesDriverDashboardDriver(row.driverId))
+  const driverDashboardMonthCostRows = driverDashboardCostRows.filter((row) => new Date(row.date) >= monthStart)
+  const driverDashboardFineRows = driverDashboardCostRows.filter((row) => row.category === 'fine')
+  const driverDashboardFaultRows = faultReportRecords.filter((report) => matchesDriverDashboardDriver(report.driverId))
+  const driverDashboardOpenFaultRows = driverDashboardFaultRows.filter(isFaultUnread)
+  const driverDashboardCheckRows = vehicleCheckRecords.filter((check) => matchesDriverDashboardDriver(check.driverId))
+  const driverDashboardCriticalCheckRows = driverDashboardCheckRows.filter((check) => !isVehicleCheckArchived(check) && hasCheckIssues(check))
+  const driverDashboardFuelLiters = driverDashboardFuelRows.reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
+  const driverDashboardMonthLiters = driverDashboardFuelMonthRows.reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
+  const driverDashboardTotalCostCents = driverDashboardCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const driverDashboardMonthCostCents = driverDashboardMonthCostRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const driverDashboardFineTotalCents = driverDashboardFineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
+  const driverDashboardTitle = selectedDriverDashboardDriver
+    ? `Cruscotto ${selectedDriverDashboardDriver.name || 'autista'}`
+    : 'Cruscotto autisti'
+  const driverDashboardLatestRows = [
+    ...driverDashboardFuelRows.slice(0, 5).map((movement) => ({
+      amount: formatLiters(movement.liters),
+      date: movement.occurredAt,
+      meta: movement.vehicleId ? getVehicleLabelById(vehicleRecords, movement.vehicleId) : 'Mezzo non collegato',
+      title: 'Rifornimento gasolio',
+      tone: 'info',
+    })),
+    ...driverDashboardCheckRows.slice(0, 4).map((check) => ({
+      amount: hasCheckIssues(check) ? 'Critico' : 'OK',
+      date: check.createdAt,
+      meta: check.tractorId ? getVehicleLabelById(vehicleRecords, check.tractorId) : 'Check',
+      title: 'Check mezzo',
+      tone: hasCheckIssues(check) ? 'danger' : 'success',
+    })),
+    ...driverDashboardFaultRows.slice(0, 4).map((report) => ({
+      amount: isFaultUnread(report) ? 'Aperto' : 'Gestito',
+      date: report.createdAt,
+      meta: report.vehicleId ? getVehicleLabelById(vehicleRecords, report.vehicleId) : 'Guasto',
+      title: report.title || 'Guasto mezzo',
+      tone: isFaultUnread(report) ? 'danger' : 'info',
+    })),
+  ].sort((first, second) => new Date(second.date) - new Date(first.date)).slice(0, 7)
   const dashboardCostRanking = buildCostRanking(dashboardCostRows, (row) => ({
     key: row.category || 'other',
     name: getCostCategoryLabel(row.category),
@@ -16483,7 +16515,6 @@ function ReportsWorkspace({
     : 'Cruscotto flotta'
   const dashboardSubtitle = [
     selectedFleetVehicle ? [getFleetTypeLabel(selectedFleetVehicle.fleetType), selectedFleetVehicle.model].filter(Boolean).join(' · ') : `${activeVehicles.length} mezzi attivi`,
-    selectedFleetDriver ? selectedFleetDriver.name : 'tutti gli autisti',
   ].filter(Boolean).join(' · ')
   const dashboardSignalTone = dashboardExpiredDeadlines.length || dashboardOpenFaultRows.length || dashboardCriticalCheckRows.length
     ? 'danger'
@@ -16525,12 +16556,40 @@ function ReportsWorkspace({
     <section className="reports-workspace" aria-label="Report aziendali">
       <div className="panel reports-hero-panel">
         <div className="reports-hero-copy">
-          <h2>Stampa solo quello che ti serve</h2>
-          <span>Costi, multe, manutenzioni e spese per targa, autista, attrezzatura o periodo. Prima scegli la domanda, poi scarichi CSV o stampi il report.</span>
+          <h2>{reportViewMode === 'reports' ? 'Report aziendali' : reportViewMode === 'fleet-dashboard' ? 'Cruscotti mezzi' : 'Cruscotti autisti'}</h2>
+          <span>
+            {reportViewMode === 'reports'
+              ? 'Costi, multe, manutenzioni e spese per targa, autista, attrezzatura o periodo. Prima scegli la domanda, poi scarichi CSV o stampi il report.'
+              : reportViewMode === 'fleet-dashboard'
+                ? 'Consumi, rifornimenti, costi, guasti e scadenze separati per targa. Ogni rifornimento mostra anche chi lo ha registrato o per quale autista e stato fatto.'
+                : 'Rifornimenti, check, guasti, multe e costi collegati al singolo autista o a tutta la squadra.'}
+          </span>
         </div>
         <span className="reports-hero-icon" aria-hidden="true">
           <FileText size={28} />
         </span>
+      </div>
+      <div className="reports-mode-switch" aria-label="Sezioni report">
+        <button className={reportViewMode === 'reports' ? 'active' : ''} onClick={() => setReportViewMode('reports')} type="button">
+          <FileText size={16} /> Report aziendali
+        </button>
+        <button
+          className={reportViewMode === 'fleet-dashboard' ? 'active' : ''}
+          onClick={() => {
+            setReportViewMode('fleet-dashboard')
+            setIsFleetDashboardOpen(true)
+          }}
+          type="button"
+        >
+          <Gauge size={16} /> Cruscotto mezzi
+        </button>
+        <button
+          className={reportViewMode === 'driver-dashboard' ? 'active' : ''}
+          onClick={() => setReportViewMode('driver-dashboard')}
+          type="button"
+        >
+          <Users size={16} /> Cruscotto autisti
+        </button>
       </div>
       <div className="reports-kpi-grid">
         <article>
@@ -16582,7 +16641,7 @@ function ReportsWorkspace({
           <span>{fleetHealthRows.length ? `${fleetHealthRows.length} mezzi analizzati` : 'Nessun mezzo analizzato'}</span>
         </div>
       </section>
-      <button
+      {reportViewMode === 'fleet-dashboard' ? <button
         aria-expanded={isFleetDashboardOpen}
         className={`fleet-dashboard-launch tone-${dashboardSignalTone}`}
         onClick={() => setIsFleetDashboardOpen((currentValue) => !currentValue)}
@@ -16592,19 +16651,17 @@ function ReportsWorkspace({
         <span className="fleet-dashboard-launch-copy">
           <small>Cruscotto mezzo</small>
           <strong>{dashboardTitle}</strong>
-          <em>
-            {dashboardFuelMonthCount} rif. mese · {dashboardFuelTotalCount} rif. storico · {dashboardFuelMovementRows.length} mov. selezione · {dashboardFuelOutsideSelectionCount ? `${dashboardFuelOutsideSelectionCount} fuori filtro · ` : ''}{dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
-          </em>
+          <em>Apri la scheda carburante, costi, guasti e scadenze della targa selezionata.</em>
         </span>
         <span className="fleet-dashboard-launch-action">{isFleetDashboardOpen ? 'Chiudi' : 'Apri'}</span>
-      </button>
-      {isFleetDashboardOpen ? (
+      </button> : null}
+      {reportViewMode === 'fleet-dashboard' && isFleetDashboardOpen ? (
       <section className="panel fleet-dashboard-panel" aria-label="Cruscotto mezzo">
         <div className="fleet-dashboard-head">
           <div>
             <p className="overline">Cruscotto mezzo</p>
             <h3>{dashboardTitle}</h3>
-            <span>{dashboardSubtitle || 'Seleziona targa e autista per leggere costi, consumi e criticita in un solo punto.'}</span>
+            <span>{dashboardSubtitle || 'Seleziona una targa per leggere consumi, costi, guasti e scadenze in un solo punto.'}</span>
           </div>
           <strong className={`fleet-dashboard-signal tone-${dashboardSignalTone}`}>
             {dashboardSignalTone === 'danger' ? 'Da seguire' : dashboardSignalTone === 'warning' ? 'Sotto controllo' : 'Regolare'}
@@ -16619,15 +16676,6 @@ function ReportsWorkspace({
                 <option key={vehicle.id} value={vehicle.id}>
                   {vehicle.plate || 'Targa mancante'} · {getFleetTypeLabel(vehicle.fleetType)}
                 </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Autista
-            <select value={fleetDashboardDriverId} onChange={(event) => setFleetDashboardDriverId(event.target.value)}>
-              <option value="all">Tutti gli autisti</option>
-              {driverRecords.map((driver) => (
-                <option key={driver.id} value={driver.id}>{driver.name}</option>
               ))}
             </select>
           </label>
@@ -16677,7 +16725,6 @@ function ReportsWorkspace({
               <span><small>Rif. storico</small><strong>{dashboardFuelTotalCount}</strong></span>
               <span><small>Mov. selezione</small><strong>{dashboardFuelMovementRows.length}</strong></span>
               <span><small>Rif. selezione</small><strong>{dashboardFuelRows.length}</strong></span>
-              <span><small>Fuori filtro</small><strong>{dashboardFuelOutsideSelectionCount}</strong></span>
               <span><small>Litri mese</small><strong>{formatLiters(dashboardFuelMonthLiters)}</strong></span>
               <span><small>Litri storico</small><strong>{formatLiters(dashboardFuelTotalLiters || dashboardFuelLiters)}</strong></span>
               <span><small>Da collegare</small><strong>{dashboardFuelUnlinkedCount}</strong></span>
@@ -16714,7 +16761,76 @@ function ReportsWorkspace({
         </div>
       </section>
       ) : null}
-      <FaultCostReport
+      {reportViewMode === 'driver-dashboard' ? (
+        <section className="panel fleet-dashboard-panel" aria-label="Cruscotto autisti">
+          <div className="fleet-dashboard-head">
+            <div>
+              <p className="overline">Cruscotto autista</p>
+              <h3>{driverDashboardTitle}</h3>
+              <span>Seleziona un autista per leggere rifornimenti, check, guasti e costi collegati alla persona.</span>
+            </div>
+            <strong className={`fleet-dashboard-signal tone-${driverDashboardOpenFaultRows.length || driverDashboardCriticalCheckRows.length ? 'danger' : driverDashboardMonthCostCents ? 'warning' : 'success'}`}>
+              {driverDashboardOpenFaultRows.length || driverDashboardCriticalCheckRows.length ? 'Da seguire' : driverDashboardMonthCostCents ? 'Sotto controllo' : 'Regolare'}
+            </strong>
+          </div>
+          <div className="fleet-dashboard-filters">
+            <label>
+              Autista
+              <select value={driverDashboardDriverId} onChange={(event) => setDriverDashboardDriverId(event.target.value)}>
+                <option value="all">Tutti gli autisti</option>
+                {driverRecords.map((driver) => (
+                  <option key={driver.id} value={driver.id}>{driver.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="fleet-dashboard-kpis">
+            <article className={driverDashboardFuelRows.length ? 'tone-info' : 'tone-warning'}>
+              <small>Rifornimenti mese</small>
+              <strong>{driverDashboardFuelMonthRows.length}</strong>
+              <span>{formatLiters(driverDashboardMonthLiters)} mese · {formatLiters(driverDashboardFuelLiters)} storico</span>
+            </article>
+            <article className="tone-warning">
+              <small>Costi mese</small>
+              <strong>{formatMoneyCents(driverDashboardMonthCostCents, defaultCurrency)}</strong>
+              <span>{formatMoneyCents(driverDashboardTotalCostCents, defaultCurrency)} storico</span>
+            </article>
+            <article className="tone-danger">
+              <small>Multe</small>
+              <strong>{driverDashboardFineRows.length}</strong>
+              <span>{formatMoneyCents(driverDashboardFineTotalCents, defaultCurrency)}</span>
+            </article>
+            <article className={driverDashboardOpenFaultRows.length ? 'tone-danger' : 'tone-success'}>
+              <small>Guasti aperti</small>
+              <strong>{driverDashboardOpenFaultRows.length}</strong>
+              <span>{driverDashboardFaultRows.length} guasti nello storico</span>
+            </article>
+            <article className={driverDashboardCriticalCheckRows.length ? 'tone-danger' : 'tone-success'}>
+              <small>Check critici</small>
+              <strong>{driverDashboardCriticalCheckRows.length}</strong>
+              <span>{driverDashboardCheckRows.length} check registrati</span>
+            </article>
+          </div>
+          <div className="fleet-dashboard-body">
+            <section className="fleet-dashboard-wide">
+              <StrategicSectionTitle icon={FileText} overline="Storico" title="Ultimi eventi autista" />
+              <div className="fleet-dashboard-events">
+                {driverDashboardLatestRows.map((row) => (
+                  <article className={`tone-${row.tone}`} key={`${row.title}-${row.date}-${row.amount}`}>
+                    <div>
+                      <strong>{row.title}</strong>
+                      <small>{row.meta} · {formatOptionalDate(row.date)}</small>
+                    </div>
+                    <b>{row.amount}</b>
+                  </article>
+                ))}
+                {!driverDashboardLatestRows.length ? <p>Nessun evento collegato a questa selezione.</p> : null}
+              </div>
+            </section>
+          </div>
+        </section>
+      ) : null}
+      {reportViewMode === 'reports' ? <FaultCostReport
         acknowledgedCheckIds={acknowledgedCheckIds}
         assetRecords={assetRecords}
         companyName={companyName}
@@ -16731,7 +16847,7 @@ function ReportsWorkspace({
         startAddingCostKey={startAddingCostKey}
         vehicleCheckRecords={vehicleCheckRecords}
         vehicleRecords={vehicleRecords}
-      />
+      /> : null}
     </section>
   )
 }

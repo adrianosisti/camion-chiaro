@@ -2438,6 +2438,15 @@ export function subscribeToOperationalUpdates({ companyId, driverId, handlers = 
     handlers.onChange?.({ item: fault, payload, type: 'fault_report' })
   }
 
+  function handleFuelMovement(payload) {
+    const row = payload.new
+    if (!row) return
+    if (driverId && row.driver_id !== driverId) return
+    const movement = mapFuelMovement(row)
+    handlers.onFuelMovement?.(movement, payload)
+    handlers.onChange?.({ item: movement, payload, type: 'fuel_movement' })
+  }
+
   const channel = supabase
     .channel(`operations-${companyId}-${driverId || 'company'}`)
     .on(
@@ -2459,6 +2468,16 @@ export function subscribeToOperationalUpdates({ companyId, driverId, handlers = 
         table: 'fault_reports',
       },
       handleFaultReport,
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'fuel_movements',
+      },
+      handleFuelMovement,
     )
     .subscribe()
 
@@ -2977,6 +2996,7 @@ export async function createFuelMovement({ companyId, movement }) {
     return normalizeUuid(cleanValue)
   }
   const liters = parseFuelNumber(movement.liters)
+  const odometerKm = parseFuelNumber(movement.odometerKm)
   const movementType = movement.movementType || 'dispense'
   if (!movement.tankId || liters <= 0 || (movementType === 'dispense' && !movement.vehicleId)) {
     return { data: null, error: { message: movementType === 'dispense' ? 'Seleziona cisterna, mezzo e litri riforniti.' : 'Seleziona cisterna e litri caricati.' } }
@@ -2999,7 +3019,7 @@ export async function createFuelMovement({ companyId, movement }) {
     movement_type: movementType,
     notes: movement.notes?.trim() || null,
     occurred_at: movement.occurredAt || new Date().toISOString(),
-    odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
+    odometer_km: movement.odometerKm ? odometerKm : null,
     person_id: normalizePersonUuid(movement.personId),
     supplier: movementType === 'dispense' ? null : movement.supplier?.trim() || null,
     supplier_id: movementType === 'dispense' ? null : normalizeUuid(movement.supplierId),

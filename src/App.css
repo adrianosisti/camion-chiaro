@@ -9612,9 +9612,18 @@ body:has(.app-shell) {
 
 .fault-cost-report-actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.fault-cost-report.is-report-workspace .fault-cost-report-header {
+  align-items: center;
+}
+
+.fault-cost-report.is-report-workspace .fault-cost-report-actions {
+  align-self: center;
 }
 
 .tone-warning-button {
@@ -15111,8 +15120,14 @@ body:has(.app-shell) {
     padding: 12px;
   }
 
-  .fault-cost-report.is-report-workspace .fault-cost-report-header {
+.fault-cost-report.is-report-workspace .fault-cost-report-header {
+    align-items: center;
     padding-bottom: 2px;
+  }
+
+  .fault-cost-report.is-report-workspace .fault-cost-report-actions {
+    align-items: center;
+    align-self: center;
   }
 
   .fault-cost-report.is-report-workspace .report-shortcuts-panel,

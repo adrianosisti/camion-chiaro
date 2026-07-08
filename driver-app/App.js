@@ -592,6 +592,11 @@ function getCompanyName(context) {
   return context?.companyProfile?.name || 'Azienda'
 }
 
+function formatLiters(value = 0) {
+  const parsedValue = Number.parseFloat(String(value ?? '').replace(/\s/g, '').replace(',', '.'))
+  return `${new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1 }).format(Number.isFinite(parsedValue) ? parsedValue : 0)} L`
+}
+
 function getVehicleDisplayName(vehicles = [], vehicleId = '') {
   const vehicle = vehicles.find((entry) => entry.id === vehicleId)
   if (!vehicle) return 'mezzo'
@@ -2793,6 +2798,16 @@ function CamionChiaroApp() {
           ? { ...currentContext, fuelMovements: [result.data, ...(currentContext.fuelMovements ?? [])] }
           : currentContext
       ))
+      const vehicleLabel = getVehicleDisplayName(context?.vehicles ?? [], result.data.vehicleId || payload.vehicleId)
+      const actorName = driver?.name || currentPerson?.fullName || currentPerson?.name || 'Operatore'
+      void notifyPhone({
+        body: `${actorName} ha registrato ${formatLiters(result.data.liters || payload.liters)} su ${vehicleLabel}.`,
+        notificationType: 'fuel_movement',
+        tag: `fuel-movement-${result.data.id ?? Date.now()}`,
+        targetRole: 'company',
+        title: 'Rifornimento registrato',
+        url: '/?view=management',
+      })
     }
 
     triggerHaptic('success')

@@ -837,6 +837,11 @@ function normalizeOptionalUuid(value) {
   return cleanValue.replace(/^(driver|person|vehicle|asset|tank|supplier)-/, '')
 }
 
+function parseSupabaseDecimal(value) {
+  const parsed = Number.parseFloat(String(value ?? '').replace(/\s/g, '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 const faultReportLegacySelectColumns = `
   id,
   company_id,
@@ -2989,7 +2994,8 @@ export async function createFuelMovementRecord(movement, companyId = configuredC
   }
 
   const sessionResult = await supabase.auth.getSession()
-  const liters = Number(movement.liters ?? 0)
+  const liters = parseSupabaseDecimal(movement.liters)
+  const odometerKm = parseSupabaseDecimal(movement.odometerKm)
   const unitPriceCents = movement.unitPriceCents === '' || movement.unitPriceCents == null
     ? null
     : Number(movement.unitPriceCents)
@@ -3006,7 +3012,7 @@ export async function createFuelMovementRecord(movement, companyId = configuredC
     movement_type: movement.movementType || 'dispense',
     notes: movement.notes?.trim() || null,
     occurred_at: movement.occurredAt || new Date().toISOString(),
-    odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
+    odometer_km: movement.odometerKm ? odometerKm : null,
     person_id: normalizeOptionalUuid(movement.personId),
     supplier: movement.supplier?.trim() || null,
     supplier_id: normalizeOptionalUuid(movement.supplierId),
@@ -4225,6 +4231,18 @@ export async function subscribeToOperationalUpdates(companyId, handlers = {}) {
       },
       (payload) => {
         if (payload.new) handlers.onFaultReportUpdate?.(mapFaultReport(payload.new))
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        filter: `company_id=eq.${companyId}`,
+        schema: 'public',
+        table: 'fuel_movements',
+      },
+      (payload) => {
+        if (payload.new) handlers.onFuelMovement?.(mapFuelMovement(payload.new), payload)
       },
     )
     .on(

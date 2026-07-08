@@ -8052,6 +8052,14 @@ function App() {
 
         setFaultReportRecords((currentReports) => upsertRecordById(currentReports, report))
       },
+      onFuelMovement: (movement) => {
+        if (!isMounted) return
+
+        setFuelMovementRecords((currentMovements) => upsertRecordById(currentMovements, movement))
+        if (session?.role === 'company') {
+          setOperationsSyncStatus('Nuovo rifornimento gasolio registrato.')
+        }
+      },
       onVehicleCheck: (check) => {
         if (!isMounted) return
 
@@ -16680,6 +16688,16 @@ function formatLiters(value = 0) {
   return `${new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1 }).format(Number(value) || 0)} L`
 }
 
+function parseFuelDecimalValue(value = 0) {
+  const parsed = Number.parseFloat(String(value ?? '').replace(/\s/g, '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function getFuelMovementTime(value, fallbackValue = '') {
+  const date = new Date(value || fallbackValue)
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime()
+}
+
 function getTankLevelPercent(tank = {}) {
   const capacity = Number(tank.capacityLiters ?? 0)
   if (!capacity) return 0
@@ -16690,23 +16708,28 @@ function getTankLevelPercent(tank = {}) {
 function buildVehicleFuelConsumption(vehicle = {}, fuelMovementRecords = [], monthStart = getFaultCostPeriodStart('month')) {
   const movements = fuelMovementRecords
     .filter((movement) => movement.vehicleId === vehicle.id && movement.movementType === 'dispense')
-    .sort((first, second) => new Date(first.occurredAt) - new Date(second.occurredAt))
-  const monthMovements = movements.filter((movement) => new Date(movement.occurredAt) >= monthStart)
-  const totalLiters = monthMovements.reduce((total, movement) => total + Number(movement.liters ?? 0), 0)
+    .map((movement, index) => ({
+      ...movement,
+      _sortIndex: index,
+      _movementTime: getFuelMovementTime(movement.occurredAt, movement.createdAt),
+    }))
+    .sort((first, second) => first._movementTime - second._movementTime || first._sortIndex - second._sortIndex)
+  const monthStartTime = monthStart?.getTime?.() ?? getFuelMovementTime(monthStart)
+  const monthMovements = movements.filter((movement) => movement._movementTime >= monthStartTime)
+  const totalLiters = monthMovements.reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
   const totalFuelCents = monthMovements.reduce((total, movement) => total + Number(movement.totalCostCents ?? 0), 0)
-  const odometerRows = movements.filter((movement) => Number(movement.odometerKm ?? 0) > 0)
+  const odometerRows = movements.filter((movement) => parseFuelDecimalValue(movement.odometerKm) > 0)
   const firstOdometerRow = odometerRows[0]
   const lastOdometerRow = odometerRows.at(-1)
-  const firstOdometer = Number(firstOdometerRow?.odometerKm ?? 0)
-  const lastOdometer = Number(lastOdometerRow?.odometerKm ?? 0)
+  const firstOdometer = parseFuelDecimalValue(firstOdometerRow?.odometerKm)
+  const lastOdometer = parseFuelDecimalValue(lastOdometerRow?.odometerKm)
   const kmDelta = Math.max(0, lastOdometer - firstOdometer)
   const intervalLiters = firstOdometerRow && lastOdometerRow
     ? movements
       .filter((movement) => {
-        const movementDate = new Date(movement.occurredAt)
-        return movementDate > new Date(firstOdometerRow.occurredAt) && movementDate <= new Date(lastOdometerRow.occurredAt)
+        return movement._movementTime > firstOdometerRow._movementTime && movement._movementTime <= lastOdometerRow._movementTime
       })
-      .reduce((total, movement) => total + Number(movement.liters ?? 0), 0)
+      .reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
     : 0
   const litersForCalculation = intervalLiters || (odometerRows.length >= 2 ? totalLiters : 0)
   const kmPerLiter = kmDelta > 0 && litersForCalculation > 0 ? kmDelta / litersForCalculation : 0

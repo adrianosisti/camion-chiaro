@@ -30,6 +30,7 @@ import { CompanyHomeScreen } from './src/screens/CompanyHomeScreen'
 import { CompanyManagementScreen } from './src/screens/CompanyManagementScreen'
 import { DocumentsScreen } from './src/screens/DocumentsScreen'
 import { DriverChatHubScreen } from './src/screens/DriverChatHubScreen'
+import { FuelMovementScreen } from './src/screens/FuelMovementScreen'
 import { HomeScreen } from './src/screens/HomeScreen'
 import { OperationsScreen } from './src/screens/OperationsScreen'
 import { SettingsScreen } from './src/screens/SettingsScreen'
@@ -44,6 +45,7 @@ import {
   createCompanyVehicle,
   createCompanyWarehouseAsset,
   createDriverDocument,
+  createFuelMovement,
   createFaultReport,
   createVehicleCheck,
   createVoiceCallSession,
@@ -1953,7 +1955,7 @@ function CamionChiaroApp() {
 
   useEffect(() => {
     if (accountType === 'company' && ['news', 'settings'].includes(activeTab)) return
-    if (accountType === 'driver' && activeTab === 'announcements') return
+    if (accountType === 'driver' && ['announcements', 'fuel'].includes(activeTab)) return
 
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
       setActiveTab('home')
@@ -2760,6 +2762,38 @@ function CamionChiaroApp() {
 
     setSelectedDailyVehicleId(vehicleId)
     await AsyncStorage.setItem(getDailyVehicleStorageKey(driver.id), vehicleId)
+    return true
+  }
+
+  async function handleSubmitFuelMovement(payload) {
+    const companyId = driver?.companyId ?? currentPerson?.companyId ?? context?.companyProfile?.id
+    if (!companyId) {
+      Alert.alert('Azienda mancante', 'Attendi il caricamento dei dati e riprova.')
+      return false
+    }
+
+    const result = await createFuelMovement({
+      companyId,
+      movement: {
+        ...payload,
+        currency: getDefaultCurrency(language),
+      },
+    })
+
+    if (result.error) {
+      Alert.alert('Rifornimento non salvato', result.error.message)
+      return false
+    }
+
+    if (result.data) {
+      setContext((currentContext) => (
+        currentContext
+          ? { ...currentContext, fuelMovements: [result.data, ...(currentContext.fuelMovements ?? [])] }
+          : currentContext
+      ))
+    }
+
+    triggerHaptic('success')
     return true
   }
 
@@ -4183,6 +4217,19 @@ function CamionChiaroApp() {
       )
     }
 
+    if (activeTab === 'fuel') {
+      return (
+        <FuelMovementScreen
+          context={context}
+          currentPerson={currentPerson}
+          driver={driver}
+          onBackHome={() => setActiveTab('home')}
+          onSubmit={handleSubmitFuelMovement}
+          selectedVehicleId={selectedDailyVehicleId}
+        />
+      )
+    }
+
     if (activeTab === 'documents') {
       return (
         <DocumentsScreen
@@ -4239,6 +4286,7 @@ function CamionChiaroApp() {
           language={language}
           onOpenAnnouncements={() => setActiveTab('announcements')}
           onOpenChat={() => openDriverChat('list')}
+          onOpenFuel={() => setActiveTab('fuel')}
           onOpenSettings={() => setActiveTab('settings')}
           pendingAnnouncementCount={pendingAnnouncementCount}
           unreadChatMessages={driverTotalUnreadMessages}
@@ -4262,6 +4310,7 @@ function CamionChiaroApp() {
         }}
         onOpenAnnouncements={() => setActiveTab('announcements')}
         onOpenOperations={() => setActiveTab('operations')}
+        onOpenFuel={() => setActiveTab('fuel')}
         onOpenAssistant={() => setIsAssistantOpen(true)}
         onOpenSettings={() => setActiveTab('settings')}
         onSelectDailyVehicle={handleSelectDailyVehicle}

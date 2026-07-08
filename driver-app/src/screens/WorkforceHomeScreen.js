@@ -19,6 +19,7 @@ export function WorkforceHomeScreen({
   context,
   onOpenAnnouncements,
   onOpenChat,
+  onOpenFuel,
   onOpenSettings,
   pendingAnnouncementCount = 0,
   unreadChatMessages = 0,
@@ -58,6 +59,15 @@ export function WorkforceHomeScreen({
         </Text>
         <PrimaryButton onPress={onOpenChat} title="Apri chat" />
       </Panel>
+
+      {person?.department === 'warehouse' ? (
+        <Panel kicker="Gasolio" title="Rifornimenti cisterna">
+          <Text style={styles.bodyText}>
+            Registra litri, targa e chilometri quando fai rifornimento a un mezzo della flotta.
+          </Text>
+          <PrimaryButton onPress={onOpenFuel} title="Registra rifornimento" />
+        </Panel>
+      ) : null}
 
       <Panel kicker="Profilo" title="Impostazioni e notifiche">
         <Text style={styles.bodyText}>

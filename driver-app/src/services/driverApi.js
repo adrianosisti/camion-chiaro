@@ -10,6 +10,8 @@ import {
   mapDriverContext,
   mapDriverDocument,
   mapFaultReport,
+  mapFuelMovement,
+  mapFuelTank,
   mapTeamChatMessage,
   mapTeamChatThread,
   mapVehicle,
@@ -115,6 +117,8 @@ const driverSelectBaseColumns = 'id, company_id, username, auth_email, full_name
 const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, access_password, status'
 const companyPersonSelectBaseColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status'
 const companyPersonSelectWithAccessColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, access_password, status'
+const fuelTankSelectColumns = 'id, company_id, name, location, capacity_liters, warning_threshold_liters, initial_liters, status'
+const fuelMovementSelectColumns = 'id, company_id, tank_id, vehicle_id, driver_id, person_id, movement_type, liters, currency, odometer_km, occurred_at, notes, created_at'
 
 async function runDriverSelect(configureQuery) {
   let result = await configureQuery(supabase.from('drivers').select(driverSelectWithCheckColumns))
@@ -131,6 +135,20 @@ async function fetchCompanyDriverRows(companyId) {
     .eq('company_id', companyId)
     .neq('status', 'archived')
     .order('full_name', { ascending: true }))
+}
+
+async function fetchCompanyFuelTanks(companyId) {
+  if (!companyId) return { data: [], error: null }
+
+  const { data, error } = await supabase
+    .from('fuel_tanks')
+    .select(fuelTankSelectColumns)
+    .eq('company_id', companyId)
+    .neq('status', 'archived')
+    .order('name', { ascending: true })
+
+  if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
+  return { data: (data ?? []).map(mapFuelTank), error }
 }
 const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
@@ -149,7 +167,7 @@ function getAnnouncementAudienceTypes({ driver = null, person = null } = {}) {
   if (driver?.id || person?.linkedDriverId || department === 'drivers') audiences.add('drivers')
   if (['office', 'warehouse', 'management'].includes(department)) audiences.add(department)
   if (person?.personType === 'office') audiences.add('office')
-  if (person?.personType === 'warehouse') audiences.add('warehouse')
+  if (['mechanic', 'warehouse', 'warehouse_worker', 'forklift_operator'].includes(person?.personType)) audiences.add('warehouse')
   if (person?.personType === 'management') audiences.add('management')
 
   return [...audiences]
@@ -1070,6 +1088,7 @@ async function fetchDriverContextDirect() {
     teamThreadsResult,
     teamUnreadCountsResult,
     announcementsResult,
+    fuelTanksResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -1110,6 +1129,7 @@ async function fetchDriverContextDirect() {
     fetchTeamChatThreads(driver.company_id),
     fetchTeamUnreadCounts(driver.company_id),
     fetchCompanyAnnouncementsForCurrentUser(driver.company_id, getAnnouncementAudienceTypes({ driver })),
+    fetchCompanyFuelTanks(driver.company_id),
   ])
 
   const firstError = [
@@ -1125,6 +1145,7 @@ async function fetchDriverContextDirect() {
     teamThreadsResult.error,
     teamUnreadCountsResult.error,
     announcementsResult.error,
+    fuelTanksResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -1153,6 +1174,7 @@ async function fetchDriverContextDirect() {
       documents: documentsResult.data ?? [],
       drivers: putCurrentDriverFirst(driver, driversResult.data ?? []),
       faultReports: faultsResult.data ?? [],
+      fuelTanks: fuelTanksResult.data ?? [],
       people: peopleRows,
       teamChatThreads: teamThreadsResult.data ?? [],
       unreadCompanyMessages: unreadCompanyMessagesResult.data ?? 0,
@@ -1177,6 +1199,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
     teamThreadsResult,
     teamUnreadCountsResult,
     announcementsResult,
+    fuelTanksResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -1200,6 +1223,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
     fetchTeamChatThreads(companyId),
     fetchTeamUnreadCounts(companyId),
     fetchCompanyAnnouncementsForCurrentUser(companyId, getAnnouncementAudienceTypes({ person })),
+    fetchCompanyFuelTanks(companyId),
   ])
 
   const firstError = [
@@ -1210,6 +1234,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
     teamThreadsResult.error,
     teamUnreadCountsResult.error,
     announcementsResult.error,
+    fuelTanksResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -1225,6 +1250,7 @@ async function fetchCompanyPersonContextDirect(user, person) {
       documents: [],
       drivers: driversResult.data ?? [],
       faultReports: [],
+      fuelTanks: fuelTanksResult.data ?? [],
       people: peopleRows.map(mapContextCompanyPerson),
       teamChatThreads: teamThreadsResult.data ?? [],
       unreadTeamMessages: Object.values(teamUnreadCountsResult.data ?? {}).reduce((total, count) => total + Number(count || 0), 0),
@@ -1320,6 +1346,7 @@ export async function fetchCompanyContext() {
     chatMessagesResult,
     teamChatMessagesResult,
     teamUnreadCountsResult,
+    fuelTanksResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -1380,6 +1407,7 @@ export async function fetchCompanyContext() {
       .order('created_at', { ascending: false })
       .limit(120),
     fetchTeamUnreadCounts(companyId),
+    fetchCompanyFuelTanks(companyId),
   ])
 
   const firstError = [
@@ -1397,6 +1425,7 @@ export async function fetchCompanyContext() {
     chatThreadsResult.error,
     chatMessagesResult.error,
     teamUnreadCountsResult.error,
+    fuelTanksResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -1426,6 +1455,7 @@ export async function fetchCompanyContext() {
       drivers: (driversResult.data ?? []).map(mapDriver),
       costEntries: costEntriesResult.data ?? [],
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
+      fuelTanks: fuelTanksResult.data ?? [],
       membership: membershipResult.data,
       people: companyPeopleRows.map(mapCompanyPerson),
       teamChatMessages: teamChatMessagesResult.error
@@ -2887,6 +2917,44 @@ export async function createCompanyCostEntry({ companyId, entry, file = null }) 
   }
 
   return { data: data ? mapCostEntry(data) : null, error }
+}
+
+export async function createFuelMovement({ companyId, movement }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
+
+  const liters = Number(movement.liters ?? 0)
+  if (!movement.tankId || !movement.vehicleId || liters <= 0) {
+    return { data: null, error: { message: 'Seleziona cisterna, mezzo e litri riforniti.' } }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const payload = {
+    company_id: companyId,
+    created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
+    currency: movement.currency || 'EUR',
+    driver_id: movement.driverId || null,
+    liters,
+    movement_type: movement.movementType || 'dispense',
+    notes: movement.notes?.trim() || null,
+    occurred_at: movement.occurredAt || new Date().toISOString(),
+    odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
+    person_id: movement.personId || null,
+    tank_id: movement.tankId,
+    vehicle_id: movement.vehicleId,
+  }
+
+  const { data, error } = await supabase
+    .from('fuel_movements')
+    .insert(payload)
+    .select(fuelMovementSelectColumns)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: { message: 'Modulo gasolio non ancora attivo. Esegui SQL 60 e 61 in Supabase.' } }
+  }
+
+  return { data: data ? mapFuelMovement(data) : null, error }
 }
 
 export async function updateCompanyCostEntry({ companyId, entryId, entry, file = null, previousFilePath = '' }) {

@@ -276,6 +276,7 @@ const workforcePersonTypeOptions = {
   warehouse: [
     { value: 'warehouse_worker', label: 'Magazziniere' },
     { value: 'forklift_operator', label: 'Carrellista' },
+    { value: 'mechanic', label: 'Meccanico / rifornimenti' },
     { value: 'manager', label: 'Responsabile magazzino' },
   ],
 }
@@ -5494,6 +5495,7 @@ function getWorkforceRoleLabel(value = '') {
     driver: 'Autista',
     forklift_operator: 'Carrellista',
     manager: 'Responsabile',
+    mechanic: 'Meccanico / rifornimenti',
     office: 'Impiegato ufficio',
     warehouse_worker: 'Magazziniere',
   }
@@ -5766,7 +5768,7 @@ function normalizeImportScope(value = '') {
 
 function normalizeImportDepartment(value = '') {
   const token = normalizeImportToken(value)
-  if (['magazzino', 'warehouse', 'carrellista', 'magazziniere'].includes(token)) return 'warehouse'
+  if (['gasolio', 'magazzino', 'meccanico', 'officina', 'rifornimenti', 'warehouse', 'carrellista', 'magazziniere'].includes(token)) return 'warehouse'
   return 'office'
 }
 
@@ -5776,11 +5778,17 @@ function normalizeImportPersonType(value = '', department = 'office') {
     carrellista: 'forklift_operator',
     forklift: 'forklift_operator',
     forklift_operator: 'forklift_operator',
+    fuel_operator: 'mechanic',
+    gasolio: 'mechanic',
     impiegato: 'office',
     manager: 'manager',
     magazziniere: 'warehouse_worker',
+    mechanic: 'mechanic',
+    meccanico: 'mechanic',
+    officina: 'mechanic',
     office: 'office',
     responsabile: 'manager',
+    rifornimenti: 'mechanic',
     warehouse: 'warehouse_worker',
     warehouse_worker: 'warehouse_worker',
   }
@@ -11164,6 +11172,7 @@ function App() {
               onCreateBusinessEntry={addBusinessEntryRecord}
               onCreateFuelMovement={addFuelMovementRecord}
               onCreateFuelTank={addFuelTankRecord}
+              personRecords={personRecords}
               vehicleRecords={vehicleRecords}
             />
           ) : (
@@ -16357,6 +16366,7 @@ function ManagementControlWorkspace({
   onCreateBusinessEntry,
   onCreateFuelMovement,
   onCreateFuelTank,
+  personRecords = [],
   vehicleRecords = [],
 }) {
   const { language } = useI18n()
@@ -16377,6 +16387,7 @@ function ManagementControlWorkspace({
     notes: '',
     occurredAt: new Date().toISOString().slice(0, 16),
     odometerKm: '',
+    personId: '',
     supplier: '',
     tankId: fuelTankRecords[0]?.id ?? '',
     totalAmount: '',
@@ -16405,6 +16416,10 @@ function ManagementControlWorkspace({
   const primaryTone = data.marginCents >= 0 ? 'success' : 'danger'
   const activeTankId = fuelTankRecords.some((tank) => tank.id === fuelForm.tankId) ? fuelForm.tankId : fuelTankRecords[0]?.id ?? ''
   const activeVehicleId = vehicleRecords.some((vehicle) => vehicle.id === fuelForm.vehicleId) ? fuelForm.vehicleId : vehicleRecords[0]?.id ?? ''
+  const fuelOperatorRecords = personRecords.filter((person) => (
+    !['Archiviato', 'archived'].includes(person.status)
+    && (person.personType === 'mechanic' || person.department === 'warehouse')
+  ))
 
   function updateTankForm(field, value) {
     setTankForm((currentForm) => ({ ...currentForm, [field]: value }))
@@ -16574,6 +16589,14 @@ function ManagementControlWorkspace({
           <label>Autista<select value={fuelForm.driverId} onChange={(event) => updateFuelForm('driverId', event.target.value)}>
             <option value="">Non assegnato</option>
             {driverRecords.map((driver) => <option key={driver.id} value={driver.id}>{driver.name}</option>)}
+          </select></label>
+          <label>Addetto rifornimento<select value={fuelForm.personId} onChange={(event) => updateFuelForm('personId', event.target.value)}>
+            <option value="">Azienda / non assegnato</option>
+            {fuelOperatorRecords.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name} · {getWorkforceRoleLabel(person.personType)}
+              </option>
+            ))}
           </select></label>
           <label>Litri<input min="0" step="0.01" type="number" value={fuelForm.liters} onChange={(event) => updateFuelForm('liters', event.target.value)} /></label>
           <label>Km mezzo<input min="0" type="number" value={fuelForm.odometerKm} onChange={(event) => updateFuelForm('odometerKm', event.target.value)} /></label>

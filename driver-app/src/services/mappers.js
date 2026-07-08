@@ -110,6 +110,37 @@ export function mapCostEntry(row = {}) {
   }
 }
 
+export function mapFuelTank(row = {}) {
+  return {
+    capacityLiters: Number(row.capacity_liters ?? row.capacityLiters ?? 0),
+    companyId: row.company_id ?? row.companyId ?? '',
+    id: row.id,
+    initialLiters: Number(row.initial_liters ?? row.initialLiters ?? 0),
+    location: row.location ?? '',
+    name: row.name ?? 'Cisterna',
+    status: row.status ?? 'active',
+    warningThresholdLiters: Number(row.warning_threshold_liters ?? row.warningThresholdLiters ?? 0),
+  }
+}
+
+export function mapFuelMovement(row = {}) {
+  return {
+    companyId: row.company_id ?? row.companyId ?? '',
+    createdAt: row.created_at ?? row.createdAt ?? '',
+    currency: row.currency ?? 'EUR',
+    driverId: row.driver_id ?? row.driverId ?? '',
+    id: row.id,
+    liters: Number(row.liters ?? 0),
+    movementType: row.movement_type ?? row.movementType ?? 'dispense',
+    notes: row.notes ?? '',
+    occurredAt: row.occurred_at ?? row.occurredAt ?? '',
+    odometerKm: row.odometer_km ?? row.odometerKm ?? '',
+    personId: row.person_id ?? row.personId ?? '',
+    tankId: row.tank_id ?? row.tankId ?? '',
+    vehicleId: row.vehicle_id ?? row.vehicleId ?? '',
+  }
+}
+
 export function mapCompanyAnnouncement(row = {}) {
   const acknowledgedAt = row.acknowledged_at ?? row.acknowledgedAt ?? ''
   const readAt = row.read_at ?? row.readAt ?? ''
@@ -249,6 +280,8 @@ export function mapDriverContext(data = {}) {
     })),
     drivers: (data.drivers ?? []).map(mapDriver),
     costEntries: (data.costEntries ?? []).map(mapCostEntry),
+    fuelMovements: (data.fuelMovements ?? []).map(mapFuelMovement),
+    fuelTanks: (data.fuelTanks ?? []).map(mapFuelTank),
     announcements: (data.announcements ?? []).map(mapCompanyAnnouncement),
     faultReports: (data.faultReports ?? []).map(mapFaultReport),
     currentPerson: data.currentPerson ? mapCompanyPerson(data.currentPerson) : null,

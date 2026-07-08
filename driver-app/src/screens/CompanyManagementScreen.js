@@ -49,6 +49,7 @@ const personTypeOptions = {
   warehouse: [
     { id: 'forklift_operator', label: 'Carrellista' },
     { id: 'warehouse_worker', label: 'Magazziniere' },
+    { id: 'mechanic', label: 'Meccanico / rifornimenti' },
     { id: 'manager', label: 'Responsabile magazzino' },
   ],
 }
@@ -1496,7 +1497,7 @@ export function CompanyManagementScreen({
   function updatePersonForm(field, value) {
     setPersonForm((currentForm) => {
       if (field === 'department') {
-        const nextPersonType = value === 'warehouse' ? 'forklift_operator' : 'office'
+        const nextPersonType = value === 'warehouse' ? 'warehouse_worker' : 'office'
         const nextLabel = personTypeOptions[value]?.find((entry) => entry.id === nextPersonType)?.label ?? ''
         return {
           ...currentForm,

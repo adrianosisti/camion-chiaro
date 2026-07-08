@@ -118,6 +118,19 @@ function mapCompanyPerson(row = {}) {
   }
 }
 
+function mapFuelTank(row = {}) {
+  return {
+    capacityLiters: Number(row.capacity_liters ?? 0),
+    companyId: row.company_id ?? '',
+    id: row.id,
+    initialLiters: Number(row.initial_liters ?? 0),
+    location: row.location ?? '',
+    name: row.name ?? 'Cisterna',
+    status: row.status ?? 'active',
+    warningThresholdLiters: Number(row.warning_threshold_liters ?? 0),
+  }
+}
+
 function mapTeamChatThread(row = {}) {
   return {
     audienceType: row.audience_type ?? 'custom',
@@ -261,6 +274,7 @@ const companyProfileBillingSelectColumns = `
 const driverSelectBaseColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
 const driverSelectWithCheckColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'
 const companyAnnouncementSelect = 'id, company_id, title, body, audience_type, requires_ack, status, published_at, created_at, updated_at'
+const fuelTankSelectColumns = 'id, company_id, name, location, capacity_liters, warning_threshold_liters, initial_liters, status'
 
 function getAnnouncementAudienceTypes({ driver = null, person = null } = {}) {
   const audiences = new Set(['all'])
@@ -269,7 +283,7 @@ function getAnnouncementAudienceTypes({ driver = null, person = null } = {}) {
   if (driver?.id || person?.linkedDriverId || department === 'drivers') audiences.add('drivers')
   if (['office', 'warehouse', 'management'].includes(department)) audiences.add(department)
   if (person?.personType === 'office') audiences.add('office')
-  if (person?.personType === 'warehouse') audiences.add('warehouse')
+  if (['mechanic', 'warehouse', 'warehouse_worker', 'forklift_operator'].includes(person?.personType)) audiences.add('warehouse')
   if (person?.personType === 'management') audiences.add('management')
 
   return [...audiences]
@@ -494,6 +508,7 @@ async function fetchCompanyPersonContext(serviceClient, person, userId) {
     complianceResult,
     teamThreadsResult,
     announcementsResult,
+    fuelTanksResult,
   ] = await Promise.all([
     fetchCompanyProfile(serviceClient, companyId),
     serviceClient
@@ -523,6 +538,12 @@ async function fetchCompanyPersonContext(serviceClient, person, userId) {
       companyId,
       userId,
     }),
+    serviceClient
+      .from('fuel_tanks')
+      .select(fuelTankSelectColumns)
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('name', { ascending: true }),
   ])
 
   const error =
@@ -531,7 +552,8 @@ async function fetchCompanyPersonContext(serviceClient, person, userId) {
     driversResult.error ||
     complianceResult.error ||
     teamThreadsResult.error ||
-    announcementsResult.error
+    announcementsResult.error ||
+    (fuelTanksResult.error && !['42P01', '42703', 'PGRST204'].includes(fuelTanksResult.error.code) ? fuelTanksResult.error : null)
 
   if (error) return { data: null, error }
 
@@ -545,6 +567,7 @@ async function fetchCompanyPersonContext(serviceClient, person, userId) {
       documents: [],
       drivers: (driversResult.data ?? []).map(mapDriver),
       faultReports: [],
+      fuelTanks: fuelTanksResult.error ? [] : (fuelTanksResult.data ?? []).map(mapFuelTank),
       people: peopleResult.data.map(mapCompanyPerson),
       teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),
       unreadTeamMessages: Object.values(teamUnreadCountsResult.data).reduce((total, count) => total + Number(count || 0), 0),
@@ -610,6 +633,7 @@ async function fetchDriverContext(serviceClient, driver, userId) {
     driversResult,
     teamThreadsResult,
     announcementsResult,
+    fuelTanksResult,
   ] = await Promise.all([
     fetchCompanyProfile(serviceClient, driver.company_id),
     serviceClient
@@ -660,6 +684,12 @@ async function fetchDriverContext(serviceClient, driver, userId) {
       companyId: driver.company_id,
       userId,
     }),
+    serviceClient
+      .from('fuel_tanks')
+      .select(fuelTankSelectColumns)
+      .eq('company_id', driver.company_id)
+      .neq('status', 'archived')
+      .order('name', { ascending: true }),
   ])
 
   const error =
@@ -673,7 +703,8 @@ async function fetchDriverContext(serviceClient, driver, userId) {
     (peopleResult.error && !['42P01', '42703'].includes(peopleResult.error.code) ? peopleResult.error : null) ||
     driversResult.error ||
     teamThreadsResult.error ||
-    announcementsResult.error
+    announcementsResult.error ||
+    (fuelTanksResult.error && !['42P01', '42703', 'PGRST204'].includes(fuelTanksResult.error.code) ? fuelTanksResult.error : null)
 
   if (error) {
     return { data: null, error }
@@ -689,6 +720,7 @@ async function fetchDriverContext(serviceClient, driver, userId) {
       documents: documentsResult.data.map(mapDriverDocument),
       drivers: putCurrentDriverFirst(driver, driversResult.data ?? []).map(mapDriver),
       faultReports: faultsResult.data.map(mapFaultReport),
+      fuelTanks: fuelTanksResult.error ? [] : (fuelTanksResult.data ?? []).map(mapFuelTank),
       people: peopleResult.error ? (currentPerson ? [currentPerson] : []) : peopleResult.data.map(mapCompanyPerson),
       teamChatThreads: (teamThreadsResult.data ?? []).map(mapTeamChatThread),
       unreadTeamMessages: Object.values(teamUnreadCountsResult.data).reduce((total, count) => total + Number(count || 0), 0),

@@ -4,6 +4,16 @@
 
 create extension if not exists pgcrypto;
 
+do $$
+begin
+  if to_regclass('public.company_people') is not null then
+    alter table public.company_people drop constraint if exists company_people_person_type_check;
+    alter table public.company_people
+      add constraint company_people_person_type_check
+      check (person_type in ('driver', 'forklift_operator', 'warehouse_worker', 'mechanic', 'office', 'manager'));
+  end if;
+end $$;
+
 create table if not exists public.fuel_tanks (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -25,6 +35,7 @@ create table if not exists public.fuel_movements (
   tank_id uuid references public.fuel_tanks(id) on delete set null,
   vehicle_id uuid references public.vehicles(id) on delete set null,
   driver_id uuid references public.drivers(id) on delete set null,
+  person_id uuid references public.company_people(id) on delete set null,
   movement_type text not null check (movement_type in ('load', 'dispense', 'adjustment')),
   liters numeric(12, 2) not null check (liters > 0),
   unit_price_cents integer check (unit_price_cents is null or unit_price_cents >= 0),
@@ -43,6 +54,9 @@ create table if not exists public.fuel_movements (
     or vehicle_id is not null
   )
 );
+
+alter table public.fuel_movements
+add column if not exists person_id uuid references public.company_people(id) on delete set null;
 
 create table if not exists public.business_entries (
   id uuid primary key default gen_random_uuid(),
@@ -79,6 +93,10 @@ create index if not exists fuel_movements_tank_time_idx
 on public.fuel_movements (company_id, tank_id, occurred_at desc)
 where tank_id is not null;
 
+create index if not exists fuel_movements_person_time_idx
+on public.fuel_movements (company_id, person_id, occurred_at desc)
+where person_id is not null;
+
 create index if not exists business_entries_company_type_date_idx
 on public.business_entries (company_id, entry_type, occurred_at desc);
 
@@ -105,6 +123,20 @@ using (
     from public.company_members cm
     where cm.company_id = fuel_tanks.company_id
       and cm.user_id = auth.uid()
+  )
+  or exists (
+    select 1
+    from public.company_people cp
+    where cp.company_id = fuel_tanks.company_id
+      and cp.user_id = auth.uid()
+      and cp.status <> 'archived'
+  )
+  or exists (
+    select 1
+    from public.drivers d
+    where d.company_id = fuel_tanks.company_id
+      and d.user_id = auth.uid()
+      and d.status <> 'archived'
   )
 );
 
@@ -144,6 +176,20 @@ using (
     where cm.company_id = fuel_movements.company_id
       and cm.user_id = auth.uid()
   )
+  or exists (
+    select 1
+    from public.company_people cp
+    where cp.company_id = fuel_movements.company_id
+      and cp.user_id = auth.uid()
+      and cp.status <> 'archived'
+  )
+  or exists (
+    select 1
+    from public.drivers d
+    where d.company_id = fuel_movements.company_id
+      and d.user_id = auth.uid()
+      and d.status <> 'archived'
+  )
 );
 
 drop policy if exists fuel_movements_manage_operator on public.fuel_movements;
@@ -167,6 +213,70 @@ with check (
     where cm.company_id = fuel_movements.company_id
       and cm.user_id = auth.uid()
       and cm.role in ('owner', 'admin', 'operator')
+  )
+);
+
+drop policy if exists fuel_movements_insert_staff on public.fuel_movements;
+create policy fuel_movements_insert_staff
+on public.fuel_movements
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.company_people cp
+    where cp.company_id = fuel_movements.company_id
+      and cp.user_id = auth.uid()
+      and cp.status <> 'archived'
+  )
+  or exists (
+    select 1
+    from public.drivers d
+    where d.company_id = fuel_movements.company_id
+      and d.user_id = auth.uid()
+      and d.status <> 'archived'
+  )
+);
+
+drop policy if exists fuel_movements_update_own_staff on public.fuel_movements;
+create policy fuel_movements_update_own_staff
+on public.fuel_movements
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.company_people cp
+    where cp.company_id = fuel_movements.company_id
+      and cp.user_id = auth.uid()
+      and cp.status <> 'archived'
+      and (fuel_movements.created_by_user_id = auth.uid() or fuel_movements.person_id = cp.id)
+  )
+  or exists (
+    select 1
+    from public.drivers d
+    where d.company_id = fuel_movements.company_id
+      and d.user_id = auth.uid()
+      and d.status <> 'archived'
+      and (fuel_movements.created_by_user_id = auth.uid() or fuel_movements.driver_id = d.id)
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.company_people cp
+    where cp.company_id = fuel_movements.company_id
+      and cp.user_id = auth.uid()
+      and cp.status <> 'archived'
+      and (fuel_movements.created_by_user_id = auth.uid() or fuel_movements.person_id = cp.id)
+  )
+  or exists (
+    select 1
+    from public.drivers d
+    where d.company_id = fuel_movements.company_id
+      and d.user_id = auth.uid()
+      and d.status <> 'archived'
+      and (fuel_movements.created_by_user_id = auth.uid() or fuel_movements.driver_id = d.id)
   )
 );
 

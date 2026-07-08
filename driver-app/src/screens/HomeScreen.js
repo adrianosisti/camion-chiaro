@@ -123,6 +123,7 @@ export function HomeScreen({
   onOpenAnnouncements,
   onOpenChat,
   onOpenDocuments,
+  onOpenFuel,
   onOpenOperations,
   onOpenAssistant,
   onOpenSettings,
@@ -334,6 +335,24 @@ export function HomeScreen({
         ) : (
           <Text style={styles.selectorEmpty}>L azienda deve prima aggiungere furgoni, motrici o trattori.</Text>
         )}
+      </Panel>
+
+      <Panel
+        kicker="Gasolio"
+        right={
+          <Pressable onPress={onOpenFuel} style={styles.panelIconButton}>
+            <Ionicons color={colors.ink} name="speedometer-outline" size={18} />
+          </Pressable>
+        }
+        title="Rifornimento"
+      >
+        <Text style={styles.bodyText}>
+          Registra litri e chilometri quando fai rifornimento dalla cisterna aziendale.
+        </Text>
+        <Pressable onPress={onOpenFuel} style={styles.fuelButton}>
+          <Ionicons color={colors.ink} name="add-circle-outline" size={18} />
+          <Text style={styles.fuelButtonText}>Registra rifornimento</Text>
+        </Pressable>
       </Panel>
 
       <Panel
@@ -575,6 +594,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     paddingRight: 10,
+  },
+  fuelButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.cyan,
+    borderRadius: 14,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  fuelButtonText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
   },
   hero: {
     backgroundColor: colors.ink,

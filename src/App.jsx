@@ -11392,6 +11392,7 @@ function App() {
               onUpdateCostEntry={editCostEntryRecord}
               onUpdateFaultStatus={updateFaultReportStatus}
               fuelMovementRecords={fuelMovementRecords}
+              personRecords={personRecords}
               resetCostFormKey={costReportResetKey}
               startAddingCostKey={costReportStartAddingKey}
               vehicleCheckRecords={vehicleCheckRecords}
@@ -16330,6 +16331,7 @@ function ReportsWorkspace({
   onDeleteCostEntry,
   onUpdateCostEntry,
   onUpdateFaultStatus,
+  personRecords = [],
   resetCostFormKey = 0,
   startAddingCostKey = 0,
   vehicleCheckRecords = [],
@@ -16339,6 +16341,17 @@ function ReportsWorkspace({
   const defaultCurrency = getDefaultCurrency(language)
   const [fleetDashboardVehicleId, setFleetDashboardVehicleId] = useState('all')
   const [fleetDashboardDriverId, setFleetDashboardDriverId] = useState('all')
+  const [isFleetDashboardOpen, setIsFleetDashboardOpen] = useState(false)
+  const driverIdByPersonId = useMemo(() => new Map(
+    personRecords
+      .filter((person) => person.id && person.linkedDriverId)
+      .map((person) => [person.id, person.linkedDriverId]),
+  ), [personRecords])
+  const personLabelById = useMemo(() => new Map(
+    personRecords
+      .filter((person) => person.id)
+      .map((person) => [person.id, person.name || person.username || 'Persona']),
+  ), [personRecords])
   const reportRows = buildCostReportRows(faultReportRecords, costEntryRecords)
   const monthStart = getFaultCostPeriodStart('month')
   const monthRows = reportRows.filter((row) => new Date(row.date) >= monthStart)
@@ -16360,8 +16373,12 @@ function ReportsWorkspace({
   const activeVehicles = vehicleRecords.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
   const selectedFleetVehicle = activeVehicles.find((vehicle) => vehicle.id === fleetDashboardVehicleId) ?? null
   const selectedFleetDriver = driverRecords.find((driver) => driver.id === fleetDashboardDriverId) ?? null
+  const getMovementDriverId = (movement = {}) => movement.driverId || driverIdByPersonId.get(movement.personId) || ''
   const matchesFleetDashboardVehicle = (vehicleId) => fleetDashboardVehicleId === 'all' || vehicleId === fleetDashboardVehicleId
-  const matchesFleetDashboardDriver = (driverId) => fleetDashboardDriverId === 'all' || driverId === fleetDashboardDriverId
+  const matchesFleetDashboardDriver = (driverId, personId = '') => {
+    if (fleetDashboardDriverId === 'all') return true
+    return (driverId || driverIdByPersonId.get(personId) || '') === fleetDashboardDriverId
+  }
   const dashboardCostRows = reportRows.filter((row) => (
     matchesFleetDashboardVehicle(row.vehicleId)
     && matchesFleetDashboardDriver(row.driverId)
@@ -16371,13 +16388,13 @@ function ReportsWorkspace({
   const dashboardFuelRows = fuelMovementRecords.filter((movement) => (
     movement.movementType === 'dispense'
     && matchesFleetDashboardVehicle(movement.vehicleId)
-    && matchesFleetDashboardDriver(movement.driverId)
+    && matchesFleetDashboardDriver(movement.driverId, movement.personId)
   ))
   const dashboardVehicleConsumptionRows = (selectedFleetVehicle ? [selectedFleetVehicle] : activeVehicles)
     .map((vehicle) => buildVehicleFuelConsumption(vehicle, dashboardFuelRows, monthStart))
     .filter((row) => row.totalLiters > 0 || row.movementCount > 0 || row.kmPerLiter > 0)
   const dashboardKmDelta = dashboardVehicleConsumptionRows.reduce((total, row) => total + Number(row.kmDelta ?? 0), 0)
-  const dashboardFuelLiters = dashboardVehicleConsumptionRows.reduce((total, row) => total + Number(row.litersForCalculation || row.totalLiters || 0), 0)
+  const dashboardFuelLiters = dashboardVehicleConsumptionRows.reduce((total, row) => total + Number(row.litersForCalculation || row.historicalLiters || row.totalLiters || 0), 0)
   const dashboardKmPerLiter = dashboardKmDelta > 0 && dashboardFuelLiters > 0 ? dashboardKmDelta / dashboardFuelLiters : 0
   const dashboardFaultRows = faultReportRecords.filter((report) => (
     matchesFleetDashboardVehicle(report.vehicleId)
@@ -16411,7 +16428,8 @@ function ReportsWorkspace({
   const dashboardFineTotalCents = dashboardFineRows.reduce((total, row) => total + Number(row.amountCents ?? 0), 0)
   const dashboardFuelMonthLiters = dashboardFuelRows
     .filter((movement) => new Date(movement.occurredAt) >= monthStart)
-    .reduce((total, movement) => total + Number(movement.liters ?? 0), 0)
+    .reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
+  const dashboardFuelTotalLiters = dashboardFuelRows.reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
   const dashboardCostRanking = buildCostRanking(dashboardCostRows, (row) => ({
     key: row.category || 'other',
     name: getCostCategoryLabel(row.category),
@@ -16434,7 +16452,11 @@ function ReportsWorkspace({
       date: movement.occurredAt,
       meta: [
         movement.vehicleId ? getVehicleLabelById(vehicleRecords, movement.vehicleId) : '',
-        movement.driverId ? getDriverLabelById(driverRecords, movement.driverId) : '',
+        getMovementDriverId(movement)
+          ? getDriverLabelById(driverRecords, getMovementDriverId(movement))
+          : movement.personId
+            ? personLabelById.get(movement.personId) || ''
+            : '',
       ].filter(Boolean).join(' · ') || 'Gasolio',
       title: 'Rifornimento gasolio',
       tone: 'info',
@@ -16516,6 +16538,23 @@ function ReportsWorkspace({
           <span>{fleetHealthRows.length ? `${fleetHealthRows.length} mezzi analizzati` : 'Nessun mezzo analizzato'}</span>
         </div>
       </section>
+      <button
+        aria-expanded={isFleetDashboardOpen}
+        className={`fleet-dashboard-launch tone-${dashboardSignalTone}`}
+        onClick={() => setIsFleetDashboardOpen((currentValue) => !currentValue)}
+        type="button"
+      >
+        <span className="fleet-dashboard-launch-icon" aria-hidden="true"><Gauge size={22} /></span>
+        <span className="fleet-dashboard-launch-copy">
+          <small>Cruscotto mezzo</small>
+          <strong>{dashboardTitle}</strong>
+          <em>
+            {dashboardFuelRows.length} rifornimenti · {formatLiters(dashboardFuelTotalLiters)} storico · {dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
+          </em>
+        </span>
+        <span className="fleet-dashboard-launch-action">{isFleetDashboardOpen ? 'Chiudi' : 'Apri'}</span>
+      </button>
+      {isFleetDashboardOpen ? (
       <section className="panel fleet-dashboard-panel" aria-label="Cruscotto mezzo">
         <div className="fleet-dashboard-head">
           <div>
@@ -16586,7 +16625,7 @@ function ReportsWorkspace({
             <StrategicSectionTitle icon={Gauge} overline="Carburante" title="Consumo e rifornimenti" />
             <div className="fleet-dashboard-mini-grid">
               <span><small>Litri mese</small><strong>{formatLiters(dashboardFuelMonthLiters)}</strong></span>
-              <span><small>Litri calcolo</small><strong>{formatLiters(dashboardFuelLiters)}</strong></span>
+              <span><small>Litri storico</small><strong>{formatLiters(dashboardFuelTotalLiters || dashboardFuelLiters)}</strong></span>
               <span><small>Movimenti</small><strong>{dashboardFuelRows.length}</strong></span>
             </div>
           </section>
@@ -16620,6 +16659,7 @@ function ReportsWorkspace({
           </section>
         </div>
       </section>
+      ) : null}
       <FaultCostReport
         acknowledgedCheckIds={acknowledgedCheckIds}
         assetRecords={assetRecords}
@@ -16717,6 +16757,7 @@ function buildVehicleFuelConsumption(vehicle = {}, fuelMovementRecords = [], mon
   const monthStartTime = monthStart?.getTime?.() ?? getFuelMovementTime(monthStart)
   const monthMovements = movements.filter((movement) => movement._movementTime >= monthStartTime)
   const totalLiters = monthMovements.reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
+  const historicalLiters = movements.reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
   const totalFuelCents = monthMovements.reduce((total, movement) => total + Number(movement.totalCostCents ?? 0), 0)
   const odometerRows = movements.filter((movement) => parseFuelDecimalValue(movement.odometerKm) > 0)
   const firstOdometerRow = odometerRows[0]
@@ -16731,7 +16772,7 @@ function buildVehicleFuelConsumption(vehicle = {}, fuelMovementRecords = [], mon
       })
       .reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
     : 0
-  const litersForCalculation = intervalLiters || (odometerRows.length >= 2 ? totalLiters : 0)
+  const litersForCalculation = intervalLiters || (odometerRows.length >= 2 ? historicalLiters : 0)
   const kmPerLiter = kmDelta > 0 && litersForCalculation > 0 ? kmDelta / litersForCalculation : 0
   let consumptionStatus
 
@@ -16754,7 +16795,9 @@ function buildVehicleFuelConsumption(vehicle = {}, fuelMovementRecords = [], mon
     kmPerLiter,
     lastOdometer,
     litersForCalculation,
-    movementCount: monthMovements.length,
+    historicalLiters,
+    monthMovementCount: monthMovements.length,
+    movementCount: movements.length,
     totalFuelCents,
     totalLiters,
     vehicle,

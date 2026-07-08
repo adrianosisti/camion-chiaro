@@ -7551,6 +7551,98 @@ body:has(.app-shell) {
   text-transform: none;
 }
 
+.fleet-dashboard-launch {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid #9be8f3;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 12% 14%, rgba(19, 197, 223, 0.22), transparent 34%),
+    linear-gradient(135deg, #073246 0%, #0c5368 54%, #0ea5c6 100%);
+  box-shadow: 0 18px 42px rgba(8, 47, 73, 0.18);
+  color: #ffffff;
+  cursor: pointer;
+  padding: 13px 14px;
+  text-align: left;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.fleet-dashboard-launch:hover {
+  box-shadow: 0 22px 52px rgba(8, 47, 73, 0.22);
+  transform: translateY(-1px);
+}
+
+.fleet-dashboard-launch-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.fleet-dashboard-launch-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fleet-dashboard-launch-copy small {
+  color: #a7f3ff;
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.fleet-dashboard-launch-copy strong {
+  overflow: hidden;
+  font-size: 1.04rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleet-dashboard-launch-copy em {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 780;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleet-dashboard-launch-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.fleet-dashboard-launch.tone-danger {
+  border-color: #fda4af;
+}
+
+.fleet-dashboard-launch.tone-warning {
+  border-color: #fdba74;
+}
+
+.fleet-dashboard-launch.tone-success {
+  border-color: #99f6e4;
+}
+
 .fleet-dashboard-panel {
   display: grid;
   gap: 12px;
@@ -16734,6 +16826,15 @@ body:has(.app-shell) {
 }
 
 @media (max-width: 760px) {
+  .fleet-dashboard-launch {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .fleet-dashboard-launch-action {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   .fleet-dashboard-head,
   .fleet-health-head,
   .fleet-health-foot {

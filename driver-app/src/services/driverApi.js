@@ -118,7 +118,7 @@ const driverSelectWithCheckColumns = 'id, company_id, username, auth_email, full
 const companyPersonSelectBaseColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, status'
 const companyPersonSelectWithAccessColumns = 'id, company_id, user_id, linked_driver_id, username, auth_email, full_name, email, phone, department, person_type, job_title, depot, access_password, status'
 const fuelTankSelectColumns = 'id, company_id, name, location, capacity_liters, warning_threshold_liters, initial_liters, status'
-const fuelMovementSelectColumns = 'id, company_id, tank_id, vehicle_id, driver_id, person_id, movement_type, liters, currency, odometer_km, occurred_at, notes, created_at'
+const fuelMovementSelectColumns = 'id, company_id, tank_id, vehicle_id, driver_id, person_id, movement_type, liters, unit_price_cents, total_cost_cents, currency, odometer_km, supplier, document_number, occurred_at, notes, created_at'
 
 async function runDriverSelect(configureQuery) {
   let result = await configureQuery(supabase.from('drivers').select(driverSelectWithCheckColumns))
@@ -149,6 +149,20 @@ async function fetchCompanyFuelTanks(companyId) {
 
   if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
   return { data: (data ?? []).map(mapFuelTank), error }
+}
+
+async function fetchCompanyFuelMovements(companyId) {
+  if (!companyId) return { data: [], error: null }
+
+  const { data, error } = await supabase
+    .from('fuel_movements')
+    .select(fuelMovementSelectColumns)
+    .eq('company_id', companyId)
+    .order('occurred_at', { ascending: false })
+    .limit(200)
+
+  if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
+  return { data: (data ?? []).map(mapFuelMovement), error }
 }
 const chatMessageSelectWithoutReactions =
   'id, company_id, thread_id, sender_user_id, sender_role, body, attachment_path, read_by_company_at, read_by_driver_at, created_at'
@@ -1347,6 +1361,7 @@ export async function fetchCompanyContext() {
     teamChatMessagesResult,
     teamUnreadCountsResult,
     fuelTanksResult,
+    fuelMovementsResult,
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -1408,6 +1423,7 @@ export async function fetchCompanyContext() {
       .limit(120),
     fetchTeamUnreadCounts(companyId),
     fetchCompanyFuelTanks(companyId),
+    fetchCompanyFuelMovements(companyId),
   ])
 
   const firstError = [
@@ -1426,6 +1442,7 @@ export async function fetchCompanyContext() {
     chatMessagesResult.error,
     teamUnreadCountsResult.error,
     fuelTanksResult.error,
+    fuelMovementsResult.error,
   ].find(Boolean)
 
   if (firstError) return { data: null, error: firstError }
@@ -1455,6 +1472,7 @@ export async function fetchCompanyContext() {
       drivers: (driversResult.data ?? []).map(mapDriver),
       costEntries: costEntriesResult.data ?? [],
       faultReports: (faultsResult.data ?? []).map(mapFaultReport),
+      fuelMovements: fuelMovementsResult.data ?? [],
       fuelTanks: fuelTanksResult.data ?? [],
       membership: membershipResult.data,
       people: companyPeopleRows.map(mapCompanyPerson),
@@ -2923,25 +2941,40 @@ export async function createFuelMovement({ companyId, movement }) {
   if (!isSupabaseConfigured) return notConfiguredError()
   if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
 
-  const liters = Number(movement.liters ?? 0)
-  if (!movement.tankId || !movement.vehicleId || liters <= 0) {
-    return { data: null, error: { message: 'Seleziona cisterna, mezzo e litri riforniti.' } }
+  const parseFuelNumber = (value) => {
+    const parsed = Number.parseFloat(String(value ?? '').replace(/\s/g, '').replace(',', '.'))
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  const liters = parseFuelNumber(movement.liters)
+  const movementType = movement.movementType || 'dispense'
+  if (!movement.tankId || liters <= 0 || (movementType === 'dispense' && !movement.vehicleId)) {
+    return { data: null, error: { message: movementType === 'dispense' ? 'Seleziona cisterna, mezzo e litri riforniti.' : 'Seleziona cisterna e litri caricati.' } }
   }
 
   const sessionResult = await supabase.auth.getSession()
+  const unitPriceCents = movement.unitPriceCents === '' || movement.unitPriceCents == null
+    ? null
+    : Number(movement.unitPriceCents)
+  const totalCostCents = movement.totalCostCents === '' || movement.totalCostCents == null
+    ? unitPriceCents && liters ? Math.round(unitPriceCents * liters) : null
+    : Number(movement.totalCostCents)
   const payload = {
     company_id: companyId,
     created_by_user_id: sessionResult.data?.session?.user?.id ?? null,
     currency: movement.currency || 'EUR',
+    document_number: movement.documentNumber?.trim() || null,
     driver_id: movement.driverId || null,
     liters,
-    movement_type: movement.movementType || 'dispense',
+    movement_type: movementType,
     notes: movement.notes?.trim() || null,
     occurred_at: movement.occurredAt || new Date().toISOString(),
     odometer_km: movement.odometerKm ? Number(movement.odometerKm) : null,
     person_id: movement.personId || null,
+    supplier: movement.supplier?.trim() || null,
     tank_id: movement.tankId,
-    vehicle_id: movement.vehicleId,
+    total_cost_cents: totalCostCents,
+    unit_price_cents: unitPriceCents,
+    vehicle_id: movementType === 'dispense' ? movement.vehicleId : null,
   }
 
   const { data, error } = await supabase
@@ -2955,6 +2988,42 @@ export async function createFuelMovement({ companyId, movement }) {
   }
 
   return { data: data ? mapFuelMovement(data) : null, error }
+}
+
+export async function createFuelTank({ companyId, tank }) {
+  if (!isSupabaseConfigured) return notConfiguredError()
+  if (!companyId) return { data: null, error: { message: 'Azienda non trovata.' } }
+  const parseFuelNumber = (value) => {
+    const parsed = Number.parseFloat(String(value ?? '').replace(/\s/g, '').replace(',', '.'))
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const payload = {
+    capacity_liters: parseFuelNumber(tank.capacityLiters),
+    company_id: companyId,
+    initial_liters: parseFuelNumber(tank.initialLiters),
+    location: tank.location?.trim() || null,
+    name: tank.name?.trim() || 'Cisterna gasolio',
+    notes: tank.notes?.trim() || null,
+    status: 'active',
+    warning_threshold_liters: parseFuelNumber(tank.warningThresholdLiters),
+  }
+
+  if (!payload.name || payload.capacity_liters <= 0) {
+    return { data: null, error: { message: 'Inserisci nome cisterna e capienza in litri.' } }
+  }
+
+  const { data, error } = await supabase
+    .from('fuel_tanks')
+    .insert(payload)
+    .select(fuelTankSelectColumns)
+    .single()
+
+  if (isMissingWorkforceSchemaError(error)) {
+    return { data: null, error: { message: 'Modulo gasolio non ancora attivo. Esegui SQL 60 e 61 in Supabase.' } }
+  }
+
+  return { data: data ? mapFuelTank(data) : null, error }
 }
 
 export async function updateCompanyCostEntry({ companyId, entryId, entry, file = null, previousFilePath = '' }) {

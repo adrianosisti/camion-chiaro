@@ -98,6 +98,7 @@ const archiveListOptions = [
   { id: 'faults', label: 'Guasti' },
   { id: 'checks', label: 'Check' },
   { id: 'deadlines', label: 'Scadenze' },
+  { id: 'fuel', label: 'Gasolio' },
   { id: 'costs', label: 'Centro costi' },
 ]
 
@@ -107,6 +108,13 @@ const createFormOptions = [
   { icon: 'cube-outline', id: 'asset', label: 'Attrezzatura' },
   { icon: 'bus-outline', id: 'vehicle', label: 'Mezzo' },
   { icon: 'calendar-outline', id: 'deadline', label: 'Scadenza' },
+  { icon: 'speedometer-outline', id: 'fuel', label: 'Gasolio' },
+]
+
+const fuelMovementTypeOptions = [
+  { id: 'dispense', label: 'Rifornimento mezzo', subtitle: 'Scarico cisterna su targa' },
+  { id: 'load', label: 'Carico cisterna', subtitle: 'Fornitore scarica gasolio' },
+  { id: 'adjustment', label: 'Rettifica giacenza', subtitle: 'Correzione inventario' },
 ]
 
 function formatDate(value, language = 'it') {
@@ -402,6 +410,15 @@ function parseMoneyToCents(value = '') {
   const amount = Number.parseFloat(normalized)
 
   return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0
+}
+
+function parseDecimalInput(value = '') {
+  const amount = Number.parseFloat(String(value).replace(/\s/g, '').replace(',', '.'))
+  return Number.isFinite(amount) ? amount : 0
+}
+
+function formatLiters(value = 0) {
+  return `${new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1 }).format(Number(value) || 0)} L`
 }
 
 const currencyByLanguage = {
@@ -1023,6 +1040,8 @@ export function CompanyManagementScreen({
   onCreateDeadline,
   onCreateCostEntry,
   onCreateDriver,
+  onCreateFuelMovement,
+  onCreateFuelTank,
   onCreatePerson,
   onCreateVehicle,
   onCreateWarehouseAsset,
@@ -1043,6 +1062,8 @@ export function CompanyManagementScreen({
   const deadlines = context?.complianceItems ?? []
   const faults = context?.faultReports ?? []
   const costEntries = context?.costEntries ?? []
+  const fuelTanks = context?.fuelTanks ?? []
+  const fuelMovements = context?.fuelMovements ?? []
   const checks = context?.vehicleChecks ?? []
   const defaultCurrency = getDefaultCurrency(language)
   const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
@@ -1143,6 +1164,29 @@ export function CompanyManagementScreen({
     title: '',
     vehicleId: '',
   })
+  const [fuelTankForm, setFuelTankForm] = useState({
+    capacityLiters: '',
+    initialLiters: '',
+    location: '',
+    name: 'Cisterna gasolio',
+    notes: '',
+    warningThresholdLiters: '',
+  })
+  const [fuelMovementForm, setFuelMovementForm] = useState({
+    documentNumber: '',
+    driverId: '',
+    liters: '',
+    movementType: 'dispense',
+    notes: '',
+    occurredDate: getTodayInputDate(),
+    odometerKm: '',
+    personId: '',
+    supplier: '',
+    tankId: '',
+    totalAmount: '',
+    unitPrice: '',
+    vehicleId: '',
+  })
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingCost, setIsSavingCost] = useState(false)
   const [costPeriod, setCostPeriod] = useState('month')
@@ -1219,6 +1263,46 @@ export function CompanyManagementScreen({
       })),
     ],
     [drivers, vehicles, warehouseAssets],
+  )
+  const fuelTankOptions = useMemo(
+    () => fuelTanks.map((tank) => ({
+      id: tank.id,
+      label: tank.name,
+      subtitle: tank.location || 'Deposito',
+    })),
+    [fuelTanks],
+  )
+  const fuelVehicleOptions = useMemo(
+    () => activeVehicles
+      .filter((vehicle) => vehicle.fleetType !== 'semirimorchio')
+      .map((vehicle) => ({
+        id: vehicle.id,
+        label: vehicle.plate || 'Targa',
+        subtitle: [vehicle.model, vehicle.fleetType].filter(Boolean).join(' · '),
+      })),
+    [activeVehicles],
+  )
+  const fuelDriverOptions = useMemo(
+    () => [
+      { id: '', label: 'Nessun autista', subtitle: 'Solo rifornimento targa' },
+      ...drivers.map((driver) => ({
+        id: driver.id,
+        label: driver.name,
+        subtitle: driver.phone || driver.role || '',
+      })),
+    ],
+    [drivers],
+  )
+  const fuelPersonOptions = useMemo(
+    () => [
+      { id: '', label: 'Nessun addetto', subtitle: 'Operazione aziendale' },
+      ...allPeople.map((person) => ({
+        id: person.id,
+        label: person.name,
+        subtitle: [getDepartmentLabel(person.department), person.jobTitle || getPersonTypeLabel(person.personType)].filter(Boolean).join(' · '),
+      })),
+    ],
+    [allPeople],
   )
   const deadlineAssignees = useMemo(() => {
     if (deadlineForm.scope === 'driver') return drivers
@@ -1554,8 +1638,120 @@ export function CompanyManagementScreen({
     })
   }
 
+  function updateFuelTankForm(field, value) {
+    setFuelTankForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  function updateFuelMovementForm(field, value) {
+    setFuelMovementForm((currentForm) => {
+      if (field === 'movementType') {
+        return {
+          ...currentForm,
+          movementType: value,
+          vehicleId: value === 'dispense' ? currentForm.vehicleId : '',
+        }
+      }
+
+      return { ...currentForm, [field]: value }
+    })
+  }
+
+  function getFuelTankLevel(tank = {}) {
+    return fuelMovements
+      .filter((movement) => movement.tankId === tank.id)
+      .reduce((level, movement) => {
+        const liters = Number(movement.liters ?? 0)
+        if (movement.movementType === 'dispense') return level - liters
+        return level + liters
+      }, Number(tank.initialLiters ?? 0))
+  }
+
   function pickAttachment(onSelected, title = 'Allega documento') {
     pickAttachmentWithOptions(onSelected, title)
+  }
+
+  async function submitFuelTank() {
+    const payload = {
+      capacityLiters: fuelTankForm.capacityLiters.trim(),
+      initialLiters: fuelTankForm.initialLiters.trim(),
+      location: fuelTankForm.location.trim(),
+      name: fuelTankForm.name.trim(),
+      notes: fuelTankForm.notes.trim(),
+      warningThresholdLiters: fuelTankForm.warningThresholdLiters.trim(),
+    }
+
+    if (!payload.name || parseDecimalInput(payload.capacityLiters) <= 0) {
+      Alert.alert('Dati mancanti', 'Inserisci nome cisterna e capienza in litri.')
+      return
+    }
+
+    setIsSaving(true)
+    const savedTank = await onCreateFuelTank?.(payload)
+    setIsSaving(false)
+
+    if (savedTank) {
+      setFuelTankForm({
+        capacityLiters: '',
+        initialLiters: '',
+        location: '',
+        name: 'Cisterna gasolio',
+        notes: '',
+        warningThresholdLiters: '',
+      })
+      setFuelMovementForm((currentForm) => ({ ...currentForm, tankId: savedTank.id }))
+      Alert.alert('Cisterna creata', `${savedTank.name} e disponibile per i rifornimenti.`)
+    }
+  }
+
+  async function submitFuelMovement() {
+    const movementType = fuelMovementForm.movementType || 'dispense'
+    const activeTankId = fuelTanks.some((tank) => tank.id === fuelMovementForm.tankId)
+      ? fuelMovementForm.tankId
+      : fuelTanks[0]?.id ?? ''
+    const activeVehicleId = activeVehicles.some((vehicle) => vehicle.id === fuelMovementForm.vehicleId)
+      ? fuelMovementForm.vehicleId
+      : activeVehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')?.id ?? ''
+    const liters = parseDecimalInput(fuelMovementForm.liters)
+
+    if (!activeTankId || liters <= 0 || (movementType === 'dispense' && !activeVehicleId)) {
+      Alert.alert('Dati mancanti', movementType === 'dispense' ? 'Seleziona cisterna, mezzo e litri riforniti.' : 'Seleziona cisterna e litri caricati.')
+      return
+    }
+
+    const payload = {
+      currency: defaultCurrency,
+      documentNumber: fuelMovementForm.documentNumber.trim(),
+      driverId: movementType === 'dispense' ? fuelMovementForm.driverId : '',
+      liters,
+      movementType,
+      notes: fuelMovementForm.notes.trim(),
+      occurredAt: fuelMovementForm.occurredDate ? `${fuelMovementForm.occurredDate}T10:00:00.000Z` : new Date().toISOString(),
+      odometerKm: movementType === 'dispense' ? fuelMovementForm.odometerKm.trim() : '',
+      personId: fuelMovementForm.personId,
+      supplier: fuelMovementForm.supplier.trim(),
+      tankId: activeTankId,
+      totalCostCents: parseMoneyToCents(fuelMovementForm.totalAmount),
+      unitPriceCents: parseMoneyToCents(fuelMovementForm.unitPrice),
+      vehicleId: movementType === 'dispense' ? activeVehicleId : '',
+    }
+
+    setIsSaving(true)
+    const savedMovement = await onCreateFuelMovement?.(payload)
+    setIsSaving(false)
+
+    if (savedMovement) {
+      setFuelMovementForm((currentForm) => ({
+        ...currentForm,
+        documentNumber: '',
+        liters: '',
+        notes: '',
+        odometerKm: '',
+        supplier: '',
+        totalAmount: '',
+        unitPrice: '',
+      }))
+      Alert.alert('Movimento salvato', movementType === 'dispense' ? 'Rifornimento collegato alla targa.' : 'Cisterna aggiornata.')
+    }
   }
 
   async function submitCostEntry() {
@@ -2007,6 +2203,176 @@ export function CompanyManagementScreen({
     return saved
   }
 
+  function getFuelPersonName(personId) {
+    return allPeople.find((person) => person.id === personId)?.name ?? ''
+  }
+
+  function renderFuelManagement() {
+    const movementType = fuelMovementForm.movementType || 'dispense'
+    const activeTankId = fuelTanks.some((tank) => tank.id === fuelMovementForm.tankId)
+      ? fuelMovementForm.tankId
+      : fuelTanks[0]?.id ?? ''
+    const activeVehicleId = activeVehicles.some((vehicle) => vehicle.id === fuelMovementForm.vehicleId)
+      ? fuelMovementForm.vehicleId
+      : activeVehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')?.id ?? ''
+    const recentFuelMovements = fuelMovements.slice(0, 12)
+
+    return (
+      <View style={styles.archiveList}>
+        <View style={styles.costReportCard}>
+          <View style={styles.registryHeader}>
+            <View style={styles.listIcon}>
+              <Ionicons color={colors.cyanDark} name="water-outline" size={18} />
+            </View>
+            <View style={styles.listCopy}>
+              <Text style={styles.listTitle}>Cisterne gasolio</Text>
+              <Text style={styles.listMeta}>Crea serbatoi, soglie e giacenza iniziale.</Text>
+            </View>
+          </View>
+          <TextField label="Nome cisterna" onChangeText={(value) => updateFuelTankForm('name', value)} placeholder="Cisterna piazzale" value={fuelTankForm.name} />
+          <TextField keyboardType="decimal-pad" label="Capienza litri" onChangeText={(value) => updateFuelTankForm('capacityLiters', value)} placeholder="10000" value={fuelTankForm.capacityLiters} />
+          <TextField keyboardType="decimal-pad" label="Giacenza iniziale" onChangeText={(value) => updateFuelTankForm('initialLiters', value)} placeholder="3500" value={fuelTankForm.initialLiters} />
+          <TextField keyboardType="decimal-pad" label="Soglia allarme" onChangeText={(value) => updateFuelTankForm('warningThresholdLiters', value)} placeholder="1000" value={fuelTankForm.warningThresholdLiters} />
+          <TextField label="Posizione" onChangeText={(value) => updateFuelTankForm('location', value)} placeholder="Deposito, piazzale, sede..." value={fuelTankForm.location} />
+          <TextField label="Note cisterna" multiline onChangeText={(value) => updateFuelTankForm('notes', value)} placeholder="Opzionale" value={fuelTankForm.notes} />
+          <PrimaryButton loading={isSaving} onPress={submitFuelTank} title="Crea cisterna" />
+        </View>
+
+        <View style={styles.costReportCard}>
+          <View style={styles.registryHeader}>
+            <View style={styles.listIcon}>
+              <Ionicons color={colors.cyanDark} name="speedometer-outline" size={18} />
+            </View>
+            <View style={styles.listCopy}>
+              <Text style={styles.listTitle}>Movimento gasolio</Text>
+              <Text style={styles.listMeta}>Registra carico cisterna, rifornimento mezzo o rettifica.</Text>
+            </View>
+          </View>
+          {!fuelTanks.length ? (
+            <Text style={styles.emptyText}>Crea almeno una cisterna prima di registrare movimenti.</Text>
+          ) : (
+            <>
+              <WheelPickerField
+                label="Tipo movimento"
+                onPress={() => openWheelPicker({
+                  onSelect: (value) => updateFuelMovementForm('movementType', value),
+                  options: fuelMovementTypeOptions,
+                  title: 'Tipo movimento',
+                  value: movementType,
+                })}
+                value={getWheelOptionLabel(fuelMovementTypeOptions, movementType)}
+              />
+              <WheelPickerField
+                label="Cisterna"
+                onPress={() => openWheelPicker({
+                  onSelect: (value) => updateFuelMovementForm('tankId', value),
+                  options: fuelTankOptions,
+                  title: 'Scegli cisterna',
+                  value: activeTankId,
+                })}
+                value={getWheelOptionLabel(fuelTankOptions, activeTankId, 'Scegli cisterna')}
+              />
+              {movementType === 'dispense' ? (
+                <>
+                  <WheelPickerField
+                    label="Mezzo"
+                    onPress={() => openWheelPicker({
+                      onSelect: (value) => updateFuelMovementForm('vehicleId', value),
+                      options: fuelVehicleOptions,
+                      title: 'Scegli mezzo',
+                      value: activeVehicleId,
+                    })}
+                    value={getWheelOptionLabel(fuelVehicleOptions, activeVehicleId, 'Scegli mezzo')}
+                  />
+                  <WheelPickerField
+                    label="Autista"
+                    onPress={() => openWheelPicker({
+                      onSelect: (value) => updateFuelMovementForm('driverId', value),
+                      options: fuelDriverOptions,
+                      title: 'Autista',
+                      value: fuelMovementForm.driverId,
+                    })}
+                    value={getWheelOptionLabel(fuelDriverOptions, fuelMovementForm.driverId)}
+                  />
+                </>
+              ) : null}
+              <WheelPickerField
+                label="Addetto"
+                onPress={() => openWheelPicker({
+                  onSelect: (value) => updateFuelMovementForm('personId', value),
+                  options: fuelPersonOptions,
+                  title: 'Addetto rifornimento',
+                  value: fuelMovementForm.personId,
+                })}
+                value={getWheelOptionLabel(fuelPersonOptions, fuelMovementForm.personId)}
+              />
+              <TextField keyboardType="decimal-pad" label="Litri" onChangeText={(value) => updateFuelMovementForm('liters', value)} placeholder="120" value={fuelMovementForm.liters} />
+              {movementType === 'dispense' ? (
+                <TextField keyboardType="number-pad" label="Km mezzo" onChangeText={(value) => updateFuelMovementForm('odometerKm', value)} placeholder="Opzionale" value={fuelMovementForm.odometerKm} />
+              ) : null}
+              <TextField keyboardType="decimal-pad" label="Prezzo litro" onChangeText={(value) => updateFuelMovementForm('unitPrice', value)} placeholder="1,72" value={fuelMovementForm.unitPrice} />
+              <TextField keyboardType="decimal-pad" label="Totale euro" onChangeText={(value) => updateFuelMovementForm('totalAmount', value)} placeholder="350,00" value={fuelMovementForm.totalAmount} />
+              <TextField label="Fornitore" onChangeText={(value) => updateFuelMovementForm('supplier', value)} placeholder="Opzionale" value={fuelMovementForm.supplier} />
+              <TextField label="Numero documento" onChangeText={(value) => updateFuelMovementForm('documentNumber', value)} placeholder="DDT o fattura" value={fuelMovementForm.documentNumber} />
+              <DateField label="Data movimento" language={language} onChange={(value) => updateFuelMovementForm('occurredDate', value)} value={fuelMovementForm.occurredDate} />
+              <TextField label="Note" multiline onChangeText={(value) => updateFuelMovementForm('notes', value)} placeholder="Opzionale" value={fuelMovementForm.notes} />
+              <PrimaryButton loading={isSaving} onPress={submitFuelMovement} title="Salva movimento gasolio" />
+            </>
+          )}
+        </View>
+
+        <View style={styles.costInsightGrid}>
+          {fuelTanks.map((tank) => {
+            const level = getFuelTankLevel(tank)
+            const capacity = Number(tank.capacityLiters ?? 0)
+            const percentage = capacity ? Math.max(0, Math.min(100, Math.round((level / capacity) * 100))) : 0
+            const isLow = Number(tank.warningThresholdLiters ?? 0) > 0 && level <= Number(tank.warningThresholdLiters)
+
+            return (
+              <View key={tank.id} style={[styles.costInsightCard, isLow ? styles.costInsightWarning : null]}>
+                <Text style={styles.summaryLabel}>{tank.location || 'Deposito'}</Text>
+                <Text numberOfLines={1} style={styles.costInsightTitle}>{tank.name}</Text>
+                <Text style={styles.costInsightValue}>{formatLiters(level)}</Text>
+                <Text style={styles.listMeta}>{percentage}% · soglia {formatLiters(tank.warningThresholdLiters)}</Text>
+              </View>
+            )
+          })}
+          {!fuelTanks.length ? <Text style={styles.emptyText}>Nessuna cisterna configurata.</Text> : null}
+        </View>
+
+        <View style={styles.archiveList}>
+          <Text style={styles.groupTitle}>Ultimi movimenti</Text>
+          {recentFuelMovements.map((movement) => (
+            <View key={movement.id} style={styles.registryCard}>
+              <View style={styles.registryHeader}>
+                <View style={styles.listIconMuted}>
+                  <Ionicons color={colors.muted} name={movement.movementType === 'load' ? 'download-outline' : 'car-outline'} size={18} />
+                </View>
+                <View style={styles.listCopy}>
+                  <Text style={styles.listTitle}>
+                    {movement.movementType === 'load' ? 'Carico cisterna' : movement.movementType === 'adjustment' ? 'Rettifica' : 'Rifornimento'} · {formatLiters(movement.liters)}
+                  </Text>
+                  <Text style={styles.listMeta}>
+                    {fuelTanks.find((tank) => tank.id === movement.tankId)?.name ?? 'Cisterna'} · {movement.vehicleId ? getVehiclePlate(vehicles, movement.vehicleId) : 'senza targa'} · {formatDateTime(movement.occurredAt, language)}
+                  </Text>
+                  <Text style={styles.listMeta}>
+                    {[
+                      movement.driverId ? getDriverName(drivers, movement.driverId) : '',
+                      movement.personId ? getFuelPersonName(movement.personId) : '',
+                      movement.supplier,
+                    ].filter(Boolean).join(' · ') || 'Nessun addetto indicato'}
+                  </Text>
+                </View>
+                <Text style={styles.costRowAmount}>{movement.totalCostCents ? formatMoneyCents(movement.totalCostCents, movement.currency || defaultCurrency) : ''}</Text>
+              </View>
+            </View>
+          ))}
+          {!recentFuelMovements.length ? <Text style={styles.emptyText}>Nessun movimento gasolio registrato.</Text> : null}
+        </View>
+      </View>
+    )
+  }
+
   const formPanelRight = isCreateOnly ? null : (
     <Pressable onPress={() => openArchive(activeList)} style={styles.closeFormButton}>
       <Text style={styles.closeFormText}>Chiudi</Text>
@@ -2197,6 +2563,8 @@ export function CompanyManagementScreen({
           <PrimaryButton loading={isSaving} onPress={submitVehicle} title="Aggiungi mezzo" />
         </Panel>
       ) : null}
+
+      {mode === 'create' && activeForm === 'fuel' ? renderFuelManagement() : null}
 
       {mode === 'create' && activeForm === 'deadline' ? (
         <Panel
@@ -2533,6 +2901,8 @@ export function CompanyManagementScreen({
             ) : null}
           </View>
         ) : null}
+
+        {activeList === 'fuel' ? renderFuelManagement() : null}
 
         {activeList === 'costs' ? (
           <View style={styles.archiveList}>

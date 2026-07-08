@@ -128,6 +128,7 @@ export function mapFuelMovement(row = {}) {
     companyId: row.company_id ?? row.companyId ?? '',
     createdAt: row.created_at ?? row.createdAt ?? '',
     currency: row.currency ?? 'EUR',
+    documentNumber: row.document_number ?? row.documentNumber ?? '',
     driverId: row.driver_id ?? row.driverId ?? '',
     id: row.id,
     liters: Number(row.liters ?? 0),
@@ -136,7 +137,10 @@ export function mapFuelMovement(row = {}) {
     occurredAt: row.occurred_at ?? row.occurredAt ?? '',
     odometerKm: row.odometer_km ?? row.odometerKm ?? '',
     personId: row.person_id ?? row.personId ?? '',
+    supplier: row.supplier ?? '',
     tankId: row.tank_id ?? row.tankId ?? '',
+    totalCostCents: Number(row.total_cost_cents ?? row.totalCostCents ?? 0),
+    unitPriceCents: row.unit_price_cents == null && row.unitPriceCents == null ? '' : Number(row.unit_price_cents ?? row.unitPriceCents),
     vehicleId: row.vehicle_id ?? row.vehicleId ?? '',
   }
 }

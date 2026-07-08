@@ -46,6 +46,7 @@ import {
   createCompanyWarehouseAsset,
   createDriverDocument,
   createFuelMovement,
+  createFuelTank,
   createFaultReport,
   createVehicleCheck,
   createVoiceCallSession,
@@ -3665,6 +3666,58 @@ function CamionChiaroApp() {
     return result.data
   }
 
+  async function handleCreateCompanyFuelTank(payload) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+    if (!canUseNativePlanFeature('costCenter')) {
+      showNativePlanFeatureLimit('costCenter')
+      return null
+    }
+
+    const result = await createFuelTank({
+      companyId,
+      tank: payload,
+    })
+
+    if (result.error) {
+      Alert.alert('Cisterna non creata', result.error.message)
+      return null
+    }
+
+    setCompanyContext((currentContext) => (
+      currentContext
+        ? { ...currentContext, fuelTanks: [result.data, ...(currentContext.fuelTanks ?? [])] }
+        : currentContext
+    ))
+    return result.data
+  }
+
+  async function handleCreateCompanyFuelMovement(payload) {
+    const companyId = companyContext?.companyProfile?.id
+    if (!companyId) return null
+    if (!canUseNativePlanFeature('costCenter')) {
+      showNativePlanFeatureLimit('costCenter')
+      return null
+    }
+
+    const result = await createFuelMovement({
+      companyId,
+      movement: payload,
+    })
+
+    if (result.error) {
+      Alert.alert('Movimento gasolio non salvato', result.error.message)
+      return null
+    }
+
+    setCompanyContext((currentContext) => (
+      currentContext
+        ? { ...currentContext, fuelMovements: [result.data, ...(currentContext.fuelMovements ?? [])] }
+        : currentContext
+    ))
+    return result.data
+  }
+
   async function handleUpdateCompanyCostEntry(entryId, payload, file = null, previousEntry = null) {
     const companyId = companyContext?.companyProfile?.id
     if (!companyId || !entryId) return null
@@ -4130,6 +4183,8 @@ function CamionChiaroApp() {
             onCreateDeadline={handleCreateCompanyDeadline}
             onCreateCostEntry={handleCreateCompanyCostEntry}
             onCreateDriver={handleCreateCompanyDriver}
+            onCreateFuelMovement={handleCreateCompanyFuelMovement}
+            onCreateFuelTank={handleCreateCompanyFuelTank}
             onCreatePerson={handleCreateCompanyPerson}
             onCreateVehicle={handleCreateCompanyVehicle}
             onCreateWarehouseAsset={handleCreateCompanyWarehouseAsset}

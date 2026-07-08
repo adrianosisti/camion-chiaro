@@ -16342,6 +16342,12 @@ function ReportsWorkspace({
   const [fleetDashboardVehicleId, setFleetDashboardVehicleId] = useState('all')
   const [fleetDashboardDriverId, setFleetDashboardDriverId] = useState('all')
   const [isFleetDashboardOpen, setIsFleetDashboardOpen] = useState(false)
+  const normalizeDashboardIdentity = (value = '') => String(value ?? '').trim().toLowerCase()
+  const personById = useMemo(() => new Map(
+    personRecords
+      .filter((person) => person.id)
+      .map((person) => [person.id, person]),
+  ), [personRecords])
   const driverIdByPersonId = useMemo(() => new Map(
     personRecords
       .filter((person) => person.id && person.linkedDriverId)
@@ -16373,11 +16379,34 @@ function ReportsWorkspace({
   const activeVehicles = vehicleRecords.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
   const selectedFleetVehicle = activeVehicles.find((vehicle) => vehicle.id === fleetDashboardVehicleId) ?? null
   const selectedFleetDriver = driverRecords.find((driver) => driver.id === fleetDashboardDriverId) ?? null
-  const getMovementDriverId = (movement = {}) => movement.driverId || driverIdByPersonId.get(movement.personId) || ''
+  const getMovementDriverId = (movement = {}) => {
+    if (movement.driverId) return movement.driverId
+    const linkedDriverId = driverIdByPersonId.get(movement.personId)
+    if (linkedDriverId) return linkedDriverId
+
+    const person = personById.get(movement.personId)
+    if (!person) return ''
+
+    const personTokens = [
+      person.name,
+      person.username,
+      person.phone,
+      person.email,
+    ].map(normalizeDashboardIdentity).filter(Boolean)
+    const matchedDriver = driverRecords.find((driver) => [
+      driver.name,
+      driver.fullName,
+      driver.username,
+      driver.phone,
+      driver.email,
+    ].map(normalizeDashboardIdentity).some((token) => token && personTokens.includes(token)))
+
+    return matchedDriver?.id ?? ''
+  }
   const matchesFleetDashboardVehicle = (vehicleId) => fleetDashboardVehicleId === 'all' || vehicleId === fleetDashboardVehicleId
   const matchesFleetDashboardDriver = (driverId, personId = '') => {
     if (fleetDashboardDriverId === 'all') return true
-    return (driverId || driverIdByPersonId.get(personId) || '') === fleetDashboardDriverId
+    return getMovementDriverId({ driverId, personId }) === fleetDashboardDriverId
   }
   const dashboardCostRows = reportRows.filter((row) => (
     matchesFleetDashboardVehicle(row.vehicleId)
@@ -16429,6 +16458,8 @@ function ReportsWorkspace({
   const dashboardFuelMonthLiters = dashboardFuelRows
     .filter((movement) => new Date(movement.occurredAt) >= monthStart)
     .reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
+  const dashboardFuelMonthCount = dashboardFuelRows.filter((movement) => new Date(movement.occurredAt) >= monthStart).length
+  const dashboardFuelTotalCount = dashboardFuelRows.length
   const dashboardFuelTotalLiters = dashboardFuelRows.reduce((total, movement) => total + parseFuelDecimalValue(movement.liters), 0)
   const dashboardCostRanking = buildCostRanking(dashboardCostRows, (row) => ({
     key: row.category || 'other',
@@ -16549,7 +16580,7 @@ function ReportsWorkspace({
           <small>Cruscotto mezzo</small>
           <strong>{dashboardTitle}</strong>
           <em>
-            {dashboardFuelRows.length} rifornimenti · {formatLiters(dashboardFuelTotalLiters)} storico · {dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
+            {dashboardFuelMonthCount} rif. mese · {dashboardFuelTotalCount} rif. storico · {formatLiters(dashboardFuelTotalLiters)} · {dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'media da calcolare'}
           </em>
         </span>
         <span className="fleet-dashboard-launch-action">{isFleetDashboardOpen ? 'Chiudi' : 'Apri'}</span>
@@ -16594,6 +16625,11 @@ function ReportsWorkspace({
             <strong>{dashboardKmPerLiter ? `${dashboardKmPerLiter.toFixed(2)} km/L` : 'Da calcolare'}</strong>
             <span>{dashboardKmDelta ? `${dashboardKmDelta.toLocaleString('it-IT')} km letti` : 'servono rifornimenti con km'}</span>
           </article>
+          <article className={dashboardFuelTotalCount ? 'tone-info' : 'tone-warning'}>
+            <small>Rifornimenti</small>
+            <strong>{dashboardFuelMonthCount}</strong>
+            <span>{dashboardFuelTotalCount} da sempre · {formatLiters(dashboardFuelTotalLiters)}</span>
+          </article>
           <article className="tone-warning">
             <small>Spesa mese</small>
             <strong>{formatMoneyCents(dashboardMonthCostCents, defaultCurrency)}</strong>
@@ -16624,9 +16660,10 @@ function ReportsWorkspace({
           <section>
             <StrategicSectionTitle icon={Gauge} overline="Carburante" title="Consumo e rifornimenti" />
             <div className="fleet-dashboard-mini-grid">
+              <span><small>Rif. mese</small><strong>{dashboardFuelMonthCount}</strong></span>
+              <span><small>Rif. storico</small><strong>{dashboardFuelTotalCount}</strong></span>
               <span><small>Litri mese</small><strong>{formatLiters(dashboardFuelMonthLiters)}</strong></span>
               <span><small>Litri storico</small><strong>{formatLiters(dashboardFuelTotalLiters || dashboardFuelLiters)}</strong></span>
-              <span><small>Movimenti</small><strong>{dashboardFuelRows.length}</strong></span>
             </div>
           </section>
           <section>

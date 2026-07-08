@@ -161,7 +161,7 @@ async function fetchCompanyFuelMovements(companyId) {
     .select(fuelMovementSelectColumns)
     .eq('company_id', companyId)
     .order('occurred_at', { ascending: false })
-    .limit(200)
+    .limit(1000)
 
   if (isMissingWorkforceSchemaError(error)) return { data: [], error: null, missingSchema: true }
   return { data: (data ?? []).map(mapFuelMovement), error }

@@ -2142,7 +2142,7 @@ export async function fetchCompanyFuelMovements(companyId = configuredCompanyId)
     .select(fuelMovementSelectColumns)
     .eq('company_id', companyId)
     .order('occurred_at', { ascending: false })
-    .limit(300)
+    .limit(1000)
 
   if (isMissingWorkforceSchemaError(error)) {
     return { data: [], error: null, missingSchema: true }

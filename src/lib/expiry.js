@@ -1,8 +1,21 @@
 const DAY = 1000 * 60 * 60 * 24
 
+function parseDateInput(value) {
+  if (!value) return null
+  if (value instanceof Date) return value
+
+  const rawValue = String(value).trim()
+  if (!rawValue) return null
+
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(rawValue)
+  return new Date(isDateOnly ? `${rawValue}T00:00:00` : rawValue)
+}
+
 export function daysUntil(date, now = new Date()) {
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
-  const due = new Date(`${date}T00:00:00`)
+  const due = parseDateInput(date)
+  if (!due || Number.isNaN(due.getTime())) return Infinity
+
   return Math.ceil((Date.UTC(due.getFullYear(), due.getMonth(), due.getDate()) - today) / DAY)
 }
 
@@ -29,11 +42,14 @@ export function getUrgency(item, now = new Date()) {
 }
 
 export function formatDate(date) {
+  const parsedDate = parseDateInput(date)
+  if (!parsedDate || Number.isNaN(parsedDate.getTime())) return 'Data non disponibile'
+
   return new Intl.DateTimeFormat('it-IT', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(`${date}T00:00:00`))
+  }).format(parsedDate)
 }
 
 function getVehicleFleetLabel(value = '') {

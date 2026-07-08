@@ -14,6 +14,7 @@ import { getLocale } from '../i18n/native'
 import { getDaysUntilDate, isComplianceActionRequired, sortByDueDate } from '../services/deadlineRules'
 import { createCompanyAssetSignedUrl } from '../services/driverApi'
 import { colors, layout } from '../theme'
+import { createFuelLiterOptions, getFuelLiterLabel } from '../utils/fuelLiters'
 
 const panelGradient = require('../../assets/brand/panel-gradient.png')
 
@@ -1326,6 +1327,8 @@ export function CompanyManagementScreen({
     ],
     [fuelSuppliers],
   )
+  const dispenseLiterOptions = useMemo(() => createFuelLiterOptions('dispense'), [])
+  const tankLoadLiterOptions = useMemo(() => createFuelLiterOptions('load'), [])
   const deadlineAssignees = useMemo(() => {
     if (deadlineForm.scope === 'driver') return drivers
     if (deadlineForm.scope === 'vehicle') return activeVehicles
@@ -1678,6 +1681,7 @@ export function CompanyManagementScreen({
       if (field === 'movementType') {
         return {
           ...currentForm,
+          liters: '',
           movementType: value,
           vehicleId: value === 'dispense' ? currentForm.vehicleId : '',
         }
@@ -2289,6 +2293,7 @@ export function CompanyManagementScreen({
     const activeVehicleId = activeVehicles.some((vehicle) => vehicle.id === fuelMovementForm.vehicleId)
       ? fuelMovementForm.vehicleId
       : activeVehicles.find((vehicle) => vehicle.fleetType !== 'semirimorchio')?.id ?? ''
+    const fuelLiterOptions = movementType === 'dispense' ? dispenseLiterOptions : tankLoadLiterOptions
     const recentFuelMovements = fuelMovements.slice(0, 12)
     const supplierNameById = new Map(fuelSuppliers.map((supplier) => [supplier.id, supplier.name]))
     const supplierRankingRows = Array.from(fuelMovements
@@ -2423,7 +2428,17 @@ export function CompanyManagementScreen({
                 })}
                 value={getWheelOptionLabel(fuelPersonOptions, fuelMovementForm.personId)}
               />
-              <TextField keyboardType="decimal-pad" label="Litri" onChangeText={(value) => updateFuelMovementForm('liters', value)} placeholder="120" value={fuelMovementForm.liters} />
+              <WheelPickerField
+                helper={movementType === 'dispense' ? 'Da 1 a 1.000 L, senza digitare virgole.' : 'Da 100 a 30.000 L per carichi cisterna.'}
+                label="Litri"
+                onPress={() => openWheelPicker({
+                  onSelect: (value) => updateFuelMovementForm('liters', value),
+                  options: fuelLiterOptions,
+                  title: movementType === 'dispense' ? 'Litri riforniti' : 'Litri caricati',
+                  value: fuelMovementForm.liters || (movementType === 'dispense' ? '100' : '1000'),
+                })}
+                value={getFuelLiterLabel(fuelMovementForm.liters)}
+              />
               {movementType === 'dispense' ? (
                 <TextField keyboardType="number-pad" label="Km mezzo" onChangeText={(value) => updateFuelMovementForm('odometerKm', value)} placeholder="Opzionale" value={fuelMovementForm.odometerKm} />
               ) : null}

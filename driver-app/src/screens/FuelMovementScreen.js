@@ -5,6 +5,7 @@ import { Panel } from '../components/Panel'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { getWheelOptionLabel, SelectionWheelModal, WheelPickerField } from '../components/WheelPicker'
 import { colors, layout } from '../theme'
+import { createFuelLiterOptions, getFuelLiterLabel } from '../utils/fuelLiters'
 
 function getVehicleLabel(vehicle = {}) {
   return [vehicle.plate, vehicle.model].filter(Boolean).join(' · ') || 'Mezzo'
@@ -48,6 +49,7 @@ export function FuelMovementScreen({
     })),
     [tanks],
   )
+  const literOptions = useMemo(() => createFuelLiterOptions('dispense'), [])
   const [form, setForm] = useState({
     liters: '',
     notes: '',
@@ -140,13 +142,16 @@ export function FuelMovementScreen({
               })}
               value={getWheelOptionLabel(vehicleOptions, activeVehicleId, 'Scegli mezzo')}
             />
-            <TextInput
-              keyboardType="decimal-pad"
-              onChangeText={(value) => updateForm('liters', value)}
-              placeholder="Litri riforniti"
-              placeholderTextColor={colors.muted}
-              style={styles.input}
-              value={form.liters}
+            <WheelPickerField
+              helper="Scorri la rotella e conferma: niente virgole da digitare."
+              label="Litri riforniti"
+              onPress={() => setWheelPicker({
+                onSelect: (value) => updateForm('liters', value),
+                options: literOptions,
+                title: 'Litri riforniti',
+                value: form.liters || '100',
+              })}
+              value={getFuelLiterLabel(form.liters)}
             />
             <TextInput
               keyboardType="number-pad"

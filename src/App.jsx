@@ -633,7 +633,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'managementEntries', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -857,6 +857,7 @@ const translations = {
     'nav.reports': 'Report',
     'nav.savings': 'Radar Risparmio',
     'nav.management': 'Controllo gestione',
+    'nav.managementEntries': 'Inserimenti gestione',
     'nav.costs': 'Centro costi',
     'nav.newCost': 'Nuova spesa',
     'nav.settings': 'Impostazioni',
@@ -1083,6 +1084,7 @@ const translations = {
     'nav.reports': 'Reports',
     'nav.savings': 'Savings Radar',
     'nav.management': 'Management control',
+    'nav.managementEntries': 'Management entries',
     'nav.costs': 'Cost center',
     'nav.newCost': 'New expense',
     'nav.settings': 'Settings',
@@ -1230,6 +1232,7 @@ const translations = {
     'nav.reports': 'Informes',
     'nav.savings': 'Radar ahorro',
     'nav.management': 'Control gestion',
+    'nav.managementEntries': 'Altas gestion',
     'nav.costs': 'Centro costes',
     'nav.newCost': 'Nuevo coste',
     'nav.settings': 'Ajustes',
@@ -1377,6 +1380,7 @@ const translations = {
     'nav.reports': 'Rapports',
     'nav.savings': 'Radar economies',
     'nav.management': 'Controle gestion',
+    'nav.managementEntries': 'Saisies gestion',
     'nav.costs': 'Centre couts',
     'nav.newCost': 'Nouvelle depense',
     'nav.settings': 'Reglages',
@@ -1524,6 +1528,7 @@ const translations = {
     'nav.reports': 'Berichte',
     'nav.savings': 'Sparradar',
     'nav.management': 'Managementkontrolle',
+    'nav.managementEntries': 'Eingaben',
     'nav.costs': 'Kostenstelle',
     'nav.newCost': 'Neue Ausgabe',
     'nav.settings': 'Einstellungen',
@@ -4152,6 +4157,7 @@ const regionalTranslations = {
     'nav.reports': 'Rapoarte',
     'nav.savings': 'Radar economii',
     'nav.management': 'Control management',
+    'nav.managementEntries': 'Introduceri management',
     'nav.costs': 'Centru costuri',
     'nav.newCost': 'Cheltuiala noua',
     'nav.settings': 'Setari',
@@ -4220,6 +4226,7 @@ const regionalTranslations = {
     'nav.reports': 'Raporty',
     'nav.savings': 'Radar oszczednosci',
     'nav.management': 'Kontrola zarzadzania',
+    'nav.managementEntries': 'Wpisy zarzadzania',
     'nav.costs': 'Centrum kosztow',
     'nav.newCost': 'Nowy koszt',
     'nav.settings': 'Ustawienia',
@@ -10855,6 +10862,16 @@ function App() {
       return
     }
 
+    if (viewId === 'managementEntries') {
+      if (!canUseCurrentPlanFeature('costCenter')) {
+        showPlanFeatureLimit('costCenter', setOperationsSyncStatus)
+        return
+      }
+
+      setActiveView('managementEntries')
+      return
+    }
+
     if (viewId === 'newCost') {
       openCostReport({ add: true })
       return
@@ -11232,6 +11249,31 @@ function App() {
               description="Controllo gestione, gasolio e margine aziendale sono inclusi nei piani Vygo attivi. Se li vedi bloccati, controlla lo stato pagamento o l attivazione azienda."
               featureName="Controllo gestione"
               icon={Banknote}
+              onUpgrade={openBillingSettings}
+            />
+          )
+        ) : activeView === 'managementEntries' ? (
+          planFeatureAccess.costCenter || planFeatureAccess.reports ? (
+            <ManagementControlWorkspace
+              businessEntryRecords={businessEntryRecords}
+              costEntryRecords={costEntryRecords}
+              driverRecords={driverRecords}
+              entryMode
+              fuelMovementRecords={fuelMovementRecords}
+              fuelSupplierRecords={fuelSupplierRecords}
+              fuelTankRecords={fuelTankRecords}
+              onCreateBusinessEntry={addBusinessEntryRecord}
+              onCreateFuelMovement={addFuelMovementRecord}
+              onCreateFuelSupplier={addFuelSupplierRecord}
+              onCreateFuelTank={addFuelTankRecord}
+              personRecords={personRecords}
+              vehicleRecords={vehicleRecords}
+            />
+          ) : (
+            <FeatureUpgradeGate
+              description="Gli inserimenti economici e gasolio sono inclusi nei piani Vygo attivi. Se li vedi bloccati, controlla lo stato pagamento o l attivazione azienda."
+              featureName="Inserimenti gestione"
+              icon={Plus}
               onUpgrade={openBillingSettings}
             />
           )
@@ -12588,6 +12630,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
       label: 'Costi e report',
       items: [
         { id: 'management', label: t('nav.management'), icon: Banknote },
+        { id: 'managementEntries', label: t('nav.managementEntries'), icon: Plus },
         { id: 'savings', label: t('nav.savings'), icon: Gauge },
         { id: 'reports', label: t('nav.reports'), icon: FileText },
         { id: 'costs', label: t('nav.costs'), icon: Banknote },
@@ -16442,6 +16485,7 @@ function ManagementControlWorkspace({
   businessEntryRecords = [],
   costEntryRecords = [],
   driverRecords = [],
+  entryMode = false,
   fuelMovementRecords = [],
   fuelSupplierRecords = [],
   fuelTankRecords = [],
@@ -16662,9 +16706,13 @@ function ManagementControlWorkspace({
     <section className="management-workspace" aria-label="Controllo gestione">
       <div className={`panel management-hero-panel tone-${primaryTone}`}>
         <div>
-          <p className="overline">Controllo gestione</p>
-          <h2>Quanto sta rendendo l azienda</h2>
-          <span>Ricavi, costi fissi, costi mezzi, gasolio e consumi in un solo quadro. Le integrazioni GPS e pedaggi diventeranno fonti dati, non schermate doppie.</span>
+          <p className="overline">{entryMode ? 'Inserimenti gestione' : 'Controllo gestione'}</p>
+          <h2>{entryMode ? 'Carica dati economici e gasolio' : 'Quanto sta rendendo l azienda'}</h2>
+          <span>
+            {entryMode
+              ? 'Qui registri cisterne, fornitori, carichi gasolio, rifornimenti, ricavi e costi aziendali. Il cruscotto direzionale resta pulito nella pagina Controllo gestione.'
+              : 'Ricavi, costi fissi, costi mezzi, gasolio e consumi in un solo quadro. Le integrazioni GPS e pedaggi diventeranno fonti dati, non schermate doppie.'}
+          </span>
         </div>
         <div className="management-hero-score">
           <strong>{formatMoneyCents(data.marginCents, defaultCurrency)}</strong>
@@ -16672,23 +16720,27 @@ function ManagementControlWorkspace({
         </div>
       </div>
 
-      <div className="management-kpi-grid">
-        <StrategicKpi label="Ricavi mese" tone="success" value={formatMoneyCents(data.revenueCents, defaultCurrency)} />
-        <StrategicKpi label="Costi mese" tone={data.totalCostCents ? 'warning' : 'success'} value={formatMoneyCents(data.totalCostCents, defaultCurrency)} />
-        <StrategicKpi label="Gasolio mese" tone={data.fuelCostCents ? 'info' : 'success'} value={formatMoneyCents(data.fuelCostCents, defaultCurrency)} />
-        <StrategicKpi label="Cisterne sotto soglia" tone={data.lowTankRows.length ? 'danger' : 'success'} value={data.lowTankRows.length} />
-        <StrategicKpi label="Consumo medio" tone={data.averageKmPerLiter ? 'info' : 'warning'} value={data.averageKmPerLiter ? `${data.averageKmPerLiter.toFixed(2)} km/L` : 'Da calcolare'} />
-      </div>
+      {!entryMode ? (
+        <>
+          <div className="management-kpi-grid">
+            <StrategicKpi label="Ricavi mese" tone="success" value={formatMoneyCents(data.revenueCents, defaultCurrency)} />
+            <StrategicKpi label="Costi mese" tone={data.totalCostCents ? 'warning' : 'success'} value={formatMoneyCents(data.totalCostCents, defaultCurrency)} />
+            <StrategicKpi label="Gasolio mese" tone={data.fuelCostCents ? 'info' : 'success'} value={formatMoneyCents(data.fuelCostCents, defaultCurrency)} />
+            <StrategicKpi label="Cisterne sotto soglia" tone={data.lowTankRows.length ? 'danger' : 'success'} value={data.lowTankRows.length} />
+            <StrategicKpi label="Consumo medio" tone={data.averageKmPerLiter ? 'info' : 'warning'} value={data.averageKmPerLiter ? `${data.averageKmPerLiter.toFixed(2)} km/L` : 'Da calcolare'} />
+          </div>
 
-      <StrategicGuide
-        title="Perche cambia tutto"
-        body="Il GPS dice dove si trova il mezzo. Vygo deve dire quanto quel mezzo rende, consuma, costa e quando sta diventando un problema economico."
-        items={['Registra ricavi e costi ricorrenti aziendali.', 'Carica cisterna e scarichi gasolio con km mezzo.', 'Controlla consumo per targa e anomalie rispetto alla media.']}
-      />
+          <StrategicGuide
+            title="Perche cambia tutto"
+            body="Il GPS dice dove si trova il mezzo. Vygo deve dire quanto quel mezzo rende, consuma, costa e quando sta diventando un problema economico."
+            items={['Registra ricavi e costi ricorrenti aziendali.', 'Carica cisterna e scarichi gasolio con km mezzo.', 'Controlla consumo per targa e anomalie rispetto alla media.']}
+          />
+        </>
+      ) : null}
 
-      {status && <div className="management-status">{status}</div>}
+      {entryMode && status ? <div className="management-status">{status}</div> : null}
 
-      <div className="management-form-grid">
+      {entryMode ? <div className="management-form-grid">
         <form className="panel management-form-card" onSubmit={handleTankSubmit}>
           <StrategicSectionTitle icon={Fuel} overline="Cisterna" title="Nuova cisterna gasolio" />
           <label>Nome<input value={tankForm.name} onChange={(event) => updateTankForm('name', event.target.value)} /></label>
@@ -16778,9 +16830,9 @@ function ManagementControlWorkspace({
           <label className="management-form-wide">Note<textarea value={businessForm.notes} onChange={(event) => updateBusinessForm('notes', event.target.value)} /></label>
           <button className="primary-button full-button" type="submit"><Save size={16} /> Salva voce</button>
         </form>
-      </div>
+      </div> : null}
 
-      <div className="management-grid">
+      {!entryMode ? <div className="management-grid">
         <section className="panel management-panel">
           <StrategicSectionTitle icon={Fuel} overline="Giacenza" title="Cisterne e soglie" />
           <div className="management-list">
@@ -16863,7 +16915,7 @@ function ManagementControlWorkspace({
             {!data.recentBusinessEntries.length && <StrategicEmptyLine label="Registra ricavi, affitti, bollette o costi generali per vedere il margine." />}
           </div>
         </section>
-      </div>
+      </div> : null}
     </section>
   )
 }

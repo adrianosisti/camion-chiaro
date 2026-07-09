@@ -544,7 +544,7 @@ const companyTabs = [
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
   { id: 'operations', icon: 'construct-outline', label: 'Registro' },
   { id: 'reports', icon: 'stats-chart-outline', label: 'Report' },
-  { id: 'settings', icon: 'menu-outline', label: 'Menu', labelKey: 'menu' },
+  { id: 'news', icon: 'radio-outline', label: 'Radar' },
 ]
 
 const camionChiaroIcon = require('./assets/brand/icon.png')
@@ -4226,7 +4226,7 @@ function CamionChiaroApp() {
         return (
           <TransportNewsScreen
             language={language}
-            onBack={() => setActiveTab('settings')}
+            onBack={() => setActiveTab('home')}
           />
         )
       }

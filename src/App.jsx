@@ -17722,6 +17722,17 @@ function buildTariffOutputRows({ manualCosts, selectedService, viewMode }) {
   })
 }
 
+function getPalletVisualHeightPercent(measure = '') {
+  const dimensions = String(measure ?? '').match(/\d+/g)?.map(Number) ?? []
+  const height = dimensions[2] || 60
+  return Math.max(24, Math.min(100, Math.round((height / 240) * 100)))
+}
+
+function getPalletVisualHeightLabel(measure = '') {
+  const dimensions = String(measure ?? '').match(/\d+/g)?.map(Number) ?? []
+  return dimensions[2] ? `${dimensions[2]} cm` : ''
+}
+
 function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda' }) {
   const { language } = useI18n()
   const currency = getDefaultCurrency(language)
@@ -17730,6 +17741,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   const [status, setStatus] = useState('')
   const [selectedHubName, setSelectedHubName] = useState('')
   const [selectedServiceId, setSelectedServiceId] = useState('standard')
+  const [outputServiceMode, setOutputServiceMode] = useState('standard')
   const [viewMode, setViewMode] = useState('province')
   const [customerName, setCustomerName] = useState('')
   const [validityNote, setValidityNote] = useState('Listino valido fino a nuova comunicazione.')
@@ -17750,6 +17762,18 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
     () => selectedHub?.services?.find((service) => service.id === selectedServiceId) ?? selectedHub?.services?.[0] ?? null,
     [selectedHub, selectedServiceId],
   )
+  const outputServices = useMemo(() => {
+    const services = selectedHub?.services ?? []
+    if (!services.length) return selectedService ? [selectedService] : []
+
+    const findService = (id) => services.find((service) => service.id === id)
+    if (outputServiceMode === 'both') {
+      return ['standard', 'nonStop'].map(findService).filter(Boolean)
+    }
+
+    return [findService(outputServiceMode) ?? selectedService ?? services[0]].filter(Boolean)
+  }, [outputServiceMode, selectedHub, selectedService])
+  const outputServiceLabel = outputServices.map((service) => service.label).join(' + ') || selectedService?.label || 'Standard'
   const tariffRows = useMemo(
     () => buildTariffOutputRows({ manualCosts, selectedService, viewMode }),
     [manualCosts, selectedService, viewMode],
@@ -17831,24 +17855,29 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   }
 
   function buildCsvRows() {
-    if (!selectedService?.columns?.length) return []
+    if (!outputServices.some((service) => service?.columns?.length)) return []
     const heading = [
       [`Vygo - Listino cliente ${customerName || 'cliente'}`],
       ['Azienda', companyName],
       ['Cliente', customerName || 'Non inserito'],
-      ['Servizio', selectedService?.label ?? ''],
+      ['Servizio', outputServiceLabel],
       ['Vista', viewMode === 'region' ? 'Regione' : 'Provincia'],
       ['Nota validita', validityNote],
       [],
     ]
-    const table = [
-      [viewMode === 'region' ? 'Regione' : 'Regione', viewMode === 'region' ? 'Copertura' : 'Provincia', ...selectedService.columns.map((column) => column.label)],
-      ...tariffRows.map((row) => [
-        row.region,
-        viewMode === 'region' ? 'Tutte le province' : row.province,
-        ...selectedService.columns.map((column) => (Number(row.values[column.key]?.finalPrice ?? 0)).toFixed(2).replace('.', ',')),
-      ]),
-    ]
+    const serviceTables = outputServices.flatMap((service) => {
+      const serviceRows = buildTariffOutputRows({ manualCosts, selectedService: service, viewMode })
+      return [
+        [`Listino ${service.label}`],
+        [viewMode === 'region' ? 'Regione' : 'Regione', viewMode === 'region' ? 'Copertura' : 'Provincia', ...service.columns.map((column) => column.label)],
+        ...serviceRows.map((row) => [
+          row.region,
+          viewMode === 'region' ? 'Tutte le province' : row.province,
+          ...service.columns.map((column) => (Number(row.values[column.key]?.finalPrice ?? 0)).toFixed(2).replace('.', ',')),
+        ]),
+        [],
+      ]
+    })
     const conditions = [
       ['Accessori e condizioni selezionate'],
       ['Voce', 'Prezzo cliente', 'Dettaglio'],
@@ -17883,7 +17912,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       ...(palletLegend.notes ?? []).map((note) => [note]),
     ]
 
-    return [...heading, ...table, [], ...palletLegendSection, [], ...conditions]
+    return [...heading, ...serviceTables, ...palletLegendSection, [], ...conditions]
   }
 
   function downloadTariffCsv() {
@@ -17902,14 +17931,27 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   }
 
   function printTariff() {
-    const headerCells = selectedService?.columns?.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('') ?? ''
-    const bodyRows = tariffRows.map((row) => `
-      <tr>
-        <td>${escapeHtml(row.region)}</td>
-        <td>${escapeHtml(viewMode === 'region' ? 'Tutte le province' : row.province)}</td>
-        ${(selectedService?.columns ?? []).map((column) => `<td>${escapeHtml(formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency))}</td>`).join('')}
-      </tr>
-    `).join('')
+    const serviceTablesHtml = outputServices.map((service) => {
+      const serviceRows = buildTariffOutputRows({ manualCosts, selectedService: service, viewMode })
+      const headerCells = service.columns?.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('') ?? ''
+      const bodyRows = serviceRows.map((row) => `
+        <tr>
+          <td>${escapeHtml(row.region)}</td>
+          <td>${escapeHtml(viewMode === 'region' ? 'Tutte le province' : row.province)}</td>
+          ${(service.columns ?? []).map((column) => `<td>${escapeHtml(formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency))}</td>`).join('')}
+        </tr>
+      `).join('')
+
+      return `
+        <section class="service-table">
+          <h2>${escapeHtml(service.label)}</h2>
+          <table>
+            <thead><tr><th>Regione</th><th>${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
+            <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
+          </table>
+        </section>
+      `
+    }).join('')
     const conditionHtml = includedConditionChargeRows.length
       ? `
         <table class="accessories">
@@ -17932,6 +17974,19 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         <section class="page-break pallet-page">
           <h2>Tipologie pallet Pallex</h2>
           <p>Legenda dei formati, misure e riprezzamenti applicabili al listino.</p>
+          <div class="pallet-visual-grid">
+            ${(palletLegend.types ?? []).map((item) => `
+              <article class="pallet-card">
+                <div class="pallet-drawing">
+                  <span class="pallet-load" style="height: ${getPalletVisualHeightPercent(item.measure)}%;"></span>
+                  <small>${escapeHtml(getPalletVisualHeightLabel(item.measure))}</small>
+                </div>
+                <strong>${escapeHtml(item.name)}</strong>
+                <span>${escapeHtml(item.measure)}</span>
+                <em>${escapeHtml(item.maxWeight)}</em>
+              </article>
+            `).join('')}
+          </div>
           <table class="legend-table">
             <thead><tr><th>Formato</th><th>Misure</th><th>Peso massimo</th></tr></thead>
             <tbody>
@@ -18030,6 +18085,13 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .page-break { break-before: page; page-break-before: always; }
             .pallet-page h2 { margin-top: 0; }
             .pallet-page h3 { color: #07576a; font-size: 15px; margin: 18px 0 8px; }
+            .pallet-visual-grid { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); margin: 10px 0 16px; }
+            .pallet-card { border: 1px solid #cbd5e1; border-radius: 8px; display: grid; gap: 4px; grid-template-columns: 54px 1fr; min-height: 90px; padding: 8px; }
+            .pallet-card strong { align-self: end; color: #083344; font-size: 12px; }
+            .pallet-card span, .pallet-card em { color: #475569; font-size: 10px; font-style: normal; grid-column: 2; }
+            .pallet-drawing { align-items: end; background: linear-gradient(180deg, #f8fafc, #ecfeff); border: 1px solid #bae6fd; border-radius: 6px; display: flex; height: 74px; justify-content: center; overflow: hidden; position: relative; width: 42px; }
+            .pallet-drawing small { background: rgba(255,255,255,0.86); border-radius: 999px; bottom: 4px; color: #07576a; font-size: 8px; font-weight: 800; padding: 1px 4px; position: absolute; }
+            .pallet-load { background: linear-gradient(180deg, #13c5df, #07576a); border-radius: 5px 5px 2px 2px; display: block; min-height: 18px; width: 28px; }
             .legend-table th, .legend-table td { font-size: 11px; text-align: left; vertical-align: top; }
             .legend-table.compact th, .legend-table.compact td { font-size: 10px; padding: 6px; }
             .repricing-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
@@ -18044,16 +18106,13 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             <div><strong>${escapeHtml(companyName)}</strong><small>${escapeHtml(new Intl.DateTimeFormat('it-IT').format(new Date()))}</small></div>
           </section>
           <h1>${escapeHtml(companyName)} - listino ${escapeHtml(customerName || 'cliente')}</h1>
-          <p>${escapeHtml(selectedService?.label ?? '')} · ${escapeHtml(validityNote)}</p>
+          <p>${escapeHtml(outputServiceLabel)} · ${escapeHtml(validityNote)}</p>
           <section class="meta">
             <div><span>Vista</span><strong>${viewMode === 'region' ? 'Regione' : 'Provincia'}</strong></div>
-            <div><span>Servizio</span><strong>${escapeHtml(selectedService?.label ?? 'Standard')}</strong></div>
+            <div><span>Servizio</span><strong>${escapeHtml(outputServiceLabel)}</strong></div>
             <div><span>Validita</span><strong>${escapeHtml(validityNote)}</strong></div>
           </section>
-          <table>
-            <thead><tr><th>Regione</th><th>${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
-            <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
-          </table>
+          ${serviceTablesHtml}
           ${palletLegendHtml}
           <h2>Accessori e condizioni</h2>
           ${conditionHtml}
@@ -18099,6 +18158,13 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             <label>Servizio
               <select disabled={!selectedHub?.services?.length} value={selectedService?.id ?? 'standard'} onChange={(event) => setSelectedServiceId(event.target.value)}>
                 {(selectedHub?.services ?? []).map((service) => <option key={service.id} value={service.id}>{service.label}</option>)}
+              </select>
+            </label>
+            <label>Servizi in stampa/CSV
+              <select disabled={!selectedHub?.services?.length} value={outputServiceMode} onChange={(event) => setOutputServiceMode(event.target.value)}>
+                <option value="standard">Solo Standard</option>
+                <option value="nonStop">Solo Non Stop</option>
+                <option value="both">Standard + Non Stop</option>
               </select>
             </label>
             <label>Vista listino

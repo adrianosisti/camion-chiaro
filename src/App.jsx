@@ -17679,6 +17679,7 @@ function buildTariffOutputRows({ manualCosts, selectedService, viewMode }) {
   const markupRate = Math.min(2, Math.max(0, parseDecimalInput(manualCosts.marginPercent) / 100))
   const roundingStep = parseDecimalInput(manualCosts.roundingStep) || 0.5
   const etsByRegion = new Map((selectedService.etsRows ?? []).map((row) => [String(row.region ?? '').toUpperCase(), row]))
+  const readTariffCell = (row, column) => Number(row?.values?.[column.key] ?? row?.values?.[`col-${column.index}`] ?? 0)
   const sourceRows = viewMode === 'region'
     ? Array.from(selectedService.rows.reduce((regions, row) => {
         const regionKey = row.region || 'Senza regione'
@@ -17686,7 +17687,7 @@ function buildTariffOutputRows({ manualCosts, selectedService, viewMode }) {
 
         selectedService.columns.forEach((column) => {
           const previous = Number(current.values[column.key] ?? 0)
-          const next = Number(row.values?.[column.key] ?? 0)
+          const next = readTariffCell(row, column)
           current.values[column.key] = Math.max(previous, next)
         })
 
@@ -17700,8 +17701,8 @@ function buildTariffOutputRows({ manualCosts, selectedService, viewMode }) {
     const values = {}
 
     selectedService.columns.forEach((column) => {
-      const baseImr = Number(row.values?.[column.key] ?? 0)
-      const etsAmount = Number(etsRow?.values?.[column.key] ?? 0)
+      const baseImr = readTariffCell(row, column)
+      const etsAmount = readTariffCell(etsRow, column)
       const imrWithEts = baseImr + etsAmount
       const internalCost = imrWithEts + fixedCostsTotal + manualCostsTotal
       const finalPrice = internalCost * (1 + markupRate)

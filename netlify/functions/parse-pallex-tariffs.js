@@ -214,6 +214,23 @@ function buildTariffColumns(rows, headerRowIndex = 1) {
   return columns
 }
 
+function compactNonStopColumns(columns = []) {
+  const seenPallets = new Set()
+
+  return columns.filter((column) => {
+    const palletKey = cleanText(column.pallet || column.label).toLowerCase()
+    if (!palletKey) return false
+    if (seenPallets.has(palletKey)) return false
+    seenPallets.add(palletKey)
+    return true
+  }).map((column) => ({
+    ...column,
+    key: `${column.pallet || column.label}-${column.index}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    label: column.pallet || column.label,
+    quantity: '',
+  }))
+}
+
 function parseHubSheet(name, rows) {
   const services = []
   let currentService = null
@@ -229,15 +246,17 @@ function parseHubSheet(name, rows) {
     if (firstCell.toLowerCase() === 'regione' && secondCell.toLowerCase() === 'province') {
       const isNonStop = thirdCell.toLowerCase().includes('non stop')
       const serviceId = isNonStop ? 'nonStop' : 'standard'
+      const nextColumns = buildTariffColumns(rows, rowIndex + 1)
+      const serviceColumns = isNonStop ? compactNonStopColumns(nextColumns) : nextColumns
 
       if (currentService?.id === serviceId && !inFixedCosts && !currentService.fixedCosts.length) {
-        currentService.columns = buildTariffColumns(rows, rowIndex + 1)
+        if (!currentService.rows.length) currentService.columns = serviceColumns
         currentRegion = ''
         return
       }
 
       currentService = {
-        columns: buildTariffColumns(rows, rowIndex + 1),
+        columns: serviceColumns,
         etsRows: [],
         fixedCosts: [],
         id: serviceId,
@@ -276,7 +295,10 @@ function parseHubSheet(name, rows) {
     const values = {}
     currentService.columns.forEach((column) => {
       const amount = toNumber(row[column.index])
-      if (amount !== null) values[column.key] = amount
+      if (amount !== null) {
+        values[column.key] = amount
+        values[`col-${column.index}`] = amount
+      }
     })
 
     if (!Object.keys(values).length) return

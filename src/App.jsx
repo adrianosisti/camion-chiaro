@@ -17953,26 +17953,48 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   }
 
   function printTariff() {
+    const firstPageTariffRows = 18
+    const fullPageTariffRows = 24
     const serviceTablesHtml = outputServices.map((service, serviceIndex) => {
       const serviceRows = buildTariffOutputRows({ manualCosts, selectedService: service, viewMode })
       const headerCells = service.columns?.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('') ?? ''
-      const bodyRows = serviceRows.map((row) => `
-        <tr>
-          <td>${escapeHtml(row.region)}</td>
-          <td>${escapeHtml(viewMode === 'region' ? 'Tutte le province' : row.province)}</td>
-          ${(service.columns ?? []).map((column) => `<td>${escapeHtml(formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency))}</td>`).join('')}
-        </tr>
-      `).join('')
+      const rowChunks = []
+      if (serviceRows.length) {
+        let startIndex = 0
+        let chunkIndex = 0
+        while (startIndex < serviceRows.length) {
+          const chunkLimit = serviceIndex === 0 && chunkIndex === 0 ? firstPageTariffRows : fullPageTariffRows
+          rowChunks.push(serviceRows.slice(startIndex, startIndex + chunkLimit))
+          startIndex += chunkLimit
+          chunkIndex += 1
+        }
+      } else {
+        rowChunks.push([])
+      }
 
-      return `
-        <section class="service-table ${serviceIndex > 0 ? 'next-service-page' : ''}">
-          <h2>${escapeHtml(service.label)}</h2>
-          <table class="tariff-print-table">
-            <thead><tr><th class="geo-head">Regione</th><th class="geo-head">${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
-            <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
-          </table>
-        </section>
-      `
+      return rowChunks.map((rows, chunkIndex) => {
+        const isFirstChunkOfService = chunkIndex === 0
+        const isLastService = serviceIndex === outputServices.length - 1
+        const isLastChunk = chunkIndex === rowChunks.length - 1
+        const shouldForceNextPage = !(isLastService && isLastChunk)
+        const bodyRows = rows.map((row) => `
+          <tr>
+            <td>${escapeHtml(row.region)}</td>
+            <td>${escapeHtml(viewMode === 'region' ? 'Tutte le province' : row.province)}</td>
+            ${(service.columns ?? []).map((column) => `<td>${escapeHtml(formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency))}</td>`).join('')}
+          </tr>
+        `).join('')
+
+        return `
+          <section class="service-table-page ${isFirstChunkOfService ? 'service-start' : 'service-continue'} ${shouldForceNextPage ? 'force-next-page' : ''}">
+            <h2>${escapeHtml(service.label)}${chunkIndex > 0 ? '<small>continua</small>' : ''}</h2>
+            <table class="tariff-print-table">
+              <thead><tr><th class="geo-head">Regione</th><th class="geo-head">${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
+              <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
+            </table>
+          </section>
+        `
+      }).join('')
     }).join('')
     const conditionHtml = includedConditionChargeRows.length
       ? `
@@ -18087,22 +18109,28 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       : ''
     const logoHtml = companyLogoUrl
       ? `<img alt="${escapeHtml(companyName)}" src="${escapeHtml(companyLogoUrl)}" />`
-      : `<strong>${escapeHtml(companyName)}</strong>`
+      : `<strong class="issuer-name">${escapeHtml(companyName)}</strong>`
+    const printDate = new Intl.DateTimeFormat('it-IT').format(new Date())
 
     const printHtml = `
       <!doctype html>
       <html>
         <head>
-          <title>Listino ${escapeHtml(customerName || 'cliente')}</title>
+          <title>Vygo - Listino tariffe</title>
           <style>
             @page { size: A4 landscape; margin: 8mm; }
             * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body { color: #10202b; font-family: Arial, sans-serif; margin: 0; }
-            .brand { align-items: center; border-bottom: 2px solid #13c5df; display: flex; gap: 14px; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; }
-            .brand img { max-height: 64px; max-width: 180px; object-fit: contain; }
-            .brand strong { color: #07576a; font-size: 24px; }
-            .brand small { color: #64748b; display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-            h1 { margin: 0 0 4px; }
+            .document-header { align-items: center; border-bottom: 3px solid #13c5df; display: grid; gap: 18px; grid-template-columns: 190px 1fr 210px; margin-bottom: 14px; padding-bottom: 12px; }
+            .document-logo { align-items: center; display: flex; min-height: 64px; }
+            .document-logo img { max-height: 64px; max-width: 180px; object-fit: contain; }
+            .issuer-name { color: #07576a; font-size: 22px; font-weight: 900; }
+            .document-title { text-align: center; }
+            .document-title span, .document-client span { color: #64748b; display: block; font-size: 10px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+            .document-title h1 { color: #0f172a; font-size: 30px; line-height: 1; margin: 4px 0 0; }
+            .document-client { text-align: right; }
+            .document-client strong { color: #0f172a; display: block; font-size: 20px; line-height: 1.1; margin: 4px 0; }
+            .document-client small { color: #64748b; display: block; font-size: 11px; font-weight: 800; }
             p { color: #475569; margin: 0 0 14px; }
             .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0; }
             .meta div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px; }
@@ -18120,9 +18148,11 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .tariff-print-table th:first-child, .tariff-print-table td:first-child { width: 72px; }
             .tariff-print-table th:nth-child(2), .tariff-print-table td:nth-child(2) { width: 76px; }
             .tariff-print-table tbody tr:nth-child(even) td:not(:first-child):not(:nth-child(2)) { background: #f8fafc; }
-            .service-table { break-inside: avoid; margin-top: 14px; }
-            .service-table.next-service-page { break-before: page; page-break-before: always; }
-            .service-table h2 { background: #0f172a; border-left: 8px solid #13c5df; color: #ffffff; font-size: 16px; margin: 18px 0 8px; padding: 9px 12px; }
+            .service-table-page { break-inside: avoid; page-break-inside: avoid; margin-top: 10px; }
+            .service-table-page.next-service-page { break-before: page; page-break-before: always; }
+            .service-table-page.force-next-page { break-after: page; page-break-after: always; }
+            .service-table-page h2 { align-items: center; background: #0f172a; border-left: 8px solid #13c5df; color: #ffffff; display: flex; font-size: 16px; justify-content: space-between; margin: 14px 0 8px; padding: 9px 12px; }
+            .service-table-page h2 small { color: #a5f3fc; font-size: 10px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
             .accessories { margin-top: 10px; }
             .accessories th, .accessories td { font-size: 11px; text-align: left; vertical-align: top; }
             .accessories td:nth-child(2) { width: 130px; }
@@ -18147,16 +18177,30 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .repricing-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
             .legend-notes { color: #475569; font-size: 11px; margin-top: 14px; padding-left: 18px; }
             .note { color: #64748b; font-size: 11px; margin-top: 10px; }
-            @media print { body { margin: 0; } .service-table { page-break-inside: auto; } .tariff-print-table tr { break-inside: avoid; page-break-inside: avoid; } }
+            @media print {
+              body { margin: 0; }
+              thead { display: table-header-group; }
+              tbody { display: table-row-group; }
+              .service-table-page, .tariff-print-table, .tariff-print-table thead, .tariff-print-table tbody, .tariff-print-table tr, .tariff-print-table th, .tariff-print-table td {
+                break-inside: avoid;
+                page-break-inside: avoid;
+              }
+            }
           </style>
         </head>
         <body>
-          <section class="brand">
-            <div>${logoHtml}<small>Listino generato con Vygo</small></div>
-            <div><strong>${escapeHtml(companyName)}</strong><small>${escapeHtml(new Intl.DateTimeFormat('it-IT').format(new Date()))}</small></div>
+          <section class="document-header">
+            <div class="document-logo">${logoHtml}</div>
+            <div class="document-title">
+              <span>Documento commerciale</span>
+              <h1>Listino tariffe</h1>
+            </div>
+            <div class="document-client">
+              <span>Cliente</span>
+              <strong>${escapeHtml(customerName || 'cliente')}</strong>
+              <small>${escapeHtml(printDate)}</small>
+            </div>
           </section>
-          <h1>${escapeHtml(companyName)} - listino ${escapeHtml(customerName || 'cliente')}</h1>
-          <p>${escapeHtml(outputServiceLabel)} · ${escapeHtml(validityNote)}</p>
           <section class="meta">
             <div><span>Vista</span><strong>${viewMode === 'region' ? 'Regione' : 'Provincia'}</strong></div>
             <div><span>Servizio</span><strong>${escapeHtml(outputServiceLabel)}</strong></div>

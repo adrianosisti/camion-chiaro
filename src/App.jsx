@@ -17954,49 +17954,26 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   }
 
   function printTariff() {
-    const firstPageTariffRows = 54
-    const fullPageTariffRows = 58
-    const splitTariffRowsForPrint = (rows, firstCapacity) => {
-      if (!rows.length) return [[]]
-      const chunks = []
-      let cursor = 0
-      let capacity = firstCapacity
-      while (cursor < rows.length) {
-        const chunkSize = Math.min(capacity, rows.length - cursor)
-        chunks.push(rows.slice(cursor, cursor + chunkSize))
-        cursor += chunkSize
-        capacity = fullPageTariffRows
-      }
-      return chunks
-    }
     const serviceTablesHtml = outputServices.map((service, serviceIndex) => {
       const serviceRows = buildTariffOutputRows({ manualCosts, selectedService: service, viewMode })
       const headerCells = service.columns?.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('') ?? ''
-      const rowChunks = splitTariffRowsForPrint(serviceRows, serviceIndex === 0 ? firstPageTariffRows : fullPageTariffRows)
+      const bodyRows = serviceRows.map((row) => `
+        <tr>
+          <td>${escapeHtml(row.region)}</td>
+          <td>${escapeHtml(viewMode === 'region' ? 'Tutte le province' : row.province)}</td>
+          ${(service.columns ?? []).map((column) => `<td>${escapeHtml(formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency))}</td>`).join('')}
+        </tr>
+      `).join('')
 
-      return rowChunks.map((rows, chunkIndex) => {
-        const isFirstChunkOfService = chunkIndex === 0
-        const isLastService = serviceIndex === outputServices.length - 1
-        const isLastChunk = chunkIndex === rowChunks.length - 1
-        const shouldForceNextPage = !(isLastService && isLastChunk)
-        const bodyRows = rows.map((row) => `
-          <tr>
-            <td>${escapeHtml(row.region)}</td>
-            <td>${escapeHtml(viewMode === 'region' ? 'Tutte le province' : row.province)}</td>
-            ${(service.columns ?? []).map((column) => `<td>${escapeHtml(formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency))}</td>`).join('')}
-          </tr>
-        `).join('')
-
-        return `
-          <section class="service-table-page ${isFirstChunkOfService ? 'service-start' : 'service-continue'} ${shouldForceNextPage ? 'force-next-page' : ''}">
-            <h2>${escapeHtml(service.label)}${chunkIndex > 0 ? '<small>continua</small>' : ''}</h2>
-            <table class="tariff-print-table">
-              <thead><tr><th class="geo-head">Regione</th><th class="geo-head">${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
-              <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
-            </table>
-          </section>
-        `
-      }).join('')
+      return `
+        <section class="service-table-page ${serviceIndex > 0 ? 'next-service-page' : ''}">
+          <h2>${escapeHtml(service.label)}</h2>
+          <table class="tariff-print-table">
+            <thead><tr><th class="geo-head">Regione</th><th class="geo-head">${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
+            <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
+          </table>
+        </section>
+      `
     }).join('')
     const conditionHtml = includedConditionChargeRows.length
       ? `
@@ -18150,11 +18127,9 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .tariff-print-table th:first-child, .tariff-print-table td:first-child { width: 72px; }
             .tariff-print-table th:nth-child(2), .tariff-print-table td:nth-child(2) { width: 76px; }
             .tariff-print-table tbody tr:nth-child(even) td:not(:first-child):not(:nth-child(2)) { background: #f8fafc; }
-            .service-table-page { break-inside: avoid; page-break-inside: avoid; margin-top: 6px; }
+            .service-table-page { margin-top: 6px; }
             .service-table-page.next-service-page { break-before: page; page-break-before: always; }
-            .service-table-page.force-next-page { break-after: page; page-break-after: always; }
             .service-table-page h2 { align-items: center; background: #0f172a; border-left: 7px solid #13c5df; color: #ffffff; display: flex; font-size: 13px; justify-content: space-between; margin: 6px 0 4px; padding: 5px 9px; }
-            .service-table-page h2 small { color: #a5f3fc; font-size: 9px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
             .accessories { margin-top: 10px; }
             .accessories th, .accessories td { font-size: 11px; text-align: left; vertical-align: top; }
             .accessories td:nth-child(2) { width: 130px; }
@@ -18183,7 +18158,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
               body { margin: 0; }
               thead { display: table-header-group; }
               tbody { display: table-row-group; }
-              .service-table-page, .tariff-print-table, .tariff-print-table thead, .tariff-print-table tbody, .tariff-print-table tr, .tariff-print-table th, .tariff-print-table td {
+              .tariff-print-table tr {
                 break-inside: avoid;
                 page-break-inside: avoid;
               }

@@ -84,7 +84,7 @@ function notConfiguredError() {
 }
 
 function isMissingWorkforceSchemaError(error) {
-  return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error?.code)
+  return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204', 'PGRST205'].includes(error?.code)
 }
 
 function isMissingDriverCheckPermissionColumn(error) {
@@ -3090,7 +3090,7 @@ export async function createFuelSupplier({ companyId, supplier }) {
     .single()
 
   if (isMissingWorkforceSchemaError(error)) {
-    return { data: null, error: { message: 'Anagrafica fornitori gasolio non ancora attiva. Esegui SQL 62 in Supabase.' } }
+    return { data: null, error: { message: 'Anagrafica fornitori gasolio non ancora attiva. Esegui SQL 65 in Supabase.' } }
   }
 
   return { data: data ? mapFuelSupplier(data) : null, error }

@@ -633,11 +633,12 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'managementEntries', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support', 'telematics'])
+const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'managementEntries', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
 const liveOnboardingStoragePrefix = 'vygoLiveOnboardingV1'
+const telematicsLaunchReady = false
 const voiceCallsLaunchReady = false
 const chatMediaAccept = 'image/*,video/*,audio/*'
 const chatGalleryMediaAccept = 'image/*,video/*'
@@ -1600,7 +1601,7 @@ const publicLandingCopy = {
     value: {
       overline: 'Vygo',
       title: 'Un sistema operativo per tutta l azienda di trasporto.',
-      body: 'Vygo unisce dashboard, app mobile, chat, documenti, check, guasti, scadenze, centro costi, gasolio e controllo gestione. I sistemi GPS e pedaggi diventano fonti dati: Vygo li trasforma in margini, consumi, anomalie e decisioni.',
+      body: 'Vygo unisce dashboard, app mobile, chat, documenti, check, guasti, scadenze, centro costi, gasolio e controllo gestione. Ogni dato operativo diventa margine, consumo, anomalia e decisione concreta.',
       cards: [
         { title: 'Scadenze e documenti', body: 'Patenti, CQC, visite mediche, libretti, revisioni, assicurazioni e file sempre collegati al soggetto giusto.' },
         { title: 'Chat aziendale', body: 'Conversazioni singole e gruppi per autisti, ufficio, magazzino e direzione, separate dal caos personale.' },
@@ -1638,8 +1639,7 @@ const publicLandingCopy = {
       overline: 'FAQ',
       title: 'Domande veloci prima di mettere ordine.',
       items: [
-        { title: 'Cosa cambia davvero rispetto a oggi?', body: 'Invece di cercare informazioni tra WhatsApp, fogli, telefono, GPS e cartelle, apri Vygo e vedi cosa scade, cosa manca, chi deve agire, quali mezzi hanno problemi e dove l azienda sta spendendo troppo.' },
-        { title: 'Se ho gia un GPS tipo Flottaweb?', body: 'Il GPS resta utile per posizione e telemetria. Vygo serve a trasformare quei dati in controllo economico: km, consumi, costi, margini e anomalie per targa.' },
+        { title: 'Cosa cambia davvero rispetto a oggi?', body: 'Invece di cercare informazioni tra WhatsApp, fogli, telefono e cartelle, apri Vygo e vedi cosa scade, cosa manca, chi deve agire, quali mezzi hanno problemi e dove l azienda sta spendendo troppo.' },
         { title: 'L autista deve scaricare un app?', body: 'Si. Vygo e previsto come app iOS/Android per autisti, magazzino e azienda. L azienda puo lavorare anche da browser desktop.' },
         { title: 'Arrivano notifiche sul telefono?', body: 'Si, dopo l attivazione sul dispositivo. Chat, guasti e check critici possono avvisare anche con app chiusa.' },
         { title: 'Posso usarlo dall ufficio e dal telefono?', body: 'Si. L ufficio lavora da PC, mentre titolare, autisti e personale possono usare l app su telefono.' },
@@ -1664,7 +1664,7 @@ const publicLandingCopy = {
     value: {
       overline: 'Vygo',
       title: 'An operating system for the whole transport company.',
-      body: 'Vygo brings together dashboard, mobile app, chat, documents, checks, faults, deadlines, cost center, fuel and management control. GPS and toll systems become data sources: Vygo turns them into margins, consumption, anomalies and decisions.',
+      body: 'Vygo brings together dashboard, mobile app, chat, documents, checks, faults, deadlines, cost center, fuel and management control. Operational data becomes margins, consumption, anomalies and decisions.',
       cards: [
         { title: 'Deadlines and documents', body: 'Licences, medical checks, vehicle documents, inspections, insurance and files connected to the right record.' },
         { title: 'Company chat', body: 'Direct and group chats for drivers, office, warehouse and management, away from personal noise.' },
@@ -1702,8 +1702,7 @@ const publicLandingCopy = {
       overline: 'FAQ',
       title: 'Quick questions before putting order in place.',
       items: [
-        { title: 'What really changes?', body: 'Instead of searching across WhatsApp, sheets, calls, GPS and folders, you open Vygo and see deadlines, missing items, actions, vehicle issues and where the company is overspending.' },
-        { title: 'What if I already use fleet GPS?', body: 'GPS remains useful for position and telematics. Vygo turns that data into economic control: km, consumption, costs, margins and anomalies by vehicle.' },
+        { title: 'What really changes?', body: 'Instead of searching across WhatsApp, sheets, calls and folders, you open Vygo and see deadlines, missing items, actions, vehicle issues and where the company is overspending.' },
         { title: 'Do workers install an app?', body: 'Yes. Vygo is built as an iOS/Android app for drivers, warehouse and company. The office can also work from desktop browser.' },
         { title: 'Do phone notifications work?', body: 'Yes, after enabling them on the device. Chat, faults and critical checks can alert even when the app is closed.' },
         { title: 'Can I use it from office and phone?', body: 'Yes. Office works from PC, owners and staff can use the phone app.' },
@@ -11203,7 +11202,7 @@ function App() {
             vehicleCheckRecords={vehicleCheckRecords}
             vehicleRecords={vehicleRecords}
           />
-        ) : activeView === 'telematics' ? (
+        ) : activeView === 'telematics' && telematicsLaunchReady ? (
           <TelematicsWorkspace vehicleRecords={vehicleRecords} />
         ) : activeView === 'evidence' ? (
           <EvidenceRegisterWorkspace
@@ -12667,7 +12666,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
       label: 'Controllo',
       items: [
         { id: 'passports', label: t('nav.passports'), icon: Truck },
-        { id: 'telematics', label: t('nav.telematics'), icon: RadioTower },
+        ...(telematicsLaunchReady ? [{ id: 'telematics', label: t('nav.telematics'), icon: RadioTower }] : []),
         { id: 'control', label: t('nav.control'), icon: ShieldCheck },
         { id: 'evidence', label: t('nav.evidence'), icon: BadgeCheck },
       ],
@@ -17322,7 +17321,7 @@ function ManagementControlWorkspace({
           <span>
             {entryMode
               ? 'Qui registri cisterne, fornitori, carichi gasolio, rifornimenti, ricavi e costi aziendali. Il cruscotto direzionale resta pulito nella pagina Controllo gestione.'
-              : 'Ricavi, costi fissi, costi mezzi, gasolio e consumi in un solo quadro. Le integrazioni GPS e pedaggi diventeranno fonti dati, non schermate doppie.'}
+              : 'Ricavi, costi fissi, costi mezzi, gasolio, pedaggi e consumi in un solo quadro. Ogni dato operativo alimenta margini, anomalie e decisioni.'}
           </span>
         </div>
         <div className="management-hero-score">
@@ -17343,7 +17342,7 @@ function ManagementControlWorkspace({
 
           <StrategicGuide
             title="Perche cambia tutto"
-            body="Il GPS dice dove si trova il mezzo. Vygo deve dire quanto quel mezzo rende, consuma, costa e quando sta diventando un problema economico."
+            body="Vygo deve dire quanto ogni mezzo rende, consuma, costa e quando sta diventando un problema economico."
             items={['Registra ricavi e costi ricorrenti aziendali.', 'Carica cisterna e scarichi gasolio con km mezzo.', 'Controlla consumo per targa e anomalie rispetto alla media.']}
           />
         </>

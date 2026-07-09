@@ -889,7 +889,7 @@ function isMissingDriverCheckPermissionColumn(error) {
 }
 
 function isMissingWorkforceSchemaError(error) {
-  return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error?.code)
+  return ['42P01', '42703', 'PGRST200', 'PGRST202', 'PGRST204', 'PGRST205'].includes(error?.code)
 }
 
 function shouldRetryWithBaseFuelMovementColumns(error) {
@@ -3114,7 +3114,7 @@ export async function createFuelSupplierRecord(supplier, companyId = configuredC
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,
-      error: { message: 'Anagrafica fornitori gasolio non ancora attiva. Esegui il file SQL 62 e riprova.' },
+      error: { message: 'Anagrafica fornitori gasolio non ancora attiva. Esegui il file SQL 65 e riprova.' },
     }
   }
 

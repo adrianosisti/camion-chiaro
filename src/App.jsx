@@ -17733,6 +17733,28 @@ function getPalletVisualHeightLabel(measure = '') {
   return dimensions[2] ? `${dimensions[2]} cm` : ''
 }
 
+function getPalletVisualColor(name = '') {
+  const key = String(name).toUpperCase()
+  if (key.includes('MINI')) return '#13c5df'
+  if (key.includes('QUARTER')) return '#38bdf8'
+  if (key.includes('HALF')) return '#22c55e'
+  if (key.includes('MEDIUM')) return '#84cc16'
+  if (key.includes('LIGHT')) return '#facc15'
+  if (key.includes('LARGE')) return '#fb923c'
+  if (key.includes('FULL')) return '#f97316'
+  if (key.includes('BIG')) return '#ef4444'
+  if (key.includes('MEGA')) return '#7c3aed'
+  return '#07576a'
+}
+
+function getPalletMeasureParts(measure = '') {
+  const [width, length, height] = String(measure ?? '').match(/\d+/g)?.map(Number) ?? []
+  return {
+    base: width && length ? `${width} x ${length} cm` : String(measure ?? ''),
+    height: height ? `${height} cm` : '',
+  }
+}
+
 function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda' }) {
   const { language } = useI18n()
   const currency = getDefaultCurrency(language)
@@ -17945,8 +17967,8 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       return `
         <section class="service-table">
           <h2>${escapeHtml(service.label)}</h2>
-          <table>
-            <thead><tr><th>Regione</th><th>${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
+          <table class="tariff-print-table">
+            <thead><tr><th class="geo-head">Regione</th><th class="geo-head">${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
             <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
           </table>
         </section>
@@ -17975,17 +17997,27 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
           <h2>Tipologie pallet Pallex</h2>
           <p>Legenda dei formati, misure e riprezzamenti applicabili al listino.</p>
           <div class="pallet-visual-grid">
-            ${(palletLegend.types ?? []).map((item) => `
-              <article class="pallet-card">
-                <div class="pallet-drawing">
-                  <span class="pallet-load" style="height: ${getPalletVisualHeightPercent(item.measure)}%;"></span>
-                  <small>${escapeHtml(getPalletVisualHeightLabel(item.measure))}</small>
-                </div>
-                <strong>${escapeHtml(item.name)}</strong>
-                <span>${escapeHtml(item.measure)}</span>
-                <em>${escapeHtml(item.maxWeight)}</em>
-              </article>
-            `).join('')}
+            ${(palletLegend.types ?? []).map((item) => {
+              const measureParts = getPalletMeasureParts(item.measure)
+              const palletColor = getPalletVisualColor(item.name)
+              return `
+                <article class="pallet-card" style="--pallet-color: ${palletColor}; --pallet-height: ${getPalletVisualHeightPercent(item.measure)}%;">
+                  <div class="pallet-drawing">
+                    <div class="pallet-height-ruler"><span>${escapeHtml(measureParts.height || getPalletVisualHeightLabel(item.measure))}</span></div>
+                    <div class="pallet-shape">
+                      <span class="pallet-load"></span>
+                      <span class="pallet-base"></span>
+                    </div>
+                  </div>
+                  <div class="pallet-card-copy">
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <span><b>Base</b> ${escapeHtml(measureParts.base)}</span>
+                    <span><b>Altezza</b> ${escapeHtml(measureParts.height || '-')}</span>
+                    <em><b>Peso max</b> ${escapeHtml(item.maxWeight)}</em>
+                  </div>
+                </article>
+              `
+            }).join('')}
           </div>
           <table class="legend-table">
             <thead><tr><th>Formato</th><th>Misure</th><th>Peso massimo</th></tr></thead>
@@ -18074,10 +18106,20 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .meta div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px; }
             .meta span { color: #64748b; display: block; font-size: 11px; text-transform: uppercase; }
             .meta strong { display: block; font-size: 14px; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border-bottom: 1px solid #e2e8f0; font-size: 10px; padding: 7px; text-align: right; }
-            th:first-child, th:nth-child(2), td:first-child, td:nth-child(2) { text-align: left; }
-            th { background: #ecfeff; color: #083344; }
+            table { border-collapse: separate; border-spacing: 2px; width: 100%; }
+            th, td { border: 1px solid #cbd5e1; font-size: 10px; padding: 7px; text-align: right; }
+            th { background: #07576a; color: #ffffff; font-weight: 900; }
+            td { background: #ffffff; color: #111827; font-weight: 800; }
+            .tariff-print-table { table-layout: fixed; }
+            .tariff-print-table th { font-size: 9px; line-height: 1.1; padding: 7px 5px; }
+            .tariff-print-table td { font-size: 9.5px; padding: 6px 5px; }
+            .tariff-print-table .geo-head { background: #13c5df; color: #062b35; }
+            .tariff-print-table td:first-child, .tariff-print-table td:nth-child(2) { background: #dff8fc; color: #062b35; font-weight: 900; text-align: left; }
+            .tariff-print-table th:first-child, .tariff-print-table td:first-child { width: 82px; }
+            .tariff-print-table th:nth-child(2), .tariff-print-table td:nth-child(2) { width: 88px; }
+            .tariff-print-table tbody tr:nth-child(even) td:not(:first-child):not(:nth-child(2)) { background: #f8fafc; }
+            .service-table { break-inside: avoid; margin-top: 14px; }
+            .service-table h2 { background: #0f172a; border-left: 8px solid #13c5df; color: #ffffff; font-size: 16px; margin: 18px 0 8px; padding: 9px 12px; }
             .accessories { margin-top: 10px; }
             .accessories th, .accessories td { font-size: 11px; text-align: left; vertical-align: top; }
             .accessories td:nth-child(2) { width: 130px; }
@@ -18085,13 +18127,18 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .page-break { break-before: page; page-break-before: always; }
             .pallet-page h2 { margin-top: 0; }
             .pallet-page h3 { color: #07576a; font-size: 15px; margin: 18px 0 8px; }
-            .pallet-visual-grid { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); margin: 10px 0 16px; }
-            .pallet-card { border: 1px solid #cbd5e1; border-radius: 8px; display: grid; gap: 4px; grid-template-columns: 54px 1fr; min-height: 90px; padding: 8px; }
-            .pallet-card strong { align-self: end; color: #083344; font-size: 12px; }
-            .pallet-card span, .pallet-card em { color: #475569; font-size: 10px; font-style: normal; grid-column: 2; }
-            .pallet-drawing { align-items: end; background: linear-gradient(180deg, #f8fafc, #ecfeff); border: 1px solid #bae6fd; border-radius: 6px; display: flex; height: 74px; justify-content: center; overflow: hidden; position: relative; width: 42px; }
-            .pallet-drawing small { background: rgba(255,255,255,0.86); border-radius: 999px; bottom: 4px; color: #07576a; font-size: 8px; font-weight: 800; padding: 1px 4px; position: absolute; }
-            .pallet-load { background: linear-gradient(180deg, #13c5df, #07576a); border-radius: 5px 5px 2px 2px; display: block; min-height: 18px; width: 28px; }
+            .pallet-visual-grid { display: grid; gap: 9px; grid-template-columns: repeat(3, 1fr); margin: 10px 0 16px; }
+            .pallet-card { background: #ffffff; border: 2px solid #d9eef4; border-radius: 10px; display: grid; gap: 8px; grid-template-columns: 74px 1fr; min-height: 116px; padding: 9px; }
+            .pallet-card-copy { align-content: center; display: grid; gap: 4px; }
+            .pallet-card strong { background: var(--pallet-color); border-radius: 999px; color: #ffffff; display: inline-block; font-size: 11px; letter-spacing: 0.03em; padding: 4px 8px; text-transform: uppercase; width: fit-content; }
+            .pallet-card span, .pallet-card em { color: #334155; font-size: 10px; font-style: normal; }
+            .pallet-card b { color: #0f172a; font-weight: 900; }
+            .pallet-drawing { align-items: end; background: linear-gradient(180deg, #f8fafc, #ecfeff); border: 1px solid #bae6fd; border-radius: 8px; display: grid; grid-template-columns: 18px 1fr; height: 98px; overflow: hidden; padding: 6px 6px 7px; position: relative; }
+            .pallet-height-ruler { align-items: center; border-right: 1px dashed #64748b; display: flex; height: 100%; justify-content: center; position: relative; }
+            .pallet-height-ruler span { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 999px; color: #0f172a; font-size: 8px; font-weight: 900; padding: 1px 4px; transform: rotate(-90deg); white-space: nowrap; }
+            .pallet-shape { align-items: end; display: flex; flex-direction: column; height: 100%; justify-content: end; margin-left: 6px; }
+            .pallet-load { background: linear-gradient(180deg, var(--pallet-color), #07576a); border: 1px solid rgba(15, 23, 42, 0.16); border-radius: 6px 6px 2px 2px; display: block; height: var(--pallet-height); min-height: 16px; width: 38px; }
+            .pallet-base { background: repeating-linear-gradient(90deg, #92400e 0 7px, #b45309 7px 11px); border-radius: 2px; box-shadow: inset 0 2px 0 rgba(255,255,255,0.25); display: block; height: 8px; width: 46px; }
             .legend-table th, .legend-table td { font-size: 11px; text-align: left; vertical-align: top; }
             .legend-table.compact th, .legend-table.compact td { font-size: 10px; padding: 6px; }
             .repricing-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }

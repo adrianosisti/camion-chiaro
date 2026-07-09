@@ -71,7 +71,7 @@ async function safeSelect(serviceClient, tableName, columns, issues, options = {
 
 async function fetchCompanies(serviceClient, issues) {
   const baseColumns = 'id, name, vat_number, headquarters, created_at, updated_at'
-  const fullColumns = `${baseColumns}, billing_plan, billing_status, billing_email, billing_provider, billing_current_period_end`
+  const fullColumns = `${baseColumns}, billing_plan, billing_status, billing_email, billing_provider, billing_current_period_end, billing_addon_pallex_tariffs`
   const options = { orderBy: 'created_at', limit: 500 }
   const companies = await safeSelect(serviceClient, 'companies', fullColumns, issues, options)
 
@@ -84,6 +84,7 @@ async function fetchCompanies(serviceClient, issues) {
   return fallbackCompanies.map((company) => ({
     ...company,
     billing_email: '',
+    billing_addon_pallex_tariffs: false,
     billing_plan: 'starter',
     billing_provider: 'manual',
     billing_status: 'active',
@@ -404,6 +405,7 @@ function buildCompanySummary(company, collections, options = {}) {
     adminSalesStage: control.sales_stage ?? 'active',
     adminUpdatedAt: control.updated_at ?? '',
     billingEmail: company.billing_email ?? '',
+    billingAddonPallexTariffs: Boolean(company.billing_addon_pallex_tariffs),
     billingPlan: company.billing_plan ?? 'starter',
     billingProvider: company.billing_provider ?? 'manual',
     billingStatus: isInternalAdminCompany ? 'internal' : billingStatus,

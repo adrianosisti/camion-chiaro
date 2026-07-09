@@ -78,6 +78,9 @@ export async function handler(event) {
 
   const billingPlan = String(body.billingPlan ?? '')
   const billingStatus = String(body.billingStatus ?? '')
+  const billingAddonPallexTariffs = typeof body.billingAddonPallexTariffs === 'boolean'
+    ? body.billingAddonPallexTariffs
+    : undefined
   const salesStage = String(body.adminSalesStage ?? 'active')
   const priority = String(body.adminPriority ?? 'normal')
 
@@ -121,6 +124,7 @@ export async function handler(event) {
   const companyPayload = compactPayload({
     billing_plan: billingPlan || undefined,
     billing_status: billingStatus || undefined,
+    billing_addon_pallex_tariffs: billingAddonPallexTariffs,
     billing_activated_at: billingStatus === 'active' ? new Date().toISOString() : undefined,
     updated_at: new Date().toISOString(),
   })

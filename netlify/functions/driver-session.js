@@ -240,6 +240,7 @@ function mapFaultReport(row) {
 function mapCompanyProfile(row) {
   return {
     billingActivatedAt: row.billing_activated_at ?? '',
+    billingAddonPallexTariffs: Boolean(row.billing_addon_pallex_tariffs),
     billingCustomerId: row.billing_customer_id ?? '',
     billingCurrentPeriodEnd: row.billing_current_period_end ?? '',
     billingEmail: row.billing_email ?? '',
@@ -269,7 +270,8 @@ const companyProfileBillingSelectColumns = `
   billing_customer_id,
   billing_subscription_id,
   billing_current_period_end,
-  billing_activated_at
+  billing_activated_at,
+  billing_addon_pallex_tariffs
 `
 const driverSelectBaseColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, status'
 const driverSelectWithCheckColumns = 'id, company_id, user_id, username, auth_email, full_name, email, phone, profile_image_path, role, depot, can_submit_checks, status'

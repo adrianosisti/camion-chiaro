@@ -231,6 +231,7 @@ function getInitialCompanyProfile() {
     billingActivatedAt: '',
     billingAddonChat: false,
     billingAddonCostCenter: false,
+    billingAddonPallexTariffs: false,
     billingAddonReports: false,
     billingCustomerId: '',
     billingCurrentPeriodEnd: '',
@@ -633,7 +634,7 @@ const emptyChatLiveState = {
   onlineByActor: {},
   typingByThread: {},
 }
-const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'managementEntries', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support'])
+const deepLinkViews = new Set(['admin', 'chat', 'control', 'daily', 'deadlines', 'documents', 'drivers', 'evidence', 'fleet', 'management', 'managementEntries', 'news', 'notifications', 'passports', 'records', 'reports', 'savings', 'settings', 'support', 'tariffs'])
 const languageStorageKey = 'camionChiaroLanguage'
 const chatSoundStorageKey = 'camionChiaroChatSoundEnabled'
 const driverMediaSaveStorageKey = 'camionChiaroDriverMediaSavePreference'
@@ -857,6 +858,7 @@ const translations = {
     'nav.records': 'Anagrafiche',
     'nav.reports': 'Report',
     'nav.savings': 'Radar Risparmio',
+    'nav.tariffs': 'Tariffe Pallex',
     'nav.management': 'Controllo gestione',
     'nav.managementEntries': 'Inserimenti gestione',
     'nav.telematics': 'GPS e telemetria',
@@ -1085,6 +1087,7 @@ const translations = {
     'nav.records': 'Records',
     'nav.reports': 'Reports',
     'nav.savings': 'Savings Radar',
+    'nav.tariffs': 'Pallex Tariffs',
     'nav.management': 'Management control',
     'nav.managementEntries': 'Management entries',
     'nav.telematics': 'GPS and telematics',
@@ -1234,6 +1237,7 @@ const translations = {
     'nav.records': 'Ficheros',
     'nav.reports': 'Informes',
     'nav.savings': 'Radar ahorro',
+    'nav.tariffs': 'Tarifas Pallex',
     'nav.management': 'Control gestion',
     'nav.managementEntries': 'Altas gestion',
     'nav.telematics': 'GPS y telemetria',
@@ -1383,6 +1387,7 @@ const translations = {
     'nav.records': 'Fiches',
     'nav.reports': 'Rapports',
     'nav.savings': 'Radar economies',
+    'nav.tariffs': 'Tarifs Pallex',
     'nav.management': 'Controle gestion',
     'nav.managementEntries': 'Saisies gestion',
     'nav.telematics': 'GPS et telematique',
@@ -1532,6 +1537,7 @@ const translations = {
     'nav.records': 'Stammdaten',
     'nav.reports': 'Berichte',
     'nav.savings': 'Sparradar',
+    'nav.tariffs': 'Pallex Tarife',
     'nav.management': 'Managementkontrolle',
     'nav.managementEntries': 'Eingaben',
     'nav.telematics': 'GPS und Telematik',
@@ -4160,6 +4166,7 @@ const regionalTranslations = {
     'nav.records': 'Date',
     'nav.reports': 'Rapoarte',
     'nav.savings': 'Radar economii',
+    'nav.tariffs': 'Tarife Pallex',
     'nav.management': 'Control management',
     'nav.managementEntries': 'Introduceri management',
     'nav.telematics': 'GPS si telematica',
@@ -4230,6 +4237,7 @@ const regionalTranslations = {
     'nav.records': 'Kartoteki',
     'nav.reports': 'Raporty',
     'nav.savings': 'Radar oszczednosci',
+    'nav.tariffs': 'Taryfy Pallex',
     'nav.management': 'Kontrola zarzadzania',
     'nav.managementEntries': 'Wpisy zarzadzania',
     'nav.telematics': 'GPS i telematyka',
@@ -5571,6 +5579,7 @@ function getCompanyPlanCapabilities(profile = {}) {
     ...baseCapabilities,
     chat: Boolean(baseCapabilities.chat || profile?.billingAddonChat),
     costCenter: Boolean(baseCapabilities.costCenter || profile?.billingAddonCostCenter),
+    pallexTariffs: Boolean(profile?.billingAddonPallexTariffs),
     reports: Boolean(baseCapabilities.reports || profile?.billingAddonReports),
     storageGb: (baseCapabilities.storageGb ?? 0) + storageExtraGb,
   }
@@ -5641,6 +5650,32 @@ function parseMoneyToCents(value = '') {
 function formatMoneyInput(cents = 0) {
   if (!cents) return ''
   return String((Number(cents) / 100).toFixed(2)).replace('.', ',')
+}
+
+function parseDecimalInput(value = '') {
+  const rawValue = String(value ?? '').replace(/\s/g, '')
+  const normalized = rawValue.includes(',')
+    ? rawValue.replace(/\./g, '').replace(',', '.')
+    : rawValue
+  const parsed = Number.parseFloat(normalized)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function formatDecimalCurrency(value = 0, currency = 'EUR') {
+  return new Intl.NumberFormat('it-IT', {
+    currency: currency || 'EUR',
+    minimumFractionDigits: 2,
+    style: 'currency',
+  }).format(Number(value) || 0)
+}
+
+function escapeHtml(value = '') {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
 }
 
 function getInvoiceStatusLabel(status) {
@@ -10315,6 +10350,7 @@ function App() {
     chat: isAdminSession || hasPlanFeature(companyProfile, 'chat'),
     costCenter: isAdminSession || hasPlanFeature(companyProfile, 'costCenter'),
     departments: isAdminSession || hasPlanFeature(companyProfile, 'departments'),
+    pallexTariffs: isAdminSession || hasPlanFeature(companyProfile, 'pallexTariffs'),
     reports: isAdminSession || hasPlanFeature(companyProfile, 'reports'),
     voiceCalls: isAdminSession || hasPlanFeature(companyProfile, 'voiceCalls'),
   }
@@ -11123,6 +11159,7 @@ function App() {
         onNavigate={navigateCompanyView}
         onSignOut={handleSignOut}
         session={session}
+        showPallexTariffs={planFeatureAccess.pallexTariffs}
         t={t}
       />
       <main
@@ -11401,6 +11438,17 @@ function App() {
             <FeatureUpgradeGate
               description="Report avanzati, CSV, stampa e cruscotti filtrati sono inclusi nei piani attivi. Se li vedi bloccati, controlla lo stato pagamento o l attivazione azienda."
               featureName="Report avanzati"
+              icon={FileText}
+              onUpgrade={openBillingSettings}
+            />
+          )
+        ) : activeView === 'tariffs' ? (
+          planFeatureAccess.pallexTariffs ? (
+            <TariffCalculatorWorkspace companyLogoUrl={getAssetPreviewUrl(companyProfile.logoPath)} companyName={getDisplayCompanyName(companyProfile.name || companyName || company.name)} />
+          ) : (
+            <FeatureUpgradeGate
+              description="Il calcolatore tariffe Pallex e un modulo riservato ai concessionari autorizzati. Si abilita manualmente dal pannello admin Vygo."
+              featureName="Tariffe Pallex"
               icon={FileText}
               onUpgrade={openBillingSettings}
             />
@@ -12644,7 +12692,7 @@ function AuthScreen({ isPasswordRecoveryMode = false, language, onAuthenticated,
   )
 }
 
-function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false, liveGuideTarget = '', notificationCount, onHome, onNavigate, onSignOut, session, t }) {
+function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false, liveGuideTarget = '', notificationCount, onHome, onNavigate, onSignOut, session, showPallexTariffs = false, t }) {
   const [expandedNavGroups, setExpandedNavGroups] = useState({})
   const mainNavItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -12679,6 +12727,7 @@ function Sidebar({ activeView, chatNotificationCount = 0, isAdminSession = false
         { id: 'managementEntries', label: t('nav.managementEntries'), icon: Plus },
         { id: 'savings', label: t('nav.savings'), icon: Gauge },
         { id: 'reports', label: t('nav.reports'), icon: FileText },
+        ...(showPallexTariffs ? [{ id: 'tariffs', label: t('nav.tariffs'), icon: FileText }] : []),
         { id: 'costs', label: t('nav.costs'), icon: Banknote },
         { id: 'newCost', label: t('nav.newCost'), icon: Plus },
       ],
@@ -14038,6 +14087,7 @@ function AdminWorkspace({
     adminOwnerName: '',
     adminPriority: 'normal',
     adminSalesStage: 'active',
+    billingAddonPallexTariffs: false,
     billingPlan: 'starter',
     billingStatus: 'pending',
   })
@@ -14177,6 +14227,7 @@ function AdminWorkspace({
         adminOwnerName: selectedCompany.adminOwnerName ?? '',
         adminPriority: selectedCompany.adminPriority ?? 'normal',
         adminSalesStage: selectedCompany.adminSalesStage ?? 'active',
+        billingAddonPallexTariffs: Boolean(selectedCompany.billingAddonPallexTariffs),
         billingPlan: selectedCompany.billingPlan ?? 'starter',
         billingStatus: selectedCompany.isInternalAdminCompany ? 'active' : selectedCompany.billingStatus ?? 'pending',
       })
@@ -14215,10 +14266,10 @@ function AdminWorkspace({
     if (!selectedCompany || !onUpdateCompany) return
 
     setAdminSaveStatus('Salvataggio in corso...')
-    const { billingPlan, billingStatus, ...crmOnlyForm } = adminForm
+    const { billingAddonPallexTariffs, billingPlan, billingStatus, ...crmOnlyForm } = adminForm
     const result = await onUpdateCompany(
       selectedCompany.id,
-      selectedCompany.isInternalAdminCompany ? crmOnlyForm : { billingPlan, billingStatus, ...crmOnlyForm },
+      selectedCompany.isInternalAdminCompany ? crmOnlyForm : { billingAddonPallexTariffs, billingPlan, billingStatus, ...crmOnlyForm },
     )
 
     if (result?.error) {
@@ -14573,6 +14624,16 @@ function AdminWorkspace({
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
+                  </label>
+                  <label className="admin-checkbox-field">
+                    <span>Modulo Pallex</span>
+                    <input
+                      checked={Boolean(adminForm.billingAddonPallexTariffs)}
+                      disabled={selectedCompany.isInternalAdminCompany}
+                      onChange={(event) => updateAdminForm('billingAddonPallexTariffs', event.target.checked)}
+                      type="checkbox"
+                    />
+                    <small>Abilita tariffe solo ai concessionari autorizzati.</small>
                   </label>
                   <label>
                     <span>Fase</span>
@@ -17526,6 +17587,438 @@ function ManagementControlWorkspace({
           </div>
         </section>
       </div> : null}
+    </section>
+  )
+}
+
+const tariffManualCostFields = [
+  { key: 'pickupCost', label: 'Ritiro origine' },
+  { key: 'hubDeliveryCost', label: 'Conferimento hub' },
+  { key: 'warehouseHandling', label: 'Magazzino e movimentazione' },
+  { key: 'billingCost', label: 'Bollettazione e pratica' },
+  { key: 'extraFixedCost', label: 'Extra concessionario' },
+]
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('File non leggibile.'))
+    reader.onload = () => resolve(String(reader.result ?? '').split(',').pop() ?? '')
+    reader.readAsDataURL(file)
+  })
+}
+
+function roundTariffValue(value, step) {
+  const cleanStep = Number(step) > 0 ? Number(step) : 0.01
+  return Math.ceil((Number(value) || 0) / cleanStep) * cleanStep
+}
+
+function buildTariffOutputRows({ manualCosts, selectedService, viewMode }) {
+  if (!selectedService?.rows?.length) return []
+
+  const conditionMarkup = Math.max(0, parseDecimalInput(manualCosts.conditionMarkupPercent)) / 100
+  const fixedCostsTotal = (selectedService.fixedCosts ?? []).reduce((total, item) => total + (Number(item.amount) || 0), 0)
+  const manualCostsTotal = tariffManualCostFields.reduce((total, field) => total + parseDecimalInput(manualCosts[field.key]), 0)
+  const marginRate = Math.min(0.95, Math.max(0, parseDecimalInput(manualCosts.marginPercent) / 100))
+  const roundingStep = parseDecimalInput(manualCosts.roundingStep) || 0.5
+  const etsByRegion = new Map((selectedService.etsRows ?? []).map((row) => [String(row.region ?? '').toUpperCase(), row]))
+  const sourceRows = viewMode === 'region'
+    ? Array.from(selectedService.rows.reduce((regions, row) => {
+        const regionKey = row.region || 'Senza regione'
+        const current = regions.get(regionKey) ?? { province: 'Tutte', region: regionKey, values: {} }
+
+        selectedService.columns.forEach((column) => {
+          const previous = Number(current.values[column.key] ?? 0)
+          const next = Number(row.values?.[column.key] ?? 0)
+          current.values[column.key] = Math.max(previous, next)
+        })
+
+        regions.set(regionKey, current)
+        return regions
+      }, new Map()).values())
+    : selectedService.rows
+
+  return sourceRows.map((row) => {
+    const etsRow = etsByRegion.get(String(row.region ?? '').toUpperCase())
+    const values = {}
+
+    selectedService.columns.forEach((column) => {
+      const baseImr = Number(row.values?.[column.key] ?? 0)
+      const etsAmount = Number(etsRow?.values?.[column.key] ?? 0)
+      const imrWithEts = baseImr + etsAmount
+      const internalCost = (imrWithEts * (1 + conditionMarkup)) + fixedCostsTotal + manualCostsTotal
+      const finalPrice = marginRate >= 0.95 ? internalCost : internalCost / (1 - marginRate)
+
+      values[column.key] = {
+        baseImr,
+        etsAmount,
+        finalPrice: roundTariffValue(finalPrice, roundingStep),
+        internalCost,
+      }
+    })
+
+    return {
+      province: row.province,
+      region: row.region,
+      values,
+    }
+  })
+}
+
+function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda' }) {
+  const { language } = useI18n()
+  const currency = getDefaultCurrency(language)
+  const [workbook, setWorkbook] = useState(null)
+  const [isParsing, setIsParsing] = useState(false)
+  const [status, setStatus] = useState('')
+  const [selectedHubName, setSelectedHubName] = useState('')
+  const [selectedServiceId, setSelectedServiceId] = useState('standard')
+  const [viewMode, setViewMode] = useState('province')
+  const [customerName, setCustomerName] = useState('')
+  const [validityNote, setValidityNote] = useState('Listino valido fino a nuova comunicazione.')
+  const [conditionsMode, setConditionsMode] = useState('same')
+  const [customConditions, setCustomConditions] = useState('')
+  const [manualCosts, setManualCosts] = useState({
+    billingCost: '0',
+    conditionMarkupPercent: '0',
+    extraFixedCost: '0',
+    hubDeliveryCost: '0',
+    marginPercent: '20',
+    pickupCost: '0',
+    roundingStep: '0,50',
+    warehouseHandling: '0',
+  })
+
+  const selectedHub = useMemo(
+    () => workbook?.hubs?.find((hub) => hub.name === selectedHubName) ?? workbook?.hubs?.[0] ?? null,
+    [selectedHubName, workbook],
+  )
+  const selectedService = useMemo(
+    () => selectedHub?.services?.find((service) => service.id === selectedServiceId) ?? selectedHub?.services?.[0] ?? null,
+    [selectedHub, selectedServiceId],
+  )
+  const tariffRows = useMemo(
+    () => buildTariffOutputRows({ manualCosts, selectedService, viewMode }),
+    [manualCosts, selectedService, viewMode],
+  )
+  const fixedCostsTotal = useMemo(
+    () => (selectedService?.fixedCosts ?? []).reduce((total, item) => total + (Number(item.amount) || 0), 0),
+    [selectedService],
+  )
+  const manualCostsTotal = tariffManualCostFields.reduce((total, field) => total + parseDecimalInput(manualCosts[field.key]), 0)
+  const sampleColumn = selectedService?.columns?.[0]
+  const samplePrice = sampleColumn ? tariffRows[0]?.values?.[sampleColumn.key]?.finalPrice : 0
+  const fileName = workbook?.fileName ?? 'Nessun file caricato'
+
+  function updateManualCost(field, value) {
+    setManualCosts((current) => ({ ...current, [field]: value }))
+  }
+
+  async function handleTariffFileChange(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setIsParsing(true)
+    setStatus('Lettura listino Pallex in corso...')
+
+    try {
+      const fileBase64 = await readFileAsBase64(file)
+      const response = await fetch('/.netlify/functions/parse-pallex-tariffs', {
+        body: JSON.stringify({ fileBase64, fileName: file.name }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+      const payload = await response.json()
+
+      if (!response.ok) throw new Error(payload.error || 'Listino non leggibile.')
+
+      setWorkbook(payload)
+      setSelectedHubName(payload.hubs?.[0]?.name ?? '')
+      setSelectedServiceId(payload.hubs?.[0]?.services?.[0]?.id ?? 'standard')
+      setStatus(`Listino caricato: ${payload.hubs?.length ?? 0} hub trovati.`)
+    } catch (error) {
+      setWorkbook(null)
+      setStatus(error.message || 'Errore durante la lettura del listino.')
+    } finally {
+      setIsParsing(false)
+      event.target.value = ''
+    }
+  }
+
+  function buildCsvRows() {
+    if (!selectedService?.columns?.length) return []
+    const heading = [
+      [`Vygo - Listino cliente ${customerName || 'cliente'}`],
+      ['Azienda', companyName],
+      ['Cliente', customerName || 'Non inserito'],
+      ['Hub', selectedHub?.name ?? ''],
+      ['Servizio', selectedService?.label ?? ''],
+      ['Vista', viewMode === 'region' ? 'Regione' : 'Provincia'],
+      ['File origine', fileName],
+      ['Nota validita', validityNote],
+      [],
+    ]
+    const table = [
+      [viewMode === 'region' ? 'Regione' : 'Regione', viewMode === 'region' ? 'Copertura' : 'Provincia', ...selectedService.columns.map((column) => column.label)],
+      ...tariffRows.map((row) => [
+        row.region,
+        viewMode === 'region' ? 'Tutte le province' : row.province,
+        ...selectedService.columns.map((column) => (Number(row.values[column.key]?.finalPrice ?? 0)).toFixed(2).replace('.', ',')),
+      ]),
+    ]
+    const conditions = conditionsMode === 'custom'
+      ? [['Condizioni personalizzate', customConditions]]
+      : [['Condizioni generali Pallex mantenute'], ...(workbook?.conditions ?? []).slice(0, 18).map((item) => [item.title, item.description])]
+
+    return [...heading, ...table, [], ...conditions]
+  }
+
+  function downloadTariffCsv() {
+    const csv = buildCsvRows()
+      .map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';'))
+      .join('\n')
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `vygo-listino-${(customerName || selectedHub?.name || 'pallex').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  function printTariff() {
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
+    if (!printWindow) {
+      window.print()
+      return
+    }
+
+    const headerCells = selectedService?.columns?.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('') ?? ''
+    const bodyRows = tariffRows.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.region)}</td>
+        <td>${escapeHtml(viewMode === 'region' ? 'Tutte le province' : row.province)}</td>
+        ${(selectedService?.columns ?? []).map((column) => `<td>${escapeHtml(formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency))}</td>`).join('')}
+      </tr>
+    `).join('')
+    const conditionHtml = conditionsMode === 'custom'
+      ? `<p>${escapeHtml(customConditions || 'Condizioni personalizzate non inserite.')}</p>`
+      : `<ul>${(workbook?.conditions ?? []).slice(0, 12).map((item) => `<li><strong>${escapeHtml(item.title || 'Condizione')}</strong> ${escapeHtml(item.description)}</li>`).join('')}</ul>`
+    const logoHtml = companyLogoUrl
+      ? `<img alt="${escapeHtml(companyName)}" src="${escapeHtml(companyLogoUrl)}" />`
+      : `<strong>${escapeHtml(companyName)}</strong>`
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>Listino ${escapeHtml(customerName || selectedHub?.name || 'Pallex')}</title>
+          <style>
+            body { color: #10202b; font-family: Arial, sans-serif; margin: 24px; }
+            .brand { align-items: center; border-bottom: 2px solid #13c5df; display: flex; gap: 14px; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; }
+            .brand img { max-height: 64px; max-width: 180px; object-fit: contain; }
+            .brand strong { color: #07576a; font-size: 24px; }
+            .brand small { color: #64748b; display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+            h1 { margin: 0 0 4px; }
+            p { color: #475569; margin: 0 0 14px; }
+            .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0; }
+            .meta div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px; }
+            .meta span { color: #64748b; display: block; font-size: 11px; text-transform: uppercase; }
+            .meta strong { display: block; font-size: 14px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border-bottom: 1px solid #e2e8f0; font-size: 10px; padding: 7px; text-align: right; }
+            th:first-child, th:nth-child(2), td:first-child, td:nth-child(2) { text-align: left; }
+            th { background: #ecfeff; color: #083344; }
+            ul { color: #475569; font-size: 11px; columns: 2; padding-left: 18px; }
+          </style>
+        </head>
+        <body>
+          <section class="brand">
+            <div>${logoHtml}<small>Listino generato con Vygo</small></div>
+            <div><strong>${escapeHtml(companyName)}</strong><small>${escapeHtml(new Intl.DateTimeFormat('it-IT').format(new Date()))}</small></div>
+          </section>
+          <h1>${escapeHtml(companyName)} - listino ${escapeHtml(customerName || 'cliente')}</h1>
+          <p>${escapeHtml(selectedHub?.name ?? '')} · ${escapeHtml(selectedService?.label ?? '')} · ${escapeHtml(validityNote)}</p>
+          <section class="meta">
+            <div><span>Vista</span><strong>${viewMode === 'region' ? 'Regione' : 'Provincia'}</strong></div>
+            <div><span>Costi fissi IMR</span><strong>${escapeHtml(formatDecimalCurrency(fixedCostsTotal, currency))}</strong></div>
+            <div><span>Costi manuali</span><strong>${escapeHtml(formatDecimalCurrency(manualCostsTotal, currency))}</strong></div>
+            <div><span>Margine</span><strong>${escapeHtml(manualCosts.marginPercent)}%</strong></div>
+          </section>
+          <table>
+            <thead><tr><th>Regione</th><th>${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
+            <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
+          </table>
+          <h2>Condizioni</h2>
+          ${conditionHtml}
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+  }
+
+  return (
+    <section className="tariff-workspace" aria-label="Calcolatore tariffe Pallex">
+      <div className="panel tariff-hero-panel">
+        <div>
+          <p className="overline">Modulo riservato</p>
+          <h2>Tariffe Pallex per concessionari</h2>
+          <span>
+            Carica il listino IMR ufficiale, scegli hub e servizio, aggiungi i costi del concessionario e genera un listino cliente chiaro. Fasce province e ultimo miglio vengono ignorati come richiesto.
+          </span>
+        </div>
+        <FileText size={28} />
+      </div>
+
+      <div className="tariff-grid">
+        <section className="panel tariff-panel">
+          <StrategicSectionTitle icon={Upload} overline="File IMR" title="Carica listino Pallex" />
+          <label className="tariff-upload-box">
+            <input accept=".xlsx" onChange={handleTariffFileChange} type="file" />
+            <Upload size={20} />
+            <span>{isParsing ? 'Lettura in corso...' : 'Scegli file .xlsx'}</span>
+            <small>{fileName}</small>
+          </label>
+          {status ? <div className="tariff-status">{status}</div> : null}
+          <div className="tariff-form-grid">
+            <label>Hub di riferimento
+              <select disabled={!workbook?.hubs?.length} value={selectedHub?.name ?? ''} onChange={(event) => {
+                setSelectedHubName(event.target.value)
+                const nextHub = workbook?.hubs?.find((hub) => hub.name === event.target.value)
+                setSelectedServiceId(nextHub?.services?.[0]?.id ?? 'standard')
+              }}>
+                {(workbook?.hubs ?? []).map((hub) => <option key={hub.name} value={hub.name}>{hub.name}</option>)}
+              </select>
+            </label>
+            <label>Servizio
+              <select disabled={!selectedHub?.services?.length} value={selectedService?.id ?? 'standard'} onChange={(event) => setSelectedServiceId(event.target.value)}>
+                {(selectedHub?.services ?? []).map((service) => <option key={service.id} value={service.id}>{service.label}</option>)}
+              </select>
+            </label>
+            <label>Vista listino
+              <select value={viewMode} onChange={(event) => setViewMode(event.target.value)}>
+                <option value="province">Province come Pallex</option>
+                <option value="region">Regioni semplificate</option>
+              </select>
+            </label>
+            <label>Cliente
+              <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Es. Rossi Srl" />
+            </label>
+            <label className="tariff-wide">Validita listino
+              <input value={validityNote} onChange={(event) => setValidityNote(event.target.value)} />
+            </label>
+          </div>
+        </section>
+
+        <section className="panel tariff-panel">
+          <StrategicSectionTitle icon={Banknote} overline="Formula cliente" title="Costi e margine" />
+          <div className="tariff-form-grid">
+            {tariffManualCostFields.map((field) => (
+              <label key={field.key}>{field.label}
+                <input inputMode="decimal" value={manualCosts[field.key]} onChange={(event) => updateManualCost(field.key, event.target.value)} placeholder="0,00" />
+              </label>
+            ))}
+            <label>Margine %
+              <input inputMode="decimal" value={manualCosts.marginPercent} onChange={(event) => updateManualCost('marginPercent', event.target.value)} />
+            </label>
+            <label>Ricarico condizioni %
+              <input inputMode="decimal" value={manualCosts.conditionMarkupPercent} onChange={(event) => updateManualCost('conditionMarkupPercent', event.target.value)} />
+            </label>
+            <label>Arrotonda a
+              <input inputMode="decimal" value={manualCosts.roundingStep} onChange={(event) => updateManualCost('roundingStep', event.target.value)} placeholder="0,50" />
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <div className="tariff-summary-grid">
+        <StrategicKpi label="Hub selezionato" tone={selectedHub ? 'info' : 'warning'} value={selectedHub?.name?.replace('Hub ', '') || 'Da caricare'} />
+        <StrategicKpi label="Province/righe" tone="info" value={tariffRows.length} />
+        <StrategicKpi label="Costi fissi IMR" tone="warning" value={formatDecimalCurrency(fixedCostsTotal, currency)} />
+        <StrategicKpi label="Esempio prima voce" tone="success" value={samplePrice ? formatDecimalCurrency(samplePrice, currency) : 'Da calcolare'} />
+      </div>
+
+      <section className="panel tariff-panel">
+        <div className="tariff-toolbar">
+          <StrategicSectionTitle icon={FileText} overline="Output" title={viewMode === 'region' ? 'Listino cliente per regione' : 'Listino cliente per provincia'} />
+          <div className="tariff-actions">
+            <button className="secondary-button compact-button" disabled={!tariffRows.length} onClick={downloadTariffCsv} type="button">
+              <Download size={16} /> Esporta CSV
+            </button>
+            <button className="primary-button compact-button" disabled={!tariffRows.length} onClick={printTariff} type="button">
+              <FileText size={16} /> Stampa listino
+            </button>
+          </div>
+        </div>
+        <div className="tariff-table-wrap">
+          <table className="tariff-table">
+            <thead>
+              <tr>
+                <th>Regione</th>
+                <th>{viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>
+                {(selectedService?.columns ?? []).map((column) => <th key={column.key}>{column.label}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {tariffRows.map((row) => (
+                <tr key={`${row.region}-${row.province}`}>
+                  <td>{row.region}</td>
+                  <td>{viewMode === 'region' ? 'Tutte' : row.province}</td>
+                  {(selectedService?.columns ?? []).map((column) => (
+                    <td key={column.key}>{formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency)}</td>
+                  ))}
+                </tr>
+              ))}
+              {!tariffRows.length ? (
+                <tr>
+                  <td colSpan={18}>Carica il file IMR Pallex per generare il listino.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div className="tariff-grid">
+        <section className="panel tariff-panel">
+          <StrategicSectionTitle icon={Banknote} overline="Dal file IMR" title="Costi fissi rilevati" />
+          <div className="tariff-cost-list">
+            {(selectedService?.fixedCosts ?? []).map((cost) => (
+              <article key={`${cost.label}-${cost.amount}`}>
+                <span>{cost.label}</span>
+                <strong>{formatDecimalCurrency(cost.amount, currency)}</strong>
+                <small>{cost.unit}</small>
+              </article>
+            ))}
+            {!selectedService?.fixedCosts?.length ? <StrategicEmptyLine label="Carica un listino per leggere i costi fissi." /> : null}
+          </div>
+        </section>
+
+        <section className="panel tariff-panel">
+          <StrategicSectionTitle icon={FileText} overline="Condizioni" title="Condizioni generali" />
+          <div className="tariff-mode-row">
+            <button className={conditionsMode === 'same' ? 'is-active' : ''} onClick={() => setConditionsMode('same')} type="button">Mantieni Pallex</button>
+            <button className={conditionsMode === 'custom' ? 'is-active' : ''} onClick={() => setConditionsMode('custom')} type="button">Personalizza</button>
+          </div>
+          {conditionsMode === 'custom' ? (
+            <textarea className="tariff-conditions-textarea" value={customConditions} onChange={(event) => setCustomConditions(event.target.value)} placeholder="Scrivi condizioni da mostrare nel listino cliente..." />
+          ) : (
+            <div className="tariff-condition-list">
+              {(workbook?.conditions ?? []).slice(0, 10).map((condition, index) => (
+                <article key={`${condition.title}-${index}`}>
+                  <strong>{condition.title || 'Condizione'}</strong>
+                  <span>{condition.description}</span>
+                </article>
+              ))}
+              {!workbook?.conditions?.length ? <StrategicEmptyLine label="Carica il file IMR per visualizzare le condizioni generali." /> : null}
+            </div>
+          )}
+        </section>
+      </div>
     </section>
   )
 }

@@ -401,6 +401,7 @@ function mapCompanyProfile(row) {
     billingActivatedAt: row.billing_activated_at ?? '',
     billingAddonChat: Boolean(row.billing_addon_chat),
     billingAddonCostCenter: Boolean(row.billing_addon_cost_center),
+    billingAddonPallexTariffs: Boolean(row.billing_addon_pallex_tariffs),
     billingAddonReports: Boolean(row.billing_addon_reports),
     billingCustomerId: row.billing_customer_id ?? '',
     billingCurrentPeriodEnd: row.billing_current_period_end ?? '',
@@ -463,6 +464,7 @@ const companyProfileBillingSelectColumns = `
   billing_activated_at,
   billing_addon_chat,
   billing_addon_cost_center,
+  billing_addon_pallex_tariffs,
   billing_addon_reports,
   billing_storage_extra_gb
 `

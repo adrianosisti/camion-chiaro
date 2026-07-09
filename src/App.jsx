@@ -18095,7 +18095,9 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         <head>
           <title>Listino ${escapeHtml(customerName || 'cliente')}</title>
           <style>
-            body { color: #10202b; font-family: Arial, sans-serif; margin: 24px; }
+            @page { size: A4 landscape; margin: 8mm; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { color: #10202b; font-family: Arial, sans-serif; margin: 0; }
             .brand { align-items: center; border-bottom: 2px solid #13c5df; display: flex; gap: 14px; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; }
             .brand img { max-height: 64px; max-width: 180px; object-fit: contain; }
             .brand strong { color: #07576a; font-size: 24px; }
@@ -18106,17 +18108,17 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .meta div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px; }
             .meta span { color: #64748b; display: block; font-size: 11px; text-transform: uppercase; }
             .meta strong { display: block; font-size: 14px; }
-            table { border-collapse: separate; border-spacing: 2px; width: 100%; }
-            th, td { border: 1px solid #cbd5e1; font-size: 10px; padding: 7px; text-align: right; }
+            table { border-collapse: separate; border-spacing: 1.5px; max-width: 100%; width: 100%; }
+            th, td { border: 1px solid #cbd5e1; font-size: 10px; padding: 6px; text-align: right; }
             th { background: #07576a; color: #ffffff; font-weight: 900; }
             td { background: #ffffff; color: #111827; font-weight: 800; }
-            .tariff-print-table { table-layout: fixed; }
-            .tariff-print-table th { font-size: 9px; line-height: 1.1; padding: 7px 5px; }
-            .tariff-print-table td { font-size: 9.5px; padding: 6px 5px; }
+            .tariff-print-table { border-spacing: 1.5px; table-layout: fixed; width: 100%; }
+            .tariff-print-table th { font-size: 8.2px; line-height: 1.05; padding: 5px 3px; }
+            .tariff-print-table td { font-size: 8.6px; padding: 5px 3px; }
             .tariff-print-table .geo-head { background: #13c5df; color: #062b35; }
-            .tariff-print-table td:first-child, .tariff-print-table td:nth-child(2) { background: #dff8fc; color: #062b35; font-weight: 900; text-align: left; }
-            .tariff-print-table th:first-child, .tariff-print-table td:first-child { width: 82px; }
-            .tariff-print-table th:nth-child(2), .tariff-print-table td:nth-child(2) { width: 88px; }
+            .tariff-print-table td:first-child, .tariff-print-table td:nth-child(2) { background: #13c5df; color: #062b35; font-weight: 900; text-align: left; }
+            .tariff-print-table th:first-child, .tariff-print-table td:first-child { width: 72px; }
+            .tariff-print-table th:nth-child(2), .tariff-print-table td:nth-child(2) { width: 76px; }
             .tariff-print-table tbody tr:nth-child(even) td:not(:first-child):not(:nth-child(2)) { background: #f8fafc; }
             .service-table { break-inside: avoid; margin-top: 14px; }
             .service-table h2 { background: #0f172a; border-left: 8px solid #13c5df; color: #ffffff; font-size: 16px; margin: 18px 0 8px; padding: 9px 12px; }
@@ -18144,7 +18146,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .repricing-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
             .legend-notes { color: #475569; font-size: 11px; margin-top: 14px; padding-left: 18px; }
             .note { color: #64748b; font-size: 11px; margin-top: 10px; }
-            @media print { body { margin: 14mm; } }
+            @media print { body { margin: 0; } .service-table { page-break-inside: auto; } .tariff-print-table tr { break-inside: avoid; page-break-inside: avoid; } }
           </style>
         </head>
         <body>

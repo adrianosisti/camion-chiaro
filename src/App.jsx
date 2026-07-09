@@ -17594,10 +17594,9 @@ function ManagementControlWorkspace({
 const tariffManualCostFields = [
   { key: 'pickupCost', label: 'Ritiro origine' },
   { key: 'hubDeliveryCost', label: 'Conferimento hub' },
-  { key: 'warehouseHandling', label: 'Magazzino e movimentazione' },
-  { key: 'billingCost', label: 'Bollettazione e pratica' },
-  { key: 'extraFixedCost', label: 'Extra concessionario' },
+  { key: 'adminHandlingCost', label: 'Magazzino, bollettazione e pratica' },
 ]
+const tariffMarkupPercentOptions = Array.from({ length: 40 }, (_, index) => String((index + 1) * 5))
 
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
@@ -17616,10 +17615,9 @@ function roundTariffValue(value, step) {
 function buildTariffOutputRows({ manualCosts, selectedService, viewMode }) {
   if (!selectedService?.rows?.length) return []
 
-  const conditionMarkup = Math.max(0, parseDecimalInput(manualCosts.conditionMarkupPercent)) / 100
   const fixedCostsTotal = (selectedService.fixedCosts ?? []).reduce((total, item) => total + (Number(item.amount) || 0), 0)
   const manualCostsTotal = tariffManualCostFields.reduce((total, field) => total + parseDecimalInput(manualCosts[field.key]), 0)
-  const marginRate = Math.min(0.95, Math.max(0, parseDecimalInput(manualCosts.marginPercent) / 100))
+  const markupRate = Math.min(2, Math.max(0, parseDecimalInput(manualCosts.marginPercent) / 100))
   const roundingStep = parseDecimalInput(manualCosts.roundingStep) || 0.5
   const etsByRegion = new Map((selectedService.etsRows ?? []).map((row) => [String(row.region ?? '').toUpperCase(), row]))
   const sourceRows = viewMode === 'region'
@@ -17646,8 +17644,8 @@ function buildTariffOutputRows({ manualCosts, selectedService, viewMode }) {
       const baseImr = Number(row.values?.[column.key] ?? 0)
       const etsAmount = Number(etsRow?.values?.[column.key] ?? 0)
       const imrWithEts = baseImr + etsAmount
-      const internalCost = (imrWithEts * (1 + conditionMarkup)) + fixedCostsTotal + manualCostsTotal
-      const finalPrice = marginRate >= 0.95 ? internalCost : internalCost / (1 - marginRate)
+      const internalCost = imrWithEts + fixedCostsTotal + manualCostsTotal
+      const finalPrice = internalCost * (1 + markupRate)
 
       values[column.key] = {
         baseImr,
@@ -17679,14 +17677,11 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   const [conditionsMode, setConditionsMode] = useState('same')
   const [customConditions, setCustomConditions] = useState('')
   const [manualCosts, setManualCosts] = useState({
-    billingCost: '0',
-    conditionMarkupPercent: '0',
-    extraFixedCost: '0',
+    adminHandlingCost: '0',
     hubDeliveryCost: '0',
     marginPercent: '20',
     pickupCost: '0',
     roundingStep: '0,50',
-    warehouseHandling: '0',
   })
 
   const selectedHub = useMemo(
@@ -17845,7 +17840,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             <div><span>Vista</span><strong>${viewMode === 'region' ? 'Regione' : 'Provincia'}</strong></div>
             <div><span>Costi fissi IMR</span><strong>${escapeHtml(formatDecimalCurrency(fixedCostsTotal, currency))}</strong></div>
             <div><span>Costi manuali</span><strong>${escapeHtml(formatDecimalCurrency(manualCostsTotal, currency))}</strong></div>
-            <div><span>Margine</span><strong>${escapeHtml(manualCosts.marginPercent)}%</strong></div>
+            <div><span>Ricarico cliente</span><strong>${escapeHtml(manualCosts.marginPercent)}%</strong></div>
           </section>
           <table>
             <thead><tr><th>Regione</th><th>${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
@@ -17915,18 +17910,19 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         </section>
 
         <section className="panel tariff-panel">
-          <StrategicSectionTitle icon={Banknote} overline="Formula cliente" title="Costi e margine" />
+          <StrategicSectionTitle icon={Banknote} overline="Formula cliente" title="Costi e ricarico" />
           <div className="tariff-form-grid">
             {tariffManualCostFields.map((field) => (
               <label key={field.key}>{field.label}
                 <input inputMode="decimal" value={manualCosts[field.key]} onChange={(event) => updateManualCost(field.key, event.target.value)} placeholder="0,00" />
               </label>
             ))}
-            <label>Margine %
-              <input inputMode="decimal" value={manualCosts.marginPercent} onChange={(event) => updateManualCost('marginPercent', event.target.value)} />
-            </label>
-            <label>Ricarico condizioni %
-              <input inputMode="decimal" value={manualCosts.conditionMarkupPercent} onChange={(event) => updateManualCost('conditionMarkupPercent', event.target.value)} />
+            <label>Ricarico cliente %
+              <select value={manualCosts.marginPercent} onChange={(event) => updateManualCost('marginPercent', event.target.value)}>
+                {tariffMarkupPercentOptions.map((value) => (
+                  <option key={value} value={value}>{value}%</option>
+                ))}
+              </select>
             </label>
             <label>Arrotonda a
               <input inputMode="decimal" value={manualCosts.roundingStep} onChange={(event) => updateManualCost('roundingStep', event.target.value)} placeholder="0,50" />

@@ -7392,6 +7392,7 @@ body:has(.app-shell) {
 
 .tariff-hero-panel {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
@@ -7423,21 +7424,24 @@ body:has(.app-shell) {
 .tariff-grid,
 .tariff-summary-grid {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .tariff-grid {
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
   align-items: start;
 }
 
 .tariff-summary-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 }
 
 .tariff-panel {
   display: grid;
-  gap: 14px;
+  gap: 16px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 18px;
 }
 
 .tariff-upload-box {
@@ -7481,8 +7485,8 @@ body:has(.app-shell) {
 
 .tariff-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .tariff-form-grid label {
@@ -7503,6 +7507,7 @@ body:has(.app-shell) {
   color: #0f172a;
   font: inherit;
   font-size: 0.88rem;
+  min-height: 42px;
   padding: 10px 11px;
 }
 
@@ -7557,11 +7562,13 @@ body:has(.app-shell) {
   z-index: 2;
   background: #ffffff;
   text-align: left;
+  width: 132px;
 }
 
 .tariff-table th:nth-child(2),
 .tariff-table td:nth-child(2) {
-  left: 118px;
+  left: 132px;
+  min-width: 96px;
 }
 
 .tariff-table th {

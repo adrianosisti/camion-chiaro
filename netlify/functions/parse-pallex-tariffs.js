@@ -434,6 +434,130 @@ function parseConditionCharges(rows) {
     .filter((charge) => charge.title && charge.description)
 }
 
+function formatPalletDimension(value) {
+  return cleanText(value).replace(/\s*x\s*/gi, ' x ')
+}
+
+function formatPalletPercent(value) {
+  const amount = toNumber(value)
+  if (amount === null) return cleanText(value)
+  return `${Math.round(amount * 100)}%`
+}
+
+function getCell(row = [], index) {
+  return cleanText(row[index])
+}
+
+function parsePalletTypes(rows) {
+  const groups = [
+    { measureRow: 9, nameRow: 8, weightRow: 10, columns: [5, 8, 11, 14] },
+    { measureRow: 21, nameRow: 20, weightRow: 22, columns: [2, 5, 8, 11, 14] },
+  ]
+
+  return groups.flatMap((group) => group.columns.map((column) => {
+    const name = getCell(rows[group.nameRow], column)
+    if (!name) return null
+    return {
+      maxWeight: getCell(rows[group.weightRow], column),
+      measure: formatPalletDimension(getCell(rows[group.measureRow], column)),
+      name,
+    }
+  }).filter(Boolean))
+}
+
+function parsePalletMatrix(rows) {
+  const heightColumns = [3, 6, 9, 12, 15]
+  const heightRanges = heightColumns.map((column) => getCell(rows[26], column)).filter(Boolean)
+
+  return rows.slice(28, 36).map((row = []) => {
+    const weightRange = getCell(row, 0)
+    if (!weightRange) return null
+    return {
+      formats: heightColumns.map((column, index) => ({
+        format: getCell(row, column) || '-',
+        heightRange: heightRanges[index] || '',
+      })).filter((item) => item.heightRange),
+      weightRange,
+    }
+  }).filter(Boolean)
+}
+
+function parseDimensionRepricing(rows) {
+  return rows.slice(43, 53).map((row = []) => {
+    const from = toNumber(row[0])
+    const to = toNumber(row[3])
+    const increase = row[6]
+    if (from === null || to === null) return null
+    return {
+      areaRange: `${String(from).replace('.', ',')} - ${String(to).replace('.', ',')} m2`,
+      increase: formatPalletPercent(increase),
+    }
+  }).filter(Boolean)
+}
+
+function parseWeightRepricing(rows) {
+  const standardRows = rows.slice(43, 50).map((row = []) => {
+    const weightRange = getCell(row, 10)
+    const increase = row[14]
+    if (!weightRange || increase === '') return null
+    return {
+      increase: formatPalletPercent(increase),
+      weightRange,
+    }
+  }).filter(Boolean)
+  const extraRow = getCell(rows[50], 10)
+  const extraIncrease = getCell(rows[50], 14)
+
+  if (extraRow || extraIncrease) {
+    standardRows.push({
+      increase: extraIncrease || 'Da gestire come extra',
+      weightRange: extraRow || 'Oltre soglia',
+    })
+  }
+
+  return standardRows
+}
+
+function parseOversizeRepricing(rows) {
+  return rows.slice(55, 57).map((row = []) => {
+    const widthRange = getCell(row, 0)
+    const lengthRange = getCell(row, 2)
+    const format = getCell(row, 4)
+    const increase = row[6]
+    if (!widthRange && !lengthRange && !format) return null
+    return {
+      appliedFormat: format,
+      increase: formatPalletPercent(increase),
+      lengthRange,
+      widthRange,
+    }
+  }).filter(Boolean)
+}
+
+function parsePalletLegend(rows) {
+  if (!rows?.length) {
+    return {
+      dimensionRepricing: [],
+      matrix: [],
+      oversizeRepricing: [],
+      types: [],
+      weightRepricing: [],
+    }
+  }
+
+  return {
+    dimensionRepricing: parseDimensionRepricing(rows),
+    matrix: parsePalletMatrix(rows),
+    notes: [
+      'Misura massima base consentita: cm 160 x 240; Mini Quarter cm 100 x 120.',
+      'Per dimensioni e peso si applica il riprezzamento maggiore.',
+    ],
+    oversizeRepricing: parseOversizeRepricing(rows),
+    types: parsePalletTypes(rows),
+    weightRepricing: parseWeightRepricing(rows),
+  }
+}
+
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return jsonResponse(405, { error: 'Metodo non consentito.' })
@@ -455,12 +579,14 @@ export const handler = async (event) => {
       .filter((hub) => hub.rows.length)
     const conditions = parseConditions(parsedSheets.get('Condizioni Generali') ?? [])
     const conditionCharges = parseConditionCharges(parsedSheets.get('Condizioni Generali') ?? [])
+    const palletLegend = parsePalletLegend(parsedSheets.get('Tipologia pallet') ?? [])
 
     return jsonResponse(200, {
       conditionCharges,
       conditions,
       fileName: payload.fileName || '',
       hubs,
+      palletLegend,
       parsedAt: new Date().toISOString(),
     })
   } catch (error) {

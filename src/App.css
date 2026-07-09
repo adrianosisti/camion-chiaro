@@ -7510,6 +7510,17 @@ body:has(.app-shell) {
   padding: 10px 11px;
 }
 
+.tariff-internal-note {
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #f0fdff;
+  color: #07576a;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.35;
+  padding: 8px 9px;
+}
+
 .tariff-wide {
   grid-column: 1 / -1;
 }

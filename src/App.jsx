@@ -17758,7 +17758,6 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
     () => (selectedService?.fixedCosts ?? []).reduce((total, item) => total + (Number(item.amount) || 0), 0),
     [selectedService],
   )
-  const manualCostsTotal = tariffManualCostFields.reduce((total, field) => total + parseDecimalInput(manualCosts[field.key]), 0)
   const conditionChargeRows = useMemo(
     () => (workbook?.conditionCharges ?? []).map((charge) => {
       const override = conditionChargeOverrides[charge.id] ?? {}
@@ -17775,6 +17774,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   const sampleColumn = selectedService?.columns?.[0]
   const samplePrice = sampleColumn ? tariffRows[0]?.values?.[sampleColumn.key]?.finalPrice : 0
   const fileName = workbook?.fileName ?? 'Nessun file caricato'
+  const palletLegend = workbook?.palletLegend ?? {}
 
   function updateManualCost(field, value) {
     setManualCosts((current) => ({ ...current, [field]: value }))
@@ -17839,7 +17839,6 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       ['Hub', selectedHub?.name ?? ''],
       ['Servizio', selectedService?.label ?? ''],
       ['Vista', viewMode === 'region' ? 'Regione' : 'Provincia'],
-      ['File origine', fileName],
       ['Nota validita', validityNote],
       [],
     ]
@@ -17855,11 +17854,37 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       ['Accessori e condizioni selezionate'],
       ['Voce', 'Prezzo cliente', 'Dettaglio'],
       ...includedConditionChargeRows.map((charge) => [charge.title, charge.priceText, charge.description]),
+    ]
+    const palletMatrixHeaders = palletLegend.matrix?.[0]?.formats?.map((item) => item.heightRange) ?? []
+    const palletLegendSection = [
+      ['Tipologie pallet Pallex'],
+      ['Formato', 'Misure', 'Peso massimo'],
+      ...(palletLegend.types ?? []).map((item) => [item.name, item.measure, item.maxWeight]),
       [],
-      ['Nota', 'MARK-UP immissioni in eccesso escluso dal listino cliente.'],
+      ['Matrice formato applicato'],
+      ['Peso', ...palletMatrixHeaders],
+      ...(palletLegend.matrix ?? []).map((row) => [
+        row.weightRange,
+        ...palletMatrixHeaders.map((heightRange) => row.formats?.find((item) => item.heightRange === heightRange)?.format ?? ''),
+      ]),
+      [],
+      ['Riprezzamenti per dimensioni'],
+      ['Area base', 'Maggiorazione'],
+      ...(palletLegend.dimensionRepricing ?? []).map((row) => [row.areaRange, row.increase]),
+      [],
+      ['Riprezzamenti per peso'],
+      ['Peso', 'Maggiorazione'],
+      ...(palletLegend.weightRepricing ?? []).map((row) => [row.weightRange, row.increase]),
+      [],
+      ['Oversize'],
+      ['Larghezza', 'Lunghezza', 'Formato applicato', 'Maggiorazione'],
+      ...(palletLegend.oversizeRepricing ?? []).map((row) => [row.widthRange, row.lengthRange, row.appliedFormat, row.increase]),
+      [],
+      ['Note'],
+      ...(palletLegend.notes ?? []).map((note) => [note]),
     ]
 
-    return [...heading, ...table, [], ...conditions]
+    return [...heading, ...table, [], ...palletLegendSection, [], ...conditions]
   }
 
   function downloadTariffCsv() {
@@ -17900,9 +17925,80 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             `).join('')}
           </tbody>
         </table>
-        <p class="note">MARK-UP immissioni in eccesso escluso dal listino cliente.</p>
       `
       : '<p>Nessun accessorio selezionato.</p>'
+    const palletMatrixHeaders = palletLegend.matrix?.[0]?.formats?.map((item) => item.heightRange) ?? []
+    const palletLegendHtml = palletLegend.types?.length
+      ? `
+        <section class="page-break pallet-page">
+          <h2>Tipologie pallet Pallex</h2>
+          <p>Legenda dei formati, misure e riprezzamenti applicabili al listino.</p>
+          <table class="legend-table">
+            <thead><tr><th>Formato</th><th>Misure</th><th>Peso massimo</th></tr></thead>
+            <tbody>
+              ${(palletLegend.types ?? []).map((item) => `
+                <tr>
+                  <td>${escapeHtml(item.name)}</td>
+                  <td>${escapeHtml(item.measure)}</td>
+                  <td>${escapeHtml(item.maxWeight)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <h3>Matrice formato applicato</h3>
+          <table class="legend-table compact">
+            <thead>
+              <tr><th>Peso</th>${palletMatrixHeaders.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${(palletLegend.matrix ?? []).map((row) => `
+                <tr>
+                  <td>${escapeHtml(row.weightRange)}</td>
+                  ${palletMatrixHeaders.map((heightRange) => `<td>${escapeHtml(row.formats?.find((item) => item.heightRange === heightRange)?.format ?? '-')}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="repricing-grid">
+            <div>
+              <h3>Riprezzamenti per dimensioni</h3>
+              <table class="legend-table compact">
+                <thead><tr><th>Area base</th><th>Maggiorazione</th></tr></thead>
+                <tbody>
+                  ${(palletLegend.dimensionRepricing ?? []).map((row) => `<tr><td>${escapeHtml(row.areaRange)}</td><td>${escapeHtml(row.increase)}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h3>Riprezzamenti per peso</h3>
+              <table class="legend-table compact">
+                <thead><tr><th>Peso</th><th>Maggiorazione</th></tr></thead>
+                <tbody>
+                  ${(palletLegend.weightRepricing ?? []).map((row) => `<tr><td>${escapeHtml(row.weightRange)}</td><td>${escapeHtml(row.increase)}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <h3>Oversize</h3>
+          <table class="legend-table compact">
+            <thead><tr><th>Larghezza</th><th>Lunghezza</th><th>Formato applicato</th><th>Maggiorazione</th></tr></thead>
+            <tbody>
+              ${(palletLegend.oversizeRepricing ?? []).map((row) => `
+                <tr>
+                  <td>${escapeHtml(row.widthRange)}</td>
+                  <td>${escapeHtml(row.lengthRange)}</td>
+                  <td>${escapeHtml(row.appliedFormat)}</td>
+                  <td>${escapeHtml(row.increase)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <ul class="legend-notes">
+            ${(palletLegend.notes ?? []).map((note) => `<li>${escapeHtml(note)}</li>`).join('')}
+          </ul>
+        </section>
+      `
+      : ''
     const logoHtml = companyLogoUrl
       ? `<img alt="${escapeHtml(companyName)}" src="${escapeHtml(companyLogoUrl)}" />`
       : `<strong>${escapeHtml(companyName)}</strong>`
@@ -17920,7 +18016,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .brand small { color: #64748b; display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
             h1 { margin: 0 0 4px; }
             p { color: #475569; margin: 0 0 14px; }
-            .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0; }
+            .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0; }
             .meta div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px; }
             .meta span { color: #64748b; display: block; font-size: 11px; text-transform: uppercase; }
             .meta strong { display: block; font-size: 14px; }
@@ -17932,6 +18028,13 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .accessories th, .accessories td { font-size: 11px; text-align: left; vertical-align: top; }
             .accessories td:nth-child(2) { width: 130px; }
             .accessories td:first-child { width: 170px; }
+            .page-break { break-before: page; page-break-before: always; }
+            .pallet-page h2 { margin-top: 0; }
+            .pallet-page h3 { color: #07576a; font-size: 15px; margin: 18px 0 8px; }
+            .legend-table th, .legend-table td { font-size: 11px; text-align: left; vertical-align: top; }
+            .legend-table.compact th, .legend-table.compact td { font-size: 10px; padding: 6px; }
+            .repricing-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+            .legend-notes { color: #475569; font-size: 11px; margin-top: 14px; padding-left: 18px; }
             .note { color: #64748b; font-size: 11px; margin-top: 10px; }
             @media print { body { margin: 14mm; } }
           </style>
@@ -17945,14 +18048,14 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
           <p>${escapeHtml(selectedHub?.name ?? '')} · ${escapeHtml(selectedService?.label ?? '')} · ${escapeHtml(validityNote)}</p>
           <section class="meta">
             <div><span>Vista</span><strong>${viewMode === 'region' ? 'Regione' : 'Provincia'}</strong></div>
-            <div><span>Costi fissi IMR</span><strong>${escapeHtml(formatDecimalCurrency(fixedCostsTotal, currency))}</strong></div>
-            <div><span>Costi manuali</span><strong>${escapeHtml(formatDecimalCurrency(manualCostsTotal, currency))}</strong></div>
-            <div><span>Ricarico cliente</span><strong>${escapeHtml(manualCosts.marginPercent)}%</strong></div>
+            <div><span>Servizio</span><strong>${escapeHtml(selectedService?.label ?? 'Standard')}</strong></div>
+            <div><span>Validita</span><strong>${escapeHtml(validityNote)}</strong></div>
           </section>
           <table>
             <thead><tr><th>Regione</th><th>${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
             <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
           </table>
+          ${palletLegendHtml}
           <h2>Accessori e condizioni</h2>
           ${conditionHtml}
         </body>
@@ -18004,6 +18107,11 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
                 <option value="province">Province come Pallex</option>
                 <option value="region">Regioni semplificate</option>
               </select>
+              {viewMode === 'region' ? (
+                <small className="tariff-internal-note">
+                  Nota interna: per ogni formato pallet Vygo usa la tariffa provinciale piu alta della regione. Questa nota non esce nel listino cliente.
+                </small>
+              ) : null}
             </label>
             <label>Cliente
               <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Es. Rossi Srl" />

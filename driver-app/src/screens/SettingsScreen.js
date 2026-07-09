@@ -59,52 +59,34 @@ const companyMenuItems = [
     title: 'Dashboard',
   },
   {
-    body: 'News operative, norme, viabilita e fermi ministeriali mezzi pesanti.',
-    icon: 'newspaper-outline',
-    id: 'news',
-    title: 'News e fermi',
-  },
-  {
     body: 'Check, guasti, pratiche aperte e cose da lavorare.',
     icon: 'clipboard-outline',
     id: 'operations',
     title: 'Registro operativo',
   },
   {
-    body: 'Documenti, revisioni, assicurazioni, visite e rinnovi.',
-    icon: 'calendar-outline',
-    id: 'deadlines',
-    title: 'Scadenze',
-  },
-  {
-    body: 'Spese libere, manutenzioni, sanzioni, costi per targa.',
-    icon: 'cash-outline',
-    id: 'costs',
-    title: 'Centro costi',
-  },
-  {
-    body: 'Riepiloghi, sanzioni, costi mese e report premium.',
-    icon: 'stats-chart-outline',
-    id: 'reports',
-    title: 'Report',
-  },
-  {
-    body: 'Autisti, persone, flotta, muletti e attrezzature.',
-    icon: 'folder-open-outline',
-    id: 'records',
-    title: 'Anagrafiche',
-  },
-  {
-    body: 'Storico guasti, check, scadenze e dati gia gestiti.',
-    icon: 'albums-outline',
-    id: 'archive',
-    title: 'Archivio',
-  },
-  {
     body: 'Chat singole, gruppi, reparti, foto, video e audio.',
     icon: 'chatbubbles-outline',
     id: 'chat',
     title: 'Chat',
+  },
+  {
+    body: 'Costi, sanzioni, carburante e andamento aziendale da controllare.',
+    icon: 'stats-chart-outline',
+    id: 'reports',
+    title: 'Report e costi',
+  },
+  {
+    body: 'Carico cisterna, rifornimenti, giacenza e ultimi movimenti.',
+    icon: 'water-outline',
+    id: 'fuel',
+    title: 'Gasolio',
+  },
+  {
+    body: 'News operative, norme, viabilita e fermi ministeriali mezzi pesanti.',
+    icon: 'newspaper-outline',
+    id: 'news',
+    title: 'News e fermi',
   },
   {
     body: 'Guide operative e assistente Vygo per usare l app.',
@@ -159,7 +141,7 @@ export function SettingsScreen({
             <View style={styles.companyMenuHeaderCopy}>
               <Text style={styles.companyMenuOverline}>Menu aziendale</Text>
               <Text style={styles.companyMenuHeading}>Vygo</Text>
-              <Text style={styles.companyMenuSubtitle}>Tutte le sezioni operative in un posto solo.</Text>
+              <Text style={styles.companyMenuSubtitle}>Solo le sezioni utili quando lavori da telefono.</Text>
             </View>
           </View>
           <Pressable onPress={() => onNavigateCompanyMenu?.('dashboard')} style={styles.companyMenuCloseButton}>

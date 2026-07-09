@@ -541,9 +541,10 @@ const workforceTabs = [
 
 const companyTabs = [
   { id: 'home', icon: 'business-outline', label: 'Dashboard', labelKey: 'dashboard' },
-  { id: 'manage', icon: 'add-circle-outline', label: 'Anagraf.' },
-  { id: 'archive', icon: 'albums-outline', label: 'Archivio', labelKey: 'archive' },
   { id: 'chat', icon: 'chatbubbles-outline', label: 'Chat', labelKey: 'chat' },
+  { id: 'operations', icon: 'construct-outline', label: 'Registro' },
+  { id: 'reports', icon: 'stats-chart-outline', label: 'Report' },
+  { id: 'settings', icon: 'menu-outline', label: 'Menu', labelKey: 'menu' },
 ]
 
 const camionChiaroIcon = require('./assets/brand/icon.png')
@@ -1961,7 +1962,7 @@ function CamionChiaroApp() {
   }, [accountType, driver?.id])
 
   useEffect(() => {
-    if (accountType === 'company' && ['news', 'settings'].includes(activeTab)) return
+    if (accountType === 'company' && ['archive', 'fuel', 'manage', 'news', 'settings'].includes(activeTab)) return
     if (accountType === 'driver' && ['announcements', 'fuel'].includes(activeTab)) return
 
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
@@ -4065,6 +4066,11 @@ function CamionChiaroApp() {
       return
     }
 
+    if (section === 'fuel') {
+      setActiveTab('fuel')
+      return
+    }
+
     if (section === 'costs' && !canUseNativePlanFeature('costCenter')) {
       showNativePlanFeatureLimit('costCenter')
       return
@@ -4077,6 +4083,16 @@ function CamionChiaroApp() {
 
     if (['people', 'warehouse'].includes(section) && !canUseNativePlanFeature('departments')) {
       showNativePlanFeatureLimit('departments')
+      return
+    }
+
+    if (section === 'costs' || section === 'reports') {
+      setActiveTab('reports')
+      return
+    }
+
+    if (['faults', 'checks', 'deadlines'].includes(section)) {
+      setActiveTab('operations')
       return
     }
 
@@ -4099,17 +4115,17 @@ function CamionChiaroApp() {
     }
 
     if (target === 'operations') {
-      openCompanyManagement('faults')
+      setActiveTab('operations')
       return
     }
 
-    if (target === 'deadlines') {
-      openCompanyManagement('deadlines')
+    if (target === 'reports') {
+      setActiveTab('reports')
       return
     }
 
-    if (target === 'costs' || target === 'reports') {
-      openCompanyManagement('costs')
+    if (target === 'fuel') {
+      setActiveTab('fuel')
       return
     }
 
@@ -4127,6 +4143,7 @@ function CamionChiaroApp() {
 
     if (target === 'chat') {
       openNativeChatTab()
+      return
     }
   }
 
@@ -4214,13 +4231,23 @@ function CamionChiaroApp() {
         )
       }
 
-      if (activeTab === 'manage' || activeTab === 'archive') {
+      if (['operations', 'reports', 'fuel', 'manage', 'archive'].includes(activeTab)) {
+        const mobileCompanySection = activeTab === 'operations'
+          ? 'operations'
+          : activeTab === 'reports'
+            ? 'costs'
+            : activeTab === 'fuel'
+              ? 'fuel'
+              : managementInitialSection
+        const mobileCompanyMode = ['operations', 'reports', 'fuel'].includes(activeTab)
+
         return (
           <CompanyManagementScreen
             context={companyContext}
-            initialSection={managementInitialSection}
+            initialSection={mobileCompanySection}
             initialMode={activeTab === 'manage' ? 'create' : 'archive'}
             language={language}
+            mobileMode={mobileCompanyMode}
             startCostEntryKey={managementCostStartKey}
             onCreateDeadline={handleCreateCompanyDeadline}
             onCreateCostEntry={handleCreateCompanyCostEntry}
@@ -4234,6 +4261,8 @@ function CamionChiaroApp() {
             onCloseDeadline={handleCloseCompanyDeadline}
             onDeleteCostEntry={handleDeleteCompanyCostEntry}
             onRenewDeadline={handleRenewCompanyDeadline}
+            onResolveCheck={handleResolveCompanyCheck}
+            onResolveFault={handleResolveCompanyFault}
             onResetAccessPassword={handleResetCompanyAccessPassword}
             onSendDeadlineReminder={handleSendCompanyDeadlineReminder}
             onUpdateDriver={handleUpdateCompanyDriverSettings}

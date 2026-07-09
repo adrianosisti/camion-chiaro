@@ -91,6 +91,7 @@ const costPeriodOptions = [
 ]
 
 const archiveListOptions = [
+  { id: 'operations', label: 'Da lavorare' },
   { id: 'people', label: 'Persone' },
   { id: 'office', label: 'Ufficio' },
   { id: 'warehouse', label: 'Magazzino' },
@@ -1037,6 +1038,7 @@ export function CompanyManagementScreen({
   initialSection = 'drivers',
   initialMode = 'archive',
   language = 'it',
+  mobileMode = false,
   startCostEntryKey = 0,
   onCreateDeadline,
   onCreateCostEntry,
@@ -1050,6 +1052,8 @@ export function CompanyManagementScreen({
   onCloseDeadline,
   onDeleteCostEntry,
   onRenewDeadline,
+  onResolveCheck,
+  onResolveFault,
   onResetAccessPassword,
   onSendDeadlineReminder,
   onUpdateCostEntry,
@@ -1070,6 +1074,8 @@ export function CompanyManagementScreen({
   const checks = context?.vehicleChecks ?? []
   const defaultCurrency = getDefaultCurrency(language)
   const activeVehicles = vehicles.filter((vehicle) => !['Archiviato', 'archived'].includes(vehicle.status))
+  const openFaults = faults.filter(isOpenFault)
+  const openChecks = checks.filter((check) => !isCheckResolved(check))
   const archivedFaults = faults.filter((fault) => ['closed', 'archived'].includes(fault.status))
   const archivedChecks = checks.filter(isCheckResolved)
   const fallbackDriverPeople = drivers.map((driver) => ({
@@ -2322,43 +2328,59 @@ export function CompanyManagementScreen({
 
     return (
       <View style={styles.archiveList}>
-        <View style={styles.costReportCard}>
-          <View style={styles.registryHeader}>
-            <View style={styles.listIcon}>
-              <Ionicons color={colors.cyanDark} name="water-outline" size={18} />
-            </View>
-            <View style={styles.listCopy}>
-              <Text style={styles.listTitle}>Cisterne gasolio</Text>
-              <Text style={styles.listMeta}>Crea serbatoi, soglie e giacenza iniziale.</Text>
+        {mobileMode ? (
+          <View style={styles.costReportCard}>
+            <View style={styles.registryHeader}>
+              <View style={styles.listIcon}>
+                <Ionicons color={colors.cyanDark} name="water-outline" size={18} />
+              </View>
+              <View style={styles.listCopy}>
+                <Text style={styles.listTitle}>Gasolio da app</Text>
+                <Text style={styles.listMeta}>Da telefono registri carichi cisterna, rifornimenti e rettifiche. Cisterne e fornitori si configurano da desktop.</Text>
+              </View>
             </View>
           </View>
-          <TextField label="Nome cisterna" onChangeText={(value) => updateFuelTankForm('name', value)} placeholder="Cisterna piazzale" value={fuelTankForm.name} />
-          <TextField keyboardType="decimal-pad" label="Capienza litri" onChangeText={(value) => updateFuelTankForm('capacityLiters', value)} placeholder="10000" value={fuelTankForm.capacityLiters} />
-          <TextField keyboardType="decimal-pad" label="Giacenza iniziale" onChangeText={(value) => updateFuelTankForm('initialLiters', value)} placeholder="3500" value={fuelTankForm.initialLiters} />
-          <TextField keyboardType="decimal-pad" label="Soglia allarme" onChangeText={(value) => updateFuelTankForm('warningThresholdLiters', value)} placeholder="1000" value={fuelTankForm.warningThresholdLiters} />
-          <TextField label="Posizione" onChangeText={(value) => updateFuelTankForm('location', value)} placeholder="Deposito, piazzale, sede..." value={fuelTankForm.location} />
-          <TextField label="Note cisterna" multiline onChangeText={(value) => updateFuelTankForm('notes', value)} placeholder="Opzionale" value={fuelTankForm.notes} />
-          <PrimaryButton loading={isSaving} onPress={submitFuelTank} title="Crea cisterna" />
-        </View>
+        ) : (
+          <>
+            <View style={styles.costReportCard}>
+              <View style={styles.registryHeader}>
+                <View style={styles.listIcon}>
+                  <Ionicons color={colors.cyanDark} name="water-outline" size={18} />
+                </View>
+                <View style={styles.listCopy}>
+                  <Text style={styles.listTitle}>Cisterne gasolio</Text>
+                  <Text style={styles.listMeta}>Crea serbatoi, soglie e giacenza iniziale.</Text>
+                </View>
+              </View>
+              <TextField label="Nome cisterna" onChangeText={(value) => updateFuelTankForm('name', value)} placeholder="Cisterna piazzale" value={fuelTankForm.name} />
+              <TextField keyboardType="decimal-pad" label="Capienza litri" onChangeText={(value) => updateFuelTankForm('capacityLiters', value)} placeholder="10000" value={fuelTankForm.capacityLiters} />
+              <TextField keyboardType="decimal-pad" label="Giacenza iniziale" onChangeText={(value) => updateFuelTankForm('initialLiters', value)} placeholder="3500" value={fuelTankForm.initialLiters} />
+              <TextField keyboardType="decimal-pad" label="Soglia allarme" onChangeText={(value) => updateFuelTankForm('warningThresholdLiters', value)} placeholder="1000" value={fuelTankForm.warningThresholdLiters} />
+              <TextField label="Posizione" onChangeText={(value) => updateFuelTankForm('location', value)} placeholder="Deposito, piazzale, sede..." value={fuelTankForm.location} />
+              <TextField label="Note cisterna" multiline onChangeText={(value) => updateFuelTankForm('notes', value)} placeholder="Opzionale" value={fuelTankForm.notes} />
+              <PrimaryButton loading={isSaving} onPress={submitFuelTank} title="Crea cisterna" />
+            </View>
 
-        <View style={styles.costReportCard}>
-          <View style={styles.registryHeader}>
-            <View style={styles.listIcon}>
-              <Ionicons color={colors.cyanDark} name="business-outline" size={18} />
+            <View style={styles.costReportCard}>
+              <View style={styles.registryHeader}>
+                <View style={styles.listIcon}>
+                  <Ionicons color={colors.cyanDark} name="business-outline" size={18} />
+                </View>
+                <View style={styles.listCopy}>
+                  <Text style={styles.listTitle}>Fornitori gasolio</Text>
+                  <Text style={styles.listMeta}>Salva chi rifornisce la cisterna per confrontare prezzi e spese.</Text>
+                </View>
+              </View>
+              <TextField label="Ragione sociale" onChangeText={(value) => updateFuelSupplierForm('name', value)} placeholder="ENI, Q8, fornitore locale..." value={fuelSupplierForm.name} />
+              <TextField label="Partita IVA" onChangeText={(value) => updateFuelSupplierForm('vatNumber', value)} placeholder="Opzionale" value={fuelSupplierForm.vatNumber} />
+              <TextField label="Referente" onChangeText={(value) => updateFuelSupplierForm('contactName', value)} placeholder="Opzionale" value={fuelSupplierForm.contactName} />
+              <TextField keyboardType="phone-pad" label="Telefono" onChangeText={(value) => updateFuelSupplierForm('phone', value)} placeholder="Opzionale" value={fuelSupplierForm.phone} />
+              <TextField keyboardType="email-address" label="Email" onChangeText={(value) => updateFuelSupplierForm('email', value)} placeholder="Opzionale" value={fuelSupplierForm.email} />
+              <TextField label="Note trattativa" multiline onChangeText={(value) => updateFuelSupplierForm('notes', value)} placeholder="Sconti, condizioni, tempi consegna..." value={fuelSupplierForm.notes} />
+              <PrimaryButton loading={isSaving} onPress={submitFuelSupplier} title="Salva fornitore" />
             </View>
-            <View style={styles.listCopy}>
-              <Text style={styles.listTitle}>Fornitori gasolio</Text>
-              <Text style={styles.listMeta}>Salva chi rifornisce la cisterna per confrontare prezzi e spese.</Text>
-            </View>
-          </View>
-          <TextField label="Ragione sociale" onChangeText={(value) => updateFuelSupplierForm('name', value)} placeholder="ENI, Q8, fornitore locale..." value={fuelSupplierForm.name} />
-          <TextField label="Partita IVA" onChangeText={(value) => updateFuelSupplierForm('vatNumber', value)} placeholder="Opzionale" value={fuelSupplierForm.vatNumber} />
-          <TextField label="Referente" onChangeText={(value) => updateFuelSupplierForm('contactName', value)} placeholder="Opzionale" value={fuelSupplierForm.contactName} />
-          <TextField keyboardType="phone-pad" label="Telefono" onChangeText={(value) => updateFuelSupplierForm('phone', value)} placeholder="Opzionale" value={fuelSupplierForm.phone} />
-          <TextField keyboardType="email-address" label="Email" onChangeText={(value) => updateFuelSupplierForm('email', value)} placeholder="Opzionale" value={fuelSupplierForm.email} />
-          <TextField label="Note trattativa" multiline onChangeText={(value) => updateFuelSupplierForm('notes', value)} placeholder="Sconti, condizioni, tempi consegna..." value={fuelSupplierForm.notes} />
-          <PrimaryButton loading={isSaving} onPress={submitFuelSupplier} title="Salva fornitore" />
-        </View>
+          </>
+        )}
 
         <View style={styles.costReportCard}>
           <View style={styles.registryHeader}>
@@ -2371,7 +2393,7 @@ export function CompanyManagementScreen({
             </View>
           </View>
           {!fuelTanks.length ? (
-            <Text style={styles.emptyText}>Crea almeno una cisterna prima di registrare movimenti.</Text>
+            <Text style={styles.emptyText}>{mobileMode ? 'Crea almeno una cisterna dal desktop azienda prima di registrare carichi e rifornimenti da app.' : 'Crea almeno una cisterna prima di registrare movimenti.'}</Text>
           ) : (
             <>
               <WheelPickerField
@@ -2974,6 +2996,94 @@ export function CompanyManagementScreen({
           </View>
         ) : null}
 
+        {activeList === 'operations' ? (
+          <View style={styles.archiveList}>
+            <View style={styles.deadlineListHeader}>
+              <View style={styles.listCopy}>
+                <Text style={styles.listTitle}>Da lavorare adesso</Text>
+                <Text style={styles.listMeta}>
+                  {openFaults.length} guasti · {openChecks.length} check · {deadlinesToWork.length} scadenze
+                </Text>
+              </View>
+            </View>
+
+            {openFaults.map((fault) => (
+              <View key={fault.id} style={styles.registryCard}>
+                <View style={styles.registryHeader}>
+                  <View style={styles.listIconWarning}>
+                    <Ionicons color={colors.warning} name="construct-outline" size={18} />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{fault.title || 'Guasto aperto'}</Text>
+                    <Text style={styles.listMeta}>
+                      {getDriverName(drivers, fault.driverId)} · {getVehiclePlate(activeVehicles, fault.vehicleId)} · {formatDateTime(fault.createdAt, language)}
+                    </Text>
+                    <Text style={styles.listMeta}>{fault.description || 'Nessuna descrizione'}</Text>
+                  </View>
+                </View>
+                <View style={styles.rowActionBar}>
+                  <Pressable onPress={() => setSelectedFault(fault)} style={styles.rowActionButton}>
+                    <Ionicons color={colors.cyanDark} name="create-outline" size={16} />
+                    <Text style={styles.rowActionText}>Costo</Text>
+                  </Pressable>
+                  <Pressable onPress={() => onResolveFault?.(fault.id)} style={styles.rowActionButtonDanger}>
+                    <Ionicons color={colors.danger} name="archive-outline" size={16} />
+                    <Text style={styles.rowActionDangerText}>Archivia</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+
+            {openChecks.map((check) => {
+              const issues = getCheckIssues(check)
+
+              return (
+                <View key={check.id} style={styles.registryCard}>
+                  <View style={styles.registryHeader}>
+                    <View style={issues.length ? styles.listIconWarning : styles.listIcon}>
+                      <Ionicons color={issues.length ? colors.warning : colors.cyanDark} name="checkbox-outline" size={18} />
+                    </View>
+                    <View style={styles.listCopy}>
+                      <Text style={styles.listTitle}>{issues.length ? 'Check con anomalie' : 'Check ricevuto'}</Text>
+                      <Text style={styles.listMeta}>
+                        {getDriverName(drivers, check.driverId)} · {getVehiclePlate(activeVehicles, check.tractorId)} · {formatDateTime(check.createdAt, language)}
+                      </Text>
+                      <Text style={styles.listMeta}>{issues.length ? `Anomalie: ${issues.join(', ')}` : 'Nessuna anomalia'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.rowActionBar}>
+                    <Pressable onPress={() => onResolveCheck?.(check.id)} style={styles.rowActionButton}>
+                      <Ionicons color={colors.cyanDark} name="checkmark-done-outline" size={16} />
+                      <Text style={styles.rowActionText}>Segna gestito</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )
+            })}
+
+            {deadlinesToWork.slice(0, 10).map((item) => {
+              const tone = getDeadlineTone(item)
+
+              return (
+                <Pressable key={item.id} onPress={() => setSelectedDeadline(item)} style={styles.deadlineRow}>
+                  <View style={[styles.deadlineStatusDot, styles[`${tone}Dot`]]} />
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{item.type}</Text>
+                    <Text style={styles.listMeta}>
+                      {getDeadlineSubject(item, drivers, activeVehicles, allPeople, warehouseAssets)} · {formatDate(item.dueDate, language)} · {getDeadlineStatusLabel(item)}
+                    </Text>
+                  </View>
+                  <Text style={styles.archiveOpenText}>Apri</Text>
+                </Pressable>
+              )
+            })}
+
+            {!openFaults.length && !openChecks.length && !deadlinesToWork.length ? (
+              <Text style={styles.emptyText}>Nessuna pratica urgente da lavorare.</Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {activeList === 'faults' ? (
           <View style={styles.archiveList}>
             {archivedFaults.map((fault) => (
@@ -3082,6 +3192,14 @@ export function CompanyManagementScreen({
                   {costForm.id ? <Text style={styles.fileMeta}>Stai modificando una spesa già registrata.</Text> : null}
                 </View>
               </View>
+              {mobileMode ? (
+                <View style={styles.costEntryIntro}>
+                  <Text style={styles.costEntryIntroTitle}>Report da telefono</Text>
+                  <Text style={styles.costEntryIntroText}>Qui controlli costi, multe e anomalie. Inserimenti completi, allegati e stampe restano nel desktop azienda.</Text>
+                </View>
+              ) : null}
+              {!mobileMode ? (
+                <>
               <View style={styles.costEntryIntro}>
                 <Text style={styles.costEntryIntroTitle}>{costForm.id ? 'Modifica spesa libera' : 'Nuova spesa libera'}</Text>
                 <Text style={styles.costEntryIntroText}>Inserisci costi senza guasto: tagliandi, gomme, assicurazioni, revisioni, muletti o spese aziendali.</Text>
@@ -3187,6 +3305,8 @@ export function CompanyManagementScreen({
                 <Pressable onPress={resetCostForm} style={styles.secondaryInlineButton}>
                   <Text style={styles.secondaryInlineButtonText}>Annulla modifica</Text>
                 </Pressable>
+              ) : null}
+                </>
               ) : null}
               <WheelPickerField
                 label="Periodo"
@@ -3336,7 +3456,7 @@ export function CompanyManagementScreen({
                   </View>
                   <Text style={styles.costRowAmount}>{formatMoneyCents(row.amountCents, row.currency || defaultCurrency)}</Text>
                 </View>
-                {row.kind === 'entry' ? (
+                {!mobileMode && row.kind === 'entry' ? (
                   <View style={styles.rowActionBar}>
                     <Pressable onPress={() => startEditCostEntry(row.entry)} style={styles.rowActionButton}>
                       <Ionicons color={colors.cyanDark} name="create-outline" size={16} />
@@ -3347,7 +3467,7 @@ export function CompanyManagementScreen({
                       <Text style={styles.rowActionDangerText}>Elimina</Text>
                     </Pressable>
                   </View>
-                ) : (
+                ) : !mobileMode ? (
                   <View style={styles.rowActionBar}>
                     <Pressable onPress={() => setSelectedFault(row.fault)} style={styles.rowActionButton}>
                       <Ionicons color={colors.cyanDark} name="create-outline" size={16} />
@@ -3358,7 +3478,7 @@ export function CompanyManagementScreen({
                       <Text style={styles.rowActionDangerText}>Elimina costo</Text>
                     </Pressable>
                   </View>
-                )}
+                ) : null}
               </Pressable>
             ))}
             {!costRows.length ? <Text style={styles.emptyText}>Nessun costo trovato per questo filtro.</Text> : null}

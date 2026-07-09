@@ -3073,6 +3073,22 @@ export async function createFuelMovementRecord(movement, companyId = configuredC
     .select(fuelMovementSelectColumns)
     .single()
 
+  if (shouldRetryWithBaseFuelMovementColumns(error)) {
+    const basePayload = { ...payload }
+    delete basePayload.supplier_id
+
+    const fallbackResult = await supabase
+      .from('fuel_movements')
+      .insert(basePayload)
+      .select(fuelMovementBaseSelectColumns)
+      .single()
+
+    return {
+      data: fallbackResult.data ? mapFuelMovement(fallbackResult.data) : null,
+      error: fallbackResult.error,
+    }
+  }
+
   if (isMissingWorkforceSchemaError(error)) {
     return {
       data: null,

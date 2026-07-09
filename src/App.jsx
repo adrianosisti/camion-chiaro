@@ -17953,24 +17953,30 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   }
 
   function printTariff() {
-    const firstPageTariffRows = 22
-    const fullPageTariffRows = 31
+    const firstPageTariffRows = 40
+    const fullPageTariffRows = 56
+    const splitTariffRowsForPrint = (rows, firstCapacity) => {
+      if (!rows.length) return [[]]
+      const capacities = [firstCapacity]
+      while (capacities.reduce((sum, capacity) => sum + capacity, 0) < rows.length) capacities.push(fullPageTariffRows)
+      const chunks = []
+      let cursor = 0
+      capacities.forEach((capacity, index) => {
+        const remainingRows = rows.length - cursor
+        const remainingPages = capacities.length - index
+        const remainingCapacityAfter = capacities.slice(index + 1).reduce((sum, nextCapacity) => sum + nextCapacity, 0)
+        const balancedSize = Math.ceil(remainingRows / remainingPages)
+        const requiredSize = Math.max(0, remainingRows - remainingCapacityAfter)
+        const chunkSize = Math.min(capacity, Math.max(requiredSize, balancedSize))
+        chunks.push(rows.slice(cursor, cursor + chunkSize))
+        cursor += chunkSize
+      })
+      return chunks
+    }
     const serviceTablesHtml = outputServices.map((service, serviceIndex) => {
       const serviceRows = buildTariffOutputRows({ manualCosts, selectedService: service, viewMode })
       const headerCells = service.columns?.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('') ?? ''
-      const rowChunks = []
-      if (serviceRows.length) {
-        let startIndex = 0
-        let chunkIndex = 0
-        while (startIndex < serviceRows.length) {
-          const chunkLimit = serviceIndex === 0 && chunkIndex === 0 ? firstPageTariffRows : fullPageTariffRows
-          rowChunks.push(serviceRows.slice(startIndex, startIndex + chunkLimit))
-          startIndex += chunkLimit
-          chunkIndex += 1
-        }
-      } else {
-        rowChunks.push([])
-      }
+      const rowChunks = splitTariffRowsForPrint(serviceRows, serviceIndex === 0 ? firstPageTariffRows : fullPageTariffRows)
 
       return rowChunks.map((rows, chunkIndex) => {
         const isFirstChunkOfService = chunkIndex === 0
@@ -18121,38 +18127,38 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             @page { size: A4 landscape; margin: 7mm; }
             * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body { color: #10202b; font-family: Arial, sans-serif; margin: 0; }
-            .document-header { align-items: center; border-bottom: 3px solid #13c5df; display: grid; gap: 16px; grid-template-columns: 180px 1fr 200px; margin-bottom: 10px; padding-bottom: 9px; }
-            .document-logo { align-items: center; display: flex; min-height: 54px; }
-            .document-logo img { max-height: 54px; max-width: 170px; object-fit: contain; }
-            .issuer-name { color: #07576a; font-size: 22px; font-weight: 900; }
+            .document-header { align-items: center; border-bottom: 3px solid #13c5df; display: grid; gap: 14px; grid-template-columns: 170px 1fr 190px; margin-bottom: 7px; padding-bottom: 7px; }
+            .document-logo { align-items: center; display: flex; min-height: 46px; }
+            .document-logo img { max-height: 46px; max-width: 160px; object-fit: contain; }
+            .issuer-name { color: #07576a; font-size: 20px; font-weight: 900; }
             .document-title { text-align: center; }
-            .document-title span, .document-client span { color: #64748b; display: block; font-size: 10px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
-            .document-title h1 { color: #0f172a; font-size: 28px; line-height: 1; margin: 3px 0 0; }
+            .document-title span, .document-client span { color: #64748b; display: block; font-size: 9px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+            .document-title h1 { color: #0f172a; font-size: 25px; line-height: 1; margin: 2px 0 0; }
             .document-client { text-align: right; }
-            .document-client strong { color: #0f172a; display: block; font-size: 20px; line-height: 1.1; margin: 4px 0; }
-            .document-client small { color: #64748b; display: block; font-size: 11px; font-weight: 800; }
+            .document-client strong { color: #0f172a; display: block; font-size: 18px; line-height: 1.05; margin: 3px 0; }
+            .document-client small { color: #64748b; display: block; font-size: 10px; font-weight: 800; }
             p { color: #475569; margin: 0 0 14px; }
-            .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
-            .meta div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 9px; }
-            .meta span { color: #64748b; display: block; font-size: 11px; text-transform: uppercase; }
-            .meta strong { display: block; font-size: 14px; }
-            table { border-collapse: separate; border-spacing: 1.2px; max-width: 100%; width: 100%; }
-            th, td { border: 1px solid #cbd5e1; font-size: 10px; padding: 5px; text-align: right; }
+            .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 7px 0; }
+            .meta div { border: 1px solid #cbd5e1; border-radius: 7px; padding: 5px 8px; }
+            .meta span { color: #64748b; display: block; font-size: 9px; text-transform: uppercase; }
+            .meta strong { display: block; font-size: 12px; }
+            table { border-collapse: separate; border-spacing: 0.8px; max-width: 100%; width: 100%; }
+            th, td { border: 1px solid #cbd5e1; font-size: 9px; padding: 4px; text-align: right; }
             th { background: #07576a; color: #ffffff; font-weight: 900; }
             td { background: #ffffff; color: #111827; font-weight: 800; }
-            .tariff-print-table { border-spacing: 1.15px; table-layout: fixed; width: 100%; }
-            .tariff-print-table th { font-size: 7.9px; line-height: 1.03; padding: 4px 2.5px; }
-            .tariff-print-table td { font-size: 8.2px; line-height: 1.05; overflow: hidden; padding: 4px 2.5px; text-overflow: ellipsis; vertical-align: middle; white-space: nowrap; }
+            .tariff-print-table { border-spacing: 0.75px; table-layout: fixed; width: 100%; }
+            .tariff-print-table th { font-size: 7.2px; line-height: 1; padding: 3px 2px; }
+            .tariff-print-table td { font-size: 7.6px; line-height: 1; overflow: hidden; padding: 3px 2px; text-overflow: ellipsis; vertical-align: middle; white-space: nowrap; }
             .tariff-print-table .geo-head { background: #13c5df; color: #062b35; }
             .tariff-print-table td:first-child, .tariff-print-table td:nth-child(2) { background: #13c5df; color: #062b35; font-weight: 900; text-align: left; }
             .tariff-print-table th:first-child, .tariff-print-table td:first-child { width: 72px; }
             .tariff-print-table th:nth-child(2), .tariff-print-table td:nth-child(2) { width: 76px; }
             .tariff-print-table tbody tr:nth-child(even) td:not(:first-child):not(:nth-child(2)) { background: #f8fafc; }
-            .service-table-page { break-inside: avoid; page-break-inside: avoid; margin-top: 10px; }
+            .service-table-page { break-inside: avoid; page-break-inside: avoid; margin-top: 6px; }
             .service-table-page.next-service-page { break-before: page; page-break-before: always; }
             .service-table-page.force-next-page { break-after: page; page-break-after: always; }
-            .service-table-page h2 { align-items: center; background: #0f172a; border-left: 8px solid #13c5df; color: #ffffff; display: flex; font-size: 15px; justify-content: space-between; margin: 8px 0 6px; padding: 7px 10px; }
-            .service-table-page h2 small { color: #a5f3fc; font-size: 10px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+            .service-table-page h2 { align-items: center; background: #0f172a; border-left: 7px solid #13c5df; color: #ffffff; display: flex; font-size: 13px; justify-content: space-between; margin: 6px 0 4px; padding: 5px 9px; }
+            .service-table-page h2 small { color: #a5f3fc; font-size: 9px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
             .accessories { margin-top: 10px; }
             .accessories th, .accessories td { font-size: 11px; text-align: left; vertical-align: top; }
             .accessories td:nth-child(2) { width: 130px; }

@@ -323,6 +323,74 @@ function parseConditions(rows) {
     .filter((row) => row.title || row.description)
 }
 
+function slugify(value = '') {
+  return cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+function getConditionPriceText(description = '') {
+  const text = cleanText(description)
+  const euroMatches = Array.from(text.matchAll(/(?:euro\s*)?(\d+(?:[,.]\d+)?)\s*euro|euro\s*(\d+(?:[,.]\d+)?)/gi))
+    .map((match) => match[1] || match[2])
+    .filter(Boolean)
+
+  if (euroMatches.length) {
+    return euroMatches.map((value) => `${value.replace('.', ',')} euro`).join(' / ')
+  }
+
+  if (/compres[ao]|inclus[ao]/i.test(text)) return 'Compreso'
+  if (/nessuna maggiorazione/i.test(text)) return 'Nessuna maggiorazione'
+  if (/da concordare/i.test(text)) return 'Da concordare'
+  if (/come da tariffa/i.test(text)) return 'Come da tariffa'
+
+  return ''
+}
+
+function parseConditionCharges(rows) {
+  const ignoredTitlePatterns = [
+    /mark-?up/i,
+    /misure del pallet/i,
+    /^iva$/i,
+  ]
+  const charges = []
+  let current = null
+  let ignoredGroup = false
+
+  rows.slice(1).forEach((row = []) => {
+    const title = cleanText(row[0])
+    const description = [row[1], row[2], row[3], row[4]].map(cleanText).filter(Boolean).join(' · ')
+
+    if (title) {
+      if (current && current.descriptions.length) charges.push(current)
+      ignoredGroup = ignoredTitlePatterns.some((pattern) => pattern.test(title))
+      current = ignoredGroup
+        ? null
+        : {
+            descriptions: [],
+            id: slugify(title),
+            title,
+          }
+    }
+
+    if (!ignoredGroup && current && description) {
+      current.descriptions.push(description)
+    }
+  })
+
+  if (current && current.descriptions.length) charges.push(current)
+
+  return charges
+    .map((charge) => {
+      const description = charge.descriptions.join(' · ')
+      return {
+        description,
+        id: charge.id,
+        priceText: getConditionPriceText(description),
+        title: charge.title,
+      }
+    })
+    .filter((charge) => charge.title && charge.description)
+}
+
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return jsonResponse(405, { error: 'Metodo non consentito.' })
@@ -343,8 +411,10 @@ export const handler = async (event) => {
       .map((sheet) => parseHubSheet(sheet.name, parsedSheets.get(sheet.name) ?? []))
       .filter((hub) => hub.rows.length)
     const conditions = parseConditions(parsedSheets.get('Condizioni Generali') ?? [])
+    const conditionCharges = parseConditionCharges(parsedSheets.get('Condizioni Generali') ?? [])
 
     return jsonResponse(200, {
+      conditionCharges,
       conditions,
       fileName: payload.fileName || '',
       hubs,

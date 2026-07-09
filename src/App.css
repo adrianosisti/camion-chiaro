@@ -7498,8 +7498,7 @@ body:has(.app-shell) {
 }
 
 .tariff-form-grid input,
-.tariff-form-grid select,
-.tariff-conditions-textarea {
+.tariff-form-grid select {
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -7582,19 +7581,29 @@ body:has(.app-shell) {
 }
 
 .tariff-cost-list,
-.tariff-condition-list {
+.tariff-charge-list {
   display: grid;
   gap: 8px;
 }
 
 .tariff-cost-list article,
-.tariff-condition-list article {
+.tariff-charge-list article {
   display: grid;
-  gap: 3px;
+  gap: 10px;
   border: 1px solid #dbeafe;
   border-radius: 8px;
   background: #f8fafc;
   padding: 10px;
+}
+
+.tariff-charge-list {
+  max-height: 560px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.tariff-charge-list article.is-disabled {
+  opacity: 0.54;
 }
 
 .tariff-cost-list article strong {
@@ -7602,45 +7611,60 @@ body:has(.app-shell) {
   font-size: 1rem;
 }
 
-.tariff-cost-list span,
-.tariff-condition-list strong {
+.tariff-cost-list span {
   color: #0f172a;
   font-weight: 900;
 }
 
 .tariff-cost-list small,
-.tariff-condition-list span {
+.tariff-panel-note {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 760;
   line-height: 1.35;
 }
 
-.tariff-mode-row {
+.tariff-charge-list label {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 5px;
+  color: #344054;
+  font-size: 0.76rem;
+  font-weight: 900;
 }
 
-.tariff-mode-row button {
+.tariff-charge-list input,
+.tariff-charge-list textarea {
+  width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   background: #ffffff;
-  color: #334155;
-  cursor: pointer;
-  font-weight: 900;
-  padding: 10px;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.84rem;
+  padding: 9px 10px;
 }
 
-.tariff-mode-row button.is-active {
-  border-color: #13c5df;
-  background: #ecfeff;
-  color: #07576a;
-}
-
-.tariff-conditions-textarea {
-  min-height: 170px;
+.tariff-charge-list textarea {
+  min-height: 68px;
   resize: vertical;
+}
+
+.tariff-charge-check {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 9px !important;
+  color: #0f172a !important;
+  font-size: 0.86rem !important;
+}
+
+.tariff-charge-check input {
+  width: 18px;
+  height: 18px;
+}
+
+.tariff-charge-check span {
+  overflow-wrap: anywhere;
 }
 
 .admin-checkbox-field {

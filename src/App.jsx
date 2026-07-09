@@ -17674,8 +17674,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   const [viewMode, setViewMode] = useState('province')
   const [customerName, setCustomerName] = useState('')
   const [validityNote, setValidityNote] = useState('Listino valido fino a nuova comunicazione.')
-  const [conditionsMode, setConditionsMode] = useState('same')
-  const [customConditions, setCustomConditions] = useState('')
+  const [conditionChargeOverrides, setConditionChargeOverrides] = useState({})
   const [manualCosts, setManualCosts] = useState({
     adminHandlingCost: '0',
     hubDeliveryCost: '0',
@@ -17701,12 +17700,35 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
     [selectedService],
   )
   const manualCostsTotal = tariffManualCostFields.reduce((total, field) => total + parseDecimalInput(manualCosts[field.key]), 0)
+  const conditionChargeRows = useMemo(
+    () => (workbook?.conditionCharges ?? []).map((charge) => {
+      const override = conditionChargeOverrides[charge.id] ?? {}
+      return {
+        ...charge,
+        description: override.description ?? charge.description ?? '',
+        enabled: override.enabled ?? true,
+        priceText: override.priceText ?? charge.priceText ?? '',
+      }
+    }),
+    [conditionChargeOverrides, workbook],
+  )
+  const includedConditionChargeRows = conditionChargeRows.filter((charge) => charge.enabled)
   const sampleColumn = selectedService?.columns?.[0]
   const samplePrice = sampleColumn ? tariffRows[0]?.values?.[sampleColumn.key]?.finalPrice : 0
   const fileName = workbook?.fileName ?? 'Nessun file caricato'
 
   function updateManualCost(field, value) {
     setManualCosts((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateConditionCharge(chargeId, field, value) {
+    setConditionChargeOverrides((current) => ({
+      ...current,
+      [chargeId]: {
+        ...(current[chargeId] ?? {}),
+        [field]: value,
+      },
+    }))
   }
 
   async function handleTariffFileChange(event) {
@@ -17728,11 +17750,20 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       if (!response.ok) throw new Error(payload.error || 'Listino non leggibile.')
 
       setWorkbook(payload)
+      setConditionChargeOverrides(Object.fromEntries((payload.conditionCharges ?? []).map((charge) => [
+        charge.id,
+        {
+          description: charge.description ?? '',
+          enabled: true,
+          priceText: charge.priceText ?? '',
+        },
+      ])))
       setSelectedHubName(payload.hubs?.[0]?.name ?? '')
       setSelectedServiceId(payload.hubs?.[0]?.services?.[0]?.id ?? 'standard')
       setStatus(`Listino caricato: ${payload.hubs?.length ?? 0} hub trovati.`)
     } catch (error) {
       setWorkbook(null)
+      setConditionChargeOverrides({})
       setStatus(error.message || 'Errore durante la lettura del listino.')
     } finally {
       setIsParsing(false)
@@ -17761,9 +17792,13 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         ...selectedService.columns.map((column) => (Number(row.values[column.key]?.finalPrice ?? 0)).toFixed(2).replace('.', ',')),
       ]),
     ]
-    const conditions = conditionsMode === 'custom'
-      ? [['Condizioni personalizzate', customConditions]]
-      : [['Condizioni generali Pallex mantenute'], ...(workbook?.conditions ?? []).slice(0, 18).map((item) => [item.title, item.description])]
+    const conditions = [
+      ['Accessori e condizioni selezionate'],
+      ['Voce', 'Prezzo cliente', 'Dettaglio'],
+      ...includedConditionChargeRows.map((charge) => [charge.title, charge.priceText, charge.description]),
+      [],
+      ['Nota', 'MARK-UP immissioni in eccesso escluso dal listino cliente.'],
+    ]
 
     return [...heading, ...table, [], ...conditions]
   }
@@ -17798,14 +17833,28 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         ${(selectedService?.columns ?? []).map((column) => `<td>${escapeHtml(formatDecimalCurrency(row.values[column.key]?.finalPrice ?? 0, currency))}</td>`).join('')}
       </tr>
     `).join('')
-    const conditionHtml = conditionsMode === 'custom'
-      ? `<p>${escapeHtml(customConditions || 'Condizioni personalizzate non inserite.')}</p>`
-      : `<ul>${(workbook?.conditions ?? []).slice(0, 12).map((item) => `<li><strong>${escapeHtml(item.title || 'Condizione')}</strong> ${escapeHtml(item.description)}</li>`).join('')}</ul>`
+    const conditionHtml = includedConditionChargeRows.length
+      ? `
+        <table class="accessories">
+          <thead><tr><th>Accessorio</th><th>Prezzo cliente</th><th>Dettaglio</th></tr></thead>
+          <tbody>
+            ${includedConditionChargeRows.map((charge) => `
+              <tr>
+                <td>${escapeHtml(charge.title)}</td>
+                <td>${escapeHtml(charge.priceText || 'Da definire')}</td>
+                <td>${escapeHtml(charge.description)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <p class="note">MARK-UP immissioni in eccesso escluso dal listino cliente.</p>
+      `
+      : '<p>Nessun accessorio selezionato.</p>'
     const logoHtml = companyLogoUrl
       ? `<img alt="${escapeHtml(companyName)}" src="${escapeHtml(companyLogoUrl)}" />`
       : `<strong>${escapeHtml(companyName)}</strong>`
 
-    printWindow.document.write(`
+    const printHtml = `
       <!doctype html>
       <html>
         <head>
@@ -17826,7 +17875,10 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             th, td { border-bottom: 1px solid #e2e8f0; font-size: 10px; padding: 7px; text-align: right; }
             th:first-child, th:nth-child(2), td:first-child, td:nth-child(2) { text-align: left; }
             th { background: #ecfeff; color: #083344; }
-            ul { color: #475569; font-size: 11px; columns: 2; padding-left: 18px; }
+            .accessories { margin-top: 10px; }
+            .accessories th, .accessories td { font-size: 11px; text-align: left; vertical-align: top; }
+            .accessories td:nth-child(2) { width: 130px; }
+            .note { color: #64748b; font-size: 11px; margin-top: 10px; }
           </style>
         </head>
         <body>
@@ -17846,14 +17898,23 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             <thead><tr><th>Regione</th><th>${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
             <tbody>${bodyRows || '<tr><td colspan="18">Carica un listino per generare la tabella.</td></tr>'}</tbody>
           </table>
-          <h2>Condizioni</h2>
+          <h2>Accessori e condizioni</h2>
           ${conditionHtml}
         </body>
       </html>
-    `)
+    `
+    printWindow.document.open()
+    printWindow.document.write(printHtml)
     printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
+    try {
+      printWindow.opener = null
+    } catch {
+      // Some browsers block changing opener after opening the print window.
+    }
+    window.setTimeout(() => {
+      printWindow.focus()
+      printWindow.print()
+    }, 350)
   }
 
   return (
@@ -17995,24 +18056,36 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         </section>
 
         <section className="panel tariff-panel">
-          <StrategicSectionTitle icon={FileText} overline="Condizioni" title="Condizioni generali" />
-          <div className="tariff-mode-row">
-            <button className={conditionsMode === 'same' ? 'is-active' : ''} onClick={() => setConditionsMode('same')} type="button">Mantieni Pallex</button>
-            <button className={conditionsMode === 'custom' ? 'is-active' : ''} onClick={() => setConditionsMode('custom')} type="button">Personalizza</button>
+          <StrategicSectionTitle icon={FileText} overline="Accessori cliente" title="Condizioni modificabili" />
+          <p className="tariff-panel-note">Spunta solo le voci da mostrare al cliente e modifica il prezzo se vuoi. Il MARK-UP immissioni in eccesso viene escluso automaticamente.</p>
+          <div className="tariff-charge-list">
+            {conditionChargeRows.map((charge) => (
+              <article className={charge.enabled ? 'is-enabled' : 'is-disabled'} key={charge.id}>
+                <label className="tariff-charge-check">
+                  <input
+                    checked={Boolean(charge.enabled)}
+                    onChange={(event) => updateConditionCharge(charge.id, 'enabled', event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span>{charge.title}</span>
+                </label>
+                <label>Prezzo cliente
+                  <input
+                    value={charge.priceText}
+                    onChange={(event) => updateConditionCharge(charge.id, 'priceText', event.target.value)}
+                    placeholder="Es. 1,50 euro / compreso / da concordare"
+                  />
+                </label>
+                <label className="tariff-charge-detail">Dettaglio
+                  <textarea
+                    value={charge.description}
+                    onChange={(event) => updateConditionCharge(charge.id, 'description', event.target.value)}
+                  />
+                </label>
+              </article>
+            ))}
+            {!conditionChargeRows.length ? <StrategicEmptyLine label="Carica il file IMR per visualizzare accessori e condizioni modificabili." /> : null}
           </div>
-          {conditionsMode === 'custom' ? (
-            <textarea className="tariff-conditions-textarea" value={customConditions} onChange={(event) => setCustomConditions(event.target.value)} placeholder="Scrivi condizioni da mostrare nel listino cliente..." />
-          ) : (
-            <div className="tariff-condition-list">
-              {(workbook?.conditions ?? []).slice(0, 10).map((condition, index) => (
-                <article key={`${condition.title}-${index}`}>
-                  <strong>{condition.title || 'Condizione'}</strong>
-                  <span>{condition.description}</span>
-                </article>
-              ))}
-              {!workbook?.conditions?.length ? <StrategicEmptyLine label="Carica il file IMR per visualizzare le condizioni generali." /> : null}
-            </div>
-          )}
         </section>
       </div>
     </section>

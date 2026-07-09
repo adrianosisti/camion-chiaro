@@ -17657,6 +17657,11 @@ const tariffManualCostFields = [
 ]
 const tariffMarkupPercentOptions = Array.from({ length: 40 }, (_, index) => String((index + 1) * 5))
 
+function getTariffMarkupPercent(manualCosts = {}, serviceId = 'standard') {
+  const marginKey = serviceId === 'nonStop' ? 'nonStopMarginPercent' : 'standardMarginPercent'
+  return manualCosts[marginKey] ?? manualCosts.marginPercent ?? '20'
+}
+
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -17676,7 +17681,7 @@ function buildTariffOutputRows({ manualCosts, selectedService, viewMode }) {
 
   const fixedCostsTotal = (selectedService.fixedCosts ?? []).reduce((total, item) => total + (Number(item.amount) || 0), 0)
   const manualCostsTotal = tariffManualCostFields.reduce((total, field) => total + parseDecimalInput(manualCosts[field.key]), 0)
-  const markupRate = Math.min(2, Math.max(0, parseDecimalInput(manualCosts.marginPercent) / 100))
+  const markupRate = Math.min(2, Math.max(0, parseDecimalInput(getTariffMarkupPercent(manualCosts, selectedService.id)) / 100))
   const roundingStep = parseDecimalInput(manualCosts.roundingStep) || 0.5
   const etsByRegion = new Map((selectedService.etsRows ?? []).map((row) => [String(row.region ?? '').toUpperCase(), row]))
   const readTariffCell = (row, column) => Number(row?.values?.[column.key] ?? row?.values?.[`col-${column.index}`] ?? 0)
@@ -17772,9 +17777,10 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   const [manualCosts, setManualCosts] = useState({
     adminHandlingCost: '0',
     hubDeliveryCost: '0',
-    marginPercent: '20',
+    nonStopMarginPercent: '20',
     pickupCost: '0',
     roundingStep: '0,50',
+    standardMarginPercent: '20',
   })
 
   const selectedHub = useMemo(
@@ -18259,15 +18265,22 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         </section>
 
         <section className="panel tariff-panel">
-          <StrategicSectionTitle icon={Banknote} overline="Formula cliente" title="Costi e ricarico" />
+          <StrategicSectionTitle icon={Banknote} overline="Formula cliente" title="Costi e margini" />
           <div className="tariff-form-grid">
             {tariffManualCostFields.map((field) => (
               <label key={field.key}>{field.label}
                 <input inputMode="decimal" value={manualCosts[field.key]} onChange={(event) => updateManualCost(field.key, event.target.value)} placeholder="0,00" />
               </label>
             ))}
-            <label>Ricarico cliente %
-              <select value={manualCosts.marginPercent} onChange={(event) => updateManualCost('marginPercent', event.target.value)}>
+            <label>Margine Standard %
+              <select value={manualCosts.standardMarginPercent} onChange={(event) => updateManualCost('standardMarginPercent', event.target.value)}>
+                {tariffMarkupPercentOptions.map((value) => (
+                  <option key={value} value={value}>{value}%</option>
+                ))}
+              </select>
+            </label>
+            <label>Margine Non Stop %
+              <select value={manualCosts.nonStopMarginPercent} onChange={(event) => updateManualCost('nonStopMarginPercent', event.target.value)}>
                 {tariffMarkupPercentOptions.map((value) => (
                   <option key={value} value={value}>{value}%</option>
                 ))}

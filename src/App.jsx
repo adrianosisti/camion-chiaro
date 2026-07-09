@@ -5678,6 +5678,65 @@ function escapeHtml(value = '') {
     .replaceAll("'", '&#039;')
 }
 
+function printHtmlDocument(printHtml = '', title = 'Vygo') {
+  if (typeof document === 'undefined') return false
+
+  const printFrame = document.createElement('iframe')
+  printFrame.title = title
+  printFrame.setAttribute('aria-hidden', 'true')
+  printFrame.style.position = 'fixed'
+  printFrame.style.right = '0'
+  printFrame.style.bottom = '0'
+  printFrame.style.width = '1px'
+  printFrame.style.height = '1px'
+  printFrame.style.border = '0'
+  printFrame.style.opacity = '0'
+  printFrame.style.pointerEvents = 'none'
+  document.body.appendChild(printFrame)
+
+  const frameWindow = printFrame.contentWindow
+  const frameDocument = frameWindow?.document
+
+  if (!frameWindow || !frameDocument) {
+    printFrame.remove()
+    return false
+  }
+
+  let cleanupTimer = null
+  const cleanup = () => {
+    if (cleanupTimer) window.clearTimeout(cleanupTimer)
+    window.setTimeout(() => {
+      printFrame.remove()
+    }, 500)
+  }
+  const runPrint = () => {
+    frameWindow.onafterprint = cleanup
+    frameWindow.focus()
+    frameWindow.print()
+    cleanupTimer = window.setTimeout(cleanup, 60000)
+  }
+
+  frameDocument.open()
+  frameDocument.write(printHtml)
+  frameDocument.close()
+
+  const images = Array.from(frameDocument.images ?? [])
+  const waitForImages = images.length
+    ? Promise.all(images.map((image) => (
+        image.complete
+          ? Promise.resolve()
+          : new Promise((resolve) => {
+              image.onload = resolve
+              image.onerror = resolve
+            })
+      )))
+    : Promise.resolve()
+
+  waitForImages.then(() => window.setTimeout(runPrint, 250))
+
+  return true
+}
+
 function getInvoiceStatusLabel(status) {
   const labels = {
     cancelled: 'Annullata',
@@ -17819,12 +17878,6 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   }
 
   function printTariff() {
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-    if (!printWindow) {
-      window.print()
-      return
-    }
-
     const headerCells = selectedService?.columns?.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('') ?? ''
     const bodyRows = tariffRows.map((row) => `
       <tr>
@@ -17842,7 +17895,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
               <tr>
                 <td>${escapeHtml(charge.title)}</td>
                 <td>${escapeHtml(charge.priceText || 'Da definire')}</td>
-                <td>${escapeHtml(charge.description)}</td>
+                <td>${escapeHtml(charge.description).replaceAll('\n', '<br>')}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -17878,7 +17931,9 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .accessories { margin-top: 10px; }
             .accessories th, .accessories td { font-size: 11px; text-align: left; vertical-align: top; }
             .accessories td:nth-child(2) { width: 130px; }
+            .accessories td:first-child { width: 170px; }
             .note { color: #64748b; font-size: 11px; margin-top: 10px; }
+            @media print { body { margin: 14mm; } }
           </style>
         </head>
         <body>
@@ -17903,18 +17958,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         </body>
       </html>
     `
-    printWindow.document.open()
-    printWindow.document.write(printHtml)
-    printWindow.document.close()
-    try {
-      printWindow.opener = null
-    } catch {
-      // Some browsers block changing opener after opening the print window.
-    }
-    window.setTimeout(() => {
-      printWindow.focus()
-      printWindow.print()
-    }, 350)
+    if (!printHtmlDocument(printHtml, `Listino ${customerName || selectedHub?.name || 'Pallex'}`)) window.print()
   }
 
   return (

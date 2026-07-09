@@ -327,7 +327,15 @@ function slugify(value = '') {
   return cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-function getConditionPriceText(description = '') {
+function getConditionPriceText(title = '', description = '') {
+  if (/servizio\s+gdo/i.test(title)) {
+    return 'Non Stop compreso; Notturno 50 euro; Eurospin 75 euro; Amazon 50 euro'
+  }
+
+  if (/facchinaggio|scarico\s+a\s+mano/i.test(title)) {
+    return 'Da 10 a 100 euro; extra da concordare'
+  }
+
   const text = cleanText(description)
   const euroMatches = Array.from(text.matchAll(/(?:euro\s*)?(\d+(?:[,.]\d+)?)\s*euro|euro\s*(\d+(?:[,.]\d+)?)/gi))
     .map((match) => match[1] || match[2])
@@ -343,6 +351,41 @@ function getConditionPriceText(description = '') {
   if (/come da tariffa/i.test(text)) return 'Come da tariffa'
 
   return ''
+}
+
+function getCustomerConditionDetail(title = '', description = '') {
+  const cleanDescription = cleanText(description)
+
+  if (/servizio\s+gdo/i.test(title)) {
+    return [
+      'Servizio Non Stop GDO: nessuna maggiorazione, tempi di resa +24 ore.',
+      'Servizio notturno GDO dalle 22:00 alle 06:00: 50 euro a forfait.',
+      'Eurospin di San Pietro Vernotico (Brindisi): 75 euro.',
+      'Piattaforme logistiche Amazon: supplemento fisso 50 euro a spedizione.',
+    ].join('\n')
+  }
+
+  if (/facchinaggio|scarico\s+a\s+mano/i.test(title)) {
+    return [
+      'Piano terra: Mini/Quarter 10 euro, Half/Medium/Light 20 euro, Large/Full/Big/Mega 28 euro.',
+      'Cantina o primo piano, massimo 2 pallet a spedizione: Mini/Quarter 15 euro, Half/Medium/Light 50 euro, Large/Full/Big/Mega 100 euro.',
+      'Piani successivi: con ascensore o montacarichi si applica la tariffa del primo piano; senza ascensore tariffa da concordare.',
+    ].join('\n')
+  }
+
+  if (/prenotazione/i.test(title)) {
+    return 'Prenotazione consegna: 1,50 euro a spedizione, escluso servizio GDO.'
+  }
+
+  if (/sponda\s+idraulica/i.test(title)) {
+    return 'Sponda idraulica: compresa in tariffa.'
+  }
+
+  if (/inoltro\s+in\s+provincia/i.test(title)) {
+    return 'Inoltro in provincia: compreso in tariffa.'
+  }
+
+  return cleanDescription
 }
 
 function parseConditionCharges(rows) {
@@ -382,9 +425,9 @@ function parseConditionCharges(rows) {
     .map((charge) => {
       const description = charge.descriptions.join(' · ')
       return {
-        description,
+        description: getCustomerConditionDetail(charge.title, description),
         id: charge.id,
-        priceText: getConditionPriceText(description),
+        priceText: getConditionPriceText(charge.title, description),
         title: charge.title,
       }
     })

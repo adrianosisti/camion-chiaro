@@ -17836,7 +17836,6 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       [`Vygo - Listino cliente ${customerName || 'cliente'}`],
       ['Azienda', companyName],
       ['Cliente', customerName || 'Non inserito'],
-      ['Hub', selectedHub?.name ?? ''],
       ['Servizio', selectedService?.label ?? ''],
       ['Vista', viewMode === 'region' ? 'Regione' : 'Provincia'],
       ['Nota validita', validityNote],
@@ -17895,7 +17894,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `vygo-listino-${(customerName || selectedHub?.name || 'pallex').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`
+    link.download = `vygo-listino-${(customerName || 'cliente').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -18007,7 +18006,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       <!doctype html>
       <html>
         <head>
-          <title>Listino ${escapeHtml(customerName || selectedHub?.name || 'Pallex')}</title>
+          <title>Listino ${escapeHtml(customerName || 'cliente')}</title>
           <style>
             body { color: #10202b; font-family: Arial, sans-serif; margin: 24px; }
             .brand { align-items: center; border-bottom: 2px solid #13c5df; display: flex; gap: 14px; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; }
@@ -18045,7 +18044,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             <div><strong>${escapeHtml(companyName)}</strong><small>${escapeHtml(new Intl.DateTimeFormat('it-IT').format(new Date()))}</small></div>
           </section>
           <h1>${escapeHtml(companyName)} - listino ${escapeHtml(customerName || 'cliente')}</h1>
-          <p>${escapeHtml(selectedHub?.name ?? '')} · ${escapeHtml(selectedService?.label ?? '')} · ${escapeHtml(validityNote)}</p>
+          <p>${escapeHtml(selectedService?.label ?? '')} · ${escapeHtml(validityNote)}</p>
           <section class="meta">
             <div><span>Vista</span><strong>${viewMode === 'region' ? 'Regione' : 'Provincia'}</strong></div>
             <div><span>Servizio</span><strong>${escapeHtml(selectedService?.label ?? 'Standard')}</strong></div>
@@ -18061,7 +18060,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         </body>
       </html>
     `
-    if (!printHtmlDocument(printHtml, `Listino ${customerName || selectedHub?.name || 'Pallex'}`)) window.print()
+    if (!printHtmlDocument(printHtml, `Listino ${customerName || 'cliente'}`)) window.print()
   }
 
   return (

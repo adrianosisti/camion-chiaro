@@ -17953,24 +17953,19 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   }
 
   function printTariff() {
-    const firstPageTariffRows = 40
-    const fullPageTariffRows = 56
+    const firstPageTariffRows = 54
+    const fullPageTariffRows = 58
     const splitTariffRowsForPrint = (rows, firstCapacity) => {
       if (!rows.length) return [[]]
-      const capacities = [firstCapacity]
-      while (capacities.reduce((sum, capacity) => sum + capacity, 0) < rows.length) capacities.push(fullPageTariffRows)
       const chunks = []
       let cursor = 0
-      capacities.forEach((capacity, index) => {
-        const remainingRows = rows.length - cursor
-        const remainingPages = capacities.length - index
-        const remainingCapacityAfter = capacities.slice(index + 1).reduce((sum, nextCapacity) => sum + nextCapacity, 0)
-        const balancedSize = Math.ceil(remainingRows / remainingPages)
-        const requiredSize = Math.max(0, remainingRows - remainingCapacityAfter)
-        const chunkSize = Math.min(capacity, Math.max(requiredSize, balancedSize))
+      let capacity = firstCapacity
+      while (cursor < rows.length) {
+        const chunkSize = Math.min(capacity, rows.length - cursor)
         chunks.push(rows.slice(cursor, cursor + chunkSize))
         cursor += chunkSize
-      })
+        capacity = fullPageTariffRows
+      }
       return chunks
     }
     const serviceTablesHtml = outputServices.map((service, serviceIndex) => {
@@ -18124,7 +18119,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
         <head>
           <title>Vygo - Listino tariffe</title>
           <style>
-            @page { size: A4 landscape; margin: 7mm; }
+            @page { size: A4 landscape; margin: 5mm; }
             * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body { color: #10202b; font-family: Arial, sans-serif; margin: 0; }
             .document-header { align-items: center; border-bottom: 3px solid #13c5df; display: grid; gap: 14px; grid-template-columns: 170px 1fr 190px; margin-bottom: 7px; padding-bottom: 7px; }

@@ -17953,7 +17953,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
   }
 
   function printTariff() {
-    const serviceTablesHtml = outputServices.map((service) => {
+    const serviceTablesHtml = outputServices.map((service, serviceIndex) => {
       const serviceRows = buildTariffOutputRows({ manualCosts, selectedService: service, viewMode })
       const headerCells = service.columns?.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('') ?? ''
       const bodyRows = serviceRows.map((row) => `
@@ -17965,7 +17965,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
       `).join('')
 
       return `
-        <section class="service-table">
+        <section class="service-table ${serviceIndex > 0 ? 'next-service-page' : ''}">
           <h2>${escapeHtml(service.label)}</h2>
           <table class="tariff-print-table">
             <thead><tr><th class="geo-head">Regione</th><th class="geo-head">${viewMode === 'region' ? 'Copertura' : 'Provincia'}</th>${headerCells}</tr></thead>
@@ -18121,6 +18121,7 @@ function TariffCalculatorWorkspace({ companyLogoUrl = '', companyName = 'Azienda
             .tariff-print-table th:nth-child(2), .tariff-print-table td:nth-child(2) { width: 76px; }
             .tariff-print-table tbody tr:nth-child(even) td:not(:first-child):not(:nth-child(2)) { background: #f8fafc; }
             .service-table { break-inside: avoid; margin-top: 14px; }
+            .service-table.next-service-page { break-before: page; page-break-before: always; }
             .service-table h2 { background: #0f172a; border-left: 8px solid #13c5df; color: #ffffff; font-size: 16px; margin: 18px 0 8px; padding: 9px 12px; }
             .accessories { margin-top: 10px; }
             .accessories th, .accessories td { font-size: 11px; text-align: left; vertical-align: top; }

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Vygo symbol color</title>
+  <desc id="desc">Clean square Vygo vector symbol for app icon, avatar and trademark device use.</desc>
+  <defs>
+    <linearGradient id="bg" x1="76" y1="48" x2="436" y2="466" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#142832"/>
+      <stop offset="1" stop-color="#071116"/>
+    </linearGradient>
+    <style>
+      .cyan { fill: #13c7df; }
+      .white { fill: #ffffff; }
+      .cut { fill: #0c1a21; }
+    </style>
+  </defs>
+
+  <rect x="36" y="36" width="440" height="440" rx="94" fill="url(#bg)"/>
+  <g transform="translate(66 104) scale(.88)">
+    <path class="cyan" d="M3 222c79-78 177-113 296-104 42 3 83 12 123 27-91-3-171 9-239 36-61 24-111 57-151 100H3z"/>
+    <path class="cyan" d="M33 161c78-45 162-59 251-42 30 6 61 15 91 28-81-8-153-1-216 20-49 17-91 40-126 69l-30-44c9-11 19-21 30-31z"/>
+    <path class="white" d="M72 72h190c52 0 94 15 126 46 30 29 50 70 58 123h-60c-8-33-23-59-45-77-21-17-49-26-84-26H72V72z"/>
+    <path class="white" d="M105 39h155c58 0 105 16 140 49 22 21 38 47 49 79l-71-17c-25-39-64-58-118-58H150L105 39z"/>
+    <path class="cyan" d="M250 91h49c36 0 66 15 89 46l-119-17-19-29z"/>
+    <path class="white" d="M71 135h205c53 0 94 16 124 48l-333-54 4 6z"/>
+    <path class="white" d="M71 188c56-18 120-23 190-14 36 5 72 13 108 25-107 7-195 34-264 82H71v-93z"/>
+    <circle class="white" cx="332" cy="250" r="27"/>
+    <circle class="cut" cx="332" cy="250" r="11"/>
+    <circle class="white" cx="178" cy="250" r="27"/>
+    <circle class="cut" cx="178" cy="250" r="11"/>
+  </g>
+</svg>

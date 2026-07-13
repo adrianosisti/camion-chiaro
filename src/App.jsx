@@ -11962,6 +11962,7 @@ function CompanyLicenseGate({
               Confermo dati fiscali, piano scelto e firmo online l ordine commerciale Vygo. Accetto Termini, Privacy,
               nomina privacy e gestione fatturazione tramite Stripe.
               <span className="legal-link-row">
+                <LegalReadButton documentId="contract" label="Leggi contratto" onOpen={setOpenLegalDocument} />
                 <LegalReadButton documentId="terms" onOpen={setOpenLegalDocument} />
                 <LegalReadButton documentId="privacy" onOpen={setOpenLegalDocument} />
                 <LegalReadButton documentId="dpa" label="Nomina" onOpen={setOpenLegalDocument} />

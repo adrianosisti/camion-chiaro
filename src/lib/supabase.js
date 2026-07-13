@@ -9,8 +9,10 @@ export const companyAssetsBucket = 'company-assets'
 export const companyInvoicesBucket = 'company-invoices'
 const signedUrlCache = new Map()
 export const legalDocumentVersions = {
+  contract: 'vygo-contratto-saas-b2b-2026-07-13',
   dpa: 'vygo-dpa-2026-07-03',
   marketing: 'vygo-marketing-2026-07-03',
+  commercialOrder: 'vygo-ordine-commerciale-2026-07-13',
   privacy: 'vygo-privacy-2026-07-03',
   staffTerms: 'vygo-staff-terms-2026-07-03',
   terms: 'vygo-terms-2026-07-03',

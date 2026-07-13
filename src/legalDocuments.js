@@ -1,6 +1,8 @@
 export const legalDocumentVersions = {
+  contract: 'vygo-contratto-saas-b2b-2026-07-13',
   dpa: 'vygo-dpa-2026-07-03',
   marketing: 'vygo-marketing-2026-07-03',
+  commercialOrder: 'vygo-ordine-commerciale-2026-07-13',
   privacy: 'vygo-privacy-2026-07-03',
   staffTerms: 'vygo-staff-terms-2026-07-03',
   terms: 'vygo-terms-2026-07-03',
@@ -11,6 +13,23 @@ const commonWarningIt =
 
 export const legalDocumentsByLanguage = {
   it: {
+    contract: {
+      intro: `${commonWarningIt} Questo contratto descrive il rapporto SaaS tra Vygo e l azienda cliente. L ordine definitivo viene completato con piano, dati fiscali e pagamento nella fase di attivazione.`,
+      sections: [
+        { title: 'Parti e servizio', body: 'Vygo fornisce una piattaforma software per aziende di trasporto e logistica. L azienda cliente usa dashboard web, app mobile, documenti, scadenze, chat, check, guasti, report, centro costi, radar news, moduli aggiuntivi e funzioni disponibili secondo piano e configurazione.' },
+        { title: 'Attivazione online', body: 'La registrazione crea l account azienda. Dopo il primo accesso l azienda sceglie il piano, compila i dati fiscali, conferma Termini, Privacy, nomina privacy e ordine commerciale. Vygo salva una busta contrattuale online con data, utente, azienda, piano, dati fiscali e versioni dei documenti accettati.' },
+        { title: 'Piani, limiti e pagamenti', body: 'I piani possono variare per mezzi, attrezzature, utenti, spazio file e moduli. Il pagamento avviene tramite fornitore esterno, come Stripe, quando configurato. Mancato pagamento, pagamento fallito o piano scaduto possono limitare o sospendere le funzioni non coperte.' },
+        { title: 'Durata e rinnovo', body: 'Il rapporto puo essere mensile o secondo durata indicata nell ordine commerciale. Eventuali contratti pluriennali, penali, disdette o condizioni speciali dovranno essere indicati nell ordine o in accordi separati firmati dalle parti.' },
+        { title: 'Responsabilita dell azienda', body: 'L azienda deve inserire dati corretti, gestire utenti e permessi, informare il personale, verificare documenti e scadenze, controllare report e usare Vygo come supporto operativo, non come sostituto di consulenti, obblighi di legge o controlli professionali.' },
+        { title: 'Dati, privacy e sicurezza', body: 'I dati vengono trattati secondo Informativa Privacy e nomina a responsabile del trattamento. Vygo applica misure ragionevoli di sicurezza, separazione per azienda, gestione ruoli, protezione file e log tecnici, ma nessun sistema informatico e privo di rischio.' },
+        { title: 'Fase pilota e funzioni sperimentali', body: 'Durante pilota o test gratuiti alcune funzioni possono essere incomplete, modificate, nascoste o rimosse. La fase pilota serve a verificare valore, flussi, stabilita e configurazione con una azienda reale.' },
+        { title: 'Prova e archivio', body: 'Le accettazioni online, gli eventi di attivazione, lo stato pagamento e le versioni dei documenti sono conservati in archivio Vygo per prova del rapporto, assistenza, amministrazione e tutela delle parti.' },
+        { title: 'Recesso, sospensione ed export', body: 'Alla fine del rapporto l azienda puo chiedere esportazione ragionevole dei dati disponibili. Vygo puo sospendere accessi in caso di violazioni, rischi sicurezza, uso illecito, mancato pagamento o abuso del servizio.' },
+        { title: 'Revisione legale', body: 'Questo testo e una base operativa. Prima del rilascio commerciale e della vendita continuativa dovra essere verificato da consulente legale/privacy e adattato alla societa che eroghera Vygo.' },
+      ],
+      title: 'Contratto SaaS e ordine online Vygo',
+      version: legalDocumentVersions.contract,
+    },
     dpa: {
       intro: `${commonWarningIt} Questa nomina disciplina il ruolo di Vygo come responsabile del trattamento per i dati gestiti per conto dell azienda cliente.`,
       sections: [
@@ -87,36 +106,42 @@ export const legalDocumentsByLanguage = {
 
 const translatedMeta = {
   de: {
+    contract: ['SaaS-Vertrag und Online-Bestellung', 'Operativer Entwurf. Der endgueltige Auftrag wird mit Tarif, Firmendaten und Zahlung in der Aktivierung gespeichert.'],
     dpa: ['Auftragsverarbeitungsvertrag', 'Operativer Entwurf fuer die Pilotphase. Vygo verarbeitet Unternehmensdaten als technischer Dienstleister nach Weisung des Kunden.'],
     privacy: ['Vygo Datenschutzhinweise', 'Diese Hinweise erklaeren, welche Daten Vygo in Web-Dashboard und App verarbeitet.'],
     staffTerms: ['Nutzungsregeln fuer Personal', 'Regeln fuer Fahrer, Buero, Lager und alle Personen, die Vygo im Auftrag des Unternehmens nutzen.'],
     terms: ['SaaS-Nutzungsbedingungen', 'Bedingungen fuer die Nutzung von Vygo durch Transport- und Logistikunternehmen, einschliesslich Pilotphase.'],
   },
   en: {
+    contract: ['SaaS Agreement and Online Order', 'Operational draft. The final order is stored during activation with plan, company details and payment flow.'],
     dpa: ['Data Processing Agreement', 'Operational draft for the pilot phase. Vygo processes customer company data as a technical provider under the customer company instructions.'],
     privacy: ['Vygo Privacy Notice', 'This notice explains which data Vygo may process in the web dashboard and mobile app.'],
     staffTerms: ['Staff App Rules', 'Rules for drivers, office, warehouse and staff using Vygo on behalf of the company.'],
     terms: ['SaaS Terms and Conditions', 'Terms for transport and logistics companies using Vygo, including free or manually enabled pilot use.'],
   },
   es: {
+    contract: ['Contrato SaaS y pedido online', 'Borrador operativo. El pedido definitivo se guarda durante la activacion con plan, datos fiscales y pago.'],
     dpa: ['Encargo de tratamiento', 'Borrador operativo para fase piloto. Vygo trata datos de la empresa como proveedor tecnico siguiendo instrucciones del cliente.'],
     privacy: ['Politica de privacidad Vygo', 'Esta informacion explica que datos puede tratar Vygo en el panel web y la app movil.'],
     staffTerms: ['Reglas de uso para personal', 'Reglas para conductores, oficina, almacen y personal que usa Vygo por cuenta de la empresa.'],
     terms: ['Terminos y condiciones SaaS', 'Condiciones de uso de Vygo para empresas de transporte y logistica, incluida la fase piloto.'],
   },
   fr: {
+    contract: ['Contrat SaaS et commande en ligne', 'Projet operationnel. La commande definitive est archivee pendant l activation avec plan, donnees entreprise et paiement.'],
     dpa: ['Accord de sous-traitance', 'Projet operationnel pour phase pilote. Vygo traite les donnees de l entreprise comme prestataire technique selon ses instructions.'],
     privacy: ['Notice de confidentialite Vygo', 'Cette notice explique les donnees que Vygo peut traiter dans le tableau de bord web et l application mobile.'],
     staffTerms: ['Regles d utilisation du personnel', 'Regles pour chauffeurs, bureau, entrepot et personnel utilisant Vygo pour l entreprise.'],
     terms: ['Conditions SaaS', 'Conditions d utilisation de Vygo pour entreprises de transport et logistique, y compris phase pilote.'],
   },
   pl: {
+    contract: ['Umowa SaaS i zamowienie online', 'Projekt roboczy. Ostateczne zamowienie jest zapisywane podczas aktywacji z planem, danymi firmy i platnoscia.'],
     dpa: ['Umowa powierzenia przetwarzania', 'Projekt roboczy na etap pilotazowy. Vygo przetwarza dane firmy jako dostawca techniczny zgodnie z instrukcjami klienta.'],
     privacy: ['Informacja o prywatnosci Vygo', 'Informacja wyjasnia, jakie dane Vygo moze przetwarzac w panelu web i aplikacji mobilnej.'],
     staffTerms: ['Zasady korzystania dla personelu', 'Zasady dla kierowcow, biura, magazynu i osob uzywajacych Vygo w imieniu firmy.'],
     terms: ['Warunki SaaS', 'Warunki korzystania z Vygo przez firmy transportowe i logistyczne, w tym etap pilotazowy.'],
   },
   ro: {
+    contract: ['Contract SaaS si comanda online', 'Proiect operational. Comanda finala este salvata la activare cu planul, datele companiei si plata.'],
     dpa: ['Acord de prelucrare a datelor', 'Proiect operational pentru faza pilot. Vygo prelucreaza datele companiei ca furnizor tehnic, conform instructiunilor clientului.'],
     privacy: ['Informare de confidentialitate Vygo', 'Aceasta informare explica datele pe care Vygo le poate prelucra in dashboard si aplicatia mobila.'],
     staffTerms: ['Reguli de utilizare pentru personal', 'Reguli pentru soferi, birou, depozit si personalul care foloseste Vygo pentru companie.'],

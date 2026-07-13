@@ -70,9 +70,52 @@ function compactPayload(payload) {
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined))
 }
 
+function isMissingRelation(error) {
+  return ['42P01', '42703', 'PGRST204', 'PGRST205'].includes(error?.code)
+}
+
 function mapInvoiceStatus(status) {
   if (status === 'void') return 'cancelled'
   return status || 'open'
+}
+
+async function updateContractEnvelope(serviceClient, {
+  companyId,
+  contractEnvelopeId,
+  eventPayload = {},
+  eventType,
+  status,
+  values = {},
+}) {
+  if (!contractEnvelopeId || !companyId) return
+
+  const updatedAt = new Date().toISOString()
+  const { error } = await serviceClient
+    .from('company_contract_envelopes')
+    .update(compactPayload({
+      status,
+      updated_at: updatedAt,
+      ...values,
+    }))
+    .eq('id', contractEnvelopeId)
+    .eq('company_id', companyId)
+
+  if (isMissingRelation(error)) return
+  if (error) throw error
+
+  if (!eventType) return
+
+  const { error: eventError } = await serviceClient
+    .from('company_contract_events')
+    .insert({
+      company_id: companyId,
+      envelope_id: contractEnvelopeId,
+      event_payload: eventPayload,
+      event_type: eventType,
+    })
+
+  if (isMissingRelation(eventError)) return
+  if (eventError) throw eventError
 }
 
 async function findCompanyForSubscription(serviceClient, subscription) {
@@ -152,6 +195,35 @@ async function updateCompanyFromSubscription(serviceClient, subscription, extraV
     .eq('id', companyResult.data.id)
 
   if (error) throw error
+
+  const contractEnvelopeId = subscription.metadata?.contract_envelope_id || extraValues.contract_envelope_id
+  const contractStatus = status === 'active'
+    ? 'payment_active'
+    : status === 'cancelled'
+      ? 'cancelled'
+      : ['past_due', 'suspended'].includes(status)
+        ? 'payment_failed'
+        : undefined
+
+  if (contractEnvelopeId && contractStatus) {
+    await updateContractEnvelope(serviceClient, {
+      companyId: companyResult.data.id,
+      contractEnvelopeId,
+      eventPayload: {
+        billingStatus: status,
+        stripeCustomerId: getCustomerId(subscription.customer),
+        stripeSubscriptionId: getSubscriptionId(subscription.id),
+      },
+      eventType: status === 'active' ? 'payment_active' : `subscription_${status}`,
+      status: contractStatus,
+      values: {
+        activated_at: status === 'active' ? new Date().toISOString() : undefined,
+        cancelled_at: status === 'cancelled' ? new Date().toISOString() : undefined,
+        stripe_customer_id: getCustomerId(subscription.customer) || undefined,
+        stripe_subscription_id: getSubscriptionId(subscription.id) || undefined,
+      },
+    })
+  }
 }
 
 async function upsertInvoice(serviceClient, invoice) {
@@ -223,6 +295,26 @@ export async function handler(event) {
   try {
     if (stripeEvent.type === 'checkout.session.completed') {
       const session = stripeEvent.data.object
+      const sessionCompanyId = session.metadata?.company_id
+      const sessionEnvelopeId = session.metadata?.contract_envelope_id
+
+      if (sessionCompanyId && sessionEnvelopeId) {
+        await updateContractEnvelope(serviceClient, {
+          companyId: sessionCompanyId,
+          contractEnvelopeId: sessionEnvelopeId,
+          eventPayload: {
+            checkoutSessionId: session.id,
+            stripeCustomerId: getCustomerId(session.customer),
+          },
+          eventType: 'checkout_completed',
+          status: 'checkout_completed',
+          values: {
+            checkout_completed_at: new Date().toISOString(),
+            stripe_checkout_session_id: session.id,
+            stripe_customer_id: getCustomerId(session.customer) || undefined,
+          },
+        })
+      }
 
       if (session.mode === 'subscription' && session.subscription) {
         const subscription = await stripe.subscriptions.retrieve(getSubscriptionId(session.subscription))

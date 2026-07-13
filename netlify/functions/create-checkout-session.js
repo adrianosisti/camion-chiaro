@@ -147,6 +147,7 @@ export async function handler(event) {
   }
 
   const companyId = cleanText(body.companyId)
+  const contractEnvelopeId = cleanText(body.contractEnvelopeId)
   const plan = cleanText(body.plan).toLowerCase()
   const billingProfile = body.billingProfile ?? {}
   const priceId = getPlanPriceId(plan)
@@ -200,6 +201,31 @@ export async function handler(event) {
 
   if (!company) {
     return jsonResponse(404, { error: 'Azienda non trovata.' })
+  }
+
+  if (contractEnvelopeId) {
+    const { data: envelope, error: envelopeError } = await serviceClient
+      .from('company_contract_envelopes')
+      .select('id, company_id, status')
+      .eq('id', contractEnvelopeId)
+      .eq('company_id', companyId)
+      .maybeSingle()
+
+    if (envelopeError?.code === '42P01' || envelopeError?.code === '42703') {
+      return jsonResponse(500, { error: 'Esegui prima il file SQL 67_contratti_attivazione_online.sql in Supabase.' })
+    }
+
+    if (envelopeError) {
+      return jsonResponse(500, { error: envelopeError.message })
+    }
+
+    if (!envelope) {
+      return jsonResponse(404, { error: 'Contratto online non trovato. Riprova l attivazione.' })
+    }
+
+    if (!['accepted', 'checkout_started'].includes(envelope.status)) {
+      return jsonResponse(409, { error: 'Contratto online non piu modificabile. Aggiorna la pagina e riprova.' })
+    }
   }
 
   const profilePayload = toBillingProfilePayload(companyId, billingProfile)
@@ -274,6 +300,7 @@ export async function handler(event) {
     ],
     metadata: {
       company_id: companyId,
+      contract_envelope_id: contractEnvelopeId || '',
       plan,
       user_id: authData.user.id,
     },
@@ -281,6 +308,7 @@ export async function handler(event) {
     subscription_data: {
       metadata: {
         company_id: companyId,
+        contract_envelope_id: contractEnvelopeId || '',
         plan,
         user_id: authData.user.id,
       },
@@ -291,6 +319,42 @@ export async function handler(event) {
       enabled: true,
     },
   })
+
+  if (contractEnvelopeId) {
+    const updatedAt = new Date().toISOString()
+    const { error: envelopeUpdateError } = await serviceClient
+      .from('company_contract_envelopes')
+      .update({
+        checkout_started_at: updatedAt,
+        status: 'checkout_started',
+        stripe_checkout_session_id: checkoutSession.id,
+        stripe_customer_id: customer.id,
+        updated_at: updatedAt,
+      })
+      .eq('id', contractEnvelopeId)
+      .eq('company_id', companyId)
+
+    if (envelopeUpdateError) {
+      return jsonResponse(500, { error: envelopeUpdateError.message })
+    }
+
+    const { error: eventError } = await serviceClient
+      .from('company_contract_events')
+      .insert({
+        actor_user_id: authData.user.id,
+        company_id: companyId,
+        envelope_id: contractEnvelopeId,
+        event_payload: {
+          checkoutSessionId: checkoutSession.id,
+          stripeCustomerId: customer.id,
+        },
+        event_type: 'checkout_started',
+      })
+
+    if (eventError) {
+      return jsonResponse(500, { error: eventError.message })
+    }
+  }
 
   return jsonResponse(200, { id: checkoutSession.id, url: checkoutSession.url })
 }

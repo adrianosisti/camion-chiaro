@@ -66,6 +66,7 @@ import {
   clearDriverProfileImageFile as clearSupabaseDriverProfileImageFile,
   createCompanyAssetSignedUrl,
   createBillingCheckoutSession,
+  createCompanyContractEnvelope,
   createBillingPortalSession,
   createCompanyAssetRecord as createSupabaseCompanyAsset,
   createCompanyPerson as createSupabaseCompanyPerson,
@@ -124,6 +125,7 @@ import {
   getCurrentAuthSession,
   hasPasswordRecoveryUrlParams,
   isSupabaseConfigured,
+  legalDocumentVersions,
   logDriverDocumentEvent as logSupabaseDriverDocumentEvent,
   markCompanyAssetStorageFileDeleted,
   markDriverDocumentStorageFileDeleted,
@@ -9504,17 +9506,33 @@ function App() {
     return true
   }
 
-  async function startBillingCheckout({ billingProfile, plan }) {
+  async function startBillingCheckout({ acceptedDocuments, billingProfile, plan }) {
     if (!activeCompanyId) {
       setBillingCheckoutStatus('Azienda non ancora collegata. Aggiorna la pagina e riprova.')
       return false
     }
 
     setIsBillingCheckoutLoading(true)
-    setBillingCheckoutStatus('Preparo il pagamento sicuro...')
+    setBillingCheckoutStatus('Registro contratto online e dati fiscali...')
+    const envelopeResult = await createCompanyContractEnvelope({
+      acceptedDocuments,
+      billingProfile,
+      companyId: activeCompanyId,
+      documentVersions: legalDocumentVersions,
+      plan,
+    })
+
+    if (envelopeResult.error) {
+      setIsBillingCheckoutLoading(false)
+      setBillingCheckoutStatus(envelopeResult.error.message ?? 'Contratto online non salvato.')
+      return false
+    }
+
+    setBillingCheckoutStatus('Contratto salvato. Preparo il pagamento sicuro...')
     const result = await createBillingCheckoutSession({
       billingProfile,
       companyId: activeCompanyId,
+      contractEnvelopeId: envelopeResult.data?.envelopeId,
       plan,
     })
     setIsBillingCheckoutLoading(false)
@@ -11799,6 +11817,13 @@ function CompanyLicenseGate({
 
     setValidationMessage('')
     await onStartCheckout?.({
+      acceptedDocuments: {
+        commercialOrder: true,
+        dpa: true,
+        marketing: false,
+        privacy: true,
+        terms: true,
+      },
       billingProfile: billingForm,
       plan: selectedPlan,
     })
@@ -11821,7 +11846,7 @@ function CompanyLicenseGate({
         </div>
         <p>
           Account creato. Scegli il piano, completa i dati fiscali e paga la prima mensilita: appena Stripe conferma,
-          la dashboard si sblocca automaticamente.
+          la dashboard si sblocca automaticamente. Vygo salva anche la busta contrattuale online nell archivio azienda.
         </p>
 
         <form className="license-checkout-form" onSubmit={handleCheckoutSubmit}>
@@ -11934,7 +11959,8 @@ function CompanyLicenseGate({
               type="checkbox"
             />
             <span>
-              Confermo dati fiscali, piano scelto, condizioni commerciali, Privacy e gestione fatturazione tramite Stripe.
+              Confermo dati fiscali, piano scelto e firmo online l ordine commerciale Vygo. Accetto Termini, Privacy,
+              nomina privacy e gestione fatturazione tramite Stripe.
               <span className="legal-link-row">
                 <LegalReadButton documentId="terms" onOpen={setOpenLegalDocument} />
                 <LegalReadButton documentId="privacy" onOpen={setOpenLegalDocument} />
@@ -11964,6 +11990,7 @@ function CompanyLicenseGate({
 
         <div className="license-gate-details">
           <DetailLine label="Piano selezionato" value={selectedPlanDetails.title} />
+          <DetailLine label="Contratto" value="Accettazione online archiviata per azienda e admin Vygo" />
           <DetailLine label="Pagamento" value="Carta o metodi abilitati da Stripe" />
           <DetailLine label="Fatture" value="Salvate nello storico azienda" />
         </div>
@@ -14651,6 +14678,20 @@ function AdminWorkspace({
                   <span>Eventi 7 giorni</span>
                   <strong>{selectedCompany.weekActivityCount ?? 0}</strong>
                 </div>
+              </div>
+
+              <div className="admin-detail-alerts">
+                <strong>Contratto online</strong>
+                {selectedCompany.latestContract ? (
+                  <>
+                    <span>Stato: {selectedCompany.latestContract.status}</span>
+                    <span>Piano firmato: {getBillingPlanLabel(selectedCompany.latestContract.plan)}</span>
+                    <span>Firmato: {selectedCompany.latestContract.acceptedAt ? formatShortDateTime(selectedCompany.latestContract.acceptedAt) : 'in attesa'}</span>
+                    <span>Attivo: {selectedCompany.latestContract.activatedAt ? formatShortDateTime(selectedCompany.latestContract.activatedAt) : 'non ancora'}</span>
+                  </>
+                ) : (
+                  <span>Nessun contratto online archiviato.</span>
+                )}
               </div>
 
               <form className="admin-crm-form" onSubmit={handleSaveAdminCompany}>

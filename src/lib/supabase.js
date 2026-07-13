@@ -4029,7 +4029,7 @@ export async function createCompanyInvoiceSignedUrl(filePath) {
   return result
 }
 
-export async function createBillingCheckoutSession({ billingProfile, companyId = configuredCompanyId, plan }) {
+export async function createBillingCheckoutSession({ billingProfile, companyId = configuredCompanyId, contractEnvelopeId, plan }) {
   const supabase = await getSupabaseClient()
 
   if (!supabase) {
@@ -4048,6 +4048,7 @@ export async function createBillingCheckoutSession({ billingProfile, companyId =
       body: JSON.stringify({
         billingProfile,
         companyId,
+        contractEnvelopeId,
         plan,
       }),
       headers: {
@@ -4065,6 +4066,53 @@ export async function createBillingCheckoutSession({ billingProfile, companyId =
     return { data: responsePayload, error: null }
   } catch {
     return { data: null, error: { message: 'Checkout non raggiungibile. Riprova dal sito online.' } }
+  }
+}
+
+export async function createCompanyContractEnvelope({
+  acceptedDocuments,
+  billingProfile,
+  companyId = configuredCompanyId,
+  documentVersions,
+  plan,
+}) {
+  const supabase = await getSupabaseClient()
+
+  if (!supabase) {
+    return { data: null, error: null, demo: true }
+  }
+
+  const sessionResult = await supabase.auth.getSession()
+  const accessToken = sessionResult.data?.session?.access_token
+
+  if (!accessToken) {
+    return { data: null, error: { message: 'Sessione azienda mancante. Fai login e riprova.' } }
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/create-contract-envelope', {
+      body: JSON.stringify({
+        acceptedDocuments,
+        billingProfile,
+        companyId,
+        documentVersions,
+        plan,
+      }),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const responsePayload = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return { data: null, error: { message: responsePayload.error ?? 'Contratto online non salvato.' } }
+    }
+
+    return { data: responsePayload, error: null }
+  } catch {
+    return { data: null, error: { message: 'Archivio contratti non raggiungibile. Riprova dal sito online.' } }
   }
 }
 

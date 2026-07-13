@@ -301,6 +301,7 @@ function buildCompanySummary(company, collections, options = {}) {
   const faults = getCompanyRows(collections.faults, companyId)
   const costs = getCompanyRows(collections.costs, companyId)
   const invoices = getCompanyRows(collections.invoices, companyId)
+  const contracts = getCompanyRows(collections.contracts ?? [], companyId)
   const control = getCompanyRows(collections.controls, companyId)[0] ?? {}
   const chatMessages = getCompanyRows(collections.chatMessages, companyId)
   const teamMessages = getCompanyRows(collections.teamMessages, companyId)
@@ -322,6 +323,11 @@ function buildCompanySummary(company, collections, options = {}) {
   const billingStatus = company.billing_status ?? 'active'
   const monthlyPlanCents = !isInternalAdminCompany && billingStatus === 'active' ? getMonthlyPlanCents(company.billing_plan ?? 'starter') : 0
   const paidInvoices = invoices.filter(isPaidInvoice)
+  const latestContract = [...contracts].sort((first, second) => {
+    const firstDate = first.activated_at || first.checkout_completed_at || first.accepted_at || first.created_at
+    const secondDate = second.activated_at || second.checkout_completed_at || second.accepted_at || second.created_at
+    return new Date(secondDate || 0) - new Date(firstDate || 0)
+  })[0] ?? null
   const lifetimeRevenueCents = paidInvoices.reduce((total, invoice) => total + Number(invoice.amount_cents ?? 0), 0)
   const invoiceMonthCents = paidInvoices
     .filter((invoice) => isCurrentMonth(invoice.paid_at || invoice.issued_at || invoice.created_at))
@@ -373,6 +379,7 @@ function buildCompanySummary(company, collections, options = {}) {
   ].filter((value) => isRecentActivity(value, 7)).length
   const latestActivityAt = getLatestDate(
     company.updated_at,
+    contracts.map((row) => row.activated_at || row.checkout_completed_at || row.accepted_at || row.created_at),
     drivers.map((row) => row.created_at),
     vehicles.map((row) => row.created_at),
     people.map((row) => row.created_at),
@@ -409,6 +416,18 @@ function buildCompanySummary(company, collections, options = {}) {
     billingPlan: company.billing_plan ?? 'starter',
     billingProvider: company.billing_provider ?? 'manual',
     billingStatus: isInternalAdminCompany ? 'internal' : billingStatus,
+    contractCount: contracts.length,
+    latestContract: latestContract ? {
+      acceptedAt: latestContract.accepted_at ?? '',
+      activatedAt: latestContract.activated_at ?? '',
+      billingEmail: latestContract.billing_email ?? '',
+      checkoutCompletedAt: latestContract.checkout_completed_at ?? '',
+      id: latestContract.id,
+      legalName: latestContract.legal_name ?? '',
+      plan: latestContract.plan ?? '',
+      signingMode: latestContract.signing_mode ?? 'clickwrap',
+      status: latestContract.status ?? 'draft',
+    } : null,
     costMonthCents,
     createdAt: company.created_at ?? '',
     documentExpiredCount: expiredDocuments.length,
@@ -526,6 +545,7 @@ export async function handler(event) {
       storageFiles,
       invoices,
       controls,
+      contracts,
     ] = await Promise.all([
       safeSelect(serviceClient, 'drivers', 'id, company_id, full_name, username, status, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'vehicles', 'id, company_id, plate, fleet_type, status, created_at', issues, { limit: 10000 }),
@@ -541,6 +561,7 @@ export async function handler(event) {
       safeSelect(serviceClient, 'company_storage_files', 'company_id, size_bytes, category, deleted_at, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'company_invoices', 'id, company_id, invoice_number, issued_at, paid_at, amount_cents, currency, status, created_at', issues, { limit: 10000 }),
       safeSelect(serviceClient, 'admin_company_controls', 'company_id, sales_stage, priority, owner_name, next_follow_up, notes, updated_at', issues, { limit: 10000 }),
+      safeSelect(serviceClient, 'company_contract_envelopes', 'id, company_id, plan, status, signing_mode, legal_name, billing_email, accepted_at, checkout_completed_at, activated_at, created_at', issues, { limit: 10000 }),
     ])
 
     const collections = {
@@ -548,6 +569,7 @@ export async function handler(event) {
       chatMessages,
       checks,
       compliance,
+      contracts,
       controls,
       costs,
       documents,

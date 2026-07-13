@@ -1,26 +1,35 @@
-# Vygo - kit vettoriale EUIPO
+# Vygo - deposito EUIPO
+
+Questa cartella contiene i riferimenti corretti per preparare il deposito del marchio Vygo.
 
 Cartella file: `docs/assets/euipo-vygo/`
 
-File principali:
+## File corretti da usare come riferimento
 
-- `vygo-euipo-logo-color.svg` - logo completo a colori con payoff.
-- `vygo-euipo-logo-noslogan-color.svg` - logo principale senza payoff. E la versione consigliata per il deposito del marchio principale.
-- `vygo-euipo-logo-black.svg` - versione monocromatica per deposito/stampa.
-- `vygo-euipo-symbol-color.svg` - simbolo quadrato per app, favicon e uso separato.
+- `reference-vygo-logo-current-site.png` - logo esatto attualmente usato sul sito Vygo.
+- `reference-vygo-app-icon-current.png` - icona app attualmente usata.
 
-Anteprime PNG:
+## File vettoriali provvisori
 
-- `vygo-euipo-logo-color-white-preview.png`
-- `vygo-euipo-logo-noslogan-color-white-preview.png`
-- `vygo-euipo-logo-black-white-preview.png`
-- `vygo-euipo-symbol-color-preview.png`
+- `draft-trace-vygo-logo-current-site.svg`
+- `draft-trace-vygo-app-icon-current.svg`
 
-Colori master:
+Questi SVG sono tracciati tecnici provvisori. Servono per dare una base al grafico, ma non sono consigliati come deposito definitivo senza rifinitura manuale.
 
-- Cyan Vygo: `#13C7DF`
-- Navy Vygo: `#15232C`
-- Charcoal: `#46555D`
-- White: `#FFFFFF`
+## Strategia consigliata
 
-Nota pratica per il deposito: scegli una sola versione come marchio principale. Per Vygo io userei `vygo-euipo-logo-noslogan-color.svg`, poi valuterei un secondo deposito separato per il simbolo quadrato. Se vuoi proteggere anche il payoff, conviene valutarlo a parte. Prima del deposito definitivo fai controllare disponibilita, classi e somiglianze da un consulente marchi.
+Per EUIPO conviene partire dal marchio denominativo:
+
+`VYGO`
+
+Questa e la protezione piu flessibile, perche tutela il nome a prescindere dal logo, dal camion, dai colori e da futuri utilizzi del brand.
+
+Secondo step opzionale:
+
+- deposito figurativo del logo Vygo con camion/strada;
+- deposito separato dell'icona app;
+- deposito separato del payoff `Move. Manage. Succeed.` solo se diventera davvero centrale nella comunicazione.
+
+Il camion e lo slogan possono essere usati commercialmente anche senza depositarli subito, ma sarebbero protetti meno del nome.
+
+Prima del deposito definitivo: controllo disponibilita, classi merceologiche e somiglianze con un consulente marchi.
